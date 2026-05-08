@@ -121,7 +121,10 @@ class DeltaOptionsBot:
         while self.running:
             try:
                 ticker = self.exchange.fetch_ticker('BTC/USDT')
-                self.current_btc_price = ticker['last']
+                last_price = ticker.get('last')
+                if last_price is None:
+                    last_price = float(ticker.get('info', {}).get('spot_price', 0))
+                self.current_btc_price = last_price
                 
                 pos = self.state[self.active_mode]['positions']
                 
@@ -162,7 +165,10 @@ class DeltaOptionsBot:
             try:
                 ticker = self.exchange.fetch_ticker(opt['symbol'])
                 last_price = ticker.get('last')
-                if last_price is not None and last_price >= self.target_premium:
+                if last_price is None:
+                    last_price = float(ticker.get('info', {}).get('mark_price', 0))
+                
+                if last_price and last_price >= self.target_premium:
                     if last_price < best_premium:
                         best_premium = last_price
                         best_option = opt['symbol']
@@ -176,9 +182,12 @@ class DeltaOptionsBot:
         self.log("=========================================", "info")
         
         try:
-            if self.current_btc_price == 0:
+            if not self.current_btc_price:
                 ticker = self.exchange.fetch_ticker('BTC/USDT')
-                self.current_btc_price = ticker['last']
+                last_price = ticker.get('last')
+                if last_price is None:
+                    last_price = float(ticker.get('info', {}).get('spot_price', 0))
+                self.current_btc_price = last_price
 
             atm_strike = round(self.current_btc_price / 100) * 100
             call_strike = atm_strike + 3000 
