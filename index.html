@@ -345,47 +345,46 @@
 
     <script>
         // Theme config for chart
-        const chartOptions = {
-            layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#8A8D98' },
-            grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-            rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
-            timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: true }
-        };
+        try {
+            const chartOptions = {
+                layout: { background: { type: 'solid', color: '#050506' }, textColor: '#8A8D98' },
+                grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
+                crosshair: { mode: 0 },
+                rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
+                timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: true }
+            };
 
-        const chart = LightweightCharts.createChart(document.getElementById('tvchart'), chartOptions);
-        const candleSeries = chart.addCandlestickSeries({
-            upColor: '#00C076', downColor: '#FF3B69', borderVisible: false,
-            wickUpColor: '#00C076', wickDownColor: '#FF3B69'
-        });
-
-        // Resize observer
-        new ResizeObserver(entries => {
-            if(entries.length === 0) return;
-            chart.applyOptions({ width: entries[0].contentRect.width, height: entries[0].contentRect.height });
-        }).observe(document.getElementById('tvchart'));
-
-        // Real-time data
-        fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=150')
-            .then(res => res.json())
-            .then(data => {
-                candleSeries.setData(data.map(d => ({
-                    time: d[0] / 1000, open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
-                })));
+            const chart = LightweightCharts.createChart(document.getElementById('tvchart'), chartOptions);
+            const candleSeries = chart.addCandlestickSeries({
+                upColor: '#00C076', downColor: '#FF3B69', borderVisible: false,
+                wickUpColor: '#00C076', wickDownColor: '#FF3B69'
             });
 
-        const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@kline_1m');
-        let lastPrice = 0;
-        ws.onmessage = (e) => {
-            const k = JSON.parse(e.data).k;
-            const price = parseFloat(k.c);
-            candleSeries.update({ time: k.t / 1000, open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: price });
-            
-            const pEl = document.getElementById('topBtcPrice');
-            pEl.innerText = price.toLocaleString('en-US', {style:'currency', currency:'USD'});
-            pEl.className = 'pair-price ' + (price >= lastPrice ? '' : 'val-down');
-            lastPrice = price;
-        };
+            // Resize observer
+            new ResizeObserver(entries => {
+                if(entries.length === 0) return;
+                chart.applyOptions({ width: entries[0].contentRect.width, height: entries[0].contentRect.height });
+            }).observe(document.getElementById('tvchart'));
+
+            // Real-time data
+            fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=150')
+                .then(res => res.json())
+                .then(data => {
+                    candleSeries.setData(data.map(d => ({
+                        time: d[0] / 1000, open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
+                    })));
+                }).catch(e => console.log("Binance history blocked"));
+
+            const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@kline_1m');
+            ws.onmessage = (e) => {
+                const k = JSON.parse(e.data).k;
+                const price = parseFloat(k.c);
+                candleSeries.update({ time: k.t / 1000, open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: price });
+            };
+        } catch (e) {
+            console.error("Chart initialization failed:", e);
+            document.getElementById('tvchart').innerHTML = '<div style="color:var(--text-muted); padding:20px; text-align:center; font-family:monospace;">Chart visualization unavailable (Network Blocked)</div>';
+        }
 
         // Engine Logic
         let currentMode = "PAPER";
@@ -436,6 +435,13 @@
 
             fetch(`/api/state?mode=${currentMode}`).then(r=>r.json()).then(state => {
                 if (currentMode !== 'LIVE') document.getElementById('topBalance').innerText = "$" + state.balance.toLocaleString();
+                
+                // Update top ticker from backend delta API
+                if (state.btc_price > 0) {
+                    const pEl = document.getElementById('topBtcPrice');
+                    pEl.innerText = state.btc_price.toLocaleString('en-US', {style:'currency', currency:'USD'});
+                    pEl.className = 'pair-price';
+                }
                 
                 let totalPnl = 0; let html = '';
                 const tbody = document.getElementById('positionBody');
