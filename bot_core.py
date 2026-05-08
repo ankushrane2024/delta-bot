@@ -156,14 +156,16 @@ class DeltaOptionsBot:
                 options.append(market)
         return options
 
-    def find_best_strike(self, options, option_type):
+    def find_best_strike(self, options, option_type, all_tickers):
         valid_options = [opt for opt in options if opt.get('optionType') == option_type]
         best_option = None
         best_premium = float('inf')
         
         for opt in valid_options:
             try:
-                ticker = self.exchange.fetch_ticker(opt['symbol'])
+                ticker = all_tickers.get(opt['symbol'])
+                if not ticker: continue
+                
                 last_price = ticker.get('last')
                 if last_price is None:
                     last_price = float(ticker.get('info', {}).get('mark_price', 0))
@@ -195,8 +197,14 @@ class DeltaOptionsBot:
             
             self.log(f"📊 Analyzing live orderbook for optimal strikes...", "info")
             options = self.get_next_day_options()
-            call_symbol, call_premium = self.find_best_strike(options, 'call')
-            put_symbol, put_premium = self.find_best_strike(options, 'put')
+            
+            try:
+                all_tickers = self.exchange.fetch_tickers()
+            except Exception:
+                all_tickers = {}
+                
+            call_symbol, call_premium = self.find_best_strike(options, 'call', all_tickers)
+            put_symbol, put_premium = self.find_best_strike(options, 'put', all_tickers)
 
             if not call_symbol or not put_symbol:
                 self.log("❌ Could not find valid strikes with target premium. Reverting to theoretical strikes.", "warn")
