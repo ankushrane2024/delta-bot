@@ -57,6 +57,16 @@ def get_state():
     mode = request.args.get('mode', 'PAPER')
     return jsonify(bot_instance.get_state(mode))
 
+@app.route('/myip')
+def my_ip():
+    """Returns the outbound IP of this Render server — used for Delta Exchange IP whitelisting."""
+    import requests as req
+    try:
+        ip = req.get('https://api.ipify.org', timeout=10).text.strip()
+        return jsonify({'render_outbound_ip': ip, 'whitelist_this_ip': ip})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
 @app.route('/api/start', methods=['POST'])
 def start_bot():
     data = request.get_json() or {}
