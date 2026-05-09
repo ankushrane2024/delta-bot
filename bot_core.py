@@ -5,6 +5,11 @@ import threading
 import ccxt
 import schedule
 
+# IST = UTC + 5:30
+# 8:00 AM IST = 02:30 UTC
+# Render cloud servers run on UTC, so we MUST schedule at 02:30 UTC
+ENTRY_TIME_UTC = "02:30"  # = 08:00 AM IST
+
 class DeltaOptionsBot:
     def __init__(self):
         self.running = False
@@ -30,7 +35,7 @@ class DeltaOptionsBot:
         self.put_sl_mult = 2.0
         self.put_tp_mult = 0.05
         
-        self.entry_time = "08:00"
+        self.entry_time = ENTRY_TIME_UTC  # 02:30 UTC = 08:00 IST
         self.exchange = ccxt.delta({'enableRateLimit': True, 'options': {'defaultType': 'option'}})
         self.current_btc_price = 0.0
 
@@ -111,20 +116,23 @@ class DeltaOptionsBot:
 
     def _run_loop(self):
         schedule.clear()
-        self.log(f"⏰ Automated Schedule set for {self.entry_time} IST.", "info")
+        ist_display = "08:00 AM IST"
+        self.log(f"⏰ Automated Schedule set for {ist_display} (= {self.entry_time} UTC on Render server).", "info")
         schedule.every().day.at(self.entry_time).do(self.execute_strategy)
         while self.running:
             schedule.run_pending()
+            # Log next scheduled run time every hour for visibility
+            utc_now = datetime.datetime.utcnow()
+            ist_now = utc_now + datetime.timedelta(hours=5, minutes=30)
+            if utc_now.minute == 0 and utc_now.second < 2:  # top of each hour
+                self.log(f"⏱ Scheduler alive. Current IST: {ist_now.strftime('%H:%M:%S')}. Next trade at 08:00 IST.", "info")
             time.sleep(1)
             
     def _market_data_loop(self):
         while self.running:
             try:
                 ticker = self.exchange.fetch_ticker('BTC/USDT')
-                last_price = ticker.get('last')
-                if last_price is None:
-                    last_price = float(ticker.get('info', {}).get('spot_price', 0))
-                self.current_btc_price = last_price
+                self.current_btc_price = ticker['last']
                 
                 pos = self.state[self.active_mode]['positions']
                 
@@ -156,21 +164,16 @@ class DeltaOptionsBot:
                 options.append(market)
         return options
 
-    def find_best_strike(self, options, option_type, all_tickers):
+    def find_best_strike(self, options, option_type):
         valid_options = [opt for opt in options if opt.get('optionType') == option_type]
         best_option = None
         best_premium = float('inf')
         
         for opt in valid_options:
             try:
-                ticker = all_tickers.get(opt['symbol'])
-                if not ticker: continue
-                
+                ticker = self.exchange.fetch_ticker(opt['symbol'])
                 last_price = ticker.get('last')
-                if last_price is None:
-                    last_price = float(ticker.get('info', {}).get('mark_price', 0))
-                
-                if last_price and last_price >= self.target_premium:
+                if last_price is not None and last_price >= self.target_premium:
                     if last_price < best_premium:
                         best_premium = last_price
                         best_option = opt['symbol']
@@ -184,12 +187,9 @@ class DeltaOptionsBot:
         self.log("=========================================", "info")
         
         try:
-            if not self.current_btc_price:
+            if self.current_btc_price == 0:
                 ticker = self.exchange.fetch_ticker('BTC/USDT')
-                last_price = ticker.get('last')
-                if last_price is None:
-                    last_price = float(ticker.get('info', {}).get('spot_price', 0))
-                self.current_btc_price = last_price
+                self.current_btc_price = ticker['last']
 
             atm_strike = round(self.current_btc_price / 100) * 100
             call_strike = atm_strike + 3000 
@@ -197,14 +197,8 @@ class DeltaOptionsBot:
             
             self.log(f"📊 Analyzing live orderbook for optimal strikes...", "info")
             options = self.get_next_day_options()
-            
-            try:
-                all_tickers = self.exchange.fetch_tickers()
-            except Exception:
-                all_tickers = {}
-                
-            call_symbol, call_premium = self.find_best_strike(options, 'call', all_tickers)
-            put_symbol, put_premium = self.find_best_strike(options, 'put', all_tickers)
+            call_symbol, call_premium = self.find_best_strike(options, 'call')
+            put_symbol, put_premium = self.find_best_strike(options, 'put')
 
             if not call_symbol or not put_symbol:
                 self.log("❌ Could not find valid strikes with target premium. Reverting to theoretical strikes.", "warn")
