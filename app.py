@@ -37,15 +37,19 @@ def test_api():
     import requests
     results = {}
     try:
-        # Test 1: Simple GET to public endpoint
-        r1 = requests.get('https://api.india.delta.exchange/v2/tickers', timeout=10)
-        results['public_tickers'] = {
-            'status': r1.status_code,
-            'text_start': r1.text[:200],
-            'is_json': r1.headers.get('Content-Type', '').startswith('application/json')
-        }
+        # Test 1: BTC Tickers
+        r1 = requests.get('https://api.india.delta.exchange/v2/tickers?underlying_asset_symbol=BTC', timeout=10)
+        data = r1.json()
+        btc_symbols = []
+        if data.get('success'):
+            for t in data.get('result', []):
+                btc_symbols.append({
+                    'symbol': t.get('symbol'),
+                    'price': t.get('mark_price') or t.get('close')
+                })
+        results['btc_tickers'] = btc_symbols
     except Exception as e:
-        results['public_tickers_error'] = str(e)
+        results['btc_tickers_error'] = str(e)
 
     try:
         # Test 2: Profile with Auth (if keys exist)
