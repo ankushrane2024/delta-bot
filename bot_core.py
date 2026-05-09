@@ -63,13 +63,8 @@ class DeltaIndiaClient:
         h = self._headers('GET', path_with_qs)
         try:
             r = _requests.get(url, headers=h, timeout=15)
-            if r.status_code != 200:
-                print(f"[DEBUG] India API Error {r.status_code}: {r.text[:500]}")
             return r.json()
         except Exception as e:
-            # Log the raw response if possible for debugging
-            raw = getattr(r, 'text', 'No response') if 'r' in locals() else 'Request failed'
-            print(f"[DEBUG] India API Exception: {str(e)} | Raw: {raw[:200]}")
             return {'success': False, 'error': {'code': 'json_error', 'message': str(e)}}
 
     def post(self, path, data=None):
