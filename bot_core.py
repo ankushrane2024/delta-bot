@@ -237,15 +237,19 @@ class DeltaOptionsBot:
                 self.last_iv_pcr['avg_iv'] = round(sum(ivs) / len(ivs), 2) if ivs else 0.0
                 self.last_chain_update = now_ts
 
-        if now_ts - self.last_stats_update > 120:
-            stats = self.india_client.get_ticker_stats('BTCUSD')
-            if stats:
-                self.cached_stats = {
-                    'high': stats.get('high', 0),
-                    'low': stats.get('low', 0),
-                    'volume': stats.get('volume', 0),
-                    'oi': stats.get('open_interest', 0)
-                }
+        if (now_ts - self.last_stats_update > 120) or not self.cached_stats:
+            # Use same params as get_btc_price for consistency
+            r = self.india_client.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
+            if r.get('success') and r.get('result'):
+                for t in r['result']:
+                    if t.get('symbol') == 'BTCUSD':
+                        self.cached_stats = {
+                            'high': t.get('high', 0),
+                            'low': t.get('low', 0),
+                            'volume': t.get('volume', 0),
+                            'oi': t.get('open_interest', 0)
+                        }
+                        break
                 self.last_stats_update = now_ts
 
         return {

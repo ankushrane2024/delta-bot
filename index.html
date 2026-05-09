@@ -407,11 +407,14 @@ function updateDashboard() {
 // --- CHART DATA FETCH ---
 function updateCandles() {
     fetch('/api/history?symbol=MARK:BTCUSD&resolution=1h').then(r => r.json()).then(data => {
-        const formatted = data.map(d => ({
-            time: d.time, open: +d.open, high: +d.high, low: +d.low, close: +d.close
-        }));
+        if (!data || !Array.isArray(data)) return;
+        // Sort ascending by time (required by Lightweight Charts)
+        const formatted = data
+            .map(d => ({ time: d.time, open: +d.open, high: +d.high, low: +d.low, close: +d.close }))
+            .sort((a, b) => a.time - b.time);
         candleSeries.setData(formatted);
-    });
+        lightChart.timeScale().fitContent();
+    }).catch(e => console.error("Chart Error:", e));
 }
 
 setInterval(updateDashboard, 3000);
