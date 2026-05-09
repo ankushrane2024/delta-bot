@@ -312,8 +312,7 @@ class DeltaOptionsBot:
         try:
             # Get BTC price
             if self.current_btc_price == 0:
-                ticker = self.exchange.fetch_ticker('BTC/USDT')
-                self.current_btc_price = ticker['last']
+                self.current_btc_price = self.india_client.get_btc_price()
 
             atm = round(self.current_btc_price / 100) * 100
             call_strike = atm + 3000
