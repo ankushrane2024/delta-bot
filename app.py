@@ -31,19 +31,32 @@ def auto_start_paper_engine():
 # ─── KEEP-ALIVE SELF-PINGER ───────────────────────────────────────────────────
 def keep_alive_pinger():
     """Pings this server's own /health endpoint every 10 minutes.
-    Prevents Render free tier from spinning down and killing the scheduler."""
+    Prevents Render free tier from spinning down and killing the scheduler.
+    Also auto-restarts the engine if it has stopped unexpectedly."""
     time.sleep(30)  # Wait for server to fully start
     render_url = os.environ.get('RENDER_EXTERNAL_URL', 'http://localhost:5000')
     while True:
         try:
             requests.get(f"{render_url}/health", timeout=10)
-            print(f"[KEEPALIVE] Pinged {render_url}/health at {datetime.datetime.now().strftime('%H:%M:%S')}")
+            print(f"[KEEPALIVE] Pinged at {datetime.datetime.now().strftime('%H:%M:%S')}")
+            # Auto-restart engine if it died unexpectedly
+            if not bot_instance.running:
+                print("[KEEPALIVE] Engine not running! Auto-restarting...")
+                bot_instance.start({
+                    'mode': 'PAPER', 'api_key': '', 'api_secret': '',
+                    'target_premium': 100.0, 'allocation_pct': 50.0,
+                    'call_stop_loss': 100.0, 'call_take_profit': 95.0,
+                    'put_stop_loss': 100.0, 'put_take_profit': 95.0,
+                })
+                print("[KEEPALIVE] Engine restarted successfully.")
         except Exception as e:
             print(f"[KEEPALIVE] Ping failed: {e}")
         time.sleep(600)  # Every 10 minutes
 
-# Start background threads on boot (only once in production, not during reload)
-if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':  # Prevents double-start in dev mode
+# Start background threads on boot
+# WERKZEUG_RUN_MAIN is set only in Flask dev reload worker, not in gunicorn
+# So this correctly runs once on gunicorn production and once on fresh dev start
+if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
     threading.Thread(target=auto_start_paper_engine, daemon=True).start()
     threading.Thread(target=keep_alive_pinger, daemon=True).start()
 
@@ -98,6 +111,25 @@ def trigger_execution():
         return jsonify({'status': 'error', 'message': 'Please Initialize Engine first.'})
     bot_instance.trigger_execution()
     return jsonify({'status': 'success', 'message': 'Execution sweep triggered.'})
+
+@app.route('/api/restart', methods=['POST'])
+def restart_bot():
+    """Force-restart the paper engine. Used by keep-alive if engine dies."""
+    if bot_instance.running:
+        bot_instance.stop()
+        time.sleep(2)
+    success = bot_instance.start({
+        'mode': 'PAPER',
+        'api_key': '',
+        'api_secret': '',
+        'target_premium': 100.0,
+        'allocation_pct': 50.0,
+        'call_stop_loss': 100.0,
+        'call_take_profit': 95.0,
+        'put_stop_loss': 100.0,
+        'put_take_profit': 95.0,
+    })
+    return jsonify({'status': 'success' if success else 'error', 'message': 'Engine restarted.'})
 
 if __name__ == '__main__':
     os.makedirs('templates', exist_ok=True)
