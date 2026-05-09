@@ -420,8 +420,8 @@ function updateCandles() {
     }).catch(e => console.error("Chart Error:", e));
 }
 
-setInterval(updateDashboard, 3000);
-setInterval(updateCandles, 60000);
+setInterval(updateDashboard, 5000); // Poll every 5s instead of 3s
+setInterval(updateCandles, 120000); // Chart every 2m instead of 1m
 setInterval(() => {
     const ist = new Date(new Date().getTime() + (5.5 * 3600000));
     document.getElementById('istClock').textContent = ist.toISOString().substring(11, 19) + ' IST';

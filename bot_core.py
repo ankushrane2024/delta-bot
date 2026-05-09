@@ -155,6 +155,7 @@ class DeltaOptionsBot:
         self.last_iv_pcr = {'avg_iv': 0, 'pcr': 0}
         self.thread = None
         self.market_thread = None
+        self.market_data_running = False
 
         # Separate state per mode
         self.state = {
@@ -216,43 +217,7 @@ class DeltaOptionsBot:
         hours_left = int(diff.total_seconds() // 3600)
         mins_left = int((diff.total_seconds() % 3600) // 60)
 
-        # Update sentiment and stats every 2 minutes to avoid rate limits
-        now_ts = time.time()
-        if now_ts - self.last_chain_update > 120:
-            chain = self.india_client.get_option_chain()
-            if chain:
-                total_call_oi = 0
-                total_put_oi = 0
-                ivs = []
-                for opt in chain:
-                    oi = float(opt.get('open_interest', 0))
-                    iv = float(opt.get('mark_iv') or opt.get('theoretical_volatility') or 0)
-                    if opt.get('option_type') == 'call':
-                        total_call_oi += oi
-                    else:
-                        total_put_oi += oi
-                    if iv > 0: ivs.append(iv)
-                
-                self.last_iv_pcr['pcr'] = round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else 0.0
-                self.last_iv_pcr['avg_iv'] = round(sum(ivs) / len(ivs), 2) if ivs else 0.0
-                self.last_chain_update = now_ts
-
-        if (now_ts - self.last_stats_update > 120) or not self.cached_stats:
-            # Use same params as get_btc_price for consistency
-            r = self.india_client.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
-            if r.get('success') and r.get('result'):
-                for t in r['result']:
-                    if t.get('symbol') == 'BTCUSD':
-                        self.cached_stats = {
-                            'high': t.get('high', 0),
-                            'low': t.get('low', 0),
-                            'volume': t.get('volume', 0),
-                            'oi': t.get('open_interest', 0)
-                        }
-                        break
-                self.last_stats_update = now_ts
-
-        # Fallback for btc_price if main thread hasn't updated yet
+        # Directly return cached data for speed. Background thread handles updates.
         display_btc = self.current_btc_price if self.current_btc_price > 0 else self.cached_stats.get('mark_price', 0)
 
         return {
@@ -269,6 +234,54 @@ class DeltaOptionsBot:
             'market_stats': self.cached_stats,
             'sentiment': self.last_iv_pcr
         }
+
+    def start_market_data_worker(self):
+        """Starts a background thread to fetch expensive market data (PCR, IV, Stats) every 5 mins."""
+        if self.market_data_running:
+            return
+        self.market_data_running = True
+        
+        def worker():
+            while self.market_data_running:
+                try:
+                    # 1. Update Ticker Stats
+                    r = self.india_client.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
+                    if r.get('success') and r.get('result'):
+                        for t in r['result']:
+                            if t.get('symbol') == 'BTCUSD':
+                                self.cached_stats = {
+                                    'high': t.get('high', 0),
+                                    'low': t.get('low', 0),
+                                    'volume': t.get('volume', 0),
+                                    'oi': t.get('open_interest', 0),
+                                    'mark_price': float(t.get('mark_price', 0))
+                                }
+                                break
+                    
+                    # 2. Update Options Chain (PCR & IV)
+                    chain = self.india_client.get_option_chain()
+                    if chain:
+                        total_call_oi = 0
+                        total_put_oi = 0
+                        ivs = []
+                        for opt in chain:
+                            oi = float(opt.get('open_interest', 0))
+                            iv = float(opt.get('mark_iv') or opt.get('theoretical_volatility') or 0)
+                            if opt.get('option_type') == 'call':
+                                total_call_oi += oi
+                            else:
+                                total_put_oi += oi
+                            if iv > 0: ivs.append(iv)
+                        
+                        self.last_iv_pcr['pcr'] = round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else 0.0
+                        self.last_iv_pcr['avg_iv'] = round(sum(ivs) / len(ivs), 2) if ivs else 0.0
+                except Exception as e:
+                    print(f"Market Data Worker Error: {e}")
+                
+                # Sleep for 5 minutes
+                time.sleep(300)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     # ─── START / STOP ─────────────────────────────────────────────────────────
     def start(self, config):
