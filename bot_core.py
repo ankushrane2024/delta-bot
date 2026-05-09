@@ -34,31 +34,52 @@ class DeltaIndiaClient:
         return ts, sig
 
     def _headers(self, method, path, body=""):
-        ts, sig = self._sign(method, path, body)
-        return {
-            'api-key': self.api_key,
-            'timestamp': ts,
-            'signature': sig,
+        headers = {
             'Content-Type': 'application/json',
             'User-Agent': 'DeltaBotCloud/1.0'
         }
+        if self.api_key and self.api_secret:
+            ts, sig = self._sign(method, path, body)
+            headers.update({
+                'api-key': self.api_key,
+                'timestamp': ts,
+                'signature': sig
+            })
+        return headers
 
     def get(self, path, params=None):
         url = self.base + path
+        # Build query string consistently for both signature and request
         if params:
-            qs = '&'.join(f"{k}={v}" for k, v in params.items())
-            path_with_qs = path + '?' + qs
+            # Sort keys to ensure consistent signature
+            sorted_params = sorted(params.items())
+            qs = '&'.join(f"{k}={v}" for k, v in sorted_params)
+            path_with_qs = f"{path}?{qs}"
+            # Use the already built path_with_qs for the URL
+            url = f"{self.base}{path_with_qs}"
         else:
             path_with_qs = path
+
         h = self._headers('GET', path_with_qs)
-        r = _requests.get(url, params=params, headers=h, timeout=15)
-        return r.json()
+        try:
+            r = _requests.get(url, headers=h, timeout=15)
+            if r.status_code != 200:
+                print(f"[DEBUG] India API Error {r.status_code}: {r.text[:200]}")
+            return r.json()
+        except Exception as e:
+            print(f"[DEBUG] Request/JSON error: {e}")
+            return {'success': False, 'error': {'code': 'json_error', 'message': str(e)}}
 
     def post(self, path, data=None):
-        body = json.dumps(data or {})
+        url = self.base + path
+        body = json.dumps(data or {}, separators=(',', ':'))
         h = self._headers('POST', path, body)
-        r = _requests.post(self.base + path, data=body, headers=h, timeout=15)
-        return r.json()
+        try:
+            r = _requests.post(url, data=body, headers=h, timeout=15)
+            return r.json()
+        except Exception as e:
+            print(f"[DEBUG] POST request/JSON error: {e}")
+            return {'success': False, 'error': {'code': 'json_error', 'message': str(e)}}
 
     def test_connection(self):
         """Returns (success, message)"""
