@@ -148,7 +148,11 @@ ENTRY_TIME_UTC = "02:30"
 class DeltaOptionsBot:
     def __init__(self):
         self.running = False
-        self.active_mode = "PAPER"
+        self.active_mode = 'PAPER'
+        self.last_stats_update = 0
+        self.cached_stats = {}
+        self.last_chain_update = 0
+        self.last_iv_pcr = {'avg_iv': 0, 'pcr': 0}
         self.thread = None
         self.market_thread = None
 
@@ -212,25 +216,37 @@ class DeltaOptionsBot:
         hours_left = int(diff.total_seconds() // 3600)
         mins_left = int((diff.total_seconds() % 3600) // 60)
 
-        # Calculate Put-Call Ratio (PCR) and Avg IV from options chain
-        chain = self.india_client.get_option_chain()
-        total_call_oi = 0
-        total_put_oi = 0
-        ivs = []
-        for opt in chain:
-            oi = float(opt.get('open_interest', 0))
-            iv = float(opt.get('mark_iv') or opt.get('theoretical_volatility') or 0)
-            if opt.get('option_type') == 'call':
-                total_call_oi += oi
-            else:
-                total_put_oi += oi
-            if iv > 0: ivs.append(iv)
-        
-        pcr = round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else 0.0
-        avg_iv = round(sum(ivs) / len(ivs), 2) if ivs else 0.0
+        # Update sentiment and stats every 2 minutes to avoid rate limits
+        now_ts = time.time()
+        if now_ts - self.last_chain_update > 120:
+            chain = self.india_client.get_option_chain()
+            if chain:
+                total_call_oi = 0
+                total_put_oi = 0
+                ivs = []
+                for opt in chain:
+                    oi = float(opt.get('open_interest', 0))
+                    iv = float(opt.get('mark_iv') or opt.get('theoretical_volatility') or 0)
+                    if opt.get('option_type') == 'call':
+                        total_call_oi += oi
+                    else:
+                        total_put_oi += oi
+                    if iv > 0: ivs.append(iv)
+                
+                self.last_iv_pcr['pcr'] = round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else 0.0
+                self.last_iv_pcr['avg_iv'] = round(sum(ivs) / len(ivs), 2) if ivs else 0.0
+                self.last_chain_update = now_ts
 
-        # Get 24h Stats for BTCUSD
-        stats = self.india_client.get_ticker_stats('BTCUSD')
+        if now_ts - self.last_stats_update > 120:
+            stats = self.india_client.get_ticker_stats('BTCUSD')
+            if stats:
+                self.cached_stats = {
+                    'high': stats.get('high', 0),
+                    'low': stats.get('low', 0),
+                    'volume': stats.get('volume', 0),
+                    'oi': stats.get('open_interest', 0)
+                }
+                self.last_stats_update = now_ts
 
         return {
             'running': self.running,
@@ -243,16 +259,8 @@ class DeltaOptionsBot:
             'total_pnl': total_pnl,
             'next_trade_in': f"{hours_left}h {mins_left}m",
             'ist_time': ist_now.strftime('%H:%M:%S IST'),
-            'market_stats': {
-                'high': stats.get('high', 0),
-                'low': stats.get('low', 0),
-                'volume': stats.get('volume', 0),
-                'oi': stats.get('open_interest', 0)
-            },
-            'sentiment': {
-                'pcr': pcr,
-                'avg_iv': avg_iv
-            }
+            'market_stats': self.cached_stats,
+            'sentiment': self.last_iv_pcr
         }
 
     # ─── START / STOP ─────────────────────────────────────────────────────────
