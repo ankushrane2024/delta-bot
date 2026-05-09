@@ -252,10 +252,13 @@ class DeltaOptionsBot:
                         break
                 self.last_stats_update = now_ts
 
+        # Fallback for btc_price if main thread hasn't updated yet
+        display_btc = self.current_btc_price if self.current_btc_price > 0 else self.cached_stats.get('mark_price', 0)
+
         return {
             'running': self.running,
             'running_mode': self.active_mode if self.running else None,
-            'btc_price': self.current_btc_price,
+            'btc_price': display_btc,
             'balance': self.state[mode]['balance'] + total_pnl,
             'starting_balance': self.state[mode]['starting_balance'],
             'call': pos['call'],

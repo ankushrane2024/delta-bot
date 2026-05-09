@@ -244,7 +244,10 @@ const payoffChart = new Chart(document.getElementById('payoffChart').getContext(
 });
 
 const lightChart = LightweightCharts.createChart(document.getElementById('lightChart'), {
-    layout: { backgroundColor: '#151a21', textColor: '#848e9c' },
+    layout: { 
+        background: { type: 'solid', color: '#151a21' },
+        textColor: '#848e9c' 
+    },
     grid: { vertLines: { color: '#1e232b' }, horzLines: { color: '#1e232b' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#2b3139' },
