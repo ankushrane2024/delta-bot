@@ -111,7 +111,8 @@ class DeltaIndiaClient:
         r = self.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
         if r.get('success') and r.get('result'):
             for t in r['result']:
-                if 'BTCUSDT' in t.get('symbol', ''):
+                # On Delta India, the symbol is often BTCUSD (not BTCUSDT)
+                if t.get('symbol') == 'BTCUSD':
                     return float(t.get('mark_price', 0) or t.get('close', 0) or 0)
         return 0.0
 
