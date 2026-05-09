@@ -32,6 +32,46 @@ if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
 def index():
     return render_template('index.html')
 
+@app.route('/test-api')
+def test_api():
+    import requests
+    results = {}
+    try:
+        # Test 1: Simple GET to public endpoint
+        r1 = requests.get('https://api.india.delta.exchange/v2/tickers', timeout=10)
+        results['public_tickers'] = {
+            'status': r1.status_code,
+            'text_start': r1.text[:200],
+            'is_json': r1.headers.get('Content-Type', '').startswith('application/json')
+        }
+    except Exception as e:
+        results['public_tickers_error'] = str(e)
+
+    try:
+        # Test 2: Profile with Auth (if keys exist)
+        key = os.environ.get('DELTA_API_KEY', '')
+        secret = os.environ.get('DELTA_API_SECRET', '')
+        if key and secret:
+            import hmac, hashlib, time
+            ts = str(int(time.time()))
+            path = '/v2/profile'
+            msg = 'GET' + ts + path
+            sig = hmac.new(secret.encode(), msg.encode(), hashlib.sha256).hexdigest()
+            h = {'api-key': key, 'timestamp': ts, 'signature': sig, 'User-Agent': 'Mozilla/5.0'}
+            r2 = requests.get('https://api.india.delta.exchange/v2/profile', headers=h, timeout=10)
+            results['auth_profile'] = {
+                'status': r2.status_code,
+                'text_start': r2.text[:200],
+                'is_json': r2.headers.get('Content-Type', '').startswith('application/json')
+            }
+        else:
+            results['auth_profile'] = 'No keys in env'
+    except Exception as e:
+        results['auth_profile_error'] = str(e)
+
+    return jsonify(results)
+
+
 @app.route('/health')
 def health():
     ist = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
