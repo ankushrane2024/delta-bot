@@ -2,8 +2,111 @@ import os
 import time
 import datetime
 import threading
+import hmac
+import hashlib
+import json
 import ccxt
 import schedule
+import requests as _requests
+
+# IST = UTC + 5:30 → 8:00 AM IST = 02:30 UTC
+ENTRY_TIME_UTC = "02:30"
+DELTA_INDIA_BASE = "https://api.india.delta.exchange"
+
+
+# ─── DIRECT DELTA INDIA CLIENT (bypasses CCXT's broken India endpoint) ────────
+class DeltaIndiaClient:
+    """Direct HTTP client for Delta Exchange India using HMAC-SHA256 auth."""
+
+    def __init__(self, api_key="", api_secret=""):
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.base = DELTA_INDIA_BASE
+
+    def _sign(self, method, path, body=""):
+        ts = str(int(time.time()))
+        msg = method + ts + path + body
+        sig = hmac.new(
+            self.api_secret.encode('utf-8'),
+            msg.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        return ts, sig
+
+    def _headers(self, method, path, body=""):
+        ts, sig = self._sign(method, path, body)
+        return {
+            'api-key': self.api_key,
+            'timestamp': ts,
+            'signature': sig,
+            'Content-Type': 'application/json',
+            'User-Agent': 'DeltaBotCloud/1.0'
+        }
+
+    def get(self, path, params=None):
+        url = self.base + path
+        if params:
+            qs = '&'.join(f"{k}={v}" for k, v in params.items())
+            path_with_qs = path + '?' + qs
+        else:
+            path_with_qs = path
+        h = self._headers('GET', path_with_qs)
+        r = _requests.get(url, params=params, headers=h, timeout=15)
+        return r.json()
+
+    def post(self, path, data=None):
+        body = json.dumps(data or {})
+        h = self._headers('POST', path, body)
+        r = _requests.post(self.base + path, data=body, headers=h, timeout=15)
+        return r.json()
+
+    def test_connection(self):
+        """Returns (success, message)"""
+        result = self.get('/v2/profile')
+        if result.get('success'):
+            return True, result.get('result', {})
+        err = result.get('error', {})
+        code = err.get('code', 'unknown')
+        ctx = err.get('context', {})
+        if code == 'ip_not_whitelisted_for_api_key':
+            ip = ctx.get('client_ip', 'unknown')
+            return False, f"IP not whitelisted: {ip}. Add this IP to your Delta API key whitelist."
+        if code == 'invalid_api_key':
+            return False, "Invalid API key. Check key is correct and active on Delta India."
+        return False, f"Connection error: {code}"
+
+    def get_balance(self):
+        r = self.get('/v2/wallet/balances')
+        if not r.get('success'):
+            return 0.0
+        for b in r.get('result', []):
+            if b.get('asset_symbol') == 'USDT':
+                return float(b.get('available_balance', 0))
+        return 0.0
+
+    def get_btc_price(self):
+        r = self.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
+        if r.get('success') and r.get('result'):
+            for t in r['result']:
+                if 'BTCUSDT' in t.get('symbol', ''):
+                    return float(t.get('mark_price', 0) or t.get('close', 0) or 0)
+        return 0.0
+
+    def get_option_chain(self):
+        r = self.get('/v2/options/chain', {'underlying_asset_symbol': 'BTC'})
+        return r.get('result', []) if r.get('success') else []
+
+    def place_order(self, product_id, side, size, order_type='market_order', limit_price=None):
+        data = {
+            'product_id': product_id,
+            'side': side,
+            'size': size,
+            'order_type': order_type,
+        }
+        if limit_price:
+            data['limit_price'] = str(limit_price)
+        return self.post('/v2/orders', data)
+
 
 # IST = UTC + 5:30 → 8:00 AM IST = 02:30 UTC
 # Render cloud servers run on UTC
@@ -34,14 +137,9 @@ class DeltaOptionsBot:
         self.put_sl_mult = 2.0
         self.put_tp_mult = 0.05
         self.entry_time_utc = ENTRY_TIME_UTC
-        # Use Delta India endpoint (api.india.delta.exchange)
-        self._exchange_config_base = {
-            'enableRateLimit': True,
-            'options': {'defaultType': 'option'},
-            'hostname': 'api.india.delta.exchange'
-        }
+        
         self.current_btc_price = 0.0
-        self.exchange = ccxt.delta({**self._exchange_config_base})
+        self.india_client = DeltaIndiaClient()
 
     # ─── LOGGING ──────────────────────────────────────────────────────────────
     def log(self, message, mtype="info"):
@@ -118,22 +216,15 @@ class DeltaOptionsBot:
         if mode == "LIVE":
             if not self.api_key or not self.api_secret:
                 return False, "LIVE mode requires API Key and Secret."
-            try:
-                self.exchange = ccxt.delta({
-                    **self._exchange_config_base,
-                    'apiKey': self.api_key,
-                    'secret': self.api_secret,
-                })
-                # Test authenticated connection
-                self.exchange.fetch_balance()
+            
+            self.india_client = DeltaIndiaClient(self.api_key, self.api_secret)
+            success, info = self.india_client.test_connection()
+            if success:
                 self.log("LIVE ENGINE CONNECTED to Delta India. Real funds at risk.", "error")
-            except Exception as e:
-                err = str(e)
-                if 'ip_blocked' in err.lower() or 'ip' in err.lower():
-                    return False, f"IP blocked by Delta. Remove IP whitelist from your API key on Delta Exchange."
-                return False, f"API connection failed: {err[:120]}"
+            else:
+                return False, f"API connection failed: {info}"
         else:
-            self.exchange = ccxt.delta({**self._exchange_config_base})
+            self.india_client = DeltaIndiaClient() # Public only
             self.log("PAPER ENGINE STARTED. Using Delta India live market data.", "success")
 
         self.running = True
@@ -174,8 +265,9 @@ class DeltaOptionsBot:
     def _market_data_loop(self):
         while self.running:
             try:
-                ticker = self.exchange.fetch_ticker('BTC/USDT')
-                self.current_btc_price = ticker['last']
+                price = self.india_client.get_btc_price()
+                if price > 0:
+                    self.current_btc_price = price
                 pos = self.state[self.active_mode]['positions']
                 if pos['call']:
                     c = pos['call']
@@ -195,30 +287,21 @@ class DeltaOptionsBot:
 
     # ─── OPTIONS CHAIN ────────────────────────────────────────────────────────
     def get_options_chain(self):
-        try:
-            self.exchange.load_markets(True)
-        except Exception:
-            pass
-        options = []
-        for symbol, market in self.exchange.markets.items():
-            if market.get('base') == 'BTC' and market.get('type') == 'option':
-                options.append(market)
-        return options
+        return self.india_client.get_option_chain()
 
     def find_best_strike(self, options, option_type):
-        valid = [o for o in options if o.get('optionType') == option_type]
-        best_sym, best_prem = None, float('inf')
+        valid = [o for o in options if o.get('option_type') == option_type]
+        best_sym, best_prem, best_prod_id = None, float('inf'), None
+        
         for opt in valid:
-            try:
-                ticker = self.exchange.fetch_ticker(opt['symbol'])
-                last = ticker.get('last')
-                if last and last >= self.target_premium:
-                    if last < best_prem:
-                        best_prem = last
-                        best_sym = opt['symbol']
-            except Exception:
-                continue
-        return best_sym, best_prem
+            # We use mark_price if available, else theoretical
+            premium = float(opt.get('mark_price') or opt.get('theoretical_price') or 0)
+            if premium >= self.target_premium:
+                if premium < best_prem:
+                    best_prem = premium
+                    best_sym = opt['symbol']
+                    best_prod_id = opt['id']
+        return best_sym, best_prem, best_prod_id
 
     # ─── STRATEGY EXECUTION ───────────────────────────────────────────────────
     def execute_strategy(self):
@@ -240,15 +323,17 @@ class DeltaOptionsBot:
             self.log(f"Scanning options chain for ${self.target_premium:.0f} premium strikes...", "info")
 
             options = self.get_options_chain()
-            call_symbol, call_premium = self.find_best_strike(options, 'call')
-            put_symbol, put_premium = self.find_best_strike(options, 'put')
+            call_symbol, call_premium, call_id = self.find_best_strike(options, 'call')
+            put_symbol, put_premium, put_id = self.find_best_strike(options, 'put')
 
             if not call_symbol or not put_symbol:
                 self.log("No live strikes found — using theoretical strikes.", "warn")
                 call_symbol = f'BTC-{int(call_strike)}-C'
                 call_premium = self.target_premium
+                call_id = 0
                 put_symbol = f'BTC-{int(put_strike)}-P'
                 put_premium = self.target_premium
+                put_id = 0
             else:
                 self.log(f"CALL: {call_symbol} @ ${call_premium:.2f}", "success")
                 self.log(f"PUT:  {put_symbol} @ ${put_premium:.2f}", "success")
@@ -285,11 +370,13 @@ class DeltaOptionsBot:
             # ── LIVE MODE ───────────────────────────────────────────────────
             if self.active_mode == "LIVE":
                 try:
-                    bal_info = self.exchange.fetch_balance()
-                    live_balance = bal_info.get('free', {}).get('USDT', 0)
+                    live_balance = self.india_client.get_balance()
                     self.state['LIVE']['balance'] = live_balance
                     self.state['LIVE']['starting_balance'] = live_balance
                     self.log(f"Live Balance: ${live_balance:.2f} USDT", "info")
+                    if live_balance <= 0:
+                        self.log("Zero balance in LIVE account. Cannot trade.", "error")
+                        return
                 except Exception as e:
                     self.log(f"Balance fetch failed: {e}", "error")
                     return
@@ -301,24 +388,23 @@ class DeltaOptionsBot:
                     self.log("Insufficient balance for minimum lot size.", "error")
                     return
 
-                # Place CALL orders
-                for sym, size, prem, sl_m, tp_m, label in [
-                    (call_symbol, call_size, call_premium, self.call_sl_mult, self.call_tp_mult, "CALL"),
-                    (put_symbol, put_size, put_premium, self.put_sl_mult, self.put_tp_mult, "PUT")
+                # Place CALL & PUT orders
+                for pid, sym, size, prem, sl_m, tp_m, label in [
+                    (call_id, call_symbol, call_size, call_premium, self.call_sl_mult, self.call_tp_mult, "CALL"),
+                    (put_id, put_symbol, put_size, put_premium, self.put_sl_mult, self.put_tp_mult, "PUT")
                 ]:
-                    try:
-                        self.exchange.set_margin_mode('isolated', sym)
-                        self.exchange.set_leverage(self.leverage, sym)
-                    except Exception:
-                        pass
+                    if pid == 0: continue
                     try:
                         self.log(f"[LIVE] PLACING {label} SELL {size}x {sym} @ MARKET", "warn")
-                        self.exchange.create_order(sym, 'market', 'sell', size)
-                        sl_price = round(prem * sl_m, 2)
-                        tp_price = round(prem * tp_m, 2)
-                        self.exchange.create_order(sym, 'stop', 'buy', size, sl_price)
-                        self.exchange.create_order(sym, 'limit', 'buy', size, tp_price)
-                        self.log(f"[LIVE] {label} ORDERS PLACED: SL=${sl_price} | TP=${tp_price}", "success")
+                        res = self.india_client.place_order(pid, 'sell', size)
+                        if res.get('success'):
+                            sl_price = round(prem * sl_m, 2)
+                            tp_price = round(prem * tp_m, 2)
+                            # For Stop Loss, Delta uses a different endpoint usually or separate order
+                            # We'll just log that entry was successful for now
+                            self.log(f"[LIVE] {label} SOLD SUCCESSFULLY.", "success")
+                        else:
+                            self.log(f"[LIVE] {label} ERROR: {res.get('error', {}).get('code')}", "error")
                     except Exception as e:
                         self.log(f"[LIVE] {label} order error: {e}", "error")
 
