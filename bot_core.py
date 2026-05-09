@@ -100,8 +100,9 @@ class DeltaOptionsBot:
 
         mode = config.get('mode', 'PAPER').upper()
         self.active_mode = mode
-        self.api_key = config.get('api_key', '').strip()
-        self.api_secret = config.get('api_secret', '').strip()
+        # Use keys from form, OR fall back to Render environment variables
+        self.api_key = config.get('api_key', '').strip() or os.environ.get('DELTA_API_KEY', '')
+        self.api_secret = config.get('api_secret', '').strip() or os.environ.get('DELTA_API_SECRET', '')
         self.target_premium = float(config.get('target_premium', 100.0))
         self.allocation_pct = float(config.get('allocation_pct', 50.0)) / 100.0
         self.call_sl_mult = 1.0 + (float(config.get('call_stop_loss', 100.0)) / 100.0)
