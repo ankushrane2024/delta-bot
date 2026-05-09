@@ -34,9 +34,14 @@ class DeltaOptionsBot:
         self.put_sl_mult = 2.0
         self.put_tp_mult = 0.05
         self.entry_time_utc = ENTRY_TIME_UTC
-
+        # Use Delta India endpoint (api.india.delta.exchange)
+        self._exchange_config_base = {
+            'enableRateLimit': True,
+            'options': {'defaultType': 'option'},
+            'hostname': 'api.india.delta.exchange'
+        }
         self.current_btc_price = 0.0
-        self.exchange = ccxt.delta({'enableRateLimit': True, 'options': {'defaultType': 'option'}})
+        self.exchange = ccxt.delta({**self._exchange_config_base})
 
     # ─── LOGGING ──────────────────────────────────────────────────────────────
     def log(self, message, mtype="info"):
@@ -115,19 +120,21 @@ class DeltaOptionsBot:
                 return False, "LIVE mode requires API Key and Secret."
             try:
                 self.exchange = ccxt.delta({
+                    **self._exchange_config_base,
                     'apiKey': self.api_key,
                     'secret': self.api_secret,
-                    'enableRateLimit': True,
-                    'options': {'defaultType': 'option'}
                 })
-                # Test connection
+                # Test authenticated connection
                 self.exchange.fetch_balance()
-                self.log("LIVE ENGINE CONNECTED. Real funds at risk.", "error")
+                self.log("LIVE ENGINE CONNECTED to Delta India. Real funds at risk.", "error")
             except Exception as e:
-                return False, f"API connection failed: {str(e)}"
+                err = str(e)
+                if 'ip_blocked' in err.lower() or 'ip' in err.lower():
+                    return False, f"IP blocked by Delta. Remove IP whitelist from your API key on Delta Exchange."
+                return False, f"API connection failed: {err[:120]}"
         else:
-            self.exchange = ccxt.delta({'enableRateLimit': True, 'options': {'defaultType': 'option'}})
-            self.log("PAPER ENGINE STARTED. Using live market data.", "success")
+            self.exchange = ccxt.delta({**self._exchange_config_base})
+            self.log("PAPER ENGINE STARTED. Using Delta India live market data.", "success")
 
         self.running = True
         self.thread = threading.Thread(target=self._run_loop, daemon=True)
