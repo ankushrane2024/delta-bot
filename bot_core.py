@@ -36,7 +36,8 @@ class DeltaIndiaClient:
     def _headers(self, method, path, body=""):
         headers = {
             'Content-Type': 'application/json',
-            'User-Agent': 'DeltaBotCloud/1.0'
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
         if self.api_key and self.api_secret:
             ts, sig = self._sign(method, path, body)
@@ -48,26 +49,26 @@ class DeltaIndiaClient:
         return headers
 
     def get(self, path, params=None):
-        url = self.base + path
         # Build query string consistently for both signature and request
         if params:
             # Sort keys to ensure consistent signature
             sorted_params = sorted(params.items())
             qs = '&'.join(f"{k}={v}" for k, v in sorted_params)
             path_with_qs = f"{path}?{qs}"
-            # Use the already built path_with_qs for the URL
-            url = f"{self.base}{path_with_qs}"
         else:
             path_with_qs = path
 
+        url = f"{self.base}{path_with_qs}"
         h = self._headers('GET', path_with_qs)
         try:
             r = _requests.get(url, headers=h, timeout=15)
             if r.status_code != 200:
-                print(f"[DEBUG] India API Error {r.status_code}: {r.text[:200]}")
+                print(f"[DEBUG] India API Error {r.status_code}: {r.text[:500]}")
             return r.json()
         except Exception as e:
-            print(f"[DEBUG] Request/JSON error: {e}")
+            # Log the raw response if possible for debugging
+            raw = getattr(r, 'text', 'No response') if 'r' in locals() else 'Request failed'
+            print(f"[DEBUG] India API Exception: {str(e)} | Raw: {raw[:200]}")
             return {'success': False, 'error': {'code': 'json_error', 'message': str(e)}}
 
     def post(self, path, data=None):
