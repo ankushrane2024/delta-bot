@@ -57,6 +57,12 @@ def get_state():
     mode = request.args.get('mode', 'PAPER')
     return jsonify(bot_instance.get_state(mode))
 
+@app.route('/api/history')
+def get_history():
+    symbol = request.args.get('symbol', 'MARK:BTCUSD')
+    resolution = request.args.get('resolution', '1h')
+    return jsonify(bot_instance.india_client.get_history(symbol, resolution))
+
 @app.route('/myip')
 def my_ip():
     """Returns the outbound IP of this Render server — used for Delta Exchange IP whitelisting."""
