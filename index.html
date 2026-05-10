@@ -300,16 +300,73 @@ window.addEventListener('resize', () => {
   lwChart.resize(chartEl.clientWidth, chartEl.clientHeight || 260);
 });
 
-// ── State ─────────────────────────────────────────────────────────────────────
 let currentMode  = 'PAPER';
 let lastLogCount = 0;
 let lastBtcPrice = 0;
 
+// Store settings for each mode separately
+const modeSettings = {
+  PAPER: {
+    tPrem: 100, allocPct: 50,
+    cSL: 100, cSL_on: true, cTP: 95, cTP_on: true,
+    pSL: 100, pSL_on: true, pTP: 95, pTP_on: true
+  },
+  LIVE: {
+    tPrem: 100, allocPct: 50,
+    cSL: 100, cSL_on: true, cTP: 95, cTP_on: true,
+    pSL: 100, pSL_on: true, pTP: 95, pTP_on: true
+  }
+};
+
+function saveModeSettings(m) {
+  if (m === 'CHAIN') return;
+  const s = modeSettings[m];
+  s.tPrem = document.getElementById('tPrem').value;
+  s.allocPct = document.getElementById('allocPct').value;
+  s.cSL = document.getElementById('cSL').value;
+  s.cSL_on = document.getElementById('cSL_on').checked;
+  s.cTP = document.getElementById('cTP').value;
+  s.cTP_on = document.getElementById('cTP_on').checked;
+  s.pSL = document.getElementById('pSL').value;
+  s.pSL_on = document.getElementById('pSL_on').checked;
+  s.pTP = document.getElementById('pTP').value;
+  s.pTP_on = document.getElementById('pTP_on').checked;
+}
+
+function loadModeSettings(m) {
+  if (m === 'CHAIN') return;
+  const s = modeSettings[m];
+  document.getElementById('tPrem').value = s.tPrem;
+  document.getElementById('allocPct').value = s.allocPct;
+  
+  document.getElementById('cSL').value = s.cSL;
+  document.getElementById('cSL_on').checked = s.cSL_on;
+  document.getElementById('cSL').disabled = !s.cSL_on;
+  
+  document.getElementById('cTP').value = s.cTP;
+  document.getElementById('cTP_on').checked = s.cTP_on;
+  document.getElementById('cTP').disabled = !s.cTP_on;
+  
+  document.getElementById('pSL').value = s.pSL;
+  document.getElementById('pSL_on').checked = s.pSL_on;
+  document.getElementById('pSL').disabled = !s.pSL_on;
+  
+  document.getElementById('pTP').value = s.pTP;
+  document.getElementById('pTP_on').checked = s.pTP_on;
+  document.getElementById('pTP').disabled = !s.pTP_on;
+}
+
 function setMode(m) {
+  // Save current mode settings before switching
+  saveModeSettings(currentMode);
+  
   currentMode = m;
   document.getElementById('btnPaper').className = 'm-btn' + (m==='PAPER' ? ' active paper' : '');
   document.getElementById('btnLive').className  = 'm-btn' + (m==='LIVE'  ? ' active live'  : '');
   document.getElementById('btnChain').className = 'm-btn' + (m==='CHAIN' ? ' active chain' : '');
+
+  // Load new mode settings
+  loadModeSettings(m);
 
   const dashboard = document.getElementById('mainDashboard');
   const chainView = document.getElementById('chainView');
