@@ -40,18 +40,25 @@ def health():
 @app.route('/api/status')
 def get_status():
     mode = request.args.get('mode', 'PAPER').upper()
+    s = bot_instance.get_state(mode)
     
-    # Check if positions exist in either mode to show indicators in UI
+    # Global position indicators
     paper_pos = bot_instance.state['PAPER']['positions']
     live_pos  = bot_instance.state['LIVE']['positions']
     
     return jsonify({
-        'running':      bot_instance.running,
-        'running_mode': bot_instance.active_mode if bot_instance.running else None,
+        'running':      s['running'],
+        'running_mode': mode if s['running'] else None,
         'logs':         bot_instance.get_logs(mode),
         'has_paper_pos': bool(paper_pos['call'] or paper_pos['put']),
         'has_live_pos':  bool(live_pos['call'] or live_pos['put'])
     })
+
+@app.route('/api/connect', methods=['POST'])
+def connect_api():
+    data = request.json
+    ok, msg = bot_instance.test_live_connection(data.get('api_key'), data.get('api_secret'))
+    return jsonify({'status': 'success' if ok else 'error', 'message': msg})
 
 @app.route('/api/state')
 def get_state():

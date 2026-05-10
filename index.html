@@ -223,6 +223,25 @@ function showToast(msg, isErr) {
 }
 
 // ── API calls ─────────────────────────────────────────────────────────────────
+function connectAPI() {
+  const btn = document.getElementById('btnConnect');
+  btn.disabled = true; btn.textContent = 'CONNECTING...';
+  fetch('/api/connect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_key: document.getElementById('apiKey').value,
+      api_secret: document.getElementById('apiSec').value
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    btn.disabled = false; btn.textContent = '🔗 Connect to Delta Exchange';
+    showToast(d.message, d.status === 'error');
+  })
+  .catch(e => { btn.disabled = false; btn.textContent = '🔗 Connect to Delta Exchange'; showToast('Error: ' + e, true); });
+}
+
 function startEngine() {
   const btn = document.getElementById('btnStart');
   const key = document.getElementById('apiKey').value;
@@ -259,7 +278,11 @@ function startEngine() {
 }
 
 function stopEngine() {
-  fetch('/api/stop', { method: 'POST' })
+  fetch('/api/stop', { 
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: currentMode })
+  })
     .then(r => r.json()).then(d => showToast(d.message))
     .catch(e => showToast('Error: ' + e, true));
 }
@@ -267,10 +290,14 @@ function stopEngine() {
 function executeNow() {
   const btn = document.getElementById('btnExec');
   btn.disabled = true; btn.textContent = 'EXECUTING...';
-  fetch('/api/execute', { method: 'POST' })
+  fetch('/api/execute', { 
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: currentMode })
+  })
     .then(r => r.json())
-    .then(d => { btn.disabled = false; btn.textContent = '⚡ Manual Trigger (Trade Now)'; showToast(d.message, d.status === 'error'); })
-    .catch(e => { btn.disabled = false; btn.textContent = '⚡ Manual Trigger (Trade Now)'; showToast('Error: ' + e, true); });
+    .then(d => { btn.disabled = false; btn.textContent = '⚡ Manual Trigger'; showToast(d.message, d.status === 'error'); })
+    .catch(e => { btn.disabled = false; btn.textContent = '⚡ Manual Trigger'; showToast('Error: ' + e, true); });
 }
 
 function clearPos() {
