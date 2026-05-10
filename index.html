@@ -4,444 +4,349 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Delta Options Bot — BTC Terminal</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
-:root {
-  --bg: #080a0c;
-  --surface: #11151a;
-  --surface-hover: #1a1f26;
-  --border: #232a33;
-  --text: #eaecef;
-  --text-dim: #848e9c;
-  --accent: #fcd535;
-  --green: #0ecb81;
-  --red: #f6465d;
-  --blue: #2f8af5;
-  --purple: #9254de;
-  --glass: rgba(255, 255, 255, 0.03);
-}
-
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; overflow: hidden; }
-
-/* ── LAYOUT ── */
-.app-container { display: flex; flex-direction: column; height: 100vh; }
-
-header { 
-  display: flex; align-items: center; justify-content: space-between; 
-  padding: 0 24px; height: 64px; background: var(--surface); border-bottom: 1px solid var(--border);
-  z-index: 100;
-}
-
-.nav-tabs { 
-  display: flex; background: var(--bg); border-bottom: 1px solid var(--border); padding: 0 20px; gap: 4px;
-}
-.tab-btn {
-  padding: 12px 20px; border: none; background: transparent; color: var(--text-dim);
-  font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.2s;
-  font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
-}
-.tab-btn:hover { color: var(--text); background: var(--glass); }
-.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(252, 213, 53, 0.05); }
-
-.main-content { flex: 1; overflow-y: auto; padding: 20px; position: relative; }
-.tab-pane { display: none; height: 100%; }
-.tab-pane.active { display: flex; flex-direction: column; gap: 20px; animation: fadeIn 0.3s ease; }
-
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-/* ── COMPONENTS ── */
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; }
-.card-header { margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
-.card-title { font-size: 12px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
-.card-title::before { content: ""; width: 3px; height: 12px; background: var(--accent); border-radius: 2px; }
-
-.grid { display: grid; gap: 20px; }
-.grid-stats { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-.grid-main { grid-template-columns: 2fr 1fr; }
-
-.stat-box { background: var(--glass); padding: 16px; border-radius: 8px; border: 1px solid var(--border); }
-.stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
-.stat-value { font-family: 'JetBrains Mono'; font-size: 20px; font-weight: 700; }
-
-/* ── INPUTS & BUTTONS ── */
-.form-group { margin-bottom: 16px; }
-.form-label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; font-weight: 600; }
-input, select { 
-  width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; 
-  padding: 10px 14px; color: var(--text); font-family: 'JetBrains Mono'; font-size: 13px; outline: none; transition: 0.2s;
-}
-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(252, 213, 53, 0.1); }
-
-.btn {
-  padding: 12px 24px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; 
-  transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px;
-}
-.btn-primary { background: var(--accent); color: #000; }
-.btn-primary:hover { background: #e6c22e; transform: translateY(-1px); }
-.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-.btn-outline:hover { background: var(--glass); }
-
-.btn-connect { background: var(--blue); color: #fff; width: 100%; }
-.btn-connect.success { background: var(--green); color: #000; }
-
-.btn-stop { background: rgba(246, 70, 93, 0.1); color: var(--red); border: 1px solid var(--red); }
-.btn-stop:hover { background: var(--red); color: #fff; }
-
-/* ── MODE SELECTOR ── */
-.mode-switch { display: flex; background: var(--bg); padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
-.mode-btn { 
-  padding: 6px 16px; border-radius: 7px; border: none; font-size: 11px; font-weight: 700; cursor: pointer; background: transparent; color: var(--text-dim); transition: 0.2s;
-}
-.mode-btn.active.paper { background: rgba(146, 84, 222, 0.15); color: var(--purple); }
-.mode-btn.active.live { background: rgba(246, 70, 93, 0.15); color: var(--red); }
-
-/* ── TERMINAL ── */
-.terminal { 
-  background: #050608; border-radius: 8px; padding: 15px; font-family: 'JetBrains Mono'; 
-  font-size: 12px; line-height: 1.6; height: 100%; overflow-y: auto; border: 1px solid var(--border);
-}
-.log-time { color: var(--text-dim); margin-right: 8px; }
-.log-success { color: var(--green); } .log-error { color: var(--red); } .log-warn { color: var(--accent); }
-
-/* ── MISC ── */
-.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-.dot-green { background: var(--green); box-shadow: 0 0 8px var(--green); }
-.dot-red { background: var(--red); box-shadow: 0 0 8px var(--red); }
-
-.toast { 
-  position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; background: var(--surface); 
-  border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 8px; 
-  transform: translateX(120%); transition: 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); z-index: 1000;
-}
-.toast.show { transform: translateX(0); }
+:root{--bg:#0b0e11;--surface:#151a21;--surface2:#1e232b;--border:#2b3139;--text:#eaecef;--text2:#848e9c;--accent:#fcd535;--green:#0ecb81;--red:#f6465d;--blue:#2f8af5;--purple:#9254de;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:Inter,sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:50px;background:var(--surface);border-bottom:1px solid var(--border);}
+.nav-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--accent);}
+.delta-logo{width:24px;height:24px;background:var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:center;color:#000;font-weight:900;font-size:14px;}
+.mode-toggle{display:flex;background:var(--bg);padding:3px;border-radius:6px;gap:4px;border:1px solid var(--border);}
+.m-btn{padding:4px 14px;border-radius:4px;border:none;cursor:pointer;font-size:11px;font-weight:600;color:var(--text2);background:transparent;transition:.2s;}
+.m-btn.active.paper{background:rgba(146,84,222,.15);color:var(--purple);}
+.m-btn.active.live{background:rgba(246,70,93,.15);color:var(--red);}
+.main-grid{display:grid;grid-template-columns:280px 1fr 320px;grid-template-rows:auto 1fr;gap:8px;padding:8px;flex:1;height:calc(100vh - 50px);}
+.stats-bar{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;}
+.stat-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;}
+.stat-value{font-family:'JetBrains Mono';font-size:16px;font-weight:700;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;overflow:hidden;}
+.panel-header{padding:8px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:space-between;}
+.panel-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;display:flex;align-items:center;gap:6px;}
+.panel-title::before{content:"";width:2px;height:10px;background:var(--accent);}
+.panel-body{padding:12px;overflow-y:auto;flex:1;}
+.ir{margin-bottom:8px;}
+.ir label{display:block;font-size:9px;color:var(--text2);margin-bottom:3px;text-transform:uppercase;}
+input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text);font-family:'JetBrains Mono';font-size:12px;}
+input:focus{outline:none;border-color:var(--accent);}
+input:disabled{opacity:.4;cursor:not-allowed;}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.btn{width:100%;padding:8px;border-radius:4px;border:none;font-weight:600;cursor:pointer;transition:.2s;font-size:11px;text-transform:uppercase;margin-bottom:6px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-start{background:var(--accent);color:#000;}
+.btn-stop{background:#311c21;color:var(--red);border:1px solid #4a1d24;display:none;}
+.btn-exec{background:#1c2631;color:var(--blue);border:1px solid #1d2a3a;display:none;}
+.btn-clear{background:#1a1f26;color:var(--text2);border:1px solid var(--border);display:none;}
+.btn:active{transform:scale(.98);}
+.center-stack{display:flex;flex-direction:column;gap:8px;}
+.chart-container{flex:1.5;position:relative;min-height:0;}
+#lightChart{width:100%;height:100%;}
+.payoff-container{flex:1;min-height:180px;}
+table{width:100%;border-collapse:collapse;}
+th{text-align:left;padding:6px 10px;font-size:9px;color:var(--text2);border-bottom:1px solid var(--border);font-weight:500;}
+td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--border);font-size:11px;}
+.empty{text-align:center;color:var(--text2);padding:40px!important;font-style:italic;}
+.term{background:var(--bg);padding:8px;font-family:'JetBrains Mono';font-size:11px;line-height:1.6;flex:1;overflow-y:auto;}
+.log-time{color:var(--text2);margin-right:8px;}
+.log-success{color:var(--green);}.log-error{color:var(--red);}.log-warn{color:var(--accent);}.log-info{color:var(--text);}
+.pulse-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.pulse-item{background:var(--bg);padding:6px 10px;border-radius:4px;border:1px solid var(--border);}
+.pulse-label{font-size:9px;color:var(--text2);margin-bottom:2px;}
+.pulse-value{font-family:'JetBrains Mono';font-size:12px;font-weight:600;}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 20px;border-radius:4px;background:var(--accent);color:#000;font-weight:700;transform:translateY(100px);transition:.3s;z-index:1000;max-width:350px;}
+.toast.show{transform:translateY(0);}
+.toast.err{background:var(--red);color:#fff;}
 </style>
 </head>
 <body>
+<nav>
+  <div class="nav-brand"><div class="delta-logo">&#916;</div> DELTA OPTIONS TERMINAL</div>
+  <div class="mode-toggle">
+    <button class="m-btn active paper" id="btnPaper" onclick="setMode('PAPER')">
+      PAPER <span id="dotPaper" style="display:none;width:6px;height:6px;background:var(--green);border-radius:50%;margin-left:5px;box-shadow:0 0 5px var(--green);"></span>
+    </button>
+    <button class="m-btn live" id="btnLive" onclick="setMode('LIVE')">
+      LIVE <span id="dotLive" style="display:none;width:6px;height:6px;background:var(--red);border-radius:50%;margin-left:5px;box-shadow:0 0 5px var(--red);"></span>
+    </button>
+  </div>
+  <div style="display:flex;align-items:center;gap:15px;">
+    <div class="stat-value" id="navBtc" style="color:var(--accent);font-size:13px;">BTC $---</div>
+    <div id="statusBadge" style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px;background:#222;color:#666;">OFFLINE</div>
+    <div id="istClock" style="color:var(--text2);font-family:'JetBrains Mono';font-size:11px;">--:--:-- IST</div>
+  </div>
+</nav>
 
-<div class="app-container">
-  <header>
-    <div style="display:flex; align-items:center; gap:12px;">
-      <div style="background:var(--accent); color:#000; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:900;">Δ</div>
-      <h1 style="font-size:16px; font-weight:700; letter-spacing:1px; text-transform:uppercase;">Delta Bot <span style="font-weight:300; color:var(--text-dim);">Terminal</span></h1>
-    </div>
+<div class="main-grid">
+  <!-- STATS BAR -->
+  <div class="stats-bar">
+    <div class="stat-card"><span class="stat-label">Total Balance</span><span class="stat-value" id="valBal">$10,000.00</span></div>
+    <div class="stat-card"><span class="stat-label">Unrealized P&amp;L</span><span class="stat-value" id="valPnl">$0.00</span></div>
+    <div class="stat-card"><span class="stat-label">Market IV (Avg)</span><span class="stat-value" id="valIV" style="color:var(--purple);">--%</span></div>
+    <div class="stat-card"><span class="stat-label">Put-Call Ratio</span><span class="stat-value" id="valPCR" style="color:var(--blue);">--</span></div>
+    <div class="stat-card"><span class="stat-label">24h Volume</span><span class="stat-value" id="valVol">--</span></div>
+    <div class="stat-card"><span class="stat-label">Next Trade</span><span class="stat-value" id="valNext" style="font-size:13px;">--h --m</span></div>
+  </div>
 
-    <div class="mode-switch">
-      <button class="mode-btn active paper" id="btnPaper" onclick="setMode('PAPER')">PAPER</button>
-      <button class="mode-btn live" id="btnLive" onclick="setMode('LIVE')">LIVE</button>
-    </div>
-
-    <div style="display:flex; align-items:center; gap:24px;">
-      <div style="text-align:right;">
-        <div id="navBtc" style="font-family:'JetBrains Mono'; font-weight:700; color:var(--accent);">BTC $---</div>
-        <div id="istClock" style="font-size:10px; color:var(--text-dim);">--:--:-- IST</div>
+  <!-- LEFT: CONFIG -->
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">Strategy Engine</div></div>
+    <div class="panel-body">
+      <div id="modeAlert" style="padding:8px;border-radius:4px;font-size:11px;margin-bottom:12px;font-weight:600;background:rgba(146,84,222,.1);color:var(--purple);">
+        PAPER MODE — Simulated trading with live data.
       </div>
-      <div id="statusBadge" style="background:var(--glass); padding:4px 12px; border-radius:6px; font-size:10px; font-weight:800; border:1px solid var(--border);">OFFLINE</div>
-    </div>
-  </header>
-
-  <nav class="nav-tabs">
-    <button class="tab-btn active" onclick="showTab('dashboard', this)">Dashboard</button>
-    <button class="tab-btn" onclick="showTab('strategy', this)">Strategy & Keys</button>
-    <button class="tab-btn" onclick="showTab('monitor', this)">Active Monitor</button>
-    <button class="tab-btn" onclick="showTab('logs', this)">System Logs</button>
-  </nav>
-
-  <main class="main-content">
-    <!-- DASHBOARD TAB -->
-    <section id="dashboard" class="tab-pane active">
-      <div class="grid grid-stats">
-        <div class="stat-box"><div class="stat-label">Total Balance</div><div class="stat-value" id="valBal">$0.00</div></div>
-        <div class="stat-box"><div class="stat-label">Unrealized P&L</div><div class="stat-value" id="valPnl">$0.00</div></div>
-        <div class="stat-box"><div class="stat-label">Market IV</div><div class="stat-value" id="valIV" style="color:var(--purple);">--%</div></div>
-        <div class="stat-box"><div class="stat-label">PCR Ratio</div><div class="stat-value" id="valPCR" style="color:var(--blue);">--</div></div>
+      <div class="ir" id="savedAccountsContainer" style="display:none;">
+        <label>Saved Accounts</label>
+        <select id="keySelect" onchange="loadSelectedKey()" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:6px; color:var(--text); font-size:12px; margin-bottom:8px;">
+          <option value="">-- Select Saved Account --</option>
+        </select>
       </div>
+      <div class="ir"><label>API Key</label><input type="password" id="apiKey" placeholder="Enter Delta API Key"></div>
+      <div class="ir"><label>API Secret</label><input type="password" id="apiSec" placeholder="Enter Delta API Secret"></div>
       
-      <div class="grid grid-main">
-        <div class="card" style="min-height:400px; display:flex; flex-direction:column;">
-          <div class="card-header"><div class="card-title">Live Market Chart (1h)</div></div>
-          <div id="lightChart" style="flex:1;"></div>
-        </div>
-        <div class="card" style="display:flex; flex-direction:column;">
-          <div class="card-header"><div class="card-title">Strangle Payoff Analysis</div></div>
-          <div style="flex:1;"><canvas id="payoffChart"></canvas></div>
+      <div id="saveKeysCheck" style="display:none; align-items:center; gap:8px; margin-bottom:12px;">
+        <input type="checkbox" id="saveKeys" style="width:14px; height:14px;" checked>
+        <label for="saveKeys" style="font-size:11px; color:var(--text2); cursor:pointer;">Save keys to account list</label>
+      </div>
+
+      <button class="btn" id="btnConnect" onclick="connectAPI()" style="margin-top:5px; background:var(--blue); color:#fff; border:1px solid rgba(255,255,255,0.1); transition: 0.3s;">
+        🔗 Connect to Delta Exchange
+      </button>
+
+      <div style="height:1px;background:var(--border);margin:15px 0;"></div>
+
+      <div class="r2">
+        <div class="ir"><label>Target Premium $</label><input type="number" id="tPrem" value="100"></div>
+        <div class="ir"><label>Alloc Per Leg %</label><input type="number" id="allocPct" value="50"></div>
+      </div>
+      <div style="margin:10px 0;">
+        <div style="font-size:9px;color:var(--green);font-weight:800;margin-bottom:5px;">CALL LEG (CE)</div>
+        <div class="r2">
+          <div class="ir"><label>Stop Loss %</label><input type="number" id="cSL" value="100"></div>
+          <div class="ir"><label>Take Profit %</label><input type="number" id="cTP" value="95"></div>
         </div>
       </div>
-    </section>
-
-    <!-- STRATEGY TAB -->
-    <section id="strategy" class="tab-pane">
-      <div class="grid grid-main">
-        <div class="card">
-          <div class="card-header"><div class="card-title">API Key Management</div></div>
-          
-          <div class="form-group">
-            <label class="form-label">Key Profile</label>
-            <div style="display:flex; gap:10px;">
-              <select id="keyProfileSelect" onchange="loadProfile()">
-                <option value="default">Default Profile</option>
-              </select>
-              <button class="btn btn-outline" onclick="saveProfile()" style="padding:0 15px;">Save Current</button>
-            </div>
-          </div>
-
-          <div class="grid" style="grid-template-columns: 1fr 1fr;">
-            <div class="form-group">
-              <label class="form-label">API Key</label>
-              <input type="password" id="apiKey" placeholder="Enter Delta API Key">
-            </div>
-            <div class="form-group">
-              <label class="form-label">API Secret</label>
-              <input type="password" id="apiSec" placeholder="Enter Delta API Secret">
-            </div>
-          </div>
-
-          <button class="btn btn-connect" id="btnConnect" onclick="connectAPI()">
-            🔗 Connect to Delta Exchange
-          </button>
-
-          <div style="margin-top:30px; border-top:1px solid var(--border); padding-top:20px;">
-            <div class="card-title" style="margin-bottom:15px;">Strategy Configuration</div>
-            <div class="grid" style="grid-template-columns: 1fr 1fr;">
-              <div class="form-group"><label class="form-label">Target Premium $</label><input type="number" id="tPrem" value="100"></div>
-              <div class="form-group"><label class="form-label">Allocation %</label><input type="number" id="allocPct" value="50"></div>
-            </div>
-            
-            <div class="grid" style="grid-template-columns: 1fr 1fr; gap:30px;">
-              <div>
-                <div style="color:var(--green); font-size:10px; font-weight:800; margin-bottom:10px;">CALL SETTINGS</div>
-                <div class="form-group"><label class="form-label">Stop Loss %</label><input type="number" id="cSL" value="100"></div>
-                <div class="form-group"><label class="form-label">Take Profit %</label><input type="number" id="cTP" value="95"></div>
-              </div>
-              <div>
-                <div style="color:var(--red); font-size:10px; font-weight:800; margin-bottom:10px;">PUT SETTINGS</div>
-                <div class="form-group"><label class="form-label">Stop Loss %</label><input type="number" id="pSL" value="100"></div>
-                <div class="form-group"><label class="form-label">Take Profit %</label><input type="number" id="pTP" value="95"></div>
-              </div>
-            </div>
-
-            <div style="display:flex; gap:12px; margin-top:20px;">
-              <button class="btn btn-primary" id="btnStart" onclick="startEngine()" style="flex:2;">▶ Start Strategy Engine</button>
-              <button class="btn btn-stop" id="btnStop" onclick="stopEngine()" style="flex:1; display:none;">Stop Engine</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><div class="card-title">Engine Status</div></div>
-          <div id="engineStatusCard" style="text-align:center; padding:40px 0;">
-            <div id="statusIcon" style="font-size:48px; margin-bottom:15px; opacity:0.3;">💤</div>
-            <div id="statusText" style="font-weight:700; font-size:18px; color:var(--text-dim);">Engine Hibernating</div>
-            <div id="statusSubtext" style="font-size:12px; color:var(--text-dim); margin-top:8px;">Ready to trade at 08:00 AM IST</div>
-          </div>
-          
-          <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:20px;">
-            <div class="card-title" style="margin-bottom:15px;">Quick Actions</div>
-            <div style="display:flex; flex-direction:column; gap:10px;">
-              <button class="btn btn-outline" id="btnExec" onclick="executeNow()" style="display:none;">⚡ Trigger Manual Trade</button>
-              <button class="btn btn-outline" id="btnClear" onclick="clearPos()" style="display:none;">✕ Reset All Positions</button>
-            </div>
-          </div>
+      <div style="margin:10px 0;">
+        <div style="font-size:9px;color:var(--red);font-weight:800;margin-bottom:5px;">PUT LEG (PE)</div>
+        <div class="r2">
+          <div class="ir"><label>Stop Loss %</label><input type="number" id="pSL" value="100"></div>
+          <div class="ir"><label>Take Profit %</label><input type="number" id="pTP" value="95"></div>
         </div>
       </div>
-    </section>
 
-    <!-- MONITOR TAB -->
-    <section id="monitor" class="tab-pane">
-      <div class="card">
-        <div class="card-header"><div class="card-title">Live Position Monitor</div></div>
-        <table style="width:100%; border-collapse:collapse;">
-          <thead>
-            <tr style="text-align:left; border-bottom:1px solid var(--border);">
-              <th style="padding:15px; font-size:11px; color:var(--text-dim); text-transform:uppercase;">Symbol</th>
-              <th style="padding:15px; font-size:11px; color:var(--text-dim); text-transform:uppercase;">Side</th>
-              <th style="padding:15px; font-size:11px; color:var(--text-dim); text-transform:uppercase;">Entry</th>
-              <th style="padding:15px; font-size:11px; color:var(--text-dim); text-transform:uppercase;">Current</th>
-              <th style="padding:15px; font-size:11px; color:var(--text-dim); text-transform:uppercase;">SL / TP</th>
-              <th style="padding:15px; font-size:11px; color:var(--text-dim); text-transform:uppercase;">PnL (USDT)</th>
-            </tr>
-          </thead>
-          <tbody id="posBody">
-            <tr><td colspan="6" style="padding:60px; text-align:center; color:var(--text-dim); font-style:italic;">No active positions found</td></tr>
-          </tbody>
-        </table>
+      <button class="btn btn-start" id="btnStart" onclick="startEngine()">▶ Start Strategy Engine</button>
+      <button class="btn btn-stop"  id="btnStop"  onclick="stopEngine()">■ Stop Engine</button>
+      
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-exec"  id="btnExec"  style="flex:1;" onclick="executeNow()">⚡ Trigger</button>
+        <button class="btn btn-clear" id="btnClear" style="flex:1;" onclick="clearPos()">✕ Clear</button>
       </div>
-    </section>
+      <div class="panel-header" style="margin-top:15px;border-top:1px solid var(--border);"><div class="panel-title">Market Pulse</div></div>
+      <div class="pulse-grid">
+        <div class="pulse-item"><div class="pulse-label">24h High</div><div class="pulse-value" id="pHigh">--</div></div>
+        <div class="pulse-item"><div class="pulse-label">24h Low</div><div class="pulse-value" id="pLow">--</div></div>
+        <div class="pulse-item"><div class="pulse-label">BTC OI</div><div class="pulse-value" id="pOI">--</div></div>
+        <div class="pulse-item"><div class="pulse-label">API Status</div><div class="pulse-value" id="pApi" style="color:var(--text2);">CHECKING</div></div>
+      </div>
+    </div>
+  </div>
 
-    <!-- LOGS TAB -->
-    <section id="logs" class="tab-pane">
-      <div class="card" style="height:100%; display:flex; flex-direction:column;">
-        <div class="card-header">
-          <div class="card-title">System Execution Logs</div>
-          <button class="btn btn-outline" onclick="document.getElementById('term').innerHTML=''" style="padding:4px 12px; font-size:10px;">Clear Console</button>
-        </div>
-        <div class="terminal" id="term"></div>
-      </div>
-    </section>
-  </main>
+  <!-- CENTER: CHARTS -->
+  <div class="center-stack">
+    <div class="panel chart-container">
+      <div class="panel-header"><div class="panel-title">BTC/USD Live Chart (1h Candles)</div></div>
+      <div id="lightChart"></div>
+    </div>
+    <div class="panel payoff-container">
+      <div class="panel-header"><div class="panel-title">Short Strangle Payoff Analysis</div></div>
+      <div class="panel-body" style="padding:0;"><canvas id="payoffChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: POSITIONS & LOGS -->
+  <div class="panel" style="display:flex;flex-direction:column;">
+    <div class="panel-header"><div class="panel-title">Active Positions</div></div>
+    <div style="max-height:200px;overflow-y:auto;">
+      <table>
+        <thead><tr><th>Symbol</th><th>Entry</th><th>Curr</th><th>PnL $</th></tr></thead>
+        <tbody id="posBody"><tr><td colspan="4" class="empty">No positions</td></tr></tbody>
+      </table>
+    </div>
+    <div class="panel-header" style="border-top:1px solid var(--border);"><div class="panel-title">System Logs</div></div>
+    <div class="term" id="term"><div style="color:var(--text2);">[System] Initializing terminal...</div></div>
+  </div>
 </div>
-
-<div class="toast" id="toast">Message will appear here</div>
+<div class="toast" id="toast"></div>
 
 <script>
-// ── Charts ──────────────────────────────────────────────────────────────────
-const payoffCtx = document.getElementById('payoffChart').getContext('2d');
-const payoffChart = new Chart(payoffCtx, {
+// ── Chart init ────────────────────────────────────────────────────────────────
+const payoffChart = new Chart(document.getElementById('payoffChart').getContext('2d'), {
   type: 'line',
   data: { labels: [], datasets: [
-    { label: 'PnL', data: [], borderColor: '#9254de', backgroundColor: 'rgba(146,84,222,.1)', fill: true, tension: 0.4, pointRadius: 0 },
-    { label: 'Spot', data: [], borderColor: '#fcd535', pointRadius: 6, pointHoverRadius: 8, showLine: false }
+    { label: 'Payoff', data: [], borderColor: '#9254de', backgroundColor: 'rgba(146,84,222,.05)', fill: true, borderWidth: 2, pointRadius: 0, tension: .4 },
+    { label: 'BTC Price', data: [], borderColor: '#fcd535', pointBackgroundColor: '#fcd535', pointRadius: 6, showLine: false }
   ]},
-  options: { 
-    responsive: true, maintainAspectRatio: false, animation: false,
+  options: { responsive: true, maintainAspectRatio: false, animation: false,
     plugins: { legend: { display: false } },
     scales: {
-      x: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#848e9c', font: { size: 10 } } },
-      y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#848e9c', font: { size: 10 } } }
+      x: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#848e9c', font: { size: 9 } } },
+      y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#848e9c', font: { size: 9 } } }
     }
   }
 });
 
-const chartEl = document.getElementById('lightChart');
-const lwChart = LightweightCharts.createChart(chartEl, {
-  layout: { backgroundColor: 'transparent', textColor: '#848e9c' },
-  grid: { vertLines: { color: '#1a1f26' }, horzLines: { color: '#1a1f26' } },
-  timeScale: { borderColor: '#232a33', timeVisible: true },
-  rightPriceScale: { borderColor: '#232a33' },
+const chartEl    = document.getElementById('lightChart');
+const lwChart    = LightweightCharts.createChart(chartEl, {
+  layout: { backgroundColor: '#151a21', textColor: '#848e9c' },
+  grid:   { vertLines: { color: '#1e232b' }, horzLines: { color: '#1e232b' } },
+  crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  rightPriceScale: { borderColor: '#2b3139' },
+  timeScale: { borderColor: '#2b3139', timeVisible: true },
+  width:  chartEl.clientWidth,
+  height: chartEl.clientHeight || 260,
 });
 const candleSeries = lwChart.addCandlestickSeries({
-  upColor: '#0ecb81', downColor: '#f6465d', borderUpColor: '#0ecb81', borderDownColor: '#f6465d', wickUpColor: '#0ecb81', wickDownColor: '#f6465d'
+  upColor: '#0ecb81', downColor: '#f6465d',
+  borderUpColor: '#0ecb81', borderDownColor: '#f6465d',
+  wickUpColor: '#0ecb81', wickDownColor: '#f6465d',
+});
+window.addEventListener('resize', () => {
+  lwChart.resize(chartEl.clientWidth, chartEl.clientHeight || 260);
 });
 
-window.addEventListener('resize', () => lwChart.resize(chartEl.clientWidth, chartEl.clientHeight));
-
-// ── State & Tabs ─────────────────────────────────────────────────────────────
-let currentMode = 'PAPER';
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentMode  = 'PAPER';
 let lastLogCount = 0;
 let lastBtcPrice = 0;
-let isConnected = false;
-
-function showTab(tabId, btn) {
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  btn.classList.add('active');
-  if (tabId === 'dashboard') lwChart.resize(chartEl.clientWidth, chartEl.clientHeight);
-}
 
 function setMode(m) {
   currentMode = m;
-  document.getElementById('btnPaper').className = 'mode-btn' + (m==='PAPER' ? ' active paper' : '');
-  document.getElementById('btnLive').className = 'mode-btn' + (m==='LIVE' ? ' active live' : '');
-  document.getElementById('apiKey').disabled = (m==='PAPER');
-  document.getElementById('apiSec').disabled = (m==='PAPER');
+  document.getElementById('btnPaper').className = 'm-btn' + (m==='PAPER' ? ' active paper' : '');
+  document.getElementById('btnLive').className  = 'm-btn' + (m==='LIVE'  ? ' active live'  : '');
+  const al = document.getElementById('modeAlert');
+  al.style.background = m==='PAPER' ? 'rgba(146,84,222,.1)' : 'rgba(246,70,93,.1)';
+  al.style.color      = m==='PAPER' ? 'var(--purple)' : 'var(--red)';
+  al.textContent      = m==='PAPER' ? 'PAPER MODE — Simulated trading with live data.' : '⚠ LIVE MODE — Real funds at risk!';
+  
+  // Show/Hide API inputs based on mode
+  const isPaper = m === 'PAPER';
+  document.getElementById('apiKey').closest('.ir').style.display = isPaper ? 'none' : 'block';
+  document.getElementById('apiSec').closest('.ir').style.display = isPaper ? 'none' : 'block';
+  document.getElementById('btnConnect').style.display = isPaper ? 'none' : 'block';
+  document.getElementById('saveKeysCheck').style.display = isPaper ? 'none' : 'flex';
+  
+  if (!isPaper) updateKeySelect();
+  else document.getElementById('savedAccountsContainer').style.display = 'none';
+
   lastLogCount = 0;
-  document.getElementById('term').innerHTML = `<div style="color:var(--text-dim)">[System] Environment changed to ${m}</div>`;
+  document.getElementById('term').innerHTML = '<div style="color:var(--text2);">[System] Switched to ' + m + ' mode...</div>';
   updateDashboard();
 }
 
 function showToast(msg, isErr) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.style.borderLeftColor = isErr ? 'var(--red)' : 'var(--accent)';
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3500);
+  t.className   = 'toast show' + (isErr ? ' err' : '');
+  setTimeout(() => t.className = 'toast', 3500);
 }
 
-// ── Key Profiles ─────────────────────────────────────────────────────────────
-function saveProfile() {
-  const name = prompt("Enter profile name (e.g., MainAccount, Testing):");
-  if (!name) return;
-  const profiles = JSON.parse(localStorage.getItem('delta_profiles') || '{}');
-  profiles[name] = { key: document.getElementById('apiKey').value, sec: document.getElementById('apiSec').value };
-  localStorage.setItem('delta_profiles', JSON.stringify(profiles));
-  updateProfileSelect();
-  showToast(`Profile "${name}" saved!`);
+// ── API Key Management ────────────────────────────────────────────────────────
+function saveCurrentKey() {
+  const key = document.getElementById('apiKey').value;
+  const sec = document.getElementById('apiSec').value;
+  if (!key || !sec) return;
+
+  let accounts = JSON.parse(localStorage.getItem('delta_accounts') || '[]');
+  if (!accounts.find(a => a.key === key)) {
+    accounts.push({ key, sec, name: 'Account ' + (accounts.length + 1) + ' (' + key.substring(0,6) + '...)' });
+    localStorage.setItem('delta_accounts', JSON.stringify(accounts));
+    updateKeySelect();
+  }
 }
 
-function updateProfileSelect() {
-  const select = document.getElementById('keyProfileSelect');
-  const profiles = JSON.parse(localStorage.getItem('delta_profiles') || '{}');
-  select.innerHTML = '<option value="">Select a Profile</option>';
-  for (const name in profiles) {
+function updateKeySelect() {
+  const sel = document.getElementById('keySelect');
+  const accounts = JSON.parse(localStorage.getItem('delta_accounts') || '[]');
+  sel.innerHTML = '<option value="">-- Select Saved Account --</option>';
+  accounts.forEach((a, i) => {
     const opt = document.createElement('option');
-    opt.value = name; opt.textContent = name;
-    select.appendChild(opt);
-  }
+    opt.value = i;
+    opt.textContent = a.name;
+    sel.appendChild(opt);
+  });
+  document.getElementById('savedAccountsContainer').style.display = accounts.length ? 'block' : 'none';
 }
 
-function loadProfile() {
-  const name = document.getElementById('keyProfileSelect').value;
-  if (!name) return;
-  const profiles = JSON.parse(localStorage.getItem('delta_profiles') || '{}');
-  const p = profiles[name];
-  if (p) {
-    document.getElementById('apiKey').value = p.key;
-    document.getElementById('apiSec').value = p.sec;
-    isConnected = false;
-    updateConnectButton();
-  }
-}
-
-// ── API Actions ──────────────────────────────────────────────────────────────
-function updateConnectButton() {
+function loadSelectedKey() {
+  const idx = document.getElementById('keySelect').value;
+  if (idx === "") return;
+  const accounts = JSON.parse(localStorage.getItem('delta_accounts') || '[]');
+  const acc = accounts[idx];
+  document.getElementById('apiKey').value = acc.key;
+  document.getElementById('apiSec').value = acc.sec;
+  // Reset button state
   const btn = document.getElementById('btnConnect');
-  if (isConnected) {
-    btn.innerHTML = '✅ API CONNECTED';
-    btn.classList.add('success');
-  } else {
-    btn.innerHTML = '🔗 Connect to Delta Exchange';
-    btn.classList.remove('success');
-  }
+  btn.style.background = 'var(--blue)';
+  btn.textContent = '🔗 Connect to Delta Exchange';
 }
 
+// ── API calls ─────────────────────────────────────────────────────────────────
 function connectAPI() {
   const btn = document.getElementById('btnConnect');
-  btn.disabled = true; btn.textContent = 'Verifying Connection...';
+  const key = document.getElementById('apiKey').value;
+  const sec = document.getElementById('apiSec').value;
+  
+  if (!key || !sec) { showToast('Please enter API key and secret', true); return; }
+
+  btn.disabled = true; btn.textContent = 'CONNECTING...';
   fetch('/api/connect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      api_key: document.getElementById('apiKey').value,
-      api_secret: document.getElementById('apiSec').value
-    })
-  }).then(r => r.json()).then(d => {
+    body: JSON.stringify({ api_key: key, api_secret: sec })
+  })
+  .then(r => r.json())
+  .then(d => {
     btn.disabled = false;
     if (d.status === 'success') {
-      isConnected = true;
-      showToast("Connection Successful!");
+      btn.style.background = 'var(--green)';
+      btn.textContent = '✅ Connected to Delta';
+      if (document.getElementById('saveKeys').checked) saveCurrentKey();
+      showToast('API Connection Verified!', false);
     } else {
-      isConnected = false;
+      btn.style.background = 'var(--red)';
+      btn.textContent = '❌ Connection Failed';
       showToast(d.message, true);
     }
-    updateConnectButton();
-  }).catch(e => { btn.disabled = false; updateConnectButton(); showToast('Error: '+e, true); });
+  })
+  .catch(e => { btn.disabled = false; showToast('Error: ' + e, true); });
 }
 
 function startEngine() {
   const btn = document.getElementById('btnStart');
-  btn.disabled = true; btn.textContent = 'Starting...';
+  btn.disabled = true; btn.textContent = 'STARTING...';
   fetch('/api/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      mode: currentMode,
-      api_key: document.getElementById('apiKey').value,
-      api_secret: document.getElementById('apiSec').value,
-      target_premium: +document.getElementById('tPrem').value,
-      allocation_pct: +document.getElementById('allocPct').value,
-      call_stop_loss: +document.getElementById('cSL').value,
+      mode:             currentMode,
+      api_key:          document.getElementById('apiKey').value,
+      api_secret:       document.getElementById('apiSec').value,
+      target_premium:   +document.getElementById('tPrem').value,
+      allocation_pct:   +document.getElementById('allocPct').value,
+      call_stop_loss:   +document.getElementById('cSL').value,
       call_take_profit: +document.getElementById('cTP').value,
-      put_stop_loss: +document.getElementById('pSL').value,
-      put_take_profit: +document.getElementById('pTP').value,
+      put_stop_loss:    +document.getElementById('pSL').value,
+      put_take_profit:  +document.getElementById('pTP').value,
     })
-  }).then(r => r.json()).then(d => {
+  })
+  .then(r => r.json())
+  .then(d => {
     btn.disabled = false; btn.textContent = '▶ Start Strategy Engine';
-    showToast(d.message, d.status==='error');
-    updateDashboard();
-  });
+    showToast(d.message, d.status === 'error');
+  })
+  .catch(e => { btn.disabled = false; btn.textContent = '▶ Start Strategy Engine'; showToast('Network error: ' + e, true); });
 }
 
 function stopEngine() {
@@ -449,147 +354,180 @@ function stopEngine() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode: currentMode })
-  }).then(r => r.json()).then(d => showToast(d.message));
+  })
+    .then(r => r.json()).then(d => showToast(d.message))
+    .catch(e => showToast('Error: ' + e, true));
 }
 
 function executeNow() {
+  const btn = document.getElementById('btnExec');
+  btn.disabled = true; btn.textContent = 'EXECUTING...';
   fetch('/api/execute', { 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode: currentMode })
-  }).then(r => r.json()).then(d => showToast(d.message));
+  })
+    .then(r => r.json())
+    .then(d => { btn.disabled = false; btn.textContent = '⚡ Trigger'; showToast(d.message, d.status === 'error'); })
+    .catch(e => { btn.disabled = false; btn.textContent = '⚡ Trigger'; showToast('Error: ' + e, true); });
 }
 
 function clearPos() {
-  if (!confirm("Are you sure you want to reset all positions?")) return;
-  fetch('/api/clear', { 
+  fetch('/api/clear', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode: currentMode })
-  }).then(r => r.json()).then(d => showToast(d.message));
+  }).then(r => r.json()).then(d => showToast(d.message)).catch(e => showToast('Error: ' + e, true));
 }
 
-// ── Polling ──────────────────────────────────────────────────────────────────
+// ── Dashboard polling ─────────────────────────────────────────────────────────
 function updateDashboard() {
-  fetch('/api/status?mode=' + currentMode).then(r => r.json()).then(d => {
-    const badge = document.getElementById('statusBadge');
-    const isRunningThisMode = d.running;
-    
-    if (isRunningThisMode) {
-      badge.textContent = currentMode + ' ACTIVE';
-      badge.style.color = currentMode === 'LIVE' ? 'var(--red)' : 'var(--purple)';
-      document.getElementById('btnStart').style.display = 'none';
-      document.getElementById('btnStop').style.display = 'block';
-      document.getElementById('btnExec').style.display = 'block';
-      document.getElementById('btnClear').style.display = 'block';
-      document.getElementById('statusIcon').textContent = '⚡';
-      document.getElementById('statusText').textContent = 'Engine Active';
-      document.getElementById('statusText').style.color = 'var(--accent)';
-      document.getElementById('statusSubtext').textContent = 'Monitoring market for SL/TP exit conditions';
-    } else {
-      badge.textContent = 'OFFLINE';
-      badge.style.color = 'var(--text-dim)';
-      document.getElementById('btnStart').style.display = 'block';
-      document.getElementById('btnStop').style.display = 'none';
-      document.getElementById('btnExec').style.display = 'none';
-      document.getElementById('btnClear').style.display = 'none';
-      document.getElementById('statusIcon').textContent = '💤';
-      document.getElementById('statusText').textContent = 'Engine Hibernating';
-      document.getElementById('statusText').style.color = 'var(--text-dim)';
-      document.getElementById('statusSubtext').textContent = 'Ready to trade at 08:00 AM IST';
-    }
+  fetch('/api/status?mode=' + currentMode)
+    .then(r => r.json())
+    .then(d => {
+      const badge = document.getElementById('statusBadge');
+      const isRunningGlobal = d.running;
+      const runningMode = d.running_mode;
+      const isRunningThisMode = isRunningGlobal && (runningMode === currentMode);
 
-    const logs = d.logs || [];
-    if (logs.length > lastLogCount) {
-      const term = document.getElementById('term');
-      for (let i = lastLogCount; i < logs.length; i++) {
-        const l = logs[i];
-        const div = document.createElement('div');
-        div.innerHTML = `<span class="log-time">[${l.time}]</span><span class="log-${l.type || 'info'}">${l.msg}</span>`;
-        term.appendChild(div);
-      }
-      lastLogCount = logs.length;
-      term.scrollTop = term.scrollHeight;
-    }
-  });
-
-  fetch('/api/state?mode=' + currentMode).then(r => r.json()).then(s => {
-    const btc = s.btc_price || 0;
-    if (btc > 0) {
-      document.getElementById('navBtc').textContent = 'BTC $' + btc.toLocaleString();
-      document.getElementById('navBtc').style.color = btc >= lastBtcPrice ? 'var(--green)' : 'var(--red)';
-      lastBtcPrice = btc;
-    }
-    document.getElementById('valBal').textContent = '$' + (s.balance||0).toLocaleString(undefined,{minimumFractionDigits:2});
-    const pnl = s.total_pnl || 0;
-    document.getElementById('valPnl').textContent = (pnl>=0?'+':'') + '$' + Math.abs(pnl).toFixed(2);
-    document.getElementById('valPnl').style.color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-    document.getElementById('valIV').textContent = ((s.sentiment||{}).avg_iv||0).toFixed(1) + '%';
-    document.getElementById('valPCR').textContent = ((s.sentiment||{}).pcr||0).toFixed(2);
-
-    const tb = document.getElementById('posBody');
-    if (!s.call && !s.put) {
-      tb.innerHTML = '<tr><td colspan="6" style="padding:60px; text-align:center; color:var(--text-dim); font-style:italic;">No active positions found</td></tr>';
-      payoffChart.data.labels = []; payoffChart.update();
-    } else {
-      let rows = '';
-      [s.call, s.put].forEach(p => {
-        if (!p) return;
-        const c = p.pnl >= 0 ? 'var(--green)' : 'var(--red)';
-        rows += `<tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:15px;">${p.symbol}</td>
-          <td style="padding:15px; font-weight:600;">${p.side}</td>
-          <td style="padding:15px;">$${(p.entry_price||0).toFixed(1)}</td>
-          <td style="padding:15px;">$${(p.current_price||0).toFixed(1)}</td>
-          <td style="padding:15px; color:var(--text-dim); font-size:11px;">SL: $${p.sl} | TP: $${p.tp}</td>
-          <td style="padding:15px; font-family:'JetBrains Mono'; font-weight:700; color:${c}">${p.pnl>=0?'+':''}${(p.pnl||0).toFixed(2)}</td>
-        </tr>`;
-      });
-      tb.innerHTML = rows;
-      
-      if (s.call && s.put && btc > 0) {
-        const cs = s.call.strike, ps = s.put.strike;
-        const tp = (s.call.entry_price||0) + (s.put.entry_price||0);
-        const labels=[], pay=[], mkt=[];
-        for (let x = ps-4000; x <= cs+4000; x += 500) {
-          labels.push(x);
-          let profit = tp;
-          if (x > cs) profit -= (x - cs);
-          if (x < ps) profit -= (ps - x);
-          pay.push(profit);
+      if (isRunningThisMode) {
+        badge.textContent    = runningMode + ' ACTIVE';
+        badge.style.background = runningMode === 'LIVE' ? 'rgba(246, 70, 93, 0.2)' : 'rgba(146, 84, 222, 0.2)';
+        badge.style.color      = runningMode === 'LIVE' ? 'var(--red)' : 'var(--purple)';
+        document.getElementById('btnStart').style.display = 'none';
+        document.getElementById('btnStop').style.display  = 'block';
+        document.getElementById('btnExec').style.display  = 'block';
+        document.getElementById('btnClear').style.display = 'block';
+      } else {
+        if (isRunningGlobal) {
+          badge.textContent    = runningMode + ' RUNNING';
+          badge.style.background = 'rgba(255, 255, 255, 0.05)';
+          badge.style.color      = '#848e9c';
+        } else {
+          badge.textContent    = 'OFFLINE';
+          badge.style.background = '#222';
+          badge.style.color      = '#666';
         }
-        const bi = labels.reduce((a,v,i) => Math.abs(v-btc)<Math.abs(labels[a]-btc)?i:a, 0);
-        labels.forEach((_,i) => mkt.push(i===bi ? pay[bi] : null));
-        payoffChart.data.labels = labels;
-        payoffChart.data.datasets[0].data = pay;
-        payoffChart.data.datasets[1].data = mkt;
-        payoffChart.update();
+        document.getElementById('btnStart').style.display = 'block';
+        document.getElementById('btnStop').style.display  = 'none';
+        document.getElementById('btnExec').style.display  = 'none';
+        document.getElementById('btnClear').style.display = 'none';
       }
-    }
-  });
+      
+      document.getElementById('dotPaper').style.display = d.has_paper_pos ? 'inline-block' : 'none';
+      document.getElementById('dotLive').style.display  = d.has_live_pos  ? 'inline-block' : 'none';
+
+      if (d.logs && d.logs.length > lastLogCount) {
+        const term = document.getElementById('term');
+        for (let i = lastLogCount; i < d.logs.length; i++) {
+          const l   = d.logs[i];
+          const div = document.createElement('div');
+          div.innerHTML = `<span class="log-time">[${l.time}]</span><span class="log-${l.type || 'info'}">${l.msg}</span>`;
+          term.appendChild(div);
+        }
+        lastLogCount = d.logs.length;
+        term.scrollTop = term.scrollHeight;
+      }
+    }).catch(() => {});
+
+  fetch('/api/state?mode=' + currentMode)
+    .then(r => r.json())
+    .then(s => {
+      const btc = s.btc_price || 0;
+      if (btc > 0) {
+        const nav = document.getElementById('navBtc');
+        nav.textContent  = 'BTC $' + btc.toLocaleString();
+        nav.style.color  = btc >= lastBtcPrice ? 'var(--green)' : 'var(--red)';
+        lastBtcPrice     = btc;
+        document.getElementById('pApi').textContent  = 'ONLINE';
+        document.getElementById('pApi').style.color  = 'var(--green)';
+      }
+      document.getElementById('valBal').textContent  = '$' + (s.balance||0).toLocaleString(undefined,{minimumFractionDigits:2});
+      const pnl = s.total_pnl || 0;
+      const pnlEl = document.getElementById('valPnl');
+      pnlEl.textContent = (pnl>=0?'+':'') + '$' + Math.abs(pnl).toFixed(2);
+      pnlEl.style.color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+      document.getElementById('valIV').textContent   = ((s.sentiment||{}).avg_iv||0).toFixed(1) + '%';
+      document.getElementById('valPCR').textContent  = ((s.sentiment||{}).pcr||0).toFixed(2);
+      document.getElementById('valVol').textContent  = Math.round((s.market_stats||{}).volume||0).toLocaleString();
+      document.getElementById('valNext').textContent = s.next_trade_in || '--h --m';
+      document.getElementById('pHigh').textContent   = '$' + Math.round((s.market_stats||{}).high||0).toLocaleString();
+      document.getElementById('pLow').textContent    = '$' + Math.round((s.market_stats||{}).low||0).toLocaleString();
+      document.getElementById('pOI').textContent     = Math.round((s.market_stats||{}).oi||0).toLocaleString();
+
+      const tb = document.getElementById('posBody');
+      if (!s.call && !s.put) {
+        tb.innerHTML = '<tr><td colspan="4" class="empty">No active positions</td></tr>';
+        payoffChart.data.labels = [];
+        payoffChart.data.datasets[0].data = [];
+        payoffChart.data.datasets[1].data = [];
+        payoffChart.update();
+      } else {
+        let rows = '';
+        [s.call, s.put].forEach(p => {
+          if (!p) return;
+          const c = p.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+          rows += `<tr><td>${p.symbol}</td><td>$${(p.entry_price||0).toFixed(1)}</td><td>$${(p.current_price||0).toFixed(1)}</td><td style="color:${c}">${p.pnl>=0?'+':''}${(p.pnl||0).toFixed(2)}</td></tr>`;
+        });
+        tb.innerHTML = rows;
+        if (s.call && s.put && btc > 0) {
+          const cs = s.call.strike, ps = s.put.strike;
+          const tp = (s.call.entry_price||0) + (s.put.entry_price||0);
+          const labels=[], pay=[], mkt=[];
+          for (let x = ps-5000; x <= cs+5000; x += 500) {
+            labels.push(x);
+            let profit = tp;
+            if (x > cs) profit -= (x - cs);
+            if (x < ps) profit -= (ps - x);
+            pay.push(profit);
+          }
+          const bi = labels.reduce((a,v,i) => Math.abs(v-btc)<Math.abs(labels[a]-btc)?i:a, 0);
+          labels.forEach((_,i) => mkt.push(i===bi ? pay[bi] : null));
+          payoffChart.data.labels = labels;
+          payoffChart.data.datasets[0].data = pay;
+          payoffChart.data.datasets[1].data = mkt;
+          payoffChart.update();
+        }
+      }
+    }).catch(() => {});
 }
 
+// ── Candle chart ──────────────────────────────────────────────────────────────
 function updateCandles() {
-  fetch('/api/history?symbol=BTCUSD&resolution=1h').then(r => r.json()).then(data => {
-    if (!Array.isArray(data)) return;
-    const formatted = data.map(d => ({ time: +d.time, open: +d.open, high: +d.high, low: +d.low, close: +d.close })).sort((a,b)=>a.time-b.time);
-    if (formatted.length > 0) { candleSeries.setData(formatted); lwChart.timeScale().fitContent(); }
-  });
+  fetch('/api/history?symbol=BTCUSD&resolution=1h')
+    .then(r => r.json())
+    .then(data => {
+      if (!Array.isArray(data) || data.length === 0) return;
+      const formatted = data
+        .map(d => ({ time: +d.time, open: +d.open, high: +d.high, low: +d.low, close: +d.close }))
+        .filter(d => d.time && d.open && d.high && d.low && d.close)
+        .sort((a, b) => a.time - b.time);
+      if (formatted.length > 0) {
+        candleSeries.setData(formatted);
+        lwChart.timeScale().fitContent();
+      }
+    }).catch(() => {});
 }
 
+// ── IST Clock ─────────────────────────────────────────────────────────────────
 setInterval(() => {
   const ist = new Date(Date.now() + 5.5 * 3600000);
   document.getElementById('istClock').textContent = ist.toISOString().substring(11, 19) + ' IST';
 }, 1000);
 
 setInterval(updateDashboard, 3000);
-setInterval(updateCandles, 60000);
+setInterval(updateCandles,   60000);
 
+// Load saved keys from localStorage
 window.addEventListener('DOMContentLoaded', () => {
-  updateProfileSelect();
-  updateDashboard();
-  updateCandles();
+  const savedKey = localStorage.getItem('delta_api_key');
+  const savedSec = localStorage.getItem('delta_api_sec');
+  if (savedKey) document.getElementById('apiKey').value = savedKey;
+  if (savedSec) document.getElementById('apiSec').value = savedSec;
 });
+
+updateDashboard();
+updateCandles();
 </script>
 </body>
 </html>
