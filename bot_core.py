@@ -5,92 +5,99 @@ import threading
 import hmac
 import hashlib
 import json
-import ccxt
 import schedule
 import requests as _requests
 
-# IST = UTC + 5:30 → 8:00 AM IST = 02:30 UTC
-ENTRY_TIME_UTC = "02:30"
 DELTA_INDIA_BASE = "https://api.india.delta.exchange"
+ENTRY_TIME_UTC = "02:30"   # 08:00 AM IST
 
 
-# ─── DIRECT DELTA INDIA CLIENT (bypasses CCXT's broken India endpoint) ────────
+# ─── DELTA INDIA DIRECT CLIENT ────────────────────────────────────────────────
 class DeltaIndiaClient:
-    """Direct HTTP client for Delta Exchange India using HMAC-SHA256 auth."""
+    """Direct HTTP client for Delta Exchange India — HMAC-SHA256 signed."""
 
     def __init__(self, api_key="", api_secret=""):
-        self.api_key = api_key
+        self.api_key    = api_key
         self.api_secret = api_secret
-        self.base = DELTA_INDIA_BASE
+        self.base       = DELTA_INDIA_BASE
+        self.time_offset = 0
+        if api_key and api_secret:
+            self.sync_time()
 
-    def _sign(self, method, path, body=""):
-        ts = str(int(time.time()))
-        msg = method + ts + path + body
+    def sync_time(self):
+        """Fetch server time and calculate offset to prevent 'expired_signature'."""
+        try:
+            # We use tickers as a lightweight public endpoint to get server time if needed, 
+            # but usually Delta's response headers or a specific time endpoint works.
+            # Delta India doesn't always have a clear /time endpoint in v2, 
+            # but we can infer it from the 'Date' header of any request.
+            r = _requests.get(f"{self.base}/v2/tickers", timeout=10)
+            server_date = r.headers.get('Date')
+            if server_date:
+                import email.utils
+                server_ts = email.utils.mktime_tz(email.utils.parsedate_tz(server_date))
+                self.time_offset = int(server_ts - time.time())
+                print(f"[TIME] Synced. Offset: {self.time_offset}s")
+        except Exception as e:
+            print(f"[TIME] Sync failed: {e}")
+
+    def _sign(self, method, path_with_qs, body=""):
+        """Delta India signature: method + timestamp(s) + path_with_querystring + body"""
+        ts  = str(int(time.time() + self.time_offset))
+        msg = method + ts + path_with_qs + body
         sig = hmac.new(
-            self.api_secret.encode('utf-8'),
-            msg.encode('utf-8'),
+            self.api_secret.encode(),
+            msg.encode(),
             hashlib.sha256
         ).hexdigest()
         return ts, sig
 
-    def _headers(self, method, path, body=""):
-        headers = {
-            'Host': 'api.india.delta.exchange',
+    def _headers(self, method, path_with_qs, body=""):
+        h = {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'Accept':       'application/json',
+            'User-Agent':   'DeltaBotv2/1.0',
         }
         if self.api_key and self.api_secret:
-            ts, sig = self._sign(method, path, body)
-            headers.update({
-                'api-key': self.api_key,
-                'timestamp': ts,
-                'signature': sig
-            })
-        return headers
+            ts, sig = self._sign(method, path_with_qs, body)
+            h.update({'api-key': self.api_key, 'timestamp': ts, 'signature': sig})
+        return h
 
     def get(self, path, params=None):
-        # Build query string consistently for both signature and request
         if params:
-            # Sort keys to ensure consistent signature
-            sorted_params = sorted(params.items())
-            qs = '&'.join(f"{k}={v}" for k, v in sorted_params)
+            qs = '&'.join(f"{k}={v}" for k, v in sorted(params.items()))
             path_with_qs = f"{path}?{qs}"
         else:
             path_with_qs = path
-
-        url = f"{self.base}{path_with_qs}"
-        h = self._headers('GET', path_with_qs)
+        url = self.base + path_with_qs
         try:
-            r = _requests.get(url, headers=h, timeout=15)
+            r = _requests.get(url, headers=self._headers('GET', path_with_qs), timeout=15)
             return r.json()
         except Exception as e:
-            return {'success': False, 'error': {'code': 'json_error', 'message': str(e)}}
+            return {'success': False, 'error': {'code': 'request_error', 'message': str(e)}}
 
     def post(self, path, data=None):
-        url = self.base + path
         body = json.dumps(data or {}, separators=(',', ':'))
-        h = self._headers('POST', path, body)
+        url  = self.base + path
         try:
-            r = _requests.post(url, data=body, headers=h, timeout=15)
+            r = _requests.post(url, data=body, headers=self._headers('POST', path, body), timeout=15)
             return r.json()
         except Exception as e:
-            print(f"[DEBUG] POST request/JSON error: {e}")
-            return {'success': False, 'error': {'code': 'json_error', 'message': str(e)}}
+            return {'success': False, 'error': {'code': 'request_error', 'message': str(e)}}
 
+    # ── Public helpers ────────────────────────────────────────────────────────
     def test_connection(self):
-        """Returns (success, message)"""
-        result = self.get('/v2/profile')
-        if result.get('success'):
-            return True, result.get('result', {})
-        err = result.get('error', {})
+        r = self.get('/v2/profile')
+        if r.get('success'):
+            return True, r.get('result', {})
+        err  = r.get('error', {})
         code = err.get('code', 'unknown')
-        ctx = err.get('context', {})
+        ctx  = err.get('context', {})
         if code == 'ip_not_whitelisted_for_api_key':
             ip = ctx.get('client_ip', 'unknown')
-            return False, f"IP not whitelisted: {ip}. Add this IP to your Delta API key whitelist."
+            return False, f"IP not whitelisted: {ip}. Add this IP in Delta API key settings."
         if code == 'invalid_api_key':
-            return False, "Invalid API key. Check key is correct and active on Delta India."
+            return False, "Invalid API key or secret."
         return False, f"Connection error: {code}"
 
     def get_balance(self):
@@ -103,404 +110,403 @@ class DeltaIndiaClient:
         return 0.0
 
     def get_btc_price(self):
-        r = self.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
-        if r.get('success') and r.get('result'):
-            for t in r['result']:
-                # On Delta India, the symbol is often BTCUSD (not BTCUSDT)
-                if t.get('symbol') == 'BTCUSD':
-                    return float(t.get('mark_price', 0) or t.get('close', 0) or 0)
-        return 0.0
+        """Try Delta India first, fallback to CoinGecko if unreachable."""
+        try:
+            r = self.get('/v2/tickers', {
+                'contract_types': 'perpetual_futures',
+                'underlying_asset_symbol': 'BTC'
+            })
+            if r.get('success') and r.get('result'):
+                for t in r['result']:
+                    if t.get('symbol') == 'BTCUSD':
+                        price = float(t.get('mark_price') or t.get('close') or 0)
+                        if price > 0:
+                            return price
+        except Exception:
+            pass
+        # Fallback: CoinGecko public API (no auth needed)
+        try:
+            cg = _requests.get(
+                'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
+                timeout=10
+            ).json()
+            return float(cg['bitcoin']['usd'])
+        except Exception:
+            return 0.0
 
     def get_option_chain(self):
         r = self.get('/v2/options/chain', {'underlying_asset_symbol': 'BTC'})
         return r.get('result', []) if r.get('success') else []
 
     def place_order(self, product_id, side, size, order_type='market_order', limit_price=None):
-        data = {
-            'product_id': product_id,
-            'side': side,
-            'size': size,
-            'order_type': order_type,
-        }
+        data = {'product_id': product_id, 'side': side, 'size': size, 'order_type': order_type}
         if limit_price:
             data['limit_price'] = str(limit_price)
         return self.post('/v2/orders', data)
 
-    def get_history(self, symbol, resolution='1h', hours=24):
-        now = int(time.time())
+    def get_history(self, symbol='BTCUSD', resolution='1h', hours=24):
+        """Fetch OHLCV candles — symbol must NOT include 'MARK:' prefix."""
+        symbol = symbol.replace('MARK:', '')  # sanitize
+        now   = int(time.time())
         start = now - (hours * 3600)
-        params = {'symbol': symbol, 'resolution': resolution, 'start': start, 'end': now}
-        r = self.get('/v2/history/candles', params)
+        r = self.get('/v2/history/candles', {
+            'symbol': symbol, 'resolution': resolution,
+            'start': start, 'end': now
+        })
         return r.get('result', []) if r.get('success') else []
 
-    def get_ticker_stats(self, symbol):
+    def get_ticker_stats(self, symbol='BTCUSD'):
         r = self.get('/v2/tickers', {'symbol': symbol})
         if r.get('success') and r.get('result'):
             return r['result'][0]
         return {}
 
 
-# IST = UTC + 5:30 → 8:00 AM IST = 02:30 UTC
-# Render cloud servers run on UTC
-ENTRY_TIME_UTC = "02:30"
-
-
+# ─── BOT ──────────────────────────────────────────────────────────────────────
 class DeltaOptionsBot:
     def __init__(self):
-        self.running = False
-        self.active_mode = 'PAPER'
-        self.last_stats_update = 0
-        self.cached_stats = {}
-        self.last_chain_update = 0
-        self.last_iv_pcr = {'avg_iv': 0, 'pcr': 0}
-        self.thread = None
-        self.market_thread = None
-        self.market_data_running = False
+        self.running        = False
+        self.active_mode    = 'PAPER'
+        self.thread         = None
+        self.market_thread  = None
 
-        # Separate state per mode
+        # Cached market data (shared across modes)
+        self.current_btc_price  = 0.0
+        self.last_stats_update  = 0
+        self.cached_stats       = {}
+        self.last_chain_update  = 0
+        self.last_iv_pcr        = {'avg_iv': 0.0, 'pcr': 0.0}
+
+        # Per-mode state
         self.state = {
-            'PAPER': {'logs': [], 'positions': {'call': None, 'put': None}, 'balance': 10000.0, 'starting_balance': 10000.0},
-            'LIVE':  {'logs': [], 'positions': {'call': None, 'put': None}, 'balance': 0.0, 'starting_balance': 0.0}
+            'PAPER': {
+                'logs': [], 'balance': 10000.0,
+                'starting_balance': 10000.0,
+                'positions': {'call': None, 'put': None}
+            },
+            'LIVE': {
+                'logs': [], 'balance': 0.0,
+                'starting_balance': 0.0,
+                'positions': {'call': None, 'put': None}
+            }
         }
 
-        # Strategy config
-        self.api_key = ""
-        self.api_secret = ""
-        self.leverage = 200
-        self.target_premium = 100.0
-        self.allocation_pct = 0.50
-        self.call_sl_mult = 2.0
-        self.call_tp_mult = 0.05
-        self.put_sl_mult = 2.0
-        self.put_tp_mult = 0.05
-        self.entry_time_utc = ENTRY_TIME_UTC
-        
-        self.current_btc_price = 0.0
+        # Strategy config (defaults)
+        self.api_key         = ""
+        self.api_secret      = ""
+        self.target_premium  = 100.0
+        self.allocation_pct  = 0.50
+        self.call_sl_mult    = 2.0
+        self.call_tp_mult    = 0.05
+        self.put_sl_mult     = 2.0
+        self.put_tp_mult     = 0.05
+
         self.india_client = DeltaIndiaClient()
 
-    # ─── LOGGING ──────────────────────────────────────────────────────────────
+        # Start persistent market data loop (runs even when engine is stopped)
+        threading.Thread(target=self._market_data_loop, daemon=True).start()
+
+    # ── Logging ───────────────────────────────────────────────────────────────
     def log(self, message, mtype="info"):
-        utc_now = datetime.datetime.utcnow()
-        ist_now = utc_now + datetime.timedelta(hours=5, minutes=30)
-        timestamp = ist_now.strftime('%H:%M:%S')
-        log_entry = {'time': timestamp, 'msg': message, 'type': mtype}
+        ist = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
+        ts  = ist.strftime('%H:%M:%S')
+        entry = {'time': ts, 'msg': message, 'type': mtype}
         try:
-            print(f"[{self.active_mode}] [{timestamp} IST] {message}")
+            print(f"[{self.active_mode}][{ts} IST] {message}")
         except UnicodeEncodeError:
-            print(f"[{self.active_mode}] [{timestamp} IST] {message.encode('ascii', 'replace').decode('ascii')}")
+            print(f"[{self.active_mode}][{ts} IST] {message.encode('ascii','replace').decode()}")
         logs = self.state[self.active_mode]['logs']
-        logs.append(log_entry)
+        logs.append(entry)
         if len(logs) > 500:
             logs.pop(0)
 
     def get_logs(self, mode):
-        if mode not in self.state:
-            mode = 'PAPER'
-        return self.state[mode]['logs']
+        return self.state.get(mode, self.state['PAPER'])['logs']
 
+    # ── State ─────────────────────────────────────────────────────────────────
     def get_state(self, mode):
         if mode not in self.state:
             mode = 'PAPER'
-        pos = self.state[mode]['positions']
-        total_pnl = 0.0
-        if pos['call']:
-            total_pnl += pos['call'].get('pnl', 0.0)
-        if pos['put']:
-            total_pnl += pos['put'].get('pnl', 0.0)
+        pos      = self.state[mode]['positions']
+        total_pnl = (pos['call'] or {}).get('pnl', 0.0) + (pos['put'] or {}).get('pnl', 0.0)
 
-        ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
-        # Calculate time to next 8AM IST
-        next_8am = ist_now.replace(hour=8, minute=0, second=0, microsecond=0)
-        if ist_now >= next_8am:
+        ist      = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
+        next_8am = ist.replace(hour=8, minute=0, second=0, microsecond=0)
+        if ist >= next_8am:
             next_8am += datetime.timedelta(days=1)
-        diff = next_8am - ist_now
-        hours_left = int(diff.total_seconds() // 3600)
-        mins_left = int((diff.total_seconds() % 3600) // 60)
+        diff = next_8am - ist
+        h    = int(diff.total_seconds() // 3600)
+        m    = int((diff.total_seconds() % 3600) // 60)
 
-        # Directly return cached data for speed. Background thread handles updates.
-        display_btc = self.current_btc_price if self.current_btc_price > 0 else self.cached_stats.get('mark_price', 0)
+        now_ts = time.time()
+        # Refresh option chain every 2 min for IV/PCR
+        if now_ts - self.last_chain_update > 120:
+            try:
+                chain = self.india_client.get_option_chain()
+                if chain:
+                    call_oi, put_oi, ivs = 0, 0, []
+                    for opt in chain:
+                        oi = float(opt.get('open_interest', 0) or 0)
+                        iv = float(opt.get('mark_iv') or opt.get('implied_volatility') or 0)
+                        if opt.get('option_type') == 'call':
+                            call_oi += oi
+                        else:
+                            put_oi += oi
+                        if iv > 0:
+                            ivs.append(iv)
+                    self.last_iv_pcr['pcr']    = round(put_oi / call_oi, 3) if call_oi > 0 else 0.0
+                    self.last_iv_pcr['avg_iv'] = round(sum(ivs) / len(ivs), 2) if ivs else 0.0
+                    self.last_chain_update = now_ts
+            except Exception:
+                pass
+
+        # Refresh ticker stats every 2 min
+        if now_ts - self.last_stats_update > 120 or not self.cached_stats:
+            try:
+                r = self.india_client.get('/v2/tickers', {
+                    'contract_types': 'perpetual_futures',
+                    'underlying_asset_symbol': 'BTC'
+                })
+                if r.get('success') and r.get('result'):
+                    for t in r['result']:
+                        if t.get('symbol') == 'BTCUSD':
+                            self.cached_stats = {
+                                'high':   float(t.get('high', 0) or 0),
+                                'low':    float(t.get('low', 0) or 0),
+                                'volume': float(t.get('volume', 0) or 0),
+                                'oi':     float(t.get('open_interest', 0) or 0),
+                            }
+                            break
+                self.last_stats_update = now_ts
+            except Exception:
+                pass
 
         return {
-            'running': self.running,
-            'running_mode': self.active_mode if self.running else None,
-            'btc_price': display_btc,
-            'balance': self.state[mode]['balance'] + total_pnl,
-            'starting_balance': self.state[mode]['starting_balance'],
-            'call': pos['call'],
-            'put': pos['put'],
-            'total_pnl': total_pnl,
-            'next_trade_in': f"{hours_left}h {mins_left}m",
-            'ist_time': ist_now.strftime('%H:%M:%S IST'),
-            'market_stats': self.cached_stats,
-            'sentiment': self.last_iv_pcr
+            'running':           self.running,
+            'running_mode':      self.active_mode if self.running else None,
+            'btc_price':         self.current_btc_price,
+            'balance':           self.state[mode]['balance'] + total_pnl,
+            'starting_balance':  self.state[mode]['starting_balance'],
+            'call':              pos['call'],
+            'put':               pos['put'],
+            'total_pnl':         round(total_pnl, 2),
+            'next_trade_in':     f"{h}h {m}m",
+            'ist_time':          ist.strftime('%H:%M:%S IST'),
+            'market_stats':      self.cached_stats,
+            'sentiment':         self.last_iv_pcr,
         }
 
-    def start_market_data_worker(self):
-        """Starts a background thread to fetch expensive market data (PCR, IV, Stats) every 5 mins."""
-        if self.market_data_running:
-            return
-        self.market_data_running = True
-        
-        def worker():
-            while self.market_data_running:
-                try:
-                    # 1. Update Ticker Stats
-                    r = self.india_client.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
-                    if r.get('success') and r.get('result'):
-                        for t in r['result']:
-                            if t.get('symbol') == 'BTCUSD':
-                                self.cached_stats = {
-                                    'high': t.get('high', 0),
-                                    'low': t.get('low', 0),
-                                    'volume': t.get('volume', 0),
-                                    'oi': t.get('open_interest', 0),
-                                    'mark_price': float(t.get('mark_price', 0))
-                                }
-                                break
-                    
-                    # 2. Update Options Chain (PCR & IV)
-                    chain = self.india_client.get_option_chain()
-                    if chain:
-                        total_call_oi = 0
-                        total_put_oi = 0
-                        ivs = []
-                        for opt in chain:
-                            oi = float(opt.get('open_interest', 0))
-                            iv = float(opt.get('mark_iv') or opt.get('theoretical_volatility') or 0)
-                            if opt.get('option_type') == 'call':
-                                total_call_oi += oi
-                            else:
-                                total_put_oi += oi
-                            if iv > 0: ivs.append(iv)
-                        
-                        self.last_iv_pcr['pcr'] = round(total_put_oi / total_call_oi, 2) if total_call_oi > 0 else 0.0
-                        self.last_iv_pcr['avg_iv'] = round(sum(ivs) / len(ivs), 2) if ivs else 0.0
-                except Exception as e:
-                    print(f"Market Data Worker Error: {e}")
-                
-                # Sleep for 5 minutes
-                time.sleep(300)
-
-        threading.Thread(target=worker, daemon=True).start()
-
-    # ─── START / STOP ─────────────────────────────────────────────────────────
+    # ── Start / Stop ──────────────────────────────────────────────────────────
     def start(self, config):
-        """Start or restart the engine with new config."""
-        # If already running, stop first (allows restart with new config)
         if self.running:
             self.running = False
             time.sleep(1.5)
 
-        mode = config.get('mode', 'PAPER').upper()
+        mode             = config.get('mode', 'PAPER').upper()
         self.active_mode = mode
-        # Use keys from form, OR fall back to Render environment variables
-        self.api_key = config.get('api_key', '').strip() or os.environ.get('DELTA_API_KEY', '')
-        self.api_secret = config.get('api_secret', '').strip() or os.environ.get('DELTA_API_SECRET', '')
-        self.target_premium = float(config.get('target_premium', 100.0))
-        self.allocation_pct = float(config.get('allocation_pct', 50.0)) / 100.0
-        self.call_sl_mult = 1.0 + (float(config.get('call_stop_loss', 100.0)) / 100.0)
-        self.call_tp_mult = 1.0 - (float(config.get('call_take_profit', 95.0)) / 100.0)
-        self.put_sl_mult = 1.0 + (float(config.get('put_stop_loss', 100.0)) / 100.0)
-        self.put_tp_mult = 1.0 - (float(config.get('put_take_profit', 95.0)) / 100.0)
+        self.api_key     = config.get('api_key', '').strip()    or os.environ.get('DELTA_API_KEY', '')
+        self.api_secret  = config.get('api_secret', '').strip() or os.environ.get('DELTA_API_SECRET', '')
 
-        if mode == "LIVE":
+        self.target_premium = float(config.get('target_premium', 100))
+        self.allocation_pct = float(config.get('allocation_pct', 50)) / 100.0
+        self.call_sl_mult   = 1.0 + float(config.get('call_stop_loss', 100)) / 100.0
+        self.call_tp_mult   = 1.0 - float(config.get('call_take_profit', 95)) / 100.0
+        self.put_sl_mult    = 1.0 + float(config.get('put_stop_loss', 100)) / 100.0
+        self.put_tp_mult    = 1.0 - float(config.get('put_take_profit', 95)) / 100.0
+
+        if mode == 'LIVE':
             if not self.api_key or not self.api_secret:
                 return False, "LIVE mode requires API Key and Secret."
-            
             self.india_client = DeltaIndiaClient(self.api_key, self.api_secret)
-            success, info = self.india_client.test_connection()
-            if success:
-                self.log("LIVE ENGINE CONNECTED to Delta India. Real funds at risk.", "error")
-            else:
+            ok, info = self.india_client.test_connection()
+            if not ok:
                 return False, f"API connection failed: {info}"
+            self.log("✅ LIVE ENGINE CONNECTED — Real funds at risk!", "error")
         else:
-            self.india_client = DeltaIndiaClient() # Public only
-            self.log("PAPER ENGINE STARTED. Using Delta India live market data.", "success")
+            self.india_client = DeltaIndiaClient()
+            self.log("✅ PAPER ENGINE STARTED — Live market data, simulated trades.", "success")
 
         self.running = True
+
         self.thread = threading.Thread(target=self._run_loop, daemon=True)
         self.thread.start()
-        self.market_thread = threading.Thread(target=self._market_data_loop, daemon=True)
-        self.market_thread.start()
-        return True, "Engine started successfully."
+
+        return True, f"{mode} engine started successfully."
 
     def stop(self):
         self.running = False
-        self.log("ENGINE STOPPED.", "error")
-        return True
+        self.log("🛑 ENGINE STOPPED.", "error")
 
     def trigger_execution(self):
-        self.log("MANUAL EXECUTION TRIGGERED...", "info")
+        self.log("⚡ MANUAL EXECUTION TRIGGERED...", "info")
         threading.Thread(target=self.execute_strategy, daemon=True).start()
 
     def clear_positions(self, mode):
         if mode in self.state:
             self.state[mode]['positions'] = {'call': None, 'put': None}
+            self.log(f"Positions cleared for {mode}.", "warn")
 
-    # ─── SCHEDULER LOOP ───────────────────────────────────────────────────────
+    # ── Scheduler loop ────────────────────────────────────────────────────────
     def _run_loop(self):
         schedule.clear()
-        self.log(f"SCHEDULER SET: 08:00 AM IST daily ({self.entry_time_utc} UTC on server).", "info")
-        schedule.every().day.at(self.entry_time_utc).do(self.execute_strategy)
+        self.log(f"📅 SCHEDULER: Daily trade at 08:00 IST ({ENTRY_TIME_UTC} UTC).", "info")
+        schedule.every().day.at(ENTRY_TIME_UTC).do(self.execute_strategy)
         while self.running:
             schedule.run_pending()
-            utc_now = datetime.datetime.utcnow()
-            ist_now = utc_now + datetime.timedelta(hours=5, minutes=30)
-            # Heartbeat log every hour
-            if utc_now.minute == 0 and utc_now.second < 2:
-                self.log(f"SCHEDULER ALIVE at {ist_now.strftime('%H:%M IST')}. Next trade: 08:00 IST.", "info")
+            now = datetime.datetime.utcnow()
+            if now.minute == 0 and now.second < 2:
+                ist = now + datetime.timedelta(hours=5, minutes=30)
+                self.log(f"💓 Scheduler alive at {ist.strftime('%H:%M IST')}.", "info")
             time.sleep(1)
 
-    # ─── MARKET DATA LOOP ─────────────────────────────────────────────────────
+    # ── Market data loop ──────────────────────────────────────────────────────
     def _market_data_loop(self):
-        while self.running:
+        """Continuously update BTC price and simulate paper PnL."""
+        while True:
             try:
                 price = self.india_client.get_btc_price()
                 if price > 0:
                     self.current_btc_price = price
-                pos = self.state[self.active_mode]['positions']
-                if pos['call']:
-                    c = pos['call']
-                    dist = c['strike'] - self.current_btc_price
-                    sim_premium = max(0.5, c['entry_price'] - (dist * 0.01))
-                    c['current_price'] = round(sim_premium, 2)
-                    c['pnl'] = round((c['entry_price'] - c['current_price']) * c['size'], 2)
-                if pos['put']:
-                    p = pos['put']
-                    dist = self.current_btc_price - p['strike']
-                    sim_premium = max(0.5, p['entry_price'] - (dist * 0.01))
-                    p['current_price'] = round(sim_premium, 2)
-                    p['pnl'] = round((p['entry_price'] - p['current_price']) * p['size'], 2)
+
+                # Simulate paper PnL based on price movement (only if running)
+                if self.running and self.active_mode == 'PAPER':
+                    pos = self.state['PAPER']['positions']
+                    if pos['call'] and self.current_btc_price > 0:
+                        c = pos['call']
+                        dist = max(0, self.current_btc_price - c['strike'])
+                        sim  = max(0.5, c['entry_price'] - dist * 0.012)
+                        c['current_price'] = round(sim, 2)
+                        c['pnl']           = round((c['entry_price'] - c['current_price']) * c['size'], 2)
+                    if pos['put'] and self.current_btc_price > 0:
+                        p = pos['put']
+                        dist = max(0, p['strike'] - self.current_btc_price)
+                        sim  = max(0.5, p['entry_price'] - dist * 0.012)
+                        p['current_price'] = round(sim, 2)
+                        p['pnl']           = round((p['entry_price'] - p['current_price']) * p['size'], 2)
             except Exception as e:
-                pass
+                print(f"[MARKET_LOOP ERROR] {e}")
             time.sleep(5)
 
-    # ─── OPTIONS CHAIN ────────────────────────────────────────────────────────
-    def get_options_chain(self):
-        return self.india_client.get_option_chain()
-
+    # ── Options chain helpers ─────────────────────────────────────────────────
     def find_best_strike(self, options, option_type):
-        valid = [o for o in options if o.get('option_type') == option_type]
-        best_sym, best_prem, best_prod_id = None, float('inf'), None
-        
+        valid    = [o for o in options if o.get('option_type') == option_type]
+        best_sym, best_prem, best_id = None, float('inf'), None
         for opt in valid:
-            # We use mark_price if available, else theoretical
-            premium = float(opt.get('mark_price') or opt.get('theoretical_price') or 0)
-            if premium >= self.target_premium:
-                if premium < best_prem:
-                    best_prem = premium
-                    best_sym = opt['symbol']
-                    best_prod_id = opt['id']
-        return best_sym, best_prem, best_prod_id
+            prem = float(opt.get('mark_price') or opt.get('theoretical_price') or 0)
+            if self.target_premium * 0.5 <= prem <= self.target_premium * 2.5:
+                if prem < best_prem:
+                    best_prem = prem
+                    best_sym  = opt.get('symbol')
+                    best_id   = opt.get('id')
+        return best_sym, best_prem if best_prem != float('inf') else self.target_premium, best_id
 
-    # ─── STRATEGY EXECUTION ───────────────────────────────────────────────────
+    # ── Strategy execution ────────────────────────────────────────────────────
     def execute_strategy(self):
         self.log("=" * 45, "info")
-        self.log(f"EXECUTING {self.active_mode} STRATEGY", "success")
+        self.log(f"🚀 EXECUTING {self.active_mode} STRATEGY", "success")
         self.log("=" * 45, "info")
 
+        if self.active_mode == 'LIVE':
+            self.india_client.sync_time()
+
         try:
-            # Get BTC price
-            if self.current_btc_price == 0:
+            # Ensure we have a BTC price
+            if self.current_btc_price <= 0:
                 self.current_btc_price = self.india_client.get_btc_price()
-
-            atm = round(self.current_btc_price / 100) * 100
-            call_strike = atm + 3000
-            put_strike = atm - 3000
-
-            self.log(f"BTC Spot: ${self.current_btc_price:,.0f} | ATM: ${atm:,.0f}", "info")
-            self.log(f"Scanning options chain for ${self.target_premium:.0f} premium strikes...", "info")
-
-            options = self.get_options_chain()
-            call_symbol, call_premium, call_id = self.find_best_strike(options, 'call')
-            put_symbol, put_premium, put_id = self.find_best_strike(options, 'put')
-
-            if not call_symbol or not put_symbol:
-                self.log("No live strikes found — using theoretical strikes.", "warn")
-                call_symbol = f'BTC-{int(call_strike)}-C'
-                call_premium = self.target_premium
-                call_id = 0
-                put_symbol = f'BTC-{int(put_strike)}-P'
-                put_premium = self.target_premium
-                put_id = 0
-            else:
-                self.log(f"CALL: {call_symbol} @ ${call_premium:.2f}", "success")
-                self.log(f"PUT:  {put_symbol} @ ${put_premium:.2f}", "success")
-
-            # ── PAPER MODE ──────────────────────────────────────────────────
-            if self.active_mode == "PAPER":
-                balance = self.state['PAPER']['balance']
-                pos = self.state['PAPER']['positions']
-
-                call_size = max(1, int((balance * self.allocation_pct * self.leverage) / call_premium))
-                put_size = max(1, int((balance * self.allocation_pct * self.leverage) / put_premium))
-
-                pos['call'] = {
-                    'symbol': call_symbol, 'strike': call_strike,
-                    'entry_price': call_premium, 'current_price': call_premium,
-                    'size': call_size, 'pnl': 0.0,
-                    'sl': round(call_premium * self.call_sl_mult, 2),
-                    'tp': round(call_premium * self.call_tp_mult, 2),
-                    'side': 'SELL CALL'
-                }
-                pos['put'] = {
-                    'symbol': put_symbol, 'strike': put_strike,
-                    'entry_price': put_premium, 'current_price': put_premium,
-                    'size': put_size, 'pnl': 0.0,
-                    'sl': round(put_premium * self.put_sl_mult, 2),
-                    'tp': round(put_premium * self.put_tp_mult, 2),
-                    'side': 'SELL PUT'
-                }
-                self.log(f"[PAPER] SOLD {call_size}x {call_symbol} @ ${call_premium:.2f} | SL: ${pos['call']['sl']} TP: ${pos['call']['tp']}", "success")
-                self.log(f"[PAPER] SOLD {put_size}x {put_symbol} @ ${put_premium:.2f} | SL: ${pos['put']['sl']} TP: ${pos['put']['tp']}", "success")
-                self.log("PAPER EXECUTION COMPLETE. Tracking live PnL.", "success")
+            if self.current_btc_price <= 0:
+                self.log("❌ Cannot get BTC price. Aborting.", "error")
                 return
 
-            # ── LIVE MODE ───────────────────────────────────────────────────
-            if self.active_mode == "LIVE":
-                try:
-                    live_balance = self.india_client.get_balance()
-                    self.state['LIVE']['balance'] = live_balance
-                    self.state['LIVE']['starting_balance'] = live_balance
-                    self.log(f"Live Balance: ${live_balance:.2f} USDT", "info")
-                    if live_balance <= 0:
-                        self.log("Zero balance in LIVE account. Cannot trade.", "error")
-                        return
-                except Exception as e:
-                    self.log(f"Balance fetch failed: {e}", "error")
+            btc    = self.current_btc_price
+            atm    = round(btc / 100) * 100
+            call_k = atm + 3000
+            put_k  = atm - 3000
+
+            self.log(f"BTC Spot: ${btc:,.0f} | ATM: ${atm:,.0f}", "info")
+            self.log(f"Target premium: ${self.target_premium:.0f}", "info")
+
+            # Try live options chain
+            options     = self.india_client.get_option_chain()
+            call_sym, call_prem, call_id = self.find_best_strike(options, 'call')
+            put_sym,  put_prem,  put_id  = self.find_best_strike(options, 'put')
+
+            # Fallback to theoretical strikes if chain empty
+            if not call_sym:
+                call_sym, call_prem, call_id = f'BTC-{int(call_k)}-C', self.target_premium, 0
+                put_sym,  put_prem,  put_id  = f'BTC-{int(put_k)}-P',  self.target_premium, 0
+                self.log("⚠ No live chain — using theoretical strikes.", "warn")
+            else:
+                self.log(f"CALL: {call_sym} @ ${call_prem:.2f}", "success")
+                self.log(f"PUT:  {put_sym}  @ ${put_prem:.2f}", "success")
+
+            # ── PAPER ──
+            if self.active_mode == 'PAPER':
+                bal  = self.state['PAPER']['balance']
+                pos  = self.state['PAPER']['positions']
+                c_sz = max(1, int((bal * self.allocation_pct * 200) / call_prem))
+                p_sz = max(1, int((bal * self.allocation_pct * 200) / put_prem))
+
+                pos['call'] = {
+                    'symbol': call_sym, 'strike': call_k, 'side': 'SELL CALL',
+                    'entry_price': call_prem, 'current_price': call_prem,
+                    'size': c_sz, 'pnl': 0.0,
+                    'sl': round(call_prem * self.call_sl_mult, 2),
+                    'tp': round(call_prem * self.call_tp_mult, 2),
+                }
+                pos['put'] = {
+                    'symbol': put_sym, 'strike': put_k, 'side': 'SELL PUT',
+                    'entry_price': put_prem, 'current_price': put_prem,
+                    'size': p_sz, 'pnl': 0.0,
+                    'sl': round(put_prem * self.put_sl_mult, 2),
+                    'tp': round(put_prem * self.put_tp_mult, 2),
+                }
+                self.log(f"[PAPER] SOLD {c_sz}x {call_sym} @ ${call_prem:.2f} | SL:${pos['call']['sl']} TP:${pos['call']['tp']}", "success")
+                self.log(f"[PAPER] SOLD {p_sz}x {put_sym}  @ ${put_prem:.2f} | SL:${pos['put']['sl']} TP:${pos['put']['tp']}", "success")
+                self.log("✅ PAPER EXECUTION COMPLETE. Tracking live PnL.", "success")
+                return
+
+            # ── LIVE ──
+            if self.active_mode == 'LIVE':
+                live_bal = self.india_client.get_balance()
+                if live_bal <= 0:
+                    self.log("❌ Zero USDT balance. Cannot trade.", "error")
                     return
+                self.state['LIVE']['balance']          = live_bal
+                self.state['LIVE']['starting_balance'] = live_bal
+                self.log(f"💰 Live Balance: ${live_bal:.2f} USDT", "info")
 
-                call_size = max(1, int((live_balance * self.allocation_pct * self.leverage) / call_premium))
-                put_size = max(1, int((live_balance * self.allocation_pct * self.leverage) / put_premium))
+                c_sz = max(1, int((live_bal * self.allocation_pct * 200) / call_prem))
+                p_sz = max(1, int((live_bal * self.allocation_pct * 200) / put_prem))
 
-                if call_size < 1 or put_size < 1:
-                    self.log("Insufficient balance for minimum lot size.", "error")
-                    return
+                pos = self.state['LIVE']['positions']
 
-                # Place CALL & PUT orders
-                for pid, sym, size, prem, sl_m, tp_m, label in [
-                    (call_id, call_symbol, call_size, call_premium, self.call_sl_mult, self.call_tp_mult, "CALL"),
-                    (put_id, put_symbol, put_size, put_premium, self.put_sl_mult, self.put_tp_mult, "PUT")
+                for pid, sym, sz, prem, sl_m, tp_m, k, leg in [
+                    (call_id, call_sym, c_sz, call_prem, self.call_sl_mult, self.call_tp_mult, call_k, 'CALL'),
+                    (put_id,  put_sym,  p_sz, put_prem,  self.put_sl_mult,  self.put_tp_mult,  put_k,  'PUT'),
                 ]:
-                    if pid == 0: continue
-                    try:
-                        self.log(f"[LIVE] PLACING {label} SELL {size}x {sym} @ MARKET", "warn")
-                        res = self.india_client.place_order(pid, 'sell', size)
-                        if res.get('success'):
-                            sl_price = round(prem * sl_m, 2)
-                            tp_price = round(prem * tp_m, 2)
-                            # For Stop Loss, Delta uses a different endpoint usually or separate order
-                            # We'll just log that entry was successful for now
-                            self.log(f"[LIVE] {label} SOLD SUCCESSFULLY.", "success")
-                        else:
-                            self.log(f"[LIVE] {label} ERROR: {res.get('error', {}).get('code')}", "error")
-                    except Exception as e:
-                        self.log(f"[LIVE] {label} order error: {e}", "error")
+                    if not pid:
+                        self.log(f"⚠ No product_id for {leg} — skipping live order.", "warn")
+                        continue
+                    self.log(f"[LIVE] Placing {leg} SELL {sz}x {sym} @ MARKET...", "warn")
+                    res = self.india_client.place_order(pid, 'sell', sz)
+                    if res.get('success'):
+                        self.log(f"✅ [LIVE] {leg} order filled: {res.get('result', {})}", "success")
+                        leg_key = 'call' if leg == 'CALL' else 'put'
+                        pos[leg_key] = {
+                            'symbol': sym, 'strike': k, 'side': f'SELL {leg}',
+                            'entry_price': prem, 'current_price': prem,
+                            'size': sz, 'pnl': 0.0,
+                            'sl': round(prem * sl_m, 2),
+                            'tp': round(prem * tp_m, 2),
+                        }
+                    else:
+                        err = res.get('error', {})
+                        self.log(f"❌ [LIVE] {leg} FAILED: {err.get('code','?')} — {err.get('message','?')}", "error")
 
-                self.log("LIVE EXECUTION COMPLETE.", "success")
+                self.log("✅ LIVE EXECUTION COMPLETE.", "success")
 
         except Exception as e:
-            self.log(f"Strategy error: {e}", "error")
+            self.log(f"❌ Strategy error: {e}", "error")
 
 
 bot_instance = DeltaOptionsBot()
