@@ -65,8 +65,12 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
 <nav>
   <div class="nav-brand"><div class="delta-logo">&#916;</div> DELTA OPTIONS TERMINAL</div>
   <div class="mode-toggle">
-    <button class="m-btn active paper" id="btnPaper" onclick="setMode('PAPER')">PAPER</button>
-    <button class="m-btn live" id="btnLive" onclick="setMode('LIVE')">LIVE</button>
+    <button class="m-btn active paper" id="btnPaper" onclick="setMode('PAPER')">
+      PAPER <span id="dotPaper" style="display:none;width:6px;height:6px;background:var(--green);border-radius:50%;margin-left:5px;box-shadow:0 0 5px var(--green);"></span>
+    </button>
+    <button class="m-btn live" id="btnLive" onclick="setMode('LIVE')">
+      LIVE <span id="dotLive" style="display:none;width:6px;height:6px;background:var(--red);border-radius:50%;margin-left:5px;box-shadow:0 0 5px var(--red);"></span>
+    </button>
   </div>
   <div style="display:flex;align-items:center;gap:15px;">
     <div class="stat-value" id="navBtc" style="color:var(--accent);font-size:13px;">BTC $---</div>
@@ -304,6 +308,11 @@ function updateDashboard() {
         document.getElementById('btnClear').style.display = 'none';
       }
       const logs = d.logs || [];
+      
+      // Update activity dots
+      document.getElementById('dotPaper').style.display = d.has_paper_pos ? 'inline-block' : 'none';
+      document.getElementById('dotLive').style.display  = d.has_live_pos  ? 'inline-block' : 'none';
+      
       if (logs.length > lastLogCount) {
         const term = document.getElementById('term');
         for (let i = lastLogCount; i < logs.length; i++) {
