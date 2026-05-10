@@ -292,6 +292,15 @@ class DeltaOptionsBot:
 
     # ── Persistence ───────────────────────────────────────────────────────────
     def _load_creds(self):
+        # 1. Check for Environment Variables (Render/Production)
+        env_key = os.environ.get('DELTA_API_KEY')
+        env_sec = os.environ.get('DELTA_API_SECRET')
+        if env_key and env_sec:
+            self.state['LIVE']['client'] = DeltaIndiaClient(env_key, env_sec)
+            self.log('SYSTEM', "🔑 Credentials loaded from environment variables.")
+            return
+
+        # 2. Check for local file (Development)
         if os.path.exists(self.creds_file):
             try:
                 with open(self.creds_file, 'r') as f:

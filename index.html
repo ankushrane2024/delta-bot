@@ -91,6 +91,8 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
 .toast{position:fixed;bottom:20px;right:20px;padding:10px 20px;border-radius:4px;background:var(--accent);color:#000;font-weight:700;transform:translateY(100px);transition:.3s;z-index:1000;max-width:350px;}
 .toast.show{transform:translateY(0);}
 .toast.err{background:var(--red);color:#fff;}
+.pulse { animation: pulse-red 2s infinite; }
+@keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -177,7 +179,13 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
 
   <!-- LEFT: CONFIG -->
   <div class="panel">
-    <div class="panel-header"><div class="panel-title">Strategy Engine</div></div>
+    <div class="panel-header">
+      <div class="panel-title">Strategy Engine</div>
+      <div id="connSignalContainer" style="display:none; align-items:center; gap:6px; font-size:10px; font-weight:700;">
+        <span id="connSignalDot" class="pulse" style="width:8px; height:8px; border-radius:50%; background:var(--red); box-shadow:0 0 5px var(--red); display:inline-block;"></span>
+        <span id="connSignalText" style="color:var(--text2); text-transform:uppercase;">DISCONNECTED</span>
+      </div>
+    </div>
     <div class="panel-body">
       <div id="modeAlert" style="padding:8px;border-radius:4px;font-size:11px;margin-bottom:12px;font-weight:600;background:rgba(146,84,222,.1);color:var(--purple);">
         PAPER MODE — Simulated trading with live data.
@@ -775,14 +783,34 @@ function updateDashboard() {
     .then(d => {
       // Sync Connection Button State
       const btnC = document.getElementById('btnConnect');
+      const sigC = document.getElementById('connSignalContainer');
+      const sigD = document.getElementById('connSignalDot');
+      const sigT = document.getElementById('connSignalText');
+
       if (btnC) {
         if (d.is_connected) {
           btnC.style.background = 'var(--green)';
           btnC.textContent = '✅ CONNECTED TO DELTA';
           btnC.disabled = false;
+          
+          if (sigC) {
+              sigC.style.display = 'flex';
+              sigD.style.background = 'var(--green)';
+              sigD.style.boxShadow = '0 0 8px var(--green)';
+              sigT.textContent = 'CONNECTED';
+              sigT.style.color = 'var(--green)';
+          }
         } else {
           btnC.style.background = 'var(--blue)';
           btnC.textContent = '🔗 Connect to Delta Exchange';
+          
+          if (sigC) {
+              sigC.style.display = currentMode === 'LIVE' ? 'flex' : 'none';
+              sigD.style.background = 'var(--red)';
+              sigD.style.boxShadow = '0 0 8px var(--red)';
+              sigT.textContent = 'DISCONNECTED';
+              sigT.style.color = 'var(--red)';
+          }
         }
       }
 
