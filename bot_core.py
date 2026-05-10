@@ -135,19 +135,38 @@ class DeltaIndiaClient:
             return 0.0
 
     def get_option_chain(self):
-        # Delta India often works better with tickers endpoint for full chain data
+        # Use direct requests for public data to avoid any header/signature issues
+        url = f"{DELTA_INDIA_BASE}/v2/tickers"
         params = {
             'contract_types': 'call_options,put_options',
-            'underlying_asset_id': '13', # BTC
             'underlying_asset_symbol': 'BTC'
         }
-        r = self.get('/v2/tickers', params)
-        if r.get('success'):
-            results = r.get('result', [])
-            # Robust filter: check underlying symbol or symbol prefix
-            return [t for t in results if 
-                    t.get('underlying_asset_symbol') in ['BTC', 'BTCUSD'] or 
-                    t.get('symbol', '').startswith(('C-BTC', 'P-BTC', 'BTC-'))]
+        try:
+            r = _requests.get(url, params=params, timeout=15).json()
+            if r.get('success'):
+                res = r.get('result', [])
+                # Robust filter: check underlying symbol OR 'BTC' in symbol string
+                filtered = [t for t in res if 
+                            t.get('underlying_asset_symbol') in ['BTC', 'BTCUSD'] or 
+                            'BTC' in t.get('symbol', '').split('-')]
+                
+                if not filtered and res:
+                    # Fallback: if we got results but none matched BTC, maybe they are in a different field
+                    filtered = [t for t in res if 'BTC' in t.get('symbol', '')]
+                
+                print(f"[CHAIN] Fetched {len(res)} tickers, filtered to {len(filtered)} BTC options")
+                return filtered
+        except Exception as e:
+            print(f"[CHAIN] Fetch failed: {e}")
+        
+        # Emergency Fallback: try /v2/products if tickers failed
+        try:
+            r2 = _requests.get(f"{DELTA_INDIA_BASE}/v2/products", params={'contract_types': 'call_options,put_options'}, timeout=15).json()
+            if r2.get('success'):
+                res2 = r2.get('result', [])
+                return [t for t in res2 if 'BTC' in t.get('symbol', '')]
+        except: pass
+        
         return []
 
     def set_leverage(self, product_id, leverage):

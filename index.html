@@ -614,8 +614,6 @@ function updateDashboard() {
       const pnlEl = document.getElementById('valPnl');
       pnlEl.textContent = (pnl>=0?'+':'') + '$' + Math.abs(pnl).toFixed(2);
       pnlEl.style.color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-      document.getElementById('valIV').textContent   = ((s.sentiment||{}).avg_iv||0).toFixed(1) + '%';
-      document.getElementById('valPCR').textContent  = ((s.sentiment||{}).pcr||0).toFixed(2);
       document.getElementById('valVol').textContent  = Math.round((s.market_stats||{}).volume||0).toLocaleString();
       document.getElementById('valNext').textContent = s.next_trade_in || '--h --m';
       document.getElementById('pHigh').textContent   = '$' + Math.round((s.market_stats||{}).high||0).toLocaleString();
