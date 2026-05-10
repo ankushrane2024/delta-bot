@@ -26,6 +26,9 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 20px
 .chain-table .call-side{color:var(--green);}
 .chain-table .put-side{color:var(--red);}
 .chain-table tr:hover{background:rgba(255,255,255,0.02);}
+.expiry-tab{padding:4px 10px; border-radius:4px; cursor:pointer; font-size:10px; font-weight:600; color:var(--text2); background:var(--bg); border:1px solid var(--border); white-space:nowrap; transition: 0.2s;}
+.expiry-tab:hover{border-color:var(--text2);}
+.expiry-tab.active{background:var(--accent); color:#000; border-color:var(--accent);}
 .stats-bar{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;min-width:0;}
 .stat-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -92,8 +95,11 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
 <div id="chainView">
   <div class="panel" style="height:100%;">
     <div class="panel-header">
-      <div class="panel-title">BTC Options Chain (Next Daily Expiry)</div>
-      <div style="font-size:10px; color:var(--text2);">All prices in USDT | Live Data</div>
+      <div class="panel-title">BTC Options Chain</div>
+      <div id="expiryTabs" style="display:flex; gap:10px; overflow-x:auto; padding:4px 0; scrollbar-width:none;">
+        <span style="color:var(--text2); font-size:10px;">Fetching expiries...</span>
+      </div>
+      <div style="font-size:10px; color:var(--text2);">USDT | Live</div>
     </div>
     <div class="panel-body" style="padding:0;">
       <table class="chain-table">
@@ -305,24 +311,50 @@ function setMode(m) {
   }
 }
 
+let selectedExpiry = null;
+
 function updateOptionChain() {
   if (currentMode !== 'CHAIN') return;
-  
-  // Calculate target next day expiry string like '11MAY26'
-  const now = new Date();
-  now.setDate(now.getDate() + 1);
-  const targetDate = now.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }).replace(/ /g, '').toUpperCase();
 
   fetch('/api/chain')
     .then(r => r.json())
     .then(data => {
-      const filtered = data.filter(o => o.symbol.includes(targetDate));
-      if (filtered.length === 0) {
-        document.getElementById('chainBody').innerHTML = '<tr><td colspan="7" class="empty">No options found for ' + targetDate + '</td></tr>';
-        return;
-      }
+      // 1. Extract unique expiries (e.g., '12MAY26') from symbols
+      const expiries = new Set();
+      data.forEach(o => {
+        // Delta symbols: BTC-STRIKE-TYPE-DATE or BTC-DATE-STRIKE-TYPE
+        // They often use BTC-12MAY26-STRIKE-TYPE
+        const parts = o.symbol.split('-');
+        if (parts.length >= 2) {
+           // Look for the part that matches date pattern (e.g., 12MAY26)
+           const datePart = parts.find(p => /^\d{1,2}[A-Z]{3}\d{2}$/.test(p));
+           if (datePart) expiries.add(datePart);
+        }
+      });
       
-      // Group by strike
+      const sortedExpiries = Array.from(expiries).sort((a,b) => {
+        const parseDate = (s) => {
+          const d = parseInt(s.substring(0,2));
+          const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"].indexOf(s.substring(2,5));
+          const y = parseInt("20" + s.substring(5,7));
+          return new Date(y, m, d);
+        };
+        return parseDate(a) - parseDate(b);
+      });
+
+      if (sortedExpiries.length === 0) return;
+      if (!selectedExpiry) selectedExpiry = sortedExpiries[0];
+
+      // 2. Render Expiry Tabs
+      const tabs = document.getElementById('expiryTabs');
+      tabs.innerHTML = sortedExpiries.map(e => `
+        <div class="expiry-tab ${e === selectedExpiry ? 'active' : ''}" onclick="changeExpiry('${e}')">
+          ${e}
+        </div>
+      `).join('');
+
+      // 3. Filter and Render Table
+      const filtered = data.filter(o => o.symbol.includes(selectedExpiry));
       const strikes = {};
       filtered.forEach(o => {
         const k = parseFloat(o.strike_price);
@@ -348,11 +380,16 @@ function updateOptionChain() {
           <td class="put-side" style="font-weight:700;">$${pp}</td><td class="put-side">${pvol}</td><td class="put-side">${piv}</td>
         </tr>`;
       });
-      document.getElementById('chainBody').innerHTML = html;
+      document.getElementById('chainBody').innerHTML = html || '<tr><td colspan="7" class="empty">No options found for this expiry.</td></tr>';
     })
     .catch(e => {
        document.getElementById('chainBody').innerHTML = '<tr><td colspan="7" class="empty">Error: ' + e + '</td></tr>';
     });
+}
+
+function changeExpiry(e) {
+  selectedExpiry = e;
+  updateOptionChain();
 }
 
 function showToast(msg, isErr) {
