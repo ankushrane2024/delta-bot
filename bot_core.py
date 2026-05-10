@@ -138,6 +138,12 @@ class DeltaIndiaClient:
         r = self.get('/v2/options/chain', {'underlying_asset_symbol': 'BTC'})
         return r.get('result', []) if r.get('success') else []
 
+    def set_leverage(self, product_id, leverage):
+        return self.post('/v2/orders/leverage', {'product_id': product_id, 'leverage': str(leverage)})
+
+    def set_margin_mode(self, product_id, mode='isolated'):
+        return self.post('/v2/orders/margin_mode', {'product_id': product_id, 'margin_mode': mode})
+
     def place_order(self, product_id, side, size, order_type='market_order', limit_price=None):
         data = {'product_id': product_id, 'side': side, 'size': size, 'order_type': order_type}
         if limit_price:
@@ -145,6 +151,8 @@ class DeltaIndiaClient:
         return self.post('/v2/orders', data)
 
     def get_history(self, symbol='BTCUSD', resolution='1h', hours=24):
+# ... existing get_history code ...
+
         """Fetch OHLCV candles — symbol must NOT include 'MARK:' prefix."""
         symbol = symbol.replace('MARK:', '')  # sanitize
         now   = int(time.time())
@@ -351,17 +359,32 @@ class DeltaOptionsBot:
 
 
     # ── Options chain helpers ─────────────────────────────────────────────────
-    def find_best_strike(self, options, option_type, target_premium):
-        valid    = [o for o in options if o.get('option_type') == option_type]
-        best_sym, best_prem, best_id = None, float('inf'), None
-        for opt in valid:
-            prem = float(opt.get('mark_price') or opt.get('theoretical_price') or 0)
-            if target_premium * 0.5 <= prem <= target_premium * 2.5:
-                if prem < best_prem:
-                    best_prem = prem
-                    best_sym  = opt.get('symbol')
-                    best_id   = opt.get('id')
-        return best_sym, best_prem if best_prem != float('inf') else target_premium, best_id
+    def find_best_strike(self, options, option_type, target_premium, target_date):
+        """
+        Finds the strike that has premium >= target_premium and is closest to it.
+        target_date format: 'YYYY-MM-DD'
+        """
+        valid = []
+        for o in options:
+            # Filter by type and date
+            if o.get('option_type') != option_type: continue
+            
+            # Delta expiry date is often in 'close_at' timestamp or 'symbol' like 'BTC-11MAY26-...'
+            # We'll use the 'symbol' or a date field if available. 
+            # For robustness, let's look at the symbol.
+            sym = o.get('symbol', '')
+            if target_date.upper() not in sym.upper(): continue
+            
+            prem = float(o.get('mark_price') or o.get('theoretical_price') or 0)
+            if prem >= target_premium:
+                valid.append((o, prem))
+        
+        if not valid: return None, target_premium, None
+        
+        # Sort by premium (ascending) to get the one closest to $100 but >= $100
+        valid.sort(key=lambda x: x[1])
+        best_opt, best_prem = valid[0]
+        return best_opt.get('symbol'), best_prem, best_opt.get('id')
 
     # ── Strategy execution ────────────────────────────────────────────────────
     def execute_strategy(self, mode='PAPER'):
@@ -373,64 +396,61 @@ class DeltaOptionsBot:
         self.log(mode, "=" * 45, "info")
 
         try:
-            # Sync time if LIVE
-            if mode == 'LIVE':
-                s['client'].sync_time()
+            # Calculate Target Expiry (Next Day)
+            # If today is 10 May, target is 11 May. 
+            # Trade is 08:00 AM IST, expiry is next day 05:30 PM IST.
+            now_dt = datetime.datetime.now()
+            target_dt = now_dt + datetime.timedelta(days=1)
+            target_date_str = target_dt.strftime('%d%b%y').upper() # e.g., '11MAY26'
+            self.log(mode, f"Target Expiry: {target_date_str}", "info")
 
-            # Ensure we have a BTC price
+            if mode == 'LIVE': s['client'].sync_time()
+
             if self.current_btc_price <= 0:
                 self.current_btc_price = self.india_client.get_btc_price()
             if self.current_btc_price <= 0:
                 self.log(mode, "❌ Cannot get BTC price. Aborting.", "error")
                 return
 
-            btc    = self.current_btc_price
-            atm    = round(btc / 100) * 100
-            call_k = atm + 3000
-            put_k  = atm - 3000
-
-            self.log(mode, f"BTC Spot: ${btc:,.0f} | ATM: ${atm:,.0f}", "info")
-            
+            btc = self.current_btc_price
             cfg = s['config']
-            target_prem = cfg.get('target_premium', 100)
+            target_prem = 100.0 # Strict $100 rule as per user request
 
-            # Try live options chain
-            options     = self.india_client.get_option_chain()
-            call_sym, call_prem, call_id = self.find_best_strike(options, 'call', target_prem)
-            put_sym,  put_prem,  put_id  = self.find_best_strike(options, 'put', target_prem)
+            # Get Options and find strikes
+            options = self.india_client.get_option_chain()
+            call_sym, call_prem, call_id = self.find_best_strike(options, 'call', target_prem, target_date_str)
+            put_sym,  put_prem,  put_id  = self.find_best_strike(options, 'put',  target_prem, target_date_str)
 
-            if not call_sym:
-                call_sym, call_prem, call_id = f'BTC-{int(call_k)}-C', target_prem, 0
-                put_sym,  put_prem,  put_id  = f'BTC-{int(put_k)}-P',  target_prem, 0
-                self.log(mode, "⚠ No live chain — using theoretical strikes.", "warn")
-            else:
-                self.log(mode, f"CALL: {call_sym} @ ${call_prem:.2f}", "success")
-                self.log(mode, f"PUT:  {put_sym}  @ ${put_prem:.2f}", "success")
+            if not call_sym or not put_sym:
+                self.log(mode, f"❌ Could not find strikes for {target_date_str} with premium >= ${target_prem}", "error")
+                return
+
+            self.log(mode, f"SELECTED CE: {call_sym} @ ${call_prem:.2f}", "success")
+            self.log(mode, f"SELECTED PE: {put_sym} @ ${put_prem:.2f}", "success")
 
             # ── PAPER ──
             if mode == 'PAPER':
                 bal  = s['balance']
                 pos  = s['positions']
-                c_sz = max(1, int((bal * cfg['allocation_pct'] * 200) / call_prem))
-                p_sz = max(1, int((bal * cfg['allocation_pct'] * 200) / put_prem))
+                # 200X leverage size calculation
+                c_sz = max(1, int((bal * cfg['allocation_pct'] * 200) / (call_prem + 1)))
+                p_sz = max(1, int((bal * cfg['allocation_pct'] * 200) / (put_prem + 1)))
 
                 pos['call'] = {
-                    'symbol': call_sym, 'strike': call_k, 'side': 'SELL CALL',
+                    'symbol': call_sym, 'strike': 0, 'side': 'SELL CALL',
                     'entry_price': call_prem, 'current_price': call_prem,
                     'size': c_sz, 'pnl': 0.0,
                     'sl': round(call_prem * cfg['call_sl_mult'], 2),
                     'tp': round(call_prem * cfg['call_tp_mult'], 2),
                 }
                 pos['put'] = {
-                    'symbol': put_sym, 'strike': put_k, 'side': 'SELL PUT',
+                    'symbol': put_sym, 'strike': 0, 'side': 'SELL PUT',
                     'entry_price': put_prem, 'current_price': put_prem,
                     'size': p_sz, 'pnl': 0.0,
                     'sl': round(put_prem * cfg['put_sl_mult'], 2),
                     'tp': round(put_prem * cfg['put_tp_mult'], 2),
                 }
-                self.log(mode, f"[PAPER] SOLD {c_sz}x {call_sym} @ ${call_prem:.2f}", "success")
-                self.log(mode, f"[PAPER] SOLD {p_sz}x {put_sym}  @ ${put_prem:.2f}", "success")
-                self.log(mode, "✅ PAPER EXECUTION COMPLETE. Tracking live PnL.", "success")
+                self.log(mode, f"✅ PAPER EXECUTION COMPLETE. x{c_sz} CE, x{p_sz} PE", "success")
                 return
 
             # ── LIVE ──
@@ -440,34 +460,29 @@ class DeltaOptionsBot:
                 if live_bal <= 0:
                     self.log(mode, "❌ Zero USDT balance. Cannot trade.", "error")
                     return
-                s['balance']          = live_bal
-                s['starting_balance'] = live_bal
-                self.log(mode, f"💰 Live Balance: ${live_bal:.2f} USDT", "info")
-
-                c_sz = max(1, int((live_bal * cfg['allocation_pct'] * 200) / call_prem))
-                p_sz = max(1, int((live_bal * cfg['allocation_pct'] * 200) / put_prem))
+                s['balance'] = live_bal
+                
+                # 200X leverage size calculation
+                c_sz = max(1, int((live_bal * cfg['allocation_pct'] * 200) / (call_prem + 1)))
+                p_sz = max(1, int((live_bal * cfg['allocation_pct'] * 200) / (put_prem + 1)))
                 pos  = s['positions']
 
-                for pid, sym, sz, prem, sl_m, tp_m, k, leg in [
-                    (call_id, call_sym, c_sz, call_prem, cfg['call_sl_mult'], cfg['call_tp_mult'], call_k, 'CALL'),
-                    (put_id,  put_sym,  p_sz, put_prem,  cfg['put_sl_mult'],  cfg['put_tp_mult'],  put_k,  'PUT'),
+                for pid, sym, sz, prem, sl_m, tp_m, leg in [
+                    (call_id, call_sym, c_sz, call_prem, cfg['call_sl_mult'], cfg['call_tp_mult'], 'CALL'),
+                    (put_id,  put_sym,  p_sz, put_prem,  cfg['put_sl_mult'],  cfg['put_tp_mult'],  'PUT'),
                 ]:
-                    if not pid:
-                        self.log(mode, f"⚠ Skipping {leg}: No ID found.", "warn")
-                        continue
+                    # 1. Set Isolated Mode & 200X Leverage
+                    self.log(mode, f"Setting Isolated 200X for {sym}...", "info")
+                    client.set_margin_mode(pid, 'isolated')
+                    client.set_leverage(pid, 200)
                     
+                    # 2. Place Order
                     self.log(mode, f"Placing {leg} order: {sym} x{sz}...", "info")
-                    res = client.post('/v2/orders', {
-                        'product_id': pid,
-                        'limit_price': str(prem),
-                        'size': str(sz),
-                        'side': 'sell',
-                        'order_type': 'limit_order'
-                    })
+                    res = client.place_order(pid, 'sell', sz, 'limit_order', prem)
                     
                     if res.get('success'):
                         pos[leg.lower()] = {
-                            'symbol': sym, 'strike': k, 'side': f'SELL {leg}',
+                            'symbol': sym, 'strike': 0, 'side': f'SELL {leg}',
                             'entry_price': prem, 'current_price': prem,
                             'size': sz, 'pnl': 0.0,
                             'sl': round(prem * sl_m, 2),
@@ -482,6 +497,8 @@ class DeltaOptionsBot:
 
         except Exception as e:
             self.log(mode, f"❌ Strategy error: {e}", "error")
-
+            import traceback
+            traceback.print_exc()
 
 bot_instance = DeltaOptionsBot()
+
