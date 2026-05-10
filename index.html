@@ -118,10 +118,13 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
           <div class="ir"><label>Take Profit %</label><input type="number" id="pTP" value="95"></div>
         </div>
       </div>
+      <button class="btn btn-live" id="btnConnect" onclick="connectAPI()" style="margin-top:10px; background:var(--blue); color:#fff;">🔗 Connect to Delta Exchange</button>
       <button class="btn btn-start" id="btnStart" onclick="startEngine()">▶ Start Strategy Engine</button>
       <button class="btn btn-stop"  id="btnStop"  onclick="stopEngine()">■ Stop Engine</button>
-      <button class="btn btn-exec"  id="btnExec"  onclick="executeNow()">⚡ Manual Trigger (Trade Now)</button>
-      <button class="btn btn-clear" id="btnClear" onclick="clearPos()">✕ Clear Positions</button>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-exec"  id="btnExec"  style="flex:1;" onclick="executeNow()">⚡ Trigger</button>
+        <button class="btn btn-clear" id="btnClear" style="flex:1;" onclick="clearPos()">✕ Clear</button>
+      </div>
       <div class="panel-header" style="margin-top:15px;border-top:1px solid var(--border);"><div class="panel-title">Market Pulse</div></div>
       <div class="pulse-grid">
         <div class="pulse-item"><div class="pulse-label">24h High</div><div class="pulse-value" id="pHigh">--</div></div>
