@@ -136,11 +136,19 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
         </div>
       </div>
 
+      <div class="panel-header" style="margin-top:15px; border-top:1px solid var(--border);"><div class="panel-title">Strategy Rules</div></div>
+      <div style="background:rgba(255,255,255,0.02); padding:10px; border-radius:4px; font-size:10px; color:var(--text2); line-height:1.6; margin-bottom:15px;">
+        • <b>STRIKE:</b> OTM Strangle (Spot ± 3000)<br>
+        • <b>PREMIUM:</b> Target ~$100 per leg<br>
+        • <b>RISK:</b> 2x Stop Loss | 95% Take Profit<br>
+        • <b>TIME:</b> Auto-entry at 08:00 AM IST
+      </div>
+
       <button class="btn btn-start" id="btnStart" onclick="startEngine()">▶ Start Strategy Engine</button>
       <button class="btn btn-stop"  id="btnStop"  onclick="stopEngine()">■ Stop Engine</button>
       
       <div style="display:flex; gap:6px;">
-        <button class="btn btn-exec"  id="btnExec"  style="flex:1;" onclick="executeNow()">⚡ Trigger</button>
+        <button class="btn btn-exec"  id="btnExec"  style="flex:1;" onclick="confirmTrade()">⚡ Trigger Trade</button>
         <button class="btn btn-clear" id="btnClear" style="flex:1;" onclick="clearPos()">✕ Clear</button>
       </div>
       <div class="panel-header" style="margin-top:15px;border-top:1px solid var(--border);"><div class="panel-title">Market Pulse</div></div>
@@ -359,6 +367,13 @@ function stopEngine() {
     .catch(e => showToast('Error: ' + e, true));
 }
 
+function confirmTrade() {
+  const msg = `⚠ CONFIRM MANUAL TRADE\n\nMode: ${currentMode}\nStrategy: OTM Short Strangle\n\nThis will immediately place orders on Delta Exchange if ${currentMode} is active. Proceed?`;
+  if (confirm(msg)) {
+    executeNow();
+  }
+}
+
 function executeNow() {
   const btn = document.getElementById('btnExec');
   btn.disabled = true; btn.textContent = 'EXECUTING...';
@@ -368,8 +383,14 @@ function executeNow() {
     body: JSON.stringify({ mode: currentMode })
   })
     .then(r => r.json())
-    .then(d => { btn.disabled = false; btn.textContent = '⚡ Trigger'; showToast(d.message, d.status === 'error'); })
-    .catch(e => { btn.disabled = false; btn.textContent = '⚡ Trigger'; showToast('Error: ' + e, true); });
+    .then(d => { 
+      btn.disabled = false; btn.textContent = '⚡ Trigger Trade'; 
+      showToast(d.message, d.status === 'error'); 
+    })
+    .catch(e => { 
+      btn.disabled = false; btn.textContent = '⚡ Trigger Trade'; 
+      showToast('Error: ' + e, true); 
+    });
 }
 
 function clearPos() {
