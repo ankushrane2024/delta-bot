@@ -138,12 +138,16 @@ class DeltaIndiaClient:
         # Delta India often works better with tickers endpoint for full chain data
         params = {
             'contract_types': 'call_options,put_options',
+            'underlying_asset_id': '13', # BTC
             'underlying_asset_symbol': 'BTC'
         }
         r = self.get('/v2/tickers', params)
         if r.get('success'):
-            # Double filter to be sure
-            return [t for t in r.get('result', []) if t.get('underlying_asset_symbol') == 'BTC']
+            results = r.get('result', [])
+            # Robust filter: check underlying symbol or symbol prefix
+            return [t for t in results if 
+                    t.get('underlying_asset_symbol') in ['BTC', 'BTCUSD'] or 
+                    t.get('symbol', '').startswith(('C-BTC', 'P-BTC', 'BTC-'))]
         return []
 
     def set_leverage(self, product_id, leverage):
