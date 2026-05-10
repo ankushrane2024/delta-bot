@@ -225,6 +225,15 @@ function showToast(msg, isErr) {
 // ── API calls ─────────────────────────────────────────────────────────────────
 function startEngine() {
   const btn = document.getElementById('btnStart');
+  const key = document.getElementById('apiKey').value;
+  const sec = document.getElementById('apiSec').value;
+  
+  // Save keys to localStorage for convenience
+  if (currentMode === 'LIVE' && key && sec) {
+    localStorage.setItem('delta_api_key', key);
+    localStorage.setItem('delta_api_sec', sec);
+  }
+
   btn.disabled = true; btn.textContent = 'CONNECTING...';
   fetch('/api/start', {
     method: 'POST',
@@ -415,6 +424,15 @@ setInterval(() => {
 
 setInterval(updateDashboard, 3000);
 setInterval(updateCandles,   60000);
+
+// Load saved keys from localStorage
+window.addEventListener('DOMContentLoaded', () => {
+  const savedKey = localStorage.getItem('delta_api_key');
+  const savedSec = localStorage.getItem('delta_api_sec');
+  if (savedKey) document.getElementById('apiKey').value = savedKey;
+  if (savedSec) document.getElementById('apiSec').value = savedSec;
+});
+
 updateDashboard();
 updateCandles();
 </script>
