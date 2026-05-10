@@ -16,9 +16,16 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 20px
 .delta-logo{width:24px;height:24px;background:var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:center;color:#000;font-weight:900;font-size:14px;}
 .mode-toggle{display:flex;background:var(--bg);padding:3px;border-radius:6px;gap:4px;border:1px solid var(--border);}
 .m-btn{padding:4px 14px;border-radius:4px;border:none;cursor:pointer;font-size:11px;font-weight:600;color:var(--text2);background:transparent;transition:.2s;}
-.m-btn.active.paper{background:rgba(146,84,222,.15);color:var(--purple);}
-.m-btn.active.live{background:rgba(246,70,93,.15);color:var(--red);}
+.m-btn.active.chain{background:rgba(47,138,245,.15);color:var(--blue);}
 .main-grid{display:grid;grid-template-columns:280px minmax(0, 1fr) 300px;grid-template-rows:auto 1fr;gap:8px;padding:8px;flex:1;height:calc(100vh - 50px);overflow:hidden;}
+#chainView{display:none; flex:1; padding:8px; overflow-y:auto; height:calc(100vh - 50px);}
+.chain-table{width:100%; border-collapse:collapse; background:var(--surface); border-radius:6px; overflow:hidden;}
+.chain-table th{background:var(--surface2); color:var(--text2); font-size:10px; padding:10px; border:1px solid var(--border); text-align:center;}
+.chain-table td{padding:8px; border:1px solid var(--border); text-align:center; font-family:'JetBrains Mono'; font-size:11px;}
+.chain-table .strike-col{background:var(--bg); font-weight:700; color:var(--accent); width:100px;}
+.chain-table .call-side{color:var(--green);}
+.chain-table .put-side{color:var(--red);}
+.chain-table tr:hover{background:rgba(255,255,255,0.02);}
 .stats-bar{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;min-width:0;}
 .stat-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -71,6 +78,9 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
     <button class="m-btn live" id="btnLive" onclick="setMode('LIVE')">
       LIVE <span id="dotLive" style="display:none;width:6px;height:6px;background:var(--red);border-radius:50%;margin-left:5px;box-shadow:0 0 5px var(--red);"></span>
     </button>
+    <button class="m-btn chain" id="btnChain" onclick="setMode('CHAIN')">
+      CHAIN
+    </button>
   </div>
   <div style="display:flex;align-items:center;gap:15px;">
     <div class="stat-value" id="navBtc" style="color:var(--accent);font-size:13px;">BTC $---</div>
@@ -79,7 +89,35 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
   </div>
 </nav>
 
-<div class="main-grid">
+<div id="chainView">
+  <div class="panel" style="height:100%;">
+    <div class="panel-header">
+      <div class="panel-title">BTC Options Chain (Next Daily Expiry)</div>
+      <div style="font-size:10px; color:var(--text2);">All prices in USDT | Live Data</div>
+    </div>
+    <div class="panel-body" style="padding:0;">
+      <table class="chain-table">
+        <thead>
+          <tr>
+            <th colspan="3">CALLS</th>
+            <th class="strike-col">STRIKE</th>
+            <th colspan="3">PUTS</th>
+          </tr>
+          <tr>
+            <th>IV</th><th>Vol</th><th>Premium</th>
+            <th class="strike-col">Price</th>
+            <th>Premium</th><th>Vol</th><th>IV</th>
+          </tr>
+        </thead>
+        <tbody id="chainBody">
+          <tr><td colspan="7" class="empty">Loading market data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="main-grid" id="mainDashboard">
   <!-- STATS BAR -->
   <div class="stats-bar">
     <div class="stat-card"><span class="stat-label">Total Balance</span><span class="stat-value" id="valBal">$10,000.00</span></div>
@@ -234,24 +272,87 @@ function setMode(m) {
   currentMode = m;
   document.getElementById('btnPaper').className = 'm-btn' + (m==='PAPER' ? ' active paper' : '');
   document.getElementById('btnLive').className  = 'm-btn' + (m==='LIVE'  ? ' active live'  : '');
-  const al = document.getElementById('modeAlert');
-  al.style.background = m==='PAPER' ? 'rgba(146,84,222,.1)' : 'rgba(246,70,93,.1)';
-  al.style.color      = m==='PAPER' ? 'var(--purple)' : 'var(--red)';
-  al.textContent      = m==='PAPER' ? 'PAPER MODE — Simulated trading with live data.' : '⚠ LIVE MODE — Real funds at risk!';
-  
-  // Show/Hide API inputs based on mode
-  const isPaper = m === 'PAPER';
-  document.getElementById('apiKey').closest('.ir').style.display = isPaper ? 'none' : 'block';
-  document.getElementById('apiSec').closest('.ir').style.display = isPaper ? 'none' : 'block';
-  document.getElementById('btnConnect').style.display = isPaper ? 'none' : 'block';
-  document.getElementById('saveKeysCheck').style.display = isPaper ? 'none' : 'flex';
-  
-  if (!isPaper) updateKeySelect();
-  else document.getElementById('savedAccountsContainer').style.display = 'none';
+  document.getElementById('btnChain').className = 'm-btn' + (m==='CHAIN' ? ' active chain' : '');
 
-  lastLogCount = 0;
-  document.getElementById('term').innerHTML = '<div style="color:var(--text2);">[System] Switched to ' + m + ' mode...</div>';
-  updateDashboard();
+  const dashboard = document.getElementById('mainDashboard');
+  const chainView = document.getElementById('chainView');
+
+  if (m === 'CHAIN') {
+    dashboard.style.display = 'none';
+    chainView.style.display = 'flex';
+    updateOptionChain();
+  } else {
+    dashboard.style.display = 'grid';
+    chainView.style.display = 'none';
+    
+    const al = document.getElementById('modeAlert');
+    al.style.background = m==='PAPER' ? 'rgba(146,84,222,.1)' : 'rgba(246,70,93,.1)';
+    al.style.color      = m==='PAPER' ? 'var(--purple)' : 'var(--red)';
+    al.textContent      = m==='PAPER' ? 'PAPER MODE — Simulated trading with live data.' : '⚠ LIVE MODE — Real funds at risk!';
+    
+    const isPaper = m === 'PAPER';
+    document.getElementById('apiKey').closest('.ir').style.display = isPaper ? 'none' : 'block';
+    document.getElementById('apiSec').closest('.ir').style.display = isPaper ? 'none' : 'block';
+    document.getElementById('btnConnect').style.display = isPaper ? 'none' : 'block';
+    document.getElementById('saveKeysCheck').style.display = isPaper ? 'none' : 'flex';
+    
+    if (!isPaper) updateKeySelect();
+    else document.getElementById('savedAccountsContainer').style.display = 'none';
+
+    lastLogCount = 0;
+    document.getElementById('term').innerHTML = '<div style="color:var(--text2);">[System] Switched to ' + m + ' mode...</div>';
+    updateDashboard();
+  }
+}
+
+function updateOptionChain() {
+  if (currentMode !== 'CHAIN') return;
+  
+  // Calculate target next day expiry string like '11MAY26'
+  const now = new Date();
+  now.setDate(now.getDate() + 1);
+  const targetDate = now.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }).replace(/ /g, '').toUpperCase();
+
+  fetch('/api/chain')
+    .then(r => r.json())
+    .then(data => {
+      const filtered = data.filter(o => o.symbol.includes(targetDate));
+      if (filtered.length === 0) {
+        document.getElementById('chainBody').innerHTML = '<tr><td colspan="7" class="empty">No options found for ' + targetDate + '</td></tr>';
+        return;
+      }
+      
+      // Group by strike
+      const strikes = {};
+      filtered.forEach(o => {
+        const k = parseFloat(o.strike_price);
+        if (!strikes[k]) strikes[k] = { c: null, p: null };
+        if (o.option_type === 'call') strikes[k].c = o;
+        else strikes[k].p = o;
+      });
+      
+      const sortedKeys = Object.keys(strikes).sort((a,b) => parseFloat(a)-parseFloat(b));
+      let html = '';
+      sortedKeys.forEach(k => {
+        const s = strikes[k];
+        const cp = s.c ? parseFloat(s.c.mark_price || 0).toFixed(1) : '--';
+        const pp = s.p ? parseFloat(s.p.mark_price || 0).toFixed(1) : '--';
+        const civ = s.c ? parseFloat(s.c.mark_iv || 0).toFixed(1) + '%' : '--';
+        const piv = s.p ? parseFloat(s.p.mark_iv || 0).toFixed(1) + '%' : '--';
+        const cvol = s.c ? Math.round(s.c.volume || 0) : '--';
+        const pvol = s.p ? Math.round(s.p.volume || 0) : '--';
+
+        html += `<tr>
+          <td class="call-side">${civ}</td><td class="call-side">${cvol}</td><td class="call-side" style="font-weight:700;">$${cp}</td>
+          <td class="strike-col">$${k}</td>
+          <td class="put-side" style="font-weight:700;">$${pp}</td><td class="put-side">${pvol}</td><td class="put-side">${piv}</td>
+        </tr>`;
+      });
+      document.getElementById('chainBody').innerHTML = html;
+    })
+    .catch(e => {
+       document.getElementById('chainBody').innerHTML = '<tr><td colspan="7" class="empty">Error: ' + e + '</td></tr>';
+    });
 }
 
 function showToast(msg, isErr) {
@@ -539,6 +640,7 @@ setInterval(() => {
 
 setInterval(updateDashboard, 3000);
 setInterval(updateCandles,   60000);
+setInterval(updateOptionChain, 10000);
 
 // Load saved keys from localStorage
 window.addEventListener('DOMContentLoaded', () => {

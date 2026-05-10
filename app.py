@@ -65,6 +65,10 @@ def get_state():
     mode = request.args.get('mode', 'PAPER').upper()
     return jsonify(bot_instance.get_state(mode))
 
+@app.route('/api/chain')
+def get_chain():
+    return jsonify(bot_instance.india_client.get_option_chain())
+
 @app.route('/api/history')
 def get_history():
     # Strip MARK: prefix — Delta India candles don't accept it
