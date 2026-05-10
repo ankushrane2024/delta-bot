@@ -7,6 +7,14 @@ import hashlib
 import json
 import schedule
 import requests as _requests
+import logging
+
+# Configure logging for 24/7 monitor
+logging.basicConfig(
+    filename='bot_system.log',
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
 
 DELTA_INDIA_BASE = "https://api.india.delta.exchange"
 ENTRY_TIME_UTC = "02:30"   # 08:00 AM IST
@@ -151,20 +159,32 @@ class DeltaIndiaClient:
                             'BTC' in t.get('symbol', '').split('-')]
                 
                 if not filtered and res:
-                    # Fallback: if we got results but none matched BTC, maybe they are in a different field
                     filtered = [t for t in res if 'BTC' in t.get('symbol', '')]
+                
+                # Normalize results
+                for t in filtered:
+                    if 'contract_type' in t:
+                        if 'call' in t['contract_type']: t['option_type'] = 'call'
+                        elif 'put' in t['contract_type']: t['option_type'] = 'put'
+                    if 'mark_vol' in t and t.get('mark_iv') is None:
+                        t['mark_iv'] = t['mark_vol']
                 
                 print(f"[CHAIN] Fetched {len(res)} tickers, filtered to {len(filtered)} BTC options")
                 return filtered
         except Exception as e:
             print(f"[CHAIN] Fetch failed: {e}")
         
-        # Emergency Fallback: try /v2/products if tickers failed
+        # Emergency Fallback
         try:
             r2 = _requests.get(f"{DELTA_INDIA_BASE}/v2/products", params={'contract_types': 'call_options,put_options'}, timeout=15).json()
             if r2.get('success'):
                 res2 = r2.get('result', [])
-                return [t for t in res2 if 'BTC' in t.get('symbol', '')]
+                filtered2 = [t for t in res2 if 'BTC' in t.get('symbol', '')]
+                for t in filtered2:
+                    if 'contract_type' in t:
+                        if 'call' in t['contract_type']: t['option_type'] = 'call'
+                        elif 'put' in t['contract_type']: t['option_type'] = 'put'
+                return filtered2
         except: pass
         
         return []
@@ -211,6 +231,13 @@ class DeltaOptionsBot:
         self.cached_stats       = {}
         self.last_chain_update  = 0
         self.last_iv_pcr        = {'avg_iv': 0.0, 'pcr': 0.0}
+        
+        # Persistence files
+        self.creds_file = "credentials.json"
+        self.state_file = "bot_state.json"
+        self.reconnect_delay = 5 # Initial retry delay in seconds
+        self.is_connected = False
+        self.last_heartbeat = 0
 
         # Per-mode state
         self.state = {
@@ -232,8 +259,18 @@ class DeltaOptionsBot:
         }
 
         self.india_client = DeltaIndiaClient() # Public client for stats
+        
+        # Add SYSTEM log mode
+        self.state['SYSTEM'] = {'logs': []}
+        
+        # Load saved data
+        self._load_creds()
+        self._load_state()
+        
+        # Start background threads
         threading.Thread(target=self._market_data_loop, daemon=True).start()
         threading.Thread(target=self._scheduler_loop, daemon=True).start()
+        threading.Thread(target=self._connection_monitor_loop, daemon=True).start()
 
     # ── Logging ───────────────────────────────────────────────────────────────
     def log(self, mode, message, mtype="info"):
@@ -250,7 +287,57 @@ class DeltaOptionsBot:
             logs.pop(0)
 
     def get_logs(self, mode):
+        if mode == 'CHAIN': return self.state['SYSTEM']['logs'] # Reuse system logs for chain tab if needed
         return self.state.get(mode, self.state['PAPER'])['logs']
+
+    # ── Persistence ───────────────────────────────────────────────────────────
+    def _load_creds(self):
+        if os.path.exists(self.creds_file):
+            try:
+                with open(self.creds_file, 'r') as f:
+                    creds = json.load(f)
+                    if creds.get('api_key') and creds.get('api_secret'):
+                        self.state['LIVE']['client'] = DeltaIndiaClient(creds['api_key'], creds['api_secret'])
+                        self.log('SYSTEM', "🔑 Credentials loaded from storage.")
+            except Exception as e:
+                self.log('SYSTEM', f"⚠️ Failed to load credentials: {e}", "error")
+
+    def _save_creds(self, api_key, api_secret):
+        try:
+            with open(self.creds_file, 'w') as f:
+                json.dump({'api_key': api_key, 'api_secret': api_secret}, f)
+        except Exception as e:
+            self.log('SYSTEM', f"⚠️ Failed to save credentials: {e}", "error")
+
+    def _load_state(self):
+        if os.path.exists(self.state_file):
+            try:
+                with open(self.state_file, 'r') as f:
+                    data = json.load(f)
+                    for mode in ['PAPER', 'LIVE']:
+                        if mode in data:
+                            self.state[mode]['running'] = data[mode].get('running', False)
+                            self.state[mode]['config']  = data[mode].get('config', {})
+                            self.state[mode]['positions'] = data[mode].get('positions', {'call': None, 'put': None})
+                            self.state[mode]['balance'] = data[mode].get('balance', 10000.0)
+                    self.log('SYSTEM', "💾 Previous bot state restored.")
+            except Exception as e:
+                self.log('SYSTEM', f"⚠️ Failed to load state: {e}", "error")
+
+    def _save_state(self):
+        try:
+            data = {}
+            for mode in ['PAPER', 'LIVE']:
+                data[mode] = {
+                    'running':   self.state[mode]['running'],
+                    'config':    self.state[mode]['config'],
+                    'positions': self.state[mode]['positions'],
+                    'balance':   self.state[mode]['balance']
+                }
+            with open(self.state_file, 'w') as f:
+                json.dump(data, f)
+        except Exception as e:
+            logging.error(f"Failed to save state: {e}")
 
     # ── State ─────────────────────────────────────────────────────────────────
     def get_state(self, mode):
@@ -284,10 +371,15 @@ class DeltaOptionsBot:
 
     # ── Start / Stop ──────────────────────────────────────────────────────────
     def test_live_connection(self, api_key, api_secret):
+        if not api_key or not api_secret:
+            return False, "API Key and Secret required."
         client = DeltaIndiaClient(api_key.strip(), api_secret.strip())
         ok, info = client.test_connection()
         if ok:
             self.state['LIVE']['client'] = client
+            self.is_connected = True
+            self._save_creds(api_key.strip(), api_secret.strip())
+            self.log('SYSTEM', "✅ API Connection manually verified and saved.")
             return True, "✅ Connection Successful!"
         return False, f"❌ Connection Failed: {info}"
 
@@ -308,6 +400,7 @@ class DeltaOptionsBot:
             'put_tp_mult':    1.0 - float(config.get('put_take_profit', 95)) / 100.0,
             'put_tp_on':      bool(config.get('put_take_profit_on', True)),
         }
+        self._save_state()
 
         if mode == 'LIVE':
             key = config.get('api_key', '').strip()
@@ -329,6 +422,7 @@ class DeltaOptionsBot:
         if mode in self.state:
             self.state[mode]['running'] = False
             self.log(mode, "🛑 ENGINE STOPPED.", "error")
+            self._save_state()
 
     def trigger_execution(self, mode):
         self.log(mode, "⚡ MANUAL EXECUTION TRIGGERED...", "info")
@@ -338,6 +432,7 @@ class DeltaOptionsBot:
         if mode in self.state:
             self.state[mode]['positions'] = {'call': None, 'put': None}
             self.log(mode, "Positions cleared.", "warn")
+            self._save_state()
 
     # ── Loops ─────────────────────────────────────────────────────────────────
     def _scheduler_loop(self):
@@ -346,6 +441,38 @@ class DeltaOptionsBot:
         while True:
             schedule.run_pending()
             time.sleep(1)
+
+    def _connection_monitor_loop(self):
+        """24/7 Monitor to keep API connection alive and handle auto-reconnect."""
+        self.log('SYSTEM', "🚀 24/7 Connection Monitor Active.")
+        while True:
+            try:
+                client = self.state['LIVE'].get('client')
+                if client and client.api_key:
+                    # Heartbeat check
+                    ok, info = client.test_connection()
+                    if ok:
+                        if not self.is_connected:
+                            self.log('SYSTEM', "📡 Connection RESTORED.", "success")
+                        self.is_connected = True
+                        self.last_heartbeat = time.time()
+                        self.reconnect_delay = 5 # Reset backoff
+                    else:
+                        self.is_connected = False
+                        self.log('SYSTEM', f"⚡ Connection DROPPED: {info}. Retrying in {self.reconnect_delay}s...", "error")
+                        # Exponential backoff
+                        time.sleep(self.reconnect_delay)
+                        self.reconnect_delay = min(self.reconnect_delay * 2, 300) # Max 5 mins
+                        
+                        # Re-sync time and retry
+                        client.sync_time()
+                else:
+                    # No credentials yet
+                    self.is_connected = False
+            except Exception as e:
+                logging.error(f"Monitor loop error: {e}")
+            
+            time.sleep(60) # Standard heartbeat interval
 
     def _market_data_loop(self):
         while True:
@@ -424,11 +551,19 @@ class DeltaOptionsBot:
             # Filter by type and date
             if o.get('option_type') != option_type: continue
             
-            # Delta expiry date is often in 'close_at' timestamp or 'symbol' like 'BTC-11MAY26-...'
-            # We'll use the 'symbol' or a date field if available. 
-            # For robustness, let's look at the symbol.
-            sym = o.get('symbol', '')
-            if target_date.upper() not in sym.upper(): continue
+            # Robust date check: handles both 11MAY26 and 110526
+            sym = o.get('symbol', '').upper()
+            found_date = False
+            if isinstance(target_date, list):
+                for d in target_date:
+                    if d.upper() in sym:
+                        found_date = True
+                        break
+            else:
+                if target_date.upper() in sym:
+                    found_date = True
+            
+            if not found_date: continue
             
             prem = float(o.get('mark_price') or o.get('theoretical_price') or 0)
             if prem >= target_premium:
@@ -456,8 +591,12 @@ class DeltaOptionsBot:
             # Trade is 08:00 AM IST, expiry is next day 05:30 PM IST.
             now_dt = datetime.datetime.now()
             target_dt = now_dt + datetime.timedelta(days=1)
-            target_date_str = target_dt.strftime('%d%b%y').upper() # e.g., '11MAY26'
-            self.log(mode, f"Target Expiry: {target_date_str}", "info")
+            # Try both formats: 11MAY26 and 110526
+            target_date_old = target_dt.strftime('%d%b%y').upper()
+            target_date_new = target_dt.strftime('%d%m%y')
+            target_dates = [target_date_old, target_date_new]
+            
+            self.log(mode, f"Target Expiry: {target_date_old} / {target_date_new}", "info")
 
             if mode == 'LIVE': s['client'].sync_time()
 
@@ -473,8 +612,8 @@ class DeltaOptionsBot:
 
             # Get Options and find strikes
             options = self.india_client.get_option_chain()
-            call_sym, call_prem, call_id = self.find_best_strike(options, 'call', target_prem, target_date_str)
-            put_sym,  put_prem,  put_id  = self.find_best_strike(options, 'put',  target_prem, target_date_str)
+            call_sym, call_prem, call_id = self.find_best_strike(options, 'call', target_prem, target_dates)
+            put_sym,  put_prem,  put_id  = self.find_best_strike(options, 'put',  target_prem, target_dates)
 
             if not call_sym or not put_sym:
                 self.log(mode, f"❌ Could not find strikes for {target_date_str} with premium >= ${target_prem}", "error")

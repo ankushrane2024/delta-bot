@@ -50,6 +50,8 @@ def get_status():
         'running':      s['running'],
         'running_mode': mode if s['running'] else None,
         'logs':         bot_instance.get_logs(mode),
+        'is_connected': bot_instance.is_connected,
+        'last_heartbeat': bot_instance.last_heartbeat,
         'has_paper_pos': bool(paper_pos['call'] or paper_pos['put']),
         'has_live_pos':  bool(live_pos['call'] or live_pos['put'])
     })

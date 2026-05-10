@@ -8,9 +8,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
-:root{--bg:#0b0e11;--surface:#151a21;--surface2:#1e232b;--border:#2b3139;--text:#eaecef;--text2:#848e9c;--accent:#fcd535;--green:#0ecb81;--red:#f6465d;--blue:#2f8af5;--purple:#9254de;}
+:root{--bg:#0b0e11;--surface:#151a21;--surface2:#1e232b;--border:#2b3139;--text:#eaecef;--text2:#848e9c;--accent:#fcd535;--green:#0ecb81;--red:#f6465d;--blue:#2f8af5;--purple:#9254de;--itm-bg:#1a1d23;--atm-line:#ff9d00;}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:Inter,sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+body{font-family:Inter,sans-serif;background:var(--bg);color:var(--text);font-size:12px;min-height:100vh;display:flex;flex-direction:column;overflow:hidden;}
 nav{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:50px;background:var(--surface);border-bottom:1px solid var(--border);}
 .nav-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--accent);}
 .delta-logo{width:24px;height:24px;background:var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:center;color:#000;font-weight:900;font-size:14px;}
@@ -20,17 +20,37 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 20px
 .m-btn.active.live{background:rgba(246,70,93,.15);color:var(--red);}
 .m-btn.active.chain{background:rgba(47,138,245,.15);color:var(--blue);}
 .main-grid{display:grid;grid-template-columns:280px minmax(0, 1fr) 300px;grid-template-rows:auto 1fr;gap:8px;padding:8px;flex:1;height:calc(100vh - 50px);overflow:hidden;}
-#chainView{display:none; flex:1; padding:8px; overflow-y:auto; height:calc(100vh - 50px);}
-.chain-table{width:100%; border-collapse:collapse; background:var(--surface); border-radius:6px; overflow:hidden;}
-.chain-table th{background:var(--surface2); color:var(--text2); font-size:10px; padding:10px; border:1px solid var(--border); text-align:center;}
-.chain-table td{padding:8px; border:1px solid var(--border); text-align:center; font-family:'JetBrains Mono'; font-size:11px;}
-.chain-table .strike-col{background:var(--bg); font-weight:700; color:var(--accent); width:100px;}
-.chain-table .call-side{color:var(--green);}
-.chain-table .put-side{color:var(--red);}
-.chain-table tr:hover{background:rgba(255,255,255,0.02);}
-.expiry-tab{padding:4px 10px; border-radius:4px; cursor:pointer; font-size:10px; font-weight:600; color:var(--text2); background:var(--bg); border:1px solid var(--border); white-space:nowrap; transition: 0.2s;}
-.expiry-tab:hover{border-color:var(--text2);}
-.expiry-tab.active{background:var(--accent); color:#000; border-color:var(--accent);}
+
+#chainView{display:none; flex:1; flex-direction:column; background:var(--bg); height:calc(100vh - 50px); overflow: hidden;}
+.chain-header-info{display:flex; align-items:center; justify-content:space-between; padding:8px 20px; background:var(--bg); border-bottom:1px solid var(--border);}
+.chain-info-item{display:flex; align-items:center; gap:12px;}
+.chain-info-label{color:var(--text2); font-size:10px; text-transform:uppercase; letter-spacing:0.8px;}
+.chain-info-value{font-family:'JetBrains Mono'; font-size:13px; font-weight:700; color:var(--green);}
+.chain-info-expiry{color:#ff9d00; font-family:'JetBrains Mono'; font-size:13px; font-weight:700;}
+
+.chain-table-container{flex:1; overflow:auto; position:relative; background:var(--surface);}
+.chain-table{width:100%; border-collapse:collapse; table-layout: fixed;}
+.chain-table thead{position: sticky; top:0; z-index:100; background:var(--surface2);}
+.chain-table th{color:var(--text2); font-size:10px; padding:10px 4px; border:1px solid var(--border); text-align:center; font-weight:600; text-transform:uppercase;}
+.chain-table td{padding:4px; border:1px solid var(--border); text-align:center; font-family:'JetBrains Mono'; font-size:11px; height: 36px; vertical-align: middle;}
+
+.strike-col{background:var(--bg); font-weight:800; color:var(--text); width:80px; position: sticky; left: 50%; transform: translateX(-50%); z-index: 50; border-left: 2px solid var(--border) !important; border-right: 2px solid var(--border) !important;}
+.price-cell{display:flex; flex-direction:column; gap:1px; line-height:1.1; align-items: center; justify-content: center;}
+.iv-small{font-size:9px; color:var(--text2); font-weight:400;}
+.qty-cell{color:var(--text2); font-size:10px;}
+.bid-price{color:var(--green); font-weight:600;}
+.ask-price{color:var(--red); font-weight:600;}
+
+.itm-bg{background:#1a1d23 !important;}
+.itm-call{background:#1a1d23 !important;}
+.itm-put{background:#1a1d23 !important;}
+.atm-row td{border-top: 1px solid var(--atm-line) !important; border-bottom: 1px solid var(--atm-line) !important;}
+.atm-row .strike-col{border-top: 1px solid var(--atm-line) !important; border-bottom: 1px solid var(--atm-line) !important;}
+
+.expiry-tabs-container{display:flex; align-items:center; gap:4px; padding:6px 12px; background:var(--bg); border-bottom:1px solid var(--border); overflow-x:auto; scrollbar-width:none;}
+.expiry-tab{padding:5px 12px; border-radius:3px; cursor:pointer; font-size:10px; font-weight:700; color:var(--text2); background:var(--surface2); border:1px solid transparent; white-space:nowrap; transition: 0.1s; text-transform: uppercase;}
+.expiry-tab.active{background:rgba(255, 157, 0, 0.1); color:#ff9d00; border-color:#ff9d00;}
+.expiry-tab:hover{background:var(--surface);}
 .stats-bar{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;min-width:0;}
 .stat-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -42,9 +62,9 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 20px
 .panel-body{padding:12px;overflow-y:auto;overflow-x:hidden;flex:1;}
 .ir{margin-bottom:8px;}
 .ir label{display:block;font-size:9px;color:var(--text2);margin-bottom:3px;text-transform:uppercase;}
-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text);font-family:'JetBrains Mono';font-size:12px;}
-input:focus{outline:none;border-color:var(--accent);}
-input:disabled{opacity:.4;cursor:not-allowed;}
+input, select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text);font-family:'JetBrains Mono';font-size:12px; transition: 0.2s;}
+input:focus, select:focus{outline:none;border-color:var(--accent);}
+input:disabled, select:disabled{opacity:.4;cursor:not-allowed;}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .btn{width:100%;padding:8px;border-radius:4px;border:none;font-weight:600;cursor:pointer;transition:.2s;font-size:11px;text-transform:uppercase;margin-bottom:6px;}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
@@ -95,33 +115,53 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
 </nav>
 
 <div id="chainView">
-  <div class="panel" style="height:100%;">
-    <div class="panel-header">
-      <div class="panel-title">BTC Options Chain</div>
-      <div id="expiryTabs" style="display:flex; gap:10px; overflow-x:auto; padding:4px 0; scrollbar-width:none;">
-        <span style="color:var(--text2); font-size:10px;">Fetching expiries...</span>
-      </div>
-      <div style="font-size:10px; color:var(--text2);">USDT | Live</div>
+  <div class="expiry-tabs-container" id="expiryTabs">
+    <span style="color:var(--text2); font-size:11px;">Fetching expiries...</span>
+  </div>
+  
+  <div class="chain-header-info">
+    <div class="chain-info-item">
+      <span class="chain-info-label" style="font-weight:700; color:var(--text);">Calls</span>
     </div>
-    <div class="panel-body" style="padding:0;">
-      <table class="chain-table">
-        <thead>
-          <tr>
-            <th colspan="3">CALLS</th>
-            <th class="strike-col">STRIKE</th>
-            <th colspan="3">PUTS</th>
-          </tr>
-          <tr>
-            <th>IV</th><th>Vol</th><th>Premium</th>
-            <th class="strike-col">Price</th>
-            <th>Premium</th><th>Vol</th><th>IV</th>
-          </tr>
-        </thead>
-        <tbody id="chainBody">
-          <tr><td colspan="7" class="empty">Loading market data...</td></tr>
-        </tbody>
-      </table>
+    <div class="chain-info-item">
+      <span class="chain-info-label">BTC</span>
+      <span class="chain-info-value" id="chainBtcPrice">---</span>
     </div>
+    <div class="chain-info-item">
+      <span class="chain-info-label">Time to Expiry</span>
+      <span class="chain-info-expiry" id="chainExpiryTime">--:--:--</span>
+    </div>
+    <div class="chain-info-item">
+      <span class="chain-info-label" style="font-weight:700; color:var(--text);">Puts</span>
+    </div>
+  </div>
+
+  <div class="chain-table-container">
+    <table class="chain-table">
+      <thead>
+        <tr>
+          <th style="width:60px;">Delta</th>
+          <th style="width:70px;">Bid Qty</th>
+          <th style="width:90px;">Bid</th>
+          <th style="width:90px;">Mark</th>
+          <th style="width:90px;">Ask</th>
+          <th style="width:70px;">Ask Qty</th>
+          <th style="width:70px;">OI</th>
+          <th class="strike-col">Strike</th>
+          <th style="width:70px;">OI</th>
+          <th style="width:70px;">Bid Qty</th>
+          <th style="width:90px;">Bid</th>
+          <th style="width:90px;">Mark</th>
+          <th style="width:90px;">Ask</th>
+          <th style="width:70px;">Ask Qty</th>
+          <th style="width:60px;">Delta</th>
+          <th style="width:60px;">Vo</th>
+        </tr>
+      </thead>
+      <tbody id="chainBody">
+        <tr><td colspan="16" class="empty">Loading options data...</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
@@ -144,7 +184,7 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
       </div>
       <div class="ir" id="savedAccountsContainer" style="display:none;">
         <label>Saved Accounts</label>
-        <select id="keySelect" onchange="loadSelectedKey()" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:6px; color:var(--text); font-size:12px; margin-bottom:8px;">
+        <select id="keySelect" onchange="loadSelectedKey()">
           <option value="">-- Select Saved Account --</option>
         </select>
       </div>
@@ -390,8 +430,12 @@ function setMode(m) {
     document.getElementById('btnConnect').style.display = isPaper ? 'none' : 'block';
     document.getElementById('saveKeysCheck').style.display = isPaper ? 'none' : 'flex';
     
-    if (!isPaper) updateKeySelect();
-    else document.getElementById('savedAccountsContainer').style.display = 'none';
+    if (!isPaper) {
+        document.getElementById('savedAccountsContainer').style.display = 'block';
+        updateKeySelect();
+    } else {
+        document.getElementById('savedAccountsContainer').style.display = 'none';
+    }
 
     lastLogCount = 0;
     document.getElementById('term').innerHTML = '<div style="color:var(--text2);">[System] Switched to ' + m + ' mode...</div>';
@@ -407,25 +451,32 @@ function updateOptionChain() {
   fetch('/api/chain')
     .then(r => r.json())
     .then(data => {
-      // 1. Extract unique expiries (e.g., '12MAY26') from symbols
+      // 1. Extract unique expiries
       const expiries = new Set();
       data.forEach(o => {
-        // Delta symbols: BTC-STRIKE-TYPE-DATE or BTC-DATE-STRIKE-TYPE
-        // They often use BTC-12MAY26-STRIKE-TYPE
         const parts = o.symbol.split('-');
         if (parts.length >= 2) {
-           // Look for the part that matches date pattern (e.g., 12MAY26)
-           const datePart = parts.find(p => /^\d{1,2}[A-Z]{3}\d{2}$/.test(p));
-           if (datePart) expiries.add(datePart);
+           let dp = parts.find(p => /^\d{1,2}[A-Z]{3}\d{2}$/.test(p));
+           if (!dp && parts.length >= 4 && /^\d{6}$/.test(parts[parts.length-1])) {
+              dp = parts[parts.length-1];
+           }
+           if (dp) expiries.add(dp);
         }
       });
       
       const sortedExpiries = Array.from(expiries).sort((a,b) => {
         const parseDate = (s) => {
-          const d = parseInt(s.substring(0,2));
-          const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"].indexOf(s.substring(2,5));
-          const y = parseInt("20" + s.substring(5,7));
-          return new Date(y, m, d);
+          if (/^\d{6}$/.test(s)) {
+            const d = parseInt(s.substring(0,2));
+            const m = parseInt(s.substring(2,4)) - 1;
+            const y = parseInt("20" + s.substring(4,6));
+            return new Date(y, m, d);
+          } else {
+            const d = parseInt(s.substring(0,2));
+            const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"].indexOf(s.substring(2,5).toUpperCase());
+            const y = parseInt("20" + s.substring(5,7));
+            return new Date(y, m, d);
+          }
         };
         return parseDate(a) - parseDate(b);
       });
@@ -441,6 +492,36 @@ function updateOptionChain() {
         </div>
       `).join('');
 
+      // Update BTC Price in header
+      const btcPrice = lastBtcPrice || 0;
+      document.getElementById('chainBtcPrice').textContent = '$' + btcPrice.toLocaleString();
+
+      // Update Time to Expiry
+      const parseExpDate = (s) => {
+        if (/^\d{6}$/.test(s)) {
+          const d = parseInt(s.substring(0,2));
+          const m = parseInt(s.substring(2,4)) - 1;
+          const y = parseInt("20" + s.substring(4,6));
+          return new Date(y, m, d, 17, 30, 0); // 5:30 PM IST
+        } else {
+          const d = parseInt(s.substring(0,2));
+          const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"].indexOf(s.substring(2,5).toUpperCase());
+          const y = parseInt("20" + s.substring(5,7));
+          return new Date(y, m, d, 17, 30, 0);
+        }
+      };
+      const expDate = parseExpDate(selectedExpiry);
+      const now = new Date(Date.now() + 5.5 * 3600000); // IST
+      const diff = expDate - now;
+      if (diff > 0) {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        document.getElementById('chainExpiryTime').textContent = `${days}d:${hours}h:${mins}m`;
+      } else {
+        document.getElementById('chainExpiryTime').textContent = 'EXPIRED';
+      }
+
       // 3. Filter and Render Table
       const filtered = data.filter(o => o.symbol.includes(selectedExpiry));
       const strikes = {};
@@ -452,32 +533,75 @@ function updateOptionChain() {
       });
       
       const sortedKeys = Object.keys(strikes).sort((a,b) => parseFloat(a)-parseFloat(b));
+      
+      // Find ATM strike (closest to current BTC price)
+      let atmStrike = sortedKeys[0];
+      let minDiff = Math.abs(parseFloat(atmStrike) - btcPrice);
+      sortedKeys.forEach(k => {
+        const d = Math.abs(parseFloat(k) - btcPrice);
+        if (d < minDiff) { minDiff = d; atmStrike = k; }
+      });
+
       let html = '';
       sortedKeys.forEach(k => {
         const s = strikes[k];
-        const cp = s.c ? parseFloat(s.c.mark_price || 0).toFixed(1) : '--';
-        const pp = s.p ? parseFloat(s.p.mark_price || 0).toFixed(1) : '--';
+        const strikeNum = parseFloat(k);
+        const isAtm = k === atmStrike;
         
-        const civVal = s.c ? (s.c.mark_iv || (s.c.quotes ? s.c.quotes.mark_iv : 0)) : 0;
-        const pivVal = s.p ? (s.p.mark_iv || (s.p.quotes ? s.p.quotes.mark_iv : 0)) : 0;
-        
-        const civ = civVal ? (parseFloat(civVal) * 100).toFixed(1) + '%' : '--';
-        const piv = pivVal ? (parseFloat(pivVal) * 100).toFixed(1) + '%' : '--';
-        
-        const cvol = s.c ? Math.round(s.c.volume || 0) : '--';
-        const pvol = s.p ? Math.round(s.p.volume || 0) : '--';
+        // ITM Highlight
+        const callItm = strikeNum < btcPrice ? 'itm-call' : '';
+        const putItm = strikeNum > btcPrice ? 'itm-put' : '';
 
+        // Helper to format quote cells
+        const getQuote = (opt) => {
+          if (!opt) return { b: '--', bs: '--', m: '--', a: '--', as: '--', iv: '--', d: '--', v: '--', oi: '--' };
+          const q = opt.quotes || {};
+          const g = opt.greeks || {};
+          const ivVal = opt.mark_iv || opt.mark_vol || q.mark_iv || 0;
+          return {
+            b: q.best_bid ? parseFloat(q.best_bid).toFixed(1) : '--',
+            bs: q.bid_size ? parseFloat(q.bid_size).toFixed(1) : '--',
+            m: opt.mark_price ? parseFloat(opt.mark_price).toFixed(1) : '--',
+            a: q.best_ask ? parseFloat(q.best_ask).toFixed(1) : '--',
+            as: q.ask_size ? parseFloat(q.ask_size).toFixed(1) : '--',
+            iv: (parseFloat(ivVal) * 100).toFixed(1) + '%',
+            d: g.delta ? parseFloat(g.delta).toFixed(2) : '--',
+            v: opt.volume ? parseFloat(opt.volume).toFixed(1) : '--',
+            oi: opt.oi_contracts ? (opt.oi_contracts >= 1000 ? (opt.oi_contracts/1000).toFixed(1) + 'k' : opt.oi_contracts) : '--'
+          };
+        };
 
-        html += `<tr>
-          <td class="call-side">${civ}</td><td class="call-side">${cvol}</td><td class="call-side" style="font-weight:700;">$${cp}</td>
-          <td class="strike-col">$${k}</td>
-          <td class="put-side" style="font-weight:700;">$${pp}</td><td class="put-side">${pvol}</td><td class="put-side">${piv}</td>
+        const cq = getQuote(s.c);
+        const pq = getQuote(s.p);
+
+        html += `<tr class="${isAtm ? 'atm-row' : ''}">
+          <!-- CALLS -->
+          <td class="${callItm}">${cq.d}</td>
+          <td class="${callItm} qty-cell">${cq.bs}</td>
+          <td class="${callItm} price-cell"><span class="bid-price">${cq.b}</span><span class="iv-small">${cq.iv}</span></td>
+          <td class="${callItm} price-cell" style="background:rgba(255,255,255,0.02);"><span>${cq.m}</span><span class="iv-small">${cq.iv}</span></td>
+          <td class="${callItm} price-cell"><span class="ask-price">${cq.a}</span><span class="iv-small">${cq.iv}</span></td>
+          <td class="${callItm} qty-cell">${cq.as}</td>
+          <td class="${callItm}">${cq.oi}</td>
+          
+          <!-- STRIKE -->
+          <td class="strike-col">${strikeNum}</td>
+          
+          <!-- PUTS -->
+          <td class="${putItm}">${pq.oi}</td>
+          <td class="${putItm} qty-cell">${pq.bs}</td>
+          <td class="${putItm} price-cell"><span class="bid-price">${pq.b}</span><span class="iv-small">${pq.iv}</span></td>
+          <td class="${putItm} price-cell" style="background:rgba(255,255,255,0.02);"><span>${pq.m}</span><span class="iv-small">${pq.iv}</span></td>
+          <td class="${putItm} price-cell"><span class="ask-price">${pq.a}</span><span class="iv-small">${pq.iv}</span></td>
+          <td class="${putItm} qty-cell">${pq.as}</td>
+          <td class="${putItm}">${pq.d}</td>
+          <td class="${putItm}">${pq.v}</td>
         </tr>`;
       });
-      document.getElementById('chainBody').innerHTML = html || '<tr><td colspan="7" class="empty">No options found for this expiry.</td></tr>';
+      document.getElementById('chainBody').innerHTML = html || '<tr><td colspan="16" class="empty">No options found for this expiry.</td></tr>';
     })
     .catch(e => {
-       document.getElementById('chainBody').innerHTML = '<tr><td colspan="7" class="empty">Error: ' + e + '</td></tr>';
+       document.getElementById('chainBody').innerHTML = '<tr><td colspan="16" class="empty">Error fetching data: ' + e + '</td></tr>';
     });
 }
 
@@ -495,20 +619,27 @@ function showToast(msg, isErr) {
 
 // ── API Key Management ────────────────────────────────────────────────────────
 function saveCurrentKey() {
-  const key = document.getElementById('apiKey').value;
-  const sec = document.getElementById('apiSec').value;
-  if (!key || !sec) return;
-
+  const k = document.getElementById('apiKey').value;
+  const s = document.getElementById('apiSec').value;
+  if (!k || !s) return;
+  
   let accounts = JSON.parse(localStorage.getItem('delta_accounts') || '[]');
-  if (!accounts.find(a => a.key === key)) {
-    accounts.push({ key, sec, name: 'Account ' + (accounts.length + 1) + ' (' + key.substring(0,6) + '...)' });
-    localStorage.setItem('delta_accounts', JSON.stringify(accounts));
-    updateKeySelect();
+  const id = k.substring(0, 8) + '...';
+  const existingIdx = accounts.findIndex(a => a.key === k);
+  
+  if (existingIdx >= 0) {
+    accounts[existingIdx] = { name: `Account ${existingIdx + 1} (${id})`, key: k, sec: s };
+  } else {
+    accounts.push({ name: `Account ${accounts.length + 1} (${id})`, key: k, sec: s });
   }
+  
+  localStorage.setItem('delta_accounts', JSON.stringify(accounts));
+  updateKeySelect();
 }
 
 function updateKeySelect() {
   const sel = document.getElementById('keySelect');
+  if (!sel) return;
   const accounts = JSON.parse(localStorage.getItem('delta_accounts') || '[]');
   sel.innerHTML = '<option value="">-- Select Saved Account --</option>';
   accounts.forEach((a, i) => {
@@ -517,7 +648,6 @@ function updateKeySelect() {
     opt.textContent = a.name;
     sel.appendChild(opt);
   });
-  document.getElementById('savedAccountsContainer').style.display = accounts.length ? 'block' : 'none';
 }
 
 function loadSelectedKey() {
@@ -643,6 +773,19 @@ function updateDashboard() {
   fetch('/api/status?mode=' + currentMode)
     .then(r => r.json())
     .then(d => {
+      // Sync Connection Button State
+      const btnC = document.getElementById('btnConnect');
+      if (btnC) {
+        if (d.is_connected) {
+          btnC.style.background = 'var(--green)';
+          btnC.textContent = '✅ CONNECTED TO DELTA';
+          btnC.disabled = false;
+        } else {
+          btnC.style.background = 'var(--blue)';
+          btnC.textContent = '🔗 Connect to Delta Exchange';
+        }
+      }
+
       const badge = document.getElementById('statusBadge');
       const isRunningGlobal = d.running;
       const runningMode = d.running_mode;
@@ -786,6 +929,7 @@ setInterval(updateOptionChain, 10000);
 
 // Load saved keys from localStorage
 window.addEventListener('DOMContentLoaded', () => {
+  setMode(currentMode);
   const savedKey = localStorage.getItem('delta_api_key');
   const savedSec = localStorage.getItem('delta_api_sec');
   if (savedKey) document.getElementById('apiKey').value = savedKey;
