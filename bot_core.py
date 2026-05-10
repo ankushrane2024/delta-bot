@@ -135,8 +135,16 @@ class DeltaIndiaClient:
             return 0.0
 
     def get_option_chain(self):
-        r = self.get('/v2/options/chain', {'underlying_asset_symbol': 'BTC'})
-        return r.get('result', []) if r.get('success') else []
+        # Delta India often works better with tickers endpoint for full chain data
+        params = {
+            'contract_types': 'call_options,put_options',
+            'underlying_asset_symbol': 'BTC'
+        }
+        r = self.get('/v2/tickers', params)
+        if r.get('success'):
+            # Double filter to be sure
+            return [t for t in r.get('result', []) if t.get('underlying_asset_symbol') == 'BTC']
+        return []
 
     def set_leverage(self, product_id, leverage):
         return self.post('/v2/orders/leverage', {'product_id': product_id, 'leverage': str(leverage)})

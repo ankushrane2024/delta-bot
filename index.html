@@ -360,7 +360,7 @@ function updateOptionChain() {
       filtered.forEach(o => {
         const k = parseFloat(o.strike_price);
         if (!strikes[k]) strikes[k] = { c: null, p: null };
-        if (o.option_type === 'call') strikes[k].c = o;
+        if (o.contract_type.includes('call')) strikes[k].c = o;
         else strikes[k].p = o;
       });
       
@@ -370,10 +370,16 @@ function updateOptionChain() {
         const s = strikes[k];
         const cp = s.c ? parseFloat(s.c.mark_price || 0).toFixed(1) : '--';
         const pp = s.p ? parseFloat(s.p.mark_price || 0).toFixed(1) : '--';
-        const civ = s.c ? parseFloat(s.c.mark_iv || 0).toFixed(1) + '%' : '--';
-        const piv = s.p ? parseFloat(s.p.mark_iv || 0).toFixed(1) + '%' : '--';
+        
+        const civVal = s.c ? (s.c.mark_iv || (s.c.quotes ? s.c.quotes.mark_iv : 0)) : 0;
+        const pivVal = s.p ? (s.p.mark_iv || (s.p.quotes ? s.p.quotes.mark_iv : 0)) : 0;
+        
+        const civ = civVal ? (parseFloat(civVal) * 100).toFixed(1) + '%' : '--';
+        const piv = pivVal ? (parseFloat(pivVal) * 100).toFixed(1) + '%' : '--';
+        
         const cvol = s.c ? Math.round(s.c.volume || 0) : '--';
         const pvol = s.p ? Math.round(s.p.volume || 0) : '--';
+
 
         html += `<tr>
           <td class="call-side">${civ}</td><td class="call-side">${cvol}</td><td class="call-side" style="font-weight:700;">$${cp}</td>
