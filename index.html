@@ -167,17 +167,47 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
         <div class="ir"><label>Alloc Per Leg %</label><input type="number" id="allocPct" value="50"></div>
       </div>
       <div style="margin:10px 0;">
-        <div style="font-size:9px;color:var(--green);font-weight:800;margin-bottom:5px;">CALL LEG (CE)</div>
+        <div style="font-size:9px;color:var(--green);font-weight:800;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;">
+          CALL LEG (CE)
+          <span style="font-size:8px;color:var(--text2);font-weight:400;">Enable SL/TP</span>
+        </div>
         <div class="r2">
-          <div class="ir"><label>Stop Loss %</label><input type="number" id="cSL" value="100"></div>
-          <div class="ir"><label>Take Profit %</label><input type="number" id="cTP" value="95"></div>
+          <div class="ir">
+            <label style="display:flex;justify-content:space-between;align-items:center;">
+              Stop Loss %
+              <input type="checkbox" id="cSL_on" checked style="width:12px;height:12px;cursor:pointer;" onchange="document.getElementById('cSL').disabled=!this.checked">
+            </label>
+            <input type="number" id="cSL" value="100">
+          </div>
+          <div class="ir">
+            <label style="display:flex;justify-content:space-between;align-items:center;">
+              Take Profit %
+              <input type="checkbox" id="cTP_on" checked style="width:12px;height:12px;cursor:pointer;" onchange="document.getElementById('cTP').disabled=!this.checked">
+            </label>
+            <input type="number" id="cTP" value="95">
+          </div>
         </div>
       </div>
       <div style="margin:10px 0;">
-        <div style="font-size:9px;color:var(--red);font-weight:800;margin-bottom:5px;">PUT LEG (PE)</div>
+        <div style="font-size:9px;color:var(--red);font-weight:800;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;">
+          PUT LEG (PE)
+          <span style="font-size:8px;color:var(--text2);font-weight:400;">Enable SL/TP</span>
+        </div>
         <div class="r2">
-          <div class="ir"><label>Stop Loss %</label><input type="number" id="pSL" value="100"></div>
-          <div class="ir"><label>Take Profit %</label><input type="number" id="pTP" value="95"></div>
+          <div class="ir">
+            <label style="display:flex;justify-content:space-between;align-items:center;">
+              Stop Loss %
+              <input type="checkbox" id="pSL_on" checked style="width:12px;height:12px;cursor:pointer;" onchange="document.getElementById('pSL').disabled=!this.checked">
+            </label>
+            <input type="number" id="pSL" value="100">
+          </div>
+          <div class="ir">
+            <label style="display:flex;justify-content:space-between;align-items:center;">
+              Take Profit %
+              <input type="checkbox" id="pTP_on" checked style="width:12px;height:12px;cursor:pointer;" onchange="document.getElementById('pTP').disabled=!this.checked">
+            </label>
+            <input type="number" id="pTP" value="95">
+          </div>
         </div>
       </div>
 
@@ -224,8 +254,8 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
     <div class="panel-header"><div class="panel-title">Active Positions</div></div>
     <div style="max-height:200px;overflow-y:auto;">
       <table>
-        <thead><tr><th>Symbol</th><th>Entry</th><th>Curr</th><th>PnL $</th></tr></thead>
-        <tbody id="posBody"><tr><td colspan="4" class="empty">No positions</td></tr></tbody>
+        <thead><tr><th>Symbol</th><th>Entry</th><th>Curr</th><th>PnL $</th><th>SL</th><th>TP</th></tr></thead>
+        <tbody id="posBody"><tr><td colspan="6" class="empty">No positions</td></tr></tbody>
       </table>
     </div>
     <div class="panel-header" style="border-top:1px solid var(--border);"><div class="panel-title">System Logs</div></div>
@@ -490,9 +520,13 @@ function startEngine() {
       target_premium:   +document.getElementById('tPrem').value,
       allocation_pct:   +document.getElementById('allocPct').value,
       call_stop_loss:   +document.getElementById('cSL').value,
+      call_stop_loss_on: document.getElementById('cSL_on').checked,
       call_take_profit: +document.getElementById('cTP').value,
+      call_take_profit_on: document.getElementById('cTP_on').checked,
       put_stop_loss:    +document.getElementById('pSL').value,
+      put_stop_loss_on:  document.getElementById('pSL_on').checked,
       put_take_profit:  +document.getElementById('pTP').value,
+      put_take_profit_on: document.getElementById('pTP_on').checked,
     })
   })
   .then(r => r.json())
@@ -622,7 +656,7 @@ function updateDashboard() {
 
       const tb = document.getElementById('posBody');
       if (!s.call && !s.put) {
-        tb.innerHTML = '<tr><td colspan="4" class="empty">No active positions</td></tr>';
+        tb.innerHTML = '<tr><td colspan="6" class="empty">No active positions</td></tr>';
         payoffChart.data.labels = [];
         payoffChart.data.datasets[0].data = [];
         payoffChart.data.datasets[1].data = [];
@@ -632,7 +666,16 @@ function updateDashboard() {
         [s.call, s.put].forEach(p => {
           if (!p) return;
           const c = p.pnl >= 0 ? 'var(--green)' : 'var(--red)';
-          rows += `<tr><td>${p.symbol}</td><td>$${(p.entry_price||0).toFixed(1)}</td><td>$${(p.current_price||0).toFixed(1)}</td><td style="color:${c}">${p.pnl>=0?'+':''}${(p.pnl||0).toFixed(2)}</td></tr>`;
+          const slDisp = p.sl_on ? `$${p.sl}` : '<span style="color:var(--text2);">OFF</span>';
+          const tpDisp = p.tp_on ? `$${p.tp}` : '<span style="color:var(--text2);">OFF</span>';
+          rows += `<tr>
+            <td>${p.symbol}</td>
+            <td>$${(p.entry_price||0).toFixed(1)}</td>
+            <td>$${(p.current_price||0).toFixed(1)}</td>
+            <td style="color:${c}">${p.pnl>=0?'+':''}${(p.pnl||0).toFixed(2)}</td>
+            <td>${slDisp}</td>
+            <td>${tpDisp}</td>
+          </tr>`;
         });
         tb.innerHTML = rows;
         if (s.call && s.put && btc > 0) {

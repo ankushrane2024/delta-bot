@@ -300,9 +300,13 @@ class DeltaOptionsBot:
             'target_premium': float(config.get('target_premium', 100)),
             'allocation_pct': float(config.get('allocation_pct', 50)) / 100.0,
             'call_sl_mult':   1.0 + float(config.get('call_stop_loss', 100)) / 100.0,
+            'call_sl_on':     bool(config.get('call_stop_loss_on', True)),
             'call_tp_mult':   1.0 - float(config.get('call_take_profit', 95)) / 100.0,
+            'call_tp_on':     bool(config.get('call_take_profit_on', True)),
             'put_sl_mult':    1.0 + float(config.get('put_stop_loss', 100)) / 100.0,
+            'put_sl_on':      bool(config.get('put_stop_loss_on', True)),
             'put_tp_mult':    1.0 - float(config.get('put_take_profit', 95)) / 100.0,
+            'put_tp_on':      bool(config.get('put_take_profit_on', True)),
         }
 
         if mode == 'LIVE':
@@ -374,16 +378,36 @@ class DeltaOptionsBot:
                         self.last_iv_pcr = {'pcr': round(put_oi/call_oi, 2) if call_oi > 0 else 0.0, 'avg_iv': round(sum(ivs)/len(ivs), 2) if ivs else 0.0}
                     self.last_chain_update = now_ts
 
-                # 3. Simulate Paper PnL
+                # 3. Simulate Paper PnL & Enforce SL/TP
                 if self.state['PAPER']['running'] and self.current_btc_price > 0:
-                    pos = self.state['PAPER']['positions']
+                    s   = self.state['PAPER']
+                    cfg = s['config']
+                    pos = s['positions']
                     for leg in ['call', 'put']:
                         if pos[leg]:
                             p = pos[leg]
+                            # Simple simulation: price decays based on distance from strike (implied)
+                            # In a real bot we'd fetch the actual option mark price.
                             dist = abs(self.current_btc_price - p['strike'])
                             sim  = max(0.5, p['entry_price'] - dist * 0.01)
                             p['current_price'] = round(sim, 2)
                             p['pnl'] = round((p['entry_price'] - p['current_price']) * p['size'], 2)
+
+                            # Enforce SL/TP
+                            is_call = (leg == 'call')
+                            sl_on = cfg.get('call_sl_on') if is_call else cfg.get('put_sl_on')
+                            tp_on = cfg.get('call_tp_on') if is_call else cfg.get('put_tp_on')
+                            
+                            # Close logic
+                            reason = None
+                            if sl_on and p['current_price'] >= p['sl']: reason = "STOP LOSS"
+                            if tp_on and p['current_price'] <= p['tp']: reason = "TAKE PROFIT"
+                            
+                            if reason:
+                                self.log('PAPER', f"📢 PAPER: {reason} HIT for {leg.upper()} ({p['symbol']})", "warn")
+                                s['balance'] += p['pnl']
+                                pos[leg] = None
+                                self.log('PAPER', f"✅ Position Closed. New Balance: ${s['balance']:.2f}", "success")
             except Exception as e:
                 print(f"[MARKET_LOOP ERROR] {e}")
             time.sleep(5)
@@ -472,14 +496,18 @@ class DeltaOptionsBot:
                     'entry_price': call_prem, 'current_price': call_prem,
                     'size': c_sz, 'pnl': 0.0,
                     'sl': round(call_prem * cfg['call_sl_mult'], 2),
+                    'sl_on': cfg['call_sl_on'],
                     'tp': round(call_prem * cfg['call_tp_mult'], 2),
+                    'tp_on': cfg['call_tp_on'],
                 }
                 pos['put'] = {
                     'symbol': put_sym, 'strike': 0, 'side': 'SELL PUT',
                     'entry_price': put_prem, 'current_price': put_prem,
                     'size': p_sz, 'pnl': 0.0,
                     'sl': round(put_prem * cfg['put_sl_mult'], 2),
+                    'sl_on': cfg['put_sl_on'],
                     'tp': round(put_prem * cfg['put_tp_mult'], 2),
+                    'tp_on': cfg['put_tp_on'],
                 }
                 self.log(mode, f"✅ PAPER EXECUTION COMPLETE. x{c_sz} CE, x{p_sz} PE", "success")
                 return
@@ -498,9 +526,9 @@ class DeltaOptionsBot:
                 p_sz = max(1, int((live_bal * cfg['allocation_pct'] * 200) / (put_prem + 1)))
                 pos  = s['positions']
 
-                for pid, sym, sz, prem, sl_m, tp_m, leg in [
-                    (call_id, call_sym, c_sz, call_prem, cfg['call_sl_mult'], cfg['call_tp_mult'], 'CALL'),
-                    (put_id,  put_sym,  p_sz, put_prem,  cfg['put_sl_mult'],  cfg['put_tp_mult'],  'PUT'),
+                for pid, sym, sz, prem, sl_m, tp_m, sl_on, tp_on, leg in [
+                    (call_id, call_sym, c_sz, call_prem, cfg['call_sl_mult'], cfg['call_tp_mult'], cfg['call_sl_on'], cfg['call_tp_on'], 'CALL'),
+                    (put_id,  put_sym,  p_sz, put_prem,  cfg['put_sl_mult'],  cfg['put_tp_mult'],  cfg['put_sl_on'],  cfg['put_tp_on'],  'PUT'),
                 ]:
                     # 1. Set Isolated Mode & 200X Leverage
                     self.log(mode, f"Setting Isolated 200X for {sym}...", "info")
@@ -517,7 +545,9 @@ class DeltaOptionsBot:
                             'entry_price': prem, 'current_price': prem,
                             'size': sz, 'pnl': 0.0,
                             'sl': round(prem * sl_m, 2),
+                            'sl_on': sl_on,
                             'tp': round(prem * tp_m, 2),
+                            'tp_on': tp_on,
                         }
                         self.log(mode, f"✅ {leg} Filled: {sym}", "success")
                     else:
