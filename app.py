@@ -64,7 +64,9 @@ def get_status():
         'is_connected': bot_instance.is_connected,
         'last_heartbeat': bot_instance.last_heartbeat,
         'has_paper_pos': bool(paper_pos['call'] or paper_pos['put']),
-        'has_live_pos':  bool(live_pos['call'] or live_pos['put'])
+        'has_live_pos':  bool(live_pos['call'] or live_pos['put']),
+        'paper_positions': paper_pos,
+        'live_positions':  live_pos
     })
 
 @app.route('/api/connect', methods=['POST'])

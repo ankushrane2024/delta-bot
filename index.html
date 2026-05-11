@@ -655,7 +655,6 @@ function updateDashboard() {
       const btnS  = document.getElementById('btnStart');
       const btnSt = document.getElementById('btnStop');
       const btnE  = document.getElementById('btnExec');
-      const btnCl = document.getElementById('btnClear');
       
       if (d.running) {
         if(btnS) btnS.style.display  = 'none';
@@ -665,18 +664,7 @@ function updateDashboard() {
         if(btnSt) btnSt.style.display = 'none';
       }
       
-      // Always show manual trigger
       if(btnE) btnE.style.display = 'block';
-      
-      // Clear Trades visibility (Always check has_pos flags)
-      const hasPos = currentMode === 'PAPER' ? d.has_paper_pos : d.has_live_pos;
-      if(btnCl) {
-         btnCl.style.display = hasPos ? 'block' : 'none';
-         if (!hasPos) {
-           btnCl.textContent = '✕ Clear Trades';
-           btnCl.dataset.confirm = '0';
-         }
-      }
 
       if (btnC) {
         if (d.is_connected) {
@@ -759,6 +747,18 @@ function updateDashboard() {
       const pnlEl = document.getElementById('valPnl');
       pnlEl.textContent = (pnl>=0?'+':'') + '$' + Math.abs(pnl).toFixed(2);
       pnlEl.style.color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+      
+      // Clear Trades Visibility
+      const btnCl = document.getElementById('btnClear');
+      const hasPos = (s.call || s.put);
+      if (btnCl) {
+        btnCl.style.display = hasPos ? 'block' : 'none';
+        if (!hasPos) {
+          btnCl.textContent = '✕ Clear Trades';
+          btnCl.dataset.confirm = '0';
+        }
+      }
+
       document.getElementById('valVol').textContent  = Math.round((s.market_stats||{}).volume||0).toLocaleString();
       document.getElementById('valNext').textContent = s.next_trade_in || '--h --m';
       document.getElementById('pHigh').textContent   = '$' + Math.round((s.market_stats||{}).high||0).toLocaleString();
