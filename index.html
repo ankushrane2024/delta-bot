@@ -277,7 +277,7 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
       <div class="panel-header">
         <div class="panel-title">Active Positions</div>
         <div style="display:flex; align-items:center; gap:10px;">
-           <button id="btnClear" onclick="clearPos()" style="display:none; padding:3px 10px; margin:0; width:auto; background:rgba(255,59,48,0.1); color:var(--red); border:1px solid rgba(255,59,48,0.2); font-size:9px; font-weight:700; border-radius:3px; cursor:pointer; text-transform:uppercase;">✕ Clear Trades</button>
+           <button id="btnClear" onclick="clearPos()" style="display:block; padding:3px 10px; margin:0; width:auto; background:rgba(255,59,48,0.1); color:var(--red); border:1px solid rgba(255,59,48,0.2); font-size:9px; font-weight:700; border-radius:3px; cursor:pointer; text-transform:uppercase;">✕ Clear Trades</button>
            <div id="istClock" style="color:var(--text2); font-family:'JetBrains Mono'; font-size:11px;">--:--:-- IST</div>
         </div>
       </div>
@@ -750,13 +750,8 @@ function updateDashboard() {
       
       // Clear Trades Visibility
       const btnCl = document.getElementById('btnClear');
-      const hasPos = (s.call || s.put);
       if (btnCl) {
-        btnCl.style.display = hasPos ? 'block' : 'none';
-        if (!hasPos) {
-          btnCl.textContent = '✕ Clear Trades';
-          btnCl.dataset.confirm = '0';
-        }
+        btnCl.style.display = 'block'; // Always visible as per user request
       }
 
       document.getElementById('valVol').textContent  = Math.round((s.market_stats||{}).volume||0).toLocaleString();
