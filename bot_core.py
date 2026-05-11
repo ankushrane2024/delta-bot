@@ -492,11 +492,33 @@ class DeltaOptionsBot:
 
     # ── Loops ─────────────────────────────────────────────────────────────────
     def _scheduler_loop(self):
-        schedule.every().day.at(ENTRY_TIME_UTC).do(self.execute_strategy, mode='PAPER')
-        schedule.every().day.at(ENTRY_TIME_UTC).do(self.execute_strategy, mode='LIVE')
+        self.log('SYSTEM', "📅 Scheduler loop active. Monitoring for 08:00 AM IST...")
+        last_triggered_date = ""
+        
         while True:
-            schedule.run_pending()
-            time.sleep(1)
+            try:
+                # Calculate current IST time (UTC + 5:30)
+                now_utc = datetime.datetime.utcnow()
+                now_ist = now_utc + datetime.timedelta(hours=5, minutes=30)
+                today_str = now_ist.strftime('%Y-%m-%d')
+                
+                # Check if it's 08:00 AM IST
+                # We trigger between 08:00:00 and 08:00:59
+                if now_ist.hour == 8 and now_ist.minute == 0 and today_str != last_triggered_date:
+                    self.log('SYSTEM', f"⏰ 08:00 AM IST Reached. Triggering daily strategy...")
+                    
+                    for mode in ['PAPER', 'LIVE']:
+                        if self.state[mode]['running']:
+                            self.log(mode, "🚀 Starting scheduled execution.", "info")
+                            threading.Thread(target=self.execute_strategy, args=(mode,), daemon=True).start()
+                    
+                    last_triggered_date = today_str
+                    time.sleep(65) # Avoid multiple triggers in the same minute
+                
+                time.sleep(30)
+            except Exception as e:
+                logging.error(f"Scheduler loop error: {e}")
+                time.sleep(60)
 
     def _connection_monitor_loop(self):
         """24/7 Monitor to keep API connection alive and handle auto-reconnect."""
@@ -611,22 +633,32 @@ class DeltaOptionsBot:
                 expiries.add(parts[3])
         return sorted(list(expiries))
 
-    def find_best_strike(self, options, option_type, target_premium, target_dates):
+    def find_best_strike(self, mode, options, option_type, target_premium, target_dates):
         valid = []
+        possible_matches = 0
         for o in options:
-            if o.get('option_type') != option_type: continue
+            # Check contract type
+            ctype = o.get('contract_type', '').lower()
+            if option_type == 'call' and 'call' not in ctype: continue
+            if option_type == 'put' and 'put' not in ctype: continue
             
+            # Check date match
             sym = o.get('symbol', '').upper()
             found_date = any(d.upper() in sym for d in target_dates)
             if not found_date: continue
             
+            possible_matches += 1
+            
+            # Get premium
             prem = float(o.get('mark_price') or o.get('theoretical_price') or 
                          (o.get('quotes', {}).get('best_bid') if o.get('quotes') else 0) or 0)
             
             if prem >= target_premium:
                 valid.append((o, prem))
         
-        if not valid: return None, target_premium, None, 0
+        if not valid: 
+            self.log(mode, f"⚠️ No {option_type} found with premium >= ${target_premium} (Matches found: {possible_matches})", "warn")
+            return None, target_premium, None, 0
         
         valid.sort(key=lambda x: x[1])
         best_opt, best_prem = valid[0]
@@ -659,28 +691,13 @@ class DeltaOptionsBot:
                 self.log(mode, "❌ Could not fetch option chain. Aborting.", "error")
                 return
 
-            all_expiries = self.get_valid_expiries(options)
-            self.log(mode, f"Available Expiries: {all_expiries}", "info")
-
-            now_dt = datetime.datetime.now()
-            target_dt = now_dt + datetime.timedelta(days=1)
+            # Calculate target expiry (Next Day IST)
+            now_utc = datetime.datetime.utcnow()
+            now_ist = now_utc + datetime.timedelta(hours=5, minutes=30)
+            target_dt = now_ist + datetime.timedelta(days=1)
             target_dates = [target_dt.strftime('%d%m%y'), target_dt.strftime('%d%b%y').upper()]
             
-            # Select target expiry
-            selected_exp = None
-            for exp in all_expiries:
-                if any(td in exp for td in target_dates):
-                    selected_exp = [exp]
-                    break
-            
-            if not selected_exp and all_expiries:
-                selected_exp = [all_expiries[0]]
-            
-            if not selected_exp:
-                self.log(mode, "❌ No valid expiries found. Aborting.", "error")
-                return
-
-            self.log(mode, f"Target Expiry Selected: {selected_exp}", "info")
+            self.log(mode, f"Looking for next-day expiry: {target_dates}", "info")
 
             if mode == 'LIVE': s['client'].sync_time()
             if self.current_btc_price <= 0:
@@ -690,8 +707,8 @@ class DeltaOptionsBot:
             cfg = s['config']
             target_prem = cfg.get('target_premium', 100.0)
 
-            call_sym, call_prem, call_id, call_strike = self.find_best_strike(options, 'call', target_prem, selected_exp)
-            put_sym,  put_prem,  put_id,  put_strike  = self.find_best_strike(options, 'put',  target_prem, selected_exp)
+            call_sym, call_prem, call_id, call_strike = self.find_best_strike(mode, options, 'call', target_prem, target_dates)
+            put_sym,  put_prem,  put_id,  put_strike  = self.find_best_strike(mode, options, 'put',  target_prem, target_dates)
 
             if not call_sym or not put_sym:
                 self.log(mode, f"❌ Could not find strikes with premium >= ${target_prem}", "error")
