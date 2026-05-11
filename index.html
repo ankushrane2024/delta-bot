@@ -6,7 +6,6 @@
 <title>BTC Daily Option By Ankush Rane</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 :root{--bg:#0b0e11;--surface:#151a21;--surface2:#1e232b;--border:#2b3139;--text:#eaecef;--text2:#848e9c;--accent:#fcd535;--green:#0ecb81;--red:#f6465d;--blue:#2f8af5;--purple:#9254de;--itm-bg:#1a1d23;--atm-line:#ff9d00;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -93,6 +92,50 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
 .toast.err{background:var(--red);color:#fff;}
 .pulse { animation: pulse-red 2s infinite; }
 @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+/* Mobile Responsiveness */
+@media (max-width: 1000px) {
+  body { overflow-y: auto; }
+  nav { height: auto; min-height: 50px; flex-direction: column; padding: 10px; gap: 10px; }
+  .nav-brand { font-size: 14px; }
+  .mode-toggle { width: 100%; justify-content: center; }
+  
+  .main-grid { 
+    grid-template-columns: 1fr; 
+    grid-template-rows: auto; 
+    height: auto; 
+    overflow: visible;
+    padding-bottom: 40px;
+  }
+  
+  .stats-bar { grid-template-columns: 1fr 1fr; }
+  .stat-card { padding: 8px 10px; }
+  .stat-value { font-size: 14px; }
+  
+  .panel { height: auto !important; }
+  .panel-body { overflow: visible; }
+  
+  .chart-container { display: none !important; }
+  .payoff-container { height: 250px !important; min-height: 250px; }
+  
+  /* Hide Chain tab on mobile */
+  #btnChain { display: none !important; }
+  
+  /* Option Chain Mobile Adjustments */
+  .chain-header-info { padding: 8px 10px; flex-wrap: wrap; gap: 8px; }
+  .chain-info-item { flex: 1 1 40%; justify-content: center; }
+  .chain-table th, .chain-table td { font-size: 10px; padding: 4px 2px; }
+  .strike-col { width: 60px; font-size: 10px; }
+  
+  /* Scrollable table container hint */
+  .chain-table-container::after {
+    content: "← Scroll to view Puts | Scroll to view Calls →";
+    position: sticky; bottom: 0; left: 0; width: 100%;
+    background: var(--surface2); color: var(--text2);
+    font-size: 9px; padding: 4px; text-align: center;
+    border-top: 1px solid var(--border); display: block;
+  }
+}
 </style>
 </head>
 <body>
@@ -285,11 +328,31 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
     </div>
   </div>
 
-  <!-- CENTER: CHARTS -->
+  <!-- CENTER: POSITIONS & PAYOFF -->
   <div class="center-stack">
-    <div class="panel chart-container">
-      <div class="panel-header"><div class="panel-title">BTC/USD Live Chart (1h Candles)</div></div>
-      <div id="lightChart"></div>
+    <div class="panel" style="flex:1; display:flex; flex-direction:column;">
+      <div class="panel-header">
+        <div class="panel-title">Active Positions</div>
+        <div id="posStats" style="font-size:10px; color:var(--text2); font-weight:600;"></div>
+      </div>
+      <div style="flex:1; overflow-y:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:25%;">Symbol</th>
+              <th style="width:15%;">Side</th>
+              <th style="width:12%;">Size</th>
+              <th style="width:12%;">Entry</th>
+              <th style="width:12%;">Curr</th>
+              <th style="width:12%;">PnL $</th>
+              <th style="width:12%;">SL/TP</th>
+            </tr>
+          </thead>
+          <tbody id="posBody">
+            <tr><td colspan="7" class="empty">No active positions</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
     <div class="panel payoff-container">
       <div class="panel-header"><div class="panel-title">Short Strangle Payoff Analysis</div></div>
@@ -297,16 +360,9 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
     </div>
   </div>
 
-  <!-- RIGHT: POSITIONS & LOGS -->
+  <!-- RIGHT: SYSTEM LOGS -->
   <div class="panel" style="display:flex;flex-direction:column;">
-    <div class="panel-header"><div class="panel-title">Active Positions</div></div>
-    <div style="max-height:200px;overflow-y:auto;">
-      <table>
-        <thead><tr><th>Symbol</th><th>Entry</th><th>Curr</th><th>PnL $</th><th>SL</th><th>TP</th></tr></thead>
-        <tbody id="posBody"><tr><td colspan="6" class="empty">No positions</td></tr></tbody>
-      </table>
-    </div>
-    <div class="panel-header" style="border-top:1px solid var(--border);"><div class="panel-title">System Logs</div></div>
+    <div class="panel-header"><div class="panel-title">System Logs</div></div>
     <div class="term" id="term"><div style="color:var(--text2);">[System] Initializing terminal...</div></div>
   </div>
 </div>
@@ -884,7 +940,7 @@ function updateDashboard() {
 
       const tb = document.getElementById('posBody');
       if (!s.call && !s.put) {
-        tb.innerHTML = '<tr><td colspan="6" class="empty">No active positions</td></tr>';
+        tb.innerHTML = '<tr><td colspan="7" class="empty">No active positions</td></tr>';
         payoffChart.data.labels = [];
         payoffChart.data.datasets[0].data = [];
         payoffChart.data.datasets[1].data = [];
@@ -894,15 +950,17 @@ function updateDashboard() {
         [s.call, s.put].forEach(p => {
           if (!p) return;
           const c = p.pnl >= 0 ? 'var(--green)' : 'var(--red)';
-          const slDisp = p.sl_on ? `$${p.sl}` : '<span style="color:var(--text2);">OFF</span>';
-          const tpDisp = p.tp_on ? `$${p.tp}` : '<span style="color:var(--text2);">OFF</span>';
+          const sideColor = p.option_type === 'call' ? 'var(--green)' : 'var(--red)';
+          const slTp = `${p.sl_on ? 'SL' : ''}${p.tp_on ? '/TP' : ''}` || 'OFF';
+          
           rows += `<tr>
-            <td>${p.symbol}</td>
+            <td style="font-weight:600;">${p.symbol}</td>
+            <td style="color:${sideColor}; font-weight:bold;">SHORT ${p.option_type.toUpperCase()}</td>
+            <td>${p.size || 0}</td>
             <td>$${(p.entry_price||0).toFixed(1)}</td>
             <td>$${(p.current_price||0).toFixed(1)}</td>
-            <td style="color:${c}">${p.pnl>=0?'+':''}${(p.pnl||0).toFixed(2)}</td>
-            <td>${slDisp}</td>
-            <td>${tpDisp}</td>
+            <td style="color:${c}; font-weight:bold;">${p.pnl>=0?'+':''}${(p.pnl||0).toFixed(2)}</td>
+            <td style="font-size:10px;">${slTp}</td>
           </tr>`;
         });
         tb.innerHTML = rows;
@@ -928,31 +986,8 @@ function updateDashboard() {
     }).catch(() => {});
 }
 
-// ── Candle chart ──────────────────────────────────────────────────────────────
-function updateCandles() {
-  fetch('/api/history?symbol=BTCUSD&resolution=1h')
-    .then(r => r.json())
-    .then(data => {
-      if (!Array.isArray(data) || data.length === 0) return;
-      const formatted = data
-        .map(d => ({ time: +d.time, open: +d.open, high: +d.high, low: +d.low, close: +d.close }))
-        .filter(d => d.time && d.open && d.high && d.low && d.close)
-        .sort((a, b) => a.time - b.time);
-      if (formatted.length > 0) {
-        candleSeries.setData(formatted);
-        lwChart.timeScale().fitContent();
-      }
-    }).catch(() => {});
-}
-
-// ── IST Clock ─────────────────────────────────────────────────────────────────
-setInterval(() => {
-  const ist = new Date(Date.now() + 5.5 * 3600000);
-  document.getElementById('istClock').textContent = ist.toISOString().substring(11, 19) + ' IST';
-}, 1000);
-
+// ── Dashboard polling ─────────────────────────────────────────────────────────
 setInterval(updateDashboard, 3000);
-setInterval(updateCandles,   60000);
 setInterval(updateOptionChain, 10000);
 
 // Load saved keys from localStorage
@@ -965,7 +1000,6 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 updateDashboard();
-updateCandles();
 </script>
 </body>
 </html>
