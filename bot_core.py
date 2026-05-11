@@ -128,8 +128,8 @@ class DeltaIndiaClient:
         return 0.0
 
     def get_btc_price(self):
-        """Try Delta India first, fallback to Binance/CoinGecko if unreachable."""
-        # 1. Delta India
+        """Try Delta India first, then Binance/CoinGecko, finally fallback to History API."""
+        # 1. Delta India Tickers
         try:
             r = self.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
             if r.get('success') and r.get('result'):
@@ -139,13 +139,21 @@ class DeltaIndiaClient:
                         if price > 0: return price
         except: pass
 
-        # 2. Binance Public API (Very robust)
+        # 2. Delta India History (We know this works on Render!)
+        try:
+            hist = self.get_history('BTCUSD', '1h', 1)
+            if hist:
+                price = float(hist[-1].get('close', 0))
+                if price > 0: return price
+        except: pass
+
+        # 3. Binance Public API
         try:
             b = _requests.get('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', timeout=5).json()
             if 'price' in b: return float(b['price'])
         except: pass
 
-        # 3. CoinGecko Fallback
+        # 4. CoinGecko Fallback
         try:
             cg = _requests.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', timeout=5).json()
             return float(cg['bitcoin']['usd'])
@@ -506,13 +514,19 @@ class DeltaOptionsBot:
             time.sleep(60) # Standard heartbeat interval
 
     def _market_data_loop(self):
+        self.log('SYSTEM', "📡 Market data feed active.")
         while True:
             try:
                 # 1. Update BTC Price & Stats
                 now_ts = time.time()
-                if now_ts - self.last_stats_update > 60: # More frequent stats
+                if now_ts - self.last_stats_update > 60:
                     price = self.india_client.get_btc_price()
-                    if price > 0: self.current_btc_price = price
+                    if price > 0:
+                        if self.current_btc_price == 0:
+                            self.log('SYSTEM', f"✅ BTC Price Feed Connected: ${price}", "success")
+                        self.current_btc_price = price
+                    else:
+                        self.log('SYSTEM', "⚠️ Price feed unavailable. Check connection.", "warn")
                     
                     r = self.india_client.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
                     if r.get('success') and r.get('result'):
