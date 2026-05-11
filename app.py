@@ -101,10 +101,12 @@ def stop_bot():
 
 @app.route('/api/execute', methods=['POST'])
 def execute():
-    if not bot_instance.running:
-        return jsonify({'status': 'error', 'message': 'Engine not running. Start it first.'})
-    bot_instance.trigger_execution()
-    return jsonify({'status': 'success', 'message': 'Execution triggered!'})
+    data = request.get_json() or {}
+    mode = data.get('mode', bot_instance.active_mode or 'PAPER').upper()
+    if not bot_instance.state[mode]['running']:
+        return jsonify({'status': 'error', 'message': f'Engine not running for {mode}. Start it first.'})
+    bot_instance.trigger_execution(mode)
+    return jsonify({'status': 'success', 'message': f'Execution triggered for {mode}!'})
 
 @app.route('/api/clear', methods=['POST'])
 def clear_positions():

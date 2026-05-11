@@ -29,6 +29,12 @@ class DeltaIndiaClient:
         self.api_secret = api_secret
         self.base       = DELTA_INDIA_BASE
         self.time_offset = 0
+        self.session    = _requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9',
+        })
         if api_key and api_secret:
             self.sync_time()
 
@@ -79,7 +85,11 @@ class DeltaIndiaClient:
             path_with_qs = path
         url = self.base + path_with_qs
         try:
-            r = _requests.get(url, headers=self._headers('GET', path_with_qs), timeout=15)
+            r = self.session.get(url, headers=self._headers('GET', path_with_qs), timeout=15)
+            if r.status_code == 403:
+                print(f"[API] 403 Forbidden on {path} - WAF block?")
+            if r.status_code == 429:
+                print(f"[API] 429 Rate Limited on {path}")
             return r.json()
         except Exception as e:
             return {'success': False, 'error': {'code': 'request_error', 'message': str(e)}}
@@ -118,29 +128,29 @@ class DeltaIndiaClient:
         return 0.0
 
     def get_btc_price(self):
-        """Try Delta India first, fallback to CoinGecko if unreachable."""
+        """Try Delta India first, fallback to Binance/CoinGecko if unreachable."""
+        # 1. Delta India
         try:
-            r = self.get('/v2/tickers', {
-                'contract_types': 'perpetual_futures',
-                'underlying_asset_symbol': 'BTC'
-            })
+            r = self.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
             if r.get('success') and r.get('result'):
                 for t in r['result']:
                     if t.get('symbol') == 'BTCUSD':
                         price = float(t.get('mark_price') or t.get('close') or 0)
-                        if price > 0:
-                            return price
-        except Exception:
-            pass
-        # Fallback: CoinGecko public API (no auth needed)
+                        if price > 0: return price
+        except: pass
+
+        # 2. Binance Public API (Very robust)
         try:
-            cg = _requests.get(
-                'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
-                timeout=10
-            ).json()
+            b = _requests.get('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', timeout=5).json()
+            if 'price' in b: return float(b['price'])
+        except: pass
+
+        # 3. CoinGecko Fallback
+        try:
+            cg = _requests.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', timeout=5).json()
             return float(cg['bitcoin']['usd'])
-        except Exception:
-            return 0.0
+        except: pass
+        return 0.0
 
     def get_option_chain(self):
         # Use direct requests for public data to avoid any header/signature issues
@@ -271,6 +281,16 @@ class DeltaOptionsBot:
         threading.Thread(target=self._market_data_loop, daemon=True).start()
         threading.Thread(target=self._scheduler_loop, daemon=True).start()
         threading.Thread(target=self._connection_monitor_loop, daemon=True).start()
+
+    @property
+    def running(self):
+        return self.state['PAPER']['running'] or self.state['LIVE']['running']
+
+    @property
+    def active_mode(self):
+        if self.state['LIVE']['running']: return 'LIVE'
+        if self.state['PAPER']['running']: return 'PAPER'
+        return None
 
     # ── Logging ───────────────────────────────────────────────────────────────
     def log(self, mode, message, mtype="info"):
@@ -433,7 +453,9 @@ class DeltaOptionsBot:
             self.log(mode, "🛑 ENGINE STOPPED.", "error")
             self._save_state()
 
-    def trigger_execution(self, mode):
+    def trigger_execution(self, mode=None):
+        if not mode:
+            mode = self.active_mode or 'PAPER'
         self.log(mode, "⚡ MANUAL EXECUTION TRIGGERED...", "info")
         threading.Thread(target=self.execute_strategy, args=(mode,), daemon=True).start()
 
@@ -550,37 +572,44 @@ class DeltaOptionsBot:
 
 
     # ── Options chain helpers ─────────────────────────────────────────────────
-    def find_best_strike(self, options, option_type, target_premium, target_date):
+    def get_valid_expiries(self, options):
+        expiries = set()
+        for o in options:
+            sym = o.get('symbol', '').upper()
+            parts = sym.split('-')
+            if len(parts) >= 4:
+                # Format is usually [Side]-[Asset]-[Strike]-[Date]
+                expiries.add(parts[3])
+        return sorted(list(expiries))
+
+    def find_best_strike(self, options, option_type, target_premium, target_dates):
         """
         Finds the strike that has premium >= target_premium and is closest to it.
-        target_date format: 'YYYY-MM-DD'
+        target_dates: list of valid date strings (e.g. ['120526', '12MAY26'])
         """
         valid = []
         for o in options:
-            # Filter by type and date
             if o.get('option_type') != option_type: continue
             
-            # Robust date check: handles both 11MAY26 and 110526
             sym = o.get('symbol', '').upper()
             found_date = False
-            if isinstance(target_date, list):
-                for d in target_date:
-                    if d.upper() in sym:
-                        found_date = True
-                        break
-            else:
-                if target_date.upper() in sym:
+            for d in target_dates:
+                if d.upper() in sym:
                     found_date = True
+                    break
             
             if not found_date: continue
             
-            prem = float(o.get('mark_price') or o.get('theoretical_price') or 0)
+            # Premium discovery: Mark -> Theoretical -> Bid
+            prem = float(o.get('mark_price') or o.get('theoretical_price') or 
+                         (o.get('quotes', {}).get('best_bid') if o.get('quotes') else 0) or 0)
+            
             if prem >= target_premium:
                 valid.append((o, prem))
         
         if not valid: return None, target_premium, None
         
-        # Sort by premium (ascending) to get the one closest to $100 but >= $100
+        # Sort by premium (ascending) to get the one closest to target but >= target
         valid.sort(key=lambda x: x[1])
         best_opt, best_prem = valid[0]
         return best_opt.get('symbol'), best_prem, best_opt.get('id')
@@ -595,17 +624,39 @@ class DeltaOptionsBot:
         self.log(mode, "=" * 45, "info")
 
         try:
-            # Calculate Target Expiry (Next Day)
-            # If today is 10 May, target is 11 May. 
-            # Trade is 08:00 AM IST, expiry is next day 05:30 PM IST.
+            # Get Options first to discover available expiries
+            options = self.india_client.get_option_chain()
+            if not options:
+                self.log(mode, "❌ Could not fetch option chain. Aborting.", "error")
+                return
+
+            # Discover expiries
+            all_expiries = self.get_valid_expiries(options)
+            self.log(mode, f"Available Expiries: {all_expiries}", "info")
+
+            # Target is tomorrow (08:00 AM trade -> Next day 05:30 PM expiry)
             now_dt = datetime.datetime.now()
             target_dt = now_dt + datetime.timedelta(days=1)
-            # Try both formats: 11MAY26 and 110526
-            target_date_old = target_dt.strftime('%d%b%y').upper()
-            target_date_new = target_dt.strftime('%d%m%y')
-            target_dates = [target_date_old, target_date_new]
+            target_d1 = target_dt.strftime('%d%m%y')
+            target_d2 = target_dt.strftime('%d%b%y').upper()
             
-            self.log(mode, f"Target Expiry: {target_date_old} / {target_date_new}", "info")
+            # Find the first available expiry that is today or later
+            target_dates = []
+            for exp in all_expiries:
+                # Simple check: if expiry matches our target strings
+                if target_d1 in exp or target_d2 in exp:
+                    target_dates = [exp]
+                    break
+            
+            if not target_dates and all_expiries:
+                # Fallback: pick the first one that is at least 24h away if possible
+                target_dates = [all_expiries[0]]
+            
+            if not target_dates:
+                self.log(mode, "❌ No valid expiries found. Aborting.", "error")
+                return
+
+            self.log(mode, f"Target Expiry Selected: {target_dates}", "info")
 
             if mode == 'LIVE': s['client'].sync_time()
 
@@ -625,7 +676,7 @@ class DeltaOptionsBot:
             put_sym,  put_prem,  put_id  = self.find_best_strike(options, 'put',  target_prem, target_dates)
 
             if not call_sym or not put_sym:
-                self.log(mode, f"❌ Could not find strikes for {target_date_str} with premium >= ${target_prem}", "error")
+                self.log(mode, f"❌ Could not find strikes for {target_dates} with premium >= ${target_prem}", "error")
                 return
 
             self.log(mode, f"SELECTED CE: {call_sym} @ ${call_prem:.2f}", "success")
