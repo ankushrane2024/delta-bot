@@ -260,10 +260,7 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
       <button class="btn btn-start" id="btnStart" onclick="startEngine()">▶ Start Strategy Engine</button>
       <button class="btn btn-stop"  id="btnStop"  onclick="stopEngine()">■ Stop Engine</button>
       
-      <div style="display:flex; gap:6px;">
-        <button class="btn btn-exec"  id="btnExec"  style="flex:1;" onclick="executeNow()">⚡ Trigger Trade</button>
-        <button class="btn btn-clear" id="btnClear" style="flex:1;" onclick="clearPos()">✕ Clear</button>
-      </div>
+      <button class="btn btn-exec"  id="btnExec"  onclick="executeNow()">⚡ Trigger Trade</button>
       <div class="panel-header" style="margin-top:15px;border-top:1px solid var(--border);"><div class="panel-title">Market Pulse</div></div>
       <div class="pulse-grid">
         <div class="pulse-item"><div class="pulse-label">24h High</div><div class="pulse-value" id="pHigh">--</div></div>
@@ -279,7 +276,10 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
     <div class="panel" style="flex:1; display:flex; flex-direction:column;">
       <div class="panel-header">
         <div class="panel-title">Active Positions</div>
-        <div id="posStats" style="font-size:10px; color:var(--text2); font-weight:600;"></div>
+        <div style="display:flex; align-items:center; gap:10px;">
+           <button id="btnClear" onclick="clearPos()" style="display:none; padding:3px 10px; margin:0; width:auto; background:rgba(255,59,48,0.1); color:var(--red); border:1px solid rgba(255,59,48,0.2); font-size:9px; font-weight:700; border-radius:3px; cursor:pointer; text-transform:uppercase;">✕ Clear Trades</button>
+           <div id="istClock" style="color:var(--text2); font-family:'JetBrains Mono'; font-size:11px;">--:--:-- IST</div>
+        </div>
       </div>
       <div style="flex:1; overflow-y:auto;">
         <table>
@@ -658,22 +658,22 @@ function updateDashboard() {
       const btnCl = document.getElementById('btnClear');
       
       if (d.running) {
-        if(btnS) btnS.style.display = 'none';
+        if(btnS) btnS.style.display  = 'none';
         if(btnSt) btnSt.style.display = 'block';
       } else {
-        if(btnS) btnS.style.display = 'block';
+        if(btnS) btnS.style.display  = 'block';
         if(btnSt) btnSt.style.display = 'none';
       }
       
       // Always show manual trigger
       if(btnE) btnE.style.display = 'block';
       
-      // Show clear button only if positions exist (regardless of engine state)
+      // Clear Trades visibility (Always check has_pos flags)
       const hasPos = currentMode === 'PAPER' ? d.has_paper_pos : d.has_live_pos;
       if(btnCl) {
          btnCl.style.display = hasPos ? 'block' : 'none';
          if (!hasPos) {
-           btnCl.textContent = '✕ Clear';
+           btnCl.textContent = '✕ Clear Trades';
            btnCl.dataset.confirm = '0';
          }
       }
