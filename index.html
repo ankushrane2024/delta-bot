@@ -385,25 +385,6 @@ const payoffChart = new Chart(document.getElementById('payoffChart').getContext(
   }
 });
 
-const chartEl    = document.getElementById('lightChart');
-const lwChart    = LightweightCharts.createChart(chartEl, {
-  layout: { backgroundColor: '#151a21', textColor: '#848e9c' },
-  grid:   { vertLines: { color: '#1e232b' }, horzLines: { color: '#1e232b' } },
-  crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-  rightPriceScale: { borderColor: '#2b3139' },
-  timeScale: { borderColor: '#2b3139', timeVisible: true },
-  width:  chartEl.clientWidth,
-  height: chartEl.clientHeight || 260,
-});
-const candleSeries = lwChart.addCandlestickSeries({
-  upColor: '#0ecb81', downColor: '#f6465d',
-  borderUpColor: '#0ecb81', borderDownColor: '#f6465d',
-  wickUpColor: '#0ecb81', wickDownColor: '#f6465d',
-});
-window.addEventListener('resize', () => {
-  lwChart.resize(chartEl.clientWidth, chartEl.clientHeight || 260);
-});
-
 let currentMode  = 'PAPER';
 let lastLogCount = 0;
 let lastBtcPrice = 0;
