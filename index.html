@@ -610,11 +610,24 @@ function executeNow() {
 }
 
 function clearPos() {
-  fetch('/api/clear', {
+  const msg = `⚠️ CLEAR ${currentMode} POSITIONS?\n\nThis will remove the trades from the dashboard so you can take new ones.\n\nNOTE: This does NOT close actual orders on the exchange in LIVE mode.`;
+  if (!confirm(msg)) return;
+  
+  fetch('/api/clear', { 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode: currentMode })
-  }).then(r => r.json()).then(d => showToast(d.message)).catch(e => showToast('Error: ' + e, true));
+  })
+  .then(r => r.json())
+  .then(d => {
+    showToast(d.message);
+    addLog(currentMode, `🗑️ ${d.message}`, 'warn');
+    updateDashboard(); // Immediately refresh to show empty table
+  })
+  .catch(e => {
+    showToast('Error clearing positions: ' + e, true);
+    addLog(currentMode, `❌ Error: ${e}`, 'error');
+  });
 }
 
 // ── Dashboard polling ─────────────────────────────────────────────────────────
@@ -627,6 +640,25 @@ function updateDashboard() {
       const sigC = document.getElementById('connSignalContainer');
       const sigD = document.getElementById('connSignalDot');
       const sigT = document.getElementById('connSignalText');
+      // Engine Control
+      const btnS  = document.getElementById('btnStart');
+      const btnSt = document.getElementById('btnStop');
+      const btnE  = document.getElementById('btnExec');
+      const btnCl = document.getElementById('btnClear');
+      
+      if (d.running) {
+        btnS.style.display  = 'none';
+        btnSt.style.display = 'block';
+      } else {
+        btnS.style.display  = 'block';
+        btnSt.style.display = 'none';
+      }
+      
+      // Always allow manual trigger and clearing if positions exist
+      btnE.style.display = 'block';
+      
+      const hasPos = (d.positions && (d.positions.call || d.positions.put));
+      btnCl.style.display = hasPos ? 'block' : 'none';
 
       if (btnC) {
         if (d.is_connected) {
