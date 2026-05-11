@@ -148,9 +148,6 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
     <button class="m-btn live" id="btnLive" onclick="setMode('LIVE')">
       LIVE <span id="dotLive" style="display:none;width:6px;height:6px;background:var(--red);border-radius:50%;margin-left:5px;box-shadow:0 0 5px var(--red);"></span>
     </button>
-    <button class="m-btn chain" id="btnChain" onclick="setMode('CHAIN')">
-      CHAIN
-    </button>
   </div>
   <div style="display:flex;align-items:center;gap:15px;">
     <div class="stat-value" id="navBtc" style="color:var(--accent);font-size:13px;">BTC $---</div>
@@ -158,57 +155,6 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
     <div id="istClock" style="color:var(--text2);font-family:'JetBrains Mono';font-size:11px;">--:--:-- IST</div>
   </div>
 </nav>
-
-<div id="chainView">
-  <div class="expiry-tabs-container" id="expiryTabs">
-    <span style="color:var(--text2); font-size:11px;">Fetching expiries...</span>
-  </div>
-  
-  <div class="chain-header-info">
-    <div class="chain-info-item">
-      <span class="chain-info-label" style="font-weight:700; color:var(--text);">Calls</span>
-    </div>
-    <div class="chain-info-item">
-      <span class="chain-info-label">BTC</span>
-      <span class="chain-info-value" id="chainBtcPrice">---</span>
-    </div>
-    <div class="chain-info-item">
-      <span class="chain-info-label">Time to Expiry</span>
-      <span class="chain-info-expiry" id="chainExpiryTime">--:--:--</span>
-    </div>
-    <div class="chain-info-item">
-      <span class="chain-info-label" style="font-weight:700; color:var(--text);">Puts</span>
-    </div>
-  </div>
-
-  <div class="chain-table-container">
-    <table class="chain-table">
-      <thead>
-        <tr>
-          <th style="width:60px;">Delta</th>
-          <th style="width:70px;">Bid Qty</th>
-          <th style="width:90px;">Bid</th>
-          <th style="width:90px;">Mark</th>
-          <th style="width:90px;">Ask</th>
-          <th style="width:70px;">Ask Qty</th>
-          <th style="width:70px;">OI</th>
-          <th class="strike-col">Strike</th>
-          <th style="width:70px;">OI</th>
-          <th style="width:70px;">Bid Qty</th>
-          <th style="width:90px;">Bid</th>
-          <th style="width:90px;">Mark</th>
-          <th style="width:90px;">Ask</th>
-          <th style="width:70px;">Ask Qty</th>
-          <th style="width:60px;">Delta</th>
-          <th style="width:60px;">Vo</th>
-        </tr>
-      </thead>
-      <tbody id="chainBody">
-        <tr><td colspan="16" class="empty">Loading options data...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
 
 <div class="main-grid" id="mainDashboard">
   <!-- STATS BAR -->
@@ -315,7 +261,7 @@ td{padding:8px 10px;font-family:'JetBrains Mono';border-bottom:1px solid var(--b
       <button class="btn btn-stop"  id="btnStop"  onclick="stopEngine()">■ Stop Engine</button>
       
       <div style="display:flex; gap:6px;">
-        <button class="btn btn-exec"  id="btnExec"  style="flex:1;" onclick="confirmTrade()">⚡ Trigger Trade</button>
+        <button class="btn btn-exec"  id="btnExec"  style="flex:1;" onclick="executeNow()">⚡ Trigger Trade</button>
         <button class="btn btn-clear" id="btnClear" style="flex:1;" onclick="clearPos()">✕ Clear</button>
       </div>
       <div class="panel-header" style="margin-top:15px;border-top:1px solid var(--border);"><div class="panel-title">Market Pulse</div></div>
@@ -385,275 +331,110 @@ const payoffChart = new Chart(document.getElementById('payoffChart').getContext(
   }
 });
 
+// ── ERROR HANDLING ───────────────────────────────────────────────────────────
+window.onerror = function(msg, url, line, col, error) {
+  console.error("Global JS Error:", msg, "at", url, ":", line);
+  const term = document.getElementById('term');
+  if (term) {
+    const errDiv = document.createElement('div');
+    errDiv.style.color = 'var(--red)';
+    errDiv.style.fontSize = '10px';
+    errDiv.textContent = `[JS ERROR] ${msg} (Line ${line})`;
+    term.appendChild(errDiv);
+    term.scrollTop = term.scrollHeight;
+  }
+  return false;
+};
+
 let currentMode  = 'PAPER';
 let lastLogCount = 0;
 let lastBtcPrice = 0;
 
 // Store settings for each mode separately
 const modeSettings = {
-  PAPER: {
-    tPrem: 100, allocPct: 50,
-    cSL: 100, cSL_on: true, cTP: 95, cTP_on: true,
-    pSL: 100, pSL_on: true, pTP: 95, pTP_on: true
-  },
-  LIVE: {
-    tPrem: 100, allocPct: 50,
-    cSL: 100, cSL_on: true, cTP: 95, cTP_on: true,
-    pSL: 100, pSL_on: true, pTP: 95, pTP_on: true
-  }
+  PAPER: { tPrem: 100, allocPct: 50, cSL: 100, cSL_on: true, cTP: 95, cTP_on: true, pSL: 100, pSL_on: true, pTP: 95, pTP_on: true },
+  LIVE:  { tPrem: 100, allocPct: 50, cSL: 100, cSL_on: true, cTP: 95, cTP_on: true, pSL: 100, pSL_on: true, pTP: 95, pTP_on: true }
 };
 
 function saveModeSettings(m) {
-  if (m === 'CHAIN') return;
-  const s = modeSettings[m];
-  s.tPrem = document.getElementById('tPrem').value;
-  s.allocPct = document.getElementById('allocPct').value;
-  s.cSL = document.getElementById('cSL').value;
-  s.cSL_on = document.getElementById('cSL_on').checked;
-  s.cTP = document.getElementById('cTP').value;
-  s.cTP_on = document.getElementById('cTP_on').checked;
-  s.pSL = document.getElementById('pSL').value;
-  s.pSL_on = document.getElementById('pSL_on').checked;
-  s.pTP = document.getElementById('pTP').value;
-  s.pTP_on = document.getElementById('pTP_on').checked;
+  try {
+    const s = modeSettings[m];
+    const fields = ['tPrem', 'allocPct', 'cSL', 'cTP', 'pSL', 'pTP'];
+    fields.forEach(f => {
+      const el = document.getElementById(f);
+      if (el) s[f] = el.value;
+    });
+    ['cSL_on', 'cTP_on', 'pSL_on', 'pTP_on'].forEach(f => {
+      const el = document.getElementById(f);
+      if (el) s[f] = el.checked;
+    });
+  } catch (e) { console.warn("Save settings failed", e); }
 }
 
 function loadModeSettings(m) {
-  if (m === 'CHAIN') return;
-  const s = modeSettings[m];
-  document.getElementById('tPrem').value = s.tPrem;
-  document.getElementById('allocPct').value = s.allocPct;
-  
-  document.getElementById('cSL').value = s.cSL;
-  document.getElementById('cSL_on').checked = s.cSL_on;
-  document.getElementById('cSL').disabled = !s.cSL_on;
-  
-  document.getElementById('cTP').value = s.cTP;
-  document.getElementById('cTP_on').checked = s.cTP_on;
-  document.getElementById('cTP').disabled = !s.cTP_on;
-  
-  document.getElementById('pSL').value = s.pSL;
-  document.getElementById('pSL_on').checked = s.pSL_on;
-  document.getElementById('pSL').disabled = !s.pSL_on;
-  
-  document.getElementById('pTP').value = s.pTP;
-  document.getElementById('pTP_on').checked = s.pTP_on;
-  document.getElementById('pTP').disabled = !s.pTP_on;
+  try {
+    const s = modeSettings[m];
+    const fields = ['tPrem', 'allocPct', 'cSL', 'cTP', 'pSL', 'pTP'];
+    fields.forEach(f => {
+      const el = document.getElementById(f);
+      if (el) el.value = s[f];
+    });
+    ['cSL_on', 'cTP_on', 'pSL_on', 'pTP_on'].forEach(f => {
+      const el = document.getElementById(f);
+      if (el) {
+        el.checked = s[f];
+        const target = document.getElementById(f.replace('_on', ''));
+        if (target) target.disabled = !el.checked;
+      }
+    });
+  } catch (e) { console.warn("Load settings failed", e); }
 }
 
 function setMode(m) {
-  // Save current mode settings before switching
-  saveModeSettings(currentMode);
-  
-  currentMode = m;
-  document.getElementById('btnPaper').className = 'm-btn' + (m==='PAPER' ? ' active paper' : '');
-  document.getElementById('btnLive').className  = 'm-btn' + (m==='LIVE'  ? ' active live'  : '');
-  document.getElementById('btnChain').className = 'm-btn' + (m==='CHAIN' ? ' active chain' : '');
+  try {
+    currentMode = m;
+    saveModeSettings(m === 'PAPER' ? 'LIVE' : 'PAPER');
+    loadModeSettings(m);
 
-  // Load new mode settings
-  loadModeSettings(m);
+    // Update button states
+    ['btnPaper', 'btnLive'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        const type = id.replace('btn', '').toLowerCase();
+        el.className = 'm-btn' + (id === `btn${m.charAt(0).toUpperCase() + m.slice(1).toLowerCase()}` ? ` active ${type}` : '');
+      }
+    });
 
-  const dashboard = document.getElementById('mainDashboard');
-  const chainView = document.getElementById('chainView');
-
-  if (m === 'CHAIN') {
-    dashboard.style.display = 'none';
-    chainView.style.display = 'flex';
-    updateOptionChain();
-  } else {
-    dashboard.style.display = 'grid';
-    chainView.style.display = 'none';
-    
     const al = document.getElementById('modeAlert');
-    al.style.background = m==='PAPER' ? 'rgba(146,84,222,.1)' : 'rgba(246,70,93,.1)';
-    al.style.color      = m==='PAPER' ? 'var(--purple)' : 'var(--red)';
-    al.textContent      = m==='PAPER' ? 'PAPER MODE — Simulated trading with live data.' : '⚠ LIVE MODE — Real funds at risk!';
+    if (al) {
+      al.style.background = m === 'PAPER' ? 'rgba(146,84,222,.1)' : 'rgba(246,70,93,.1)';
+      al.style.color      = m === 'PAPER' ? 'var(--purple)' : 'var(--red)';
+      al.textContent      = m === 'PAPER' ? 'PAPER MODE — Simulated trading with live data.' : '⚠ LIVE MODE — Real funds at risk!';
+    }
     
     const isPaper = m === 'PAPER';
-    document.getElementById('apiKey').closest('.ir').style.display = isPaper ? 'none' : 'block';
-    document.getElementById('apiSec').closest('.ir').style.display = isPaper ? 'none' : 'block';
-    document.getElementById('btnConnect').style.display = isPaper ? 'none' : 'block';
-    document.getElementById('saveKeysCheck').style.display = isPaper ? 'none' : 'flex';
+    const toggleFields = ['apiKey', 'apiSec', 'btnConnect', 'saveKeysCheck', 'savedAccountsContainer'];
+    toggleFields.forEach(f => {
+      const el = document.getElementById(f);
+      if (el) {
+        const container = el.classList.contains('ir') ? el : el.closest('.ir') || el;
+        container.style.display = (isPaper && f !== 'savedAccountsContainer') ? 'none' : 'block';
+        if (f === 'saveKeysCheck' || f === 'savedAccountsContainer') {
+           container.style.display = isPaper ? 'none' : (f === 'saveKeysCheck' ? 'flex' : 'block');
+        }
+      }
+    });
     
-    if (!isPaper) {
-        document.getElementById('savedAccountsContainer').style.display = 'block';
-        updateKeySelect();
-    } else {
-        document.getElementById('savedAccountsContainer').style.display = 'none';
-    }
+    if (!isPaper) updateKeySelect();
 
     lastLogCount = 0;
-    document.getElementById('term').innerHTML = '<div style="color:var(--text2);">[System] Switched to ' + m + ' mode...</div>';
+    const term = document.getElementById('term');
+    if (term) term.innerHTML = '<div style="color:var(--text2);">[System] Switched to ' + m + ' mode...</div>';
     updateDashboard();
-  }
+  } catch (e) { console.error("setMode failed", e); }
 }
 
-let selectedExpiry = null;
 
-function updateOptionChain() {
-  if (currentMode !== 'CHAIN') return;
-
-  fetch('/api/chain')
-    .then(r => r.json())
-    .then(data => {
-      // 1. Extract unique expiries
-      const expiries = new Set();
-      data.forEach(o => {
-        const parts = o.symbol.split('-');
-        if (parts.length >= 2) {
-           let dp = parts.find(p => /^\d{1,2}[A-Z]{3}\d{2}$/.test(p));
-           if (!dp && parts.length >= 4 && /^\d{6}$/.test(parts[parts.length-1])) {
-              dp = parts[parts.length-1];
-           }
-           if (dp) expiries.add(dp);
-        }
-      });
-      
-      const sortedExpiries = Array.from(expiries).sort((a,b) => {
-        const parseDate = (s) => {
-          if (/^\d{6}$/.test(s)) {
-            const d = parseInt(s.substring(0,2));
-            const m = parseInt(s.substring(2,4)) - 1;
-            const y = parseInt("20" + s.substring(4,6));
-            return new Date(y, m, d);
-          } else {
-            const d = parseInt(s.substring(0,2));
-            const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"].indexOf(s.substring(2,5).toUpperCase());
-            const y = parseInt("20" + s.substring(5,7));
-            return new Date(y, m, d);
-          }
-        };
-        return parseDate(a) - parseDate(b);
-      });
-
-      if (sortedExpiries.length === 0) return;
-      if (!selectedExpiry) selectedExpiry = sortedExpiries[0];
-
-      // 2. Render Expiry Tabs
-      const tabs = document.getElementById('expiryTabs');
-      tabs.innerHTML = sortedExpiries.map(e => `
-        <div class="expiry-tab ${e === selectedExpiry ? 'active' : ''}" onclick="changeExpiry('${e}')">
-          ${e}
-        </div>
-      `).join('');
-
-      // Update BTC Price in header
-      const btcPrice = lastBtcPrice || 0;
-      document.getElementById('chainBtcPrice').textContent = '$' + btcPrice.toLocaleString();
-
-      // Update Time to Expiry
-      const parseExpDate = (s) => {
-        if (/^\d{6}$/.test(s)) {
-          const d = parseInt(s.substring(0,2));
-          const m = parseInt(s.substring(2,4)) - 1;
-          const y = parseInt("20" + s.substring(4,6));
-          return new Date(y, m, d, 17, 30, 0); // 5:30 PM IST
-        } else {
-          const d = parseInt(s.substring(0,2));
-          const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"].indexOf(s.substring(2,5).toUpperCase());
-          const y = parseInt("20" + s.substring(5,7));
-          return new Date(y, m, d, 17, 30, 0);
-        }
-      };
-      const expDate = parseExpDate(selectedExpiry);
-      const now = new Date(Date.now() + 5.5 * 3600000); // IST
-      const diff = expDate - now;
-      if (diff > 0) {
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        document.getElementById('chainExpiryTime').textContent = `${days}d:${hours}h:${mins}m`;
-      } else {
-        document.getElementById('chainExpiryTime').textContent = 'EXPIRED';
-      }
-
-      // 3. Filter and Render Table
-      const filtered = data.filter(o => o.symbol.includes(selectedExpiry));
-      const strikes = {};
-      filtered.forEach(o => {
-        const k = parseFloat(o.strike_price);
-        if (!strikes[k]) strikes[k] = { c: null, p: null };
-        if (o.contract_type.includes('call')) strikes[k].c = o;
-        else strikes[k].p = o;
-      });
-      
-      const sortedKeys = Object.keys(strikes).sort((a,b) => parseFloat(a)-parseFloat(b));
-      
-      // Find ATM strike (closest to current BTC price)
-      let atmStrike = sortedKeys[0];
-      let minDiff = Math.abs(parseFloat(atmStrike) - btcPrice);
-      sortedKeys.forEach(k => {
-        const d = Math.abs(parseFloat(k) - btcPrice);
-        if (d < minDiff) { minDiff = d; atmStrike = k; }
-      });
-
-      let html = '';
-      sortedKeys.forEach(k => {
-        const s = strikes[k];
-        const strikeNum = parseFloat(k);
-        const isAtm = k === atmStrike;
-        
-        // ITM Highlight
-        const callItm = strikeNum < btcPrice ? 'itm-call' : '';
-        const putItm = strikeNum > btcPrice ? 'itm-put' : '';
-
-        // Helper to format quote cells
-        const getQuote = (opt) => {
-          if (!opt) return { b: '--', bs: '--', m: '--', a: '--', as: '--', iv: '--', d: '--', v: '--', oi: '--' };
-          const q = opt.quotes || {};
-          const g = opt.greeks || {};
-          const ivVal = opt.mark_iv || opt.mark_vol || q.mark_iv || 0;
-          return {
-            b: q.best_bid ? parseFloat(q.best_bid).toFixed(1) : '--',
-            bs: q.bid_size ? parseFloat(q.bid_size).toFixed(1) : '--',
-            m: opt.mark_price ? parseFloat(opt.mark_price).toFixed(1) : '--',
-            a: q.best_ask ? parseFloat(q.best_ask).toFixed(1) : '--',
-            as: q.ask_size ? parseFloat(q.ask_size).toFixed(1) : '--',
-            iv: (parseFloat(ivVal) * 100).toFixed(1) + '%',
-            d: g.delta ? parseFloat(g.delta).toFixed(2) : '--',
-            v: opt.volume ? parseFloat(opt.volume).toFixed(1) : '--',
-            oi: opt.oi_contracts ? (opt.oi_contracts >= 1000 ? (opt.oi_contracts/1000).toFixed(1) + 'k' : opt.oi_contracts) : '--'
-          };
-        };
-
-        const cq = getQuote(s.c);
-        const pq = getQuote(s.p);
-
-        html += `<tr class="${isAtm ? 'atm-row' : ''}">
-          <!-- CALLS -->
-          <td class="${callItm}">${cq.d}</td>
-          <td class="${callItm} qty-cell">${cq.bs}</td>
-          <td class="${callItm} price-cell"><span class="bid-price">${cq.b}</span><span class="iv-small">${cq.iv}</span></td>
-          <td class="${callItm} price-cell" style="background:rgba(255,255,255,0.02);"><span>${cq.m}</span><span class="iv-small">${cq.iv}</span></td>
-          <td class="${callItm} price-cell"><span class="ask-price">${cq.a}</span><span class="iv-small">${cq.iv}</span></td>
-          <td class="${callItm} qty-cell">${cq.as}</td>
-          <td class="${callItm}">${cq.oi}</td>
-          
-          <!-- STRIKE -->
-          <td class="strike-col">${strikeNum}</td>
-          
-          <!-- PUTS -->
-          <td class="${putItm}">${pq.oi}</td>
-          <td class="${putItm} qty-cell">${pq.bs}</td>
-          <td class="${putItm} price-cell"><span class="bid-price">${pq.b}</span><span class="iv-small">${pq.iv}</span></td>
-          <td class="${putItm} price-cell" style="background:rgba(255,255,255,0.02);"><span>${pq.m}</span><span class="iv-small">${pq.iv}</span></td>
-          <td class="${putItm} price-cell"><span class="ask-price">${pq.a}</span><span class="iv-small">${pq.iv}</span></td>
-          <td class="${putItm} qty-cell">${pq.as}</td>
-          <td class="${putItm}">${pq.d}</td>
-          <td class="${putItm}">${pq.v}</td>
-        </tr>`;
-      });
-      document.getElementById('chainBody').innerHTML = html || '<tr><td colspan="16" class="empty">No options found for this expiry.</td></tr>';
-    })
-    .catch(e => {
-       document.getElementById('chainBody').innerHTML = '<tr><td colspan="16" class="empty">Error fetching data: ' + e + '</td></tr>';
-    });
-}
-
-function changeExpiry(e) {
-  selectedExpiry = e;
-  updateOptionChain();
-}
 
 function showToast(msg, isErr) {
   const t = document.getElementById('toast');
@@ -775,20 +556,41 @@ function stopEngine() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode: currentMode })
   })
-    .then(r => r.json()).then(d => showToast(d.message))
-    .catch(e => showToast('Error: ' + e, true));
+    .then(async r => {
+      if (!r.ok) {
+        const text = await r.text();
+        try {
+          const err = JSON.parse(text);
+          throw new Error(err.message || text);
+        } catch(e) {
+          throw new Error(`Server Error (${r.status}): ${text.substring(0, 100)}`);
+        }
+      }
+      return r.json();
+    })
+    .then(d => showToast(d.message))
+    .catch(e => {
+      console.error('Stop Error:', e);
+      showToast('Stop Error: ' + e.message, true);
+    });
 }
 
-function confirmTrade() {
-  const msg = `⚠ CONFIRM MANUAL TRADE\n\nMode: ${currentMode}\nStrategy: OTM Short Strangle\n\nThis will immediately place orders on Delta Exchange if ${currentMode} is active. Proceed?`;
-  if (confirm(msg)) {
-    executeNow();
-  }
+function addLog(mode, msg, type='info') {
+  const term = document.getElementById('term');
+  if (!term) return;
+  const now = new Date();
+  const ts = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+  const div = document.createElement('div');
+  div.innerHTML = `<span class="log-time">[${ts}]</span><span class="log-${type}">${msg}</span>`;
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
 }
 
 function executeNow() {
   const btn = document.getElementById('btnExec');
-  btn.disabled = true; btn.textContent = 'EXECUTING...';
+  if (btn) { btn.disabled = true; btn.textContent = 'EXECUTING...'; }
+  addLog(currentMode, `⚡ Manual Trade Triggered. Mode: ${currentMode}`, 'info');
+  
   fetch('/api/execute', { 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -796,12 +598,14 @@ function executeNow() {
   })
     .then(r => r.json())
     .then(d => { 
-      btn.disabled = false; btn.textContent = '⚡ Trigger Trade'; 
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ Trigger Trade'; }
       showToast(d.message, d.status === 'error'); 
+      addLog(currentMode, `API Result: ${d.message}`, d.status === 'error' ? 'error' : 'success');
     })
     .catch(e => { 
-      btn.disabled = false; btn.textContent = '⚡ Trigger Trade'; 
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ Trigger Trade'; }
       showToast('Error: ' + e, true); 
+      addLog(currentMode, `API Error: ${e}`, 'error');
     });
 }
 
@@ -928,15 +732,19 @@ function updateDashboard() {
         payoffChart.update();
       } else {
         let rows = '';
-        [s.call, s.put].forEach(p => {
+        [s.call, s.put].forEach((p, idx) => {
           if (!p) return;
+          const type = p.option_type || (idx === 0 ? 'call' : 'put');
           const c = p.pnl >= 0 ? 'var(--green)' : 'var(--red)';
-          const sideColor = p.option_type === 'call' ? 'var(--green)' : 'var(--red)';
+          const sideColor = type === 'call' ? 'var(--green)' : 'var(--red)';
           const slTp = `${p.sl_on ? 'SL' : ''}${p.tp_on ? '/TP' : ''}` || 'OFF';
           
           rows += `<tr>
-            <td style="font-weight:600;">${p.symbol}</td>
-            <td style="color:${sideColor}; font-weight:bold;">SHORT ${p.option_type.toUpperCase()}</td>
+            <td style="font-weight:600; display:flex; flex-direction:column;">
+              <span>${p.symbol}</span>
+              <span style="font-size:8px; color:var(--text2);">${currentMode} MODE</span>
+            </td>
+            <td style="color:${sideColor}; font-weight:bold;">SHORT ${type.toUpperCase()}</td>
             <td>${p.size || 0}</td>
             <td>$${(p.entry_price||0).toFixed(1)}</td>
             <td>$${(p.current_price||0).toFixed(1)}</td>
@@ -945,7 +753,7 @@ function updateDashboard() {
           </tr>`;
         });
         tb.innerHTML = rows;
-        if (s.call && s.put && btc > 0) {
+        if (s.call && s.put && btc > 0 && (s.call.strike || 0) > 0 && (s.put.strike || 0) > 0) {
           const cs = s.call.strike, ps = s.put.strike;
           const tp = (s.call.entry_price||0) + (s.put.entry_price||0);
           const labels=[], pay=[], mkt=[];
@@ -969,7 +777,6 @@ function updateDashboard() {
 
 // ── Dashboard polling ─────────────────────────────────────────────────────────
 setInterval(updateDashboard, 3000);
-setInterval(updateOptionChain, 10000);
 
 // Load saved keys from localStorage
 window.addEventListener('DOMContentLoaded', () => {

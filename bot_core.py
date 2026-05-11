@@ -228,8 +228,6 @@ class DeltaIndiaClient:
         return self.post('/v2/orders', data)
 
     def get_history(self, symbol='BTCUSD', resolution='1h', hours=24):
-# ... existing get_history code ...
-
         """Fetch OHLCV candles — symbol must NOT include 'MARK:' prefix."""
         symbol = symbol.replace('MARK:', '')  # sanitize
         now   = int(time.time())
@@ -317,26 +315,79 @@ class DeltaOptionsBot:
             print(f"[{mode}][{ts} IST] {message}")
         except UnicodeEncodeError:
             print(f"[{mode}][{ts} IST] {message.encode('ascii','replace').decode()}")
-        logs = self.state[mode]['logs']
+        
+        # Ensure mode exists in state
+        if mode not in self.state:
+            # Fallback for SYSTEM or other tags
+            target = 'PAPER' if mode != 'LIVE' else 'LIVE'
+            logs = self.state[target]['logs']
+        else:
+            logs = self.state[mode]['logs']
+            
         logs.append(entry)
-        if len(logs) > 500:
-            logs.pop(0)
+        if len(logs) > 500: logs.pop(0)
+
+    def test_live_connection(self, api_key, api_secret):
+        if not api_key or not api_secret:
+            return False, "API Key and Secret required."
+        client = DeltaIndiaClient(api_key.strip(), api_secret.strip())
+        ok, info = client.test_connection()
+        if ok:
+            self.state['LIVE']['client'] = client
+            self.is_connected = True
+            self._save_creds(api_key.strip(), api_secret.strip())
+            self.log('SYSTEM', "✅ API Connection manually verified and saved.")
+            return True, "✅ Connection Successful!"
+        return False, f"❌ Connection Failed: {info}"
+
+    def start(self, config):
+        mode = config.get('mode', 'PAPER').upper()
+        s    = self.state[mode]
+        
+        # Save config
+        s['config'] = {
+            'target_premium': float(config.get('target_premium', 100)),
+            'allocation_pct': float(config.get('allocation_pct', 50)) / 100.0,
+            'call_sl_mult':   1.0 + float(config.get('call_stop_loss', 100)) / 100.0,
+            'call_sl_on':     bool(config.get('call_stop_loss_on', True)),
+            'call_tp_mult':   1.0 - float(config.get('call_take_profit', 95)) / 100.0,
+            'call_tp_on':     bool(config.get('call_take_profit_on', True)),
+            'put_sl_mult':    1.0 + float(config.get('put_stop_loss', 100)) / 100.0,
+            'put_sl_on':      bool(config.get('put_stop_loss_on', True)),
+            'put_tp_mult':    1.0 - float(config.get('put_take_profit', 95)) / 100.0,
+            'put_tp_on':      bool(config.get('put_take_profit_on', True)),
+        }
+        self._save_state()
+
+        if mode == 'LIVE':
+            key = config.get('api_key', '').strip()
+            sec = config.get('api_secret', '').strip()
+            if not key or not sec:
+                return False, "LIVE mode requires API Key and Secret."
+            
+            # Re-test/Initialize client
+            ok, msg = self.test_live_connection(key, sec)
+            if not ok: return False, msg
+            self.log('LIVE', "✅ LIVE ENGINE STARTED.", "success")
+        else:
+            self.log('PAPER', "✅ PAPER ENGINE STARTED.", "success")
+
+        s['running'] = True
+        return True, f"{mode} engine started successfully."
 
     def get_logs(self, mode):
-        if mode == 'CHAIN': return self.state['SYSTEM']['logs'] # Reuse system logs for chain tab if needed
+        if mode == 'CHAIN': return self.state['SYSTEM']['logs']
         return self.state.get(mode, self.state['PAPER'])['logs']
 
     # ── Persistence ───────────────────────────────────────────────────────────
     def _load_creds(self):
-        # 1. Check for Environment Variables (Render/Production)
         env_key = os.environ.get('DELTA_API_KEY')
         env_sec = os.environ.get('DELTA_API_SECRET')
         if env_key and env_sec:
             self.state['LIVE']['client'] = DeltaIndiaClient(env_key, env_sec)
-            self.log('SYSTEM', "🔑 Credentials loaded from environment variables.")
+            self.log('SYSTEM', "🔑 Credentials loaded from environment.")
             return
 
-        # 2. Check for local file (Development)
         if os.path.exists(self.creds_file):
             try:
                 with open(self.creds_file, 'r') as f:
@@ -414,66 +465,24 @@ class DeltaOptionsBot:
             'sentiment':         self.last_iv_pcr,
         }
 
-    # ── Start / Stop ──────────────────────────────────────────────────────────
-    def test_live_connection(self, api_key, api_secret):
-        if not api_key or not api_secret:
-            return False, "API Key and Secret required."
-        client = DeltaIndiaClient(api_key.strip(), api_secret.strip())
-        ok, info = client.test_connection()
-        if ok:
-            self.state['LIVE']['client'] = client
-            self.is_connected = True
-            self._save_creds(api_key.strip(), api_secret.strip())
-            self.log('SYSTEM', "✅ API Connection manually verified and saved.")
-            return True, "✅ Connection Successful!"
-        return False, f"❌ Connection Failed: {info}"
-
-    def start(self, config):
-        mode = config.get('mode', 'PAPER').upper()
-        s    = self.state[mode]
+    def stop(self, mode=None):
+        """Stops the engine for a specific mode or the active mode."""
+        if not mode:
+            mode = self.active_mode or 'PAPER'
         
-        # Save config
-        s['config'] = {
-            'target_premium': float(config.get('target_premium', 100)),
-            'allocation_pct': float(config.get('allocation_pct', 50)) / 100.0,
-            'call_sl_mult':   1.0 + float(config.get('call_stop_loss', 100)) / 100.0,
-            'call_sl_on':     bool(config.get('call_stop_loss_on', True)),
-            'call_tp_mult':   1.0 - float(config.get('call_take_profit', 95)) / 100.0,
-            'call_tp_on':     bool(config.get('call_take_profit_on', True)),
-            'put_sl_mult':    1.0 + float(config.get('put_stop_loss', 100)) / 100.0,
-            'put_sl_on':      bool(config.get('put_stop_loss_on', True)),
-            'put_tp_mult':    1.0 - float(config.get('put_take_profit', 95)) / 100.0,
-            'put_tp_on':      bool(config.get('put_take_profit_on', True)),
-        }
-        self._save_state()
-
-        if mode == 'LIVE':
-            key = config.get('api_key', '').strip()
-            sec = config.get('api_secret', '').strip()
-            if not key or not sec:
-                return False, "LIVE mode requires API Key and Secret."
-            
-            # Re-test/Initialize client
-            ok, msg = self.test_live_connection(key, sec)
-            if not ok: return False, msg
-            self.log('LIVE', "✅ LIVE ENGINE STARTED.", "success")
-        else:
-            self.log('PAPER', "✅ PAPER ENGINE STARTED.", "success")
-
-        s['running'] = True
-        return True, f"{mode} engine started successfully."
-
-    def stop(self, mode):
+        mode = mode.upper()
         if mode in self.state:
             self.state[mode]['running'] = False
-            self.log(mode, "🛑 ENGINE STOPPED.", "error")
+            self.log(mode, f"🛑 {mode} ENGINE STOPPED.", "error")
             self._save_state()
+            return True, f"{mode} engine stopped."
+        return False, f"Invalid mode: {mode}"
 
     def trigger_execution(self, mode=None):
         if not mode:
             mode = self.active_mode or 'PAPER'
-        self.log(mode, "⚡ MANUAL EXECUTION TRIGGERED...", "info")
-        threading.Thread(target=self.execute_strategy, args=(mode,), daemon=True).start()
+        self.log(mode, "⚡ MANUAL EXECUTION REQUESTED", "info")
+        threading.Thread(target=self.execute_strategy, args=(mode, True), daemon=True).start()
 
     def clear_positions(self, mode):
         if mode in self.state:
@@ -514,12 +523,11 @@ class DeltaOptionsBot:
                         # Re-sync time and retry
                         client.sync_time()
                 else:
-                    # No credentials yet
                     self.is_connected = False
             except Exception as e:
                 logging.error(f"Monitor loop error: {e}")
             
-            time.sleep(60) # Standard heartbeat interval
+            time.sleep(60)
 
     def _market_data_loop(self):
         self.log('SYSTEM', "📡 Market data feed active.")
@@ -533,15 +541,17 @@ class DeltaOptionsBot:
                         if self.current_btc_price == 0:
                             self.log('SYSTEM', f"✅ BTC Price Feed Connected: ${price}", "success")
                         self.current_btc_price = price
-                    elif self.current_btc_price == 0:
-                        # Only log once if we are totally disconnected
-                        self.log('SYSTEM', "⚠️ Price feed unavailable. Check connection.", "warn")
                     
                     r = self.india_client.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
                     if r.get('success') and r.get('result'):
                         for t in r['result']:
                             if t.get('symbol') == 'BTCUSD':
-                                self.cached_stats = {'high': float(t.get('high', 0)), 'low': float(t.get('low', 0)), 'volume': float(t.get('volume', 0)), 'oi': float(t.get('open_interest', 0))}
+                                self.cached_stats = {
+                                    'high': float(t.get('high', 0)), 
+                                    'low': float(t.get('low', 0)), 
+                                    'volume': float(t.get('volume', 0)), 
+                                    'oi': float(t.get('open_interest', 0))
+                                }
                                 break
                     self.last_stats_update = now_ts
 
@@ -556,7 +566,10 @@ class DeltaOptionsBot:
                             if opt.get('option_type') == 'call': call_oi += oi
                             else: put_oi += oi
                             if iv > 0: ivs.append(iv)
-                        self.last_iv_pcr = {'pcr': round(put_oi/call_oi, 2) if call_oi > 0 else 0.0, 'avg_iv': round(sum(ivs)/len(ivs), 2) if ivs else 0.0}
+                        self.last_iv_pcr = {
+                            'pcr': round(put_oi/call_oi, 2) if call_oi > 0 else 0.0, 
+                            'avg_iv': round(sum(ivs)/len(ivs), 2) if ivs else 0.0
+                        }
                     self.last_chain_update = now_ts
 
                 # 3. Simulate Paper PnL & Enforce SL/TP
@@ -567,30 +580,24 @@ class DeltaOptionsBot:
                     for leg in ['call', 'put']:
                         if pos[leg]:
                             p = pos[leg]
-                            # Simple simulation: price decays based on distance from strike (implied)
-                            # In a real bot we'd fetch the actual option mark price.
                             dist = abs(self.current_btc_price - p['strike'])
                             sim  = max(0.5, p['entry_price'] - dist * 0.01)
                             p['current_price'] = round(sim, 2)
                             p['pnl'] = round((p['entry_price'] - p['current_price']) * p['size'], 2)
 
-                            # Enforce SL/TP
-                            is_call = (leg == 'call')
-                            sl_on = cfg.get('call_sl_on') if is_call else cfg.get('put_sl_on')
-                            tp_on = cfg.get('call_tp_on') if is_call else cfg.get('put_tp_on')
-                            
-                            # Close logic
+                            # SL/TP logic
                             reason = None
-                            if sl_on and p['current_price'] >= p['sl']: reason = "STOP LOSS"
-                            if tp_on and p['current_price'] <= p['tp']: reason = "TAKE PROFIT"
+                            if p.get('sl_on') and p['current_price'] >= p['sl']: reason = "STOP LOSS"
+                            if p.get('tp_on') and p['current_price'] <= p['tp']: reason = "TAKE PROFIT"
                             
                             if reason:
                                 self.log('PAPER', f"📢 PAPER: {reason} HIT for {leg.upper()} ({p['symbol']})", "warn")
                                 s['balance'] += p['pnl']
                                 pos[leg] = None
                                 self.log('PAPER', f"✅ Position Closed. New Balance: ${s['balance']:.2f}", "success")
+                                self._save_state()
             except Exception as e:
-                print(f"[MARKET_LOOP ERROR] {e}")
+                logging.error(f"Market loop error: {e}")
             time.sleep(5)
 
 
@@ -601,187 +608,165 @@ class DeltaOptionsBot:
             sym = o.get('symbol', '').upper()
             parts = sym.split('-')
             if len(parts) >= 4:
-                # Format is usually [Side]-[Asset]-[Strike]-[Date]
                 expiries.add(parts[3])
         return sorted(list(expiries))
 
     def find_best_strike(self, options, option_type, target_premium, target_dates):
-        """
-        Finds the strike that has premium >= target_premium and is closest to it.
-        target_dates: list of valid date strings (e.g. ['120526', '12MAY26'])
-        """
         valid = []
         for o in options:
             if o.get('option_type') != option_type: continue
             
             sym = o.get('symbol', '').upper()
-            found_date = False
-            for d in target_dates:
-                if d.upper() in sym:
-                    found_date = True
-                    break
-            
+            found_date = any(d.upper() in sym for d in target_dates)
             if not found_date: continue
             
-            # Premium discovery: Mark -> Theoretical -> Bid
             prem = float(o.get('mark_price') or o.get('theoretical_price') or 
                          (o.get('quotes', {}).get('best_bid') if o.get('quotes') else 0) or 0)
             
             if prem >= target_premium:
                 valid.append((o, prem))
         
-        if not valid: return None, target_premium, None
+        if not valid: return None, target_premium, None, 0
         
-        # Sort by premium (ascending) to get the one closest to target but >= target
         valid.sort(key=lambda x: x[1])
         best_opt, best_prem = valid[0]
-        return best_opt.get('symbol'), best_prem, best_opt.get('id')
+        
+        # Robust strike extraction
+        strike = float(best_opt.get('strike_price') or 0)
+        if strike == 0:
+            try:
+                parts = best_opt.get('symbol', '').split('-')
+                if len(parts) >= 3:
+                    strike = float(parts[2])
+            except:
+                strike = 0
+                
+        return best_opt.get('symbol'), best_prem, best_opt.get('id'), strike
 
     # ── Strategy execution ────────────────────────────────────────────────────
-    def execute_strategy(self, mode='PAPER'):
+    def execute_strategy(self, mode='PAPER', is_manual=False):
         s = self.state[mode]
-        if not s['running']: return
+        if not s['running'] and not is_manual: 
+            self.log(mode, "Execution skipped (engine OFF and not manual).", "info")
+            return
 
         self.log(mode, "=" * 45, "info")
-        self.log(mode, f"🚀 EXECUTING {mode} STRATEGY", "success")
-        self.log(mode, "=" * 45, "info")
-
+        self.log(mode, f"🚀 {'MANUAL' if is_manual else 'AUTO'} EXECUTION STARTED ({mode})", "success")
+        
         try:
-            # Get Options first to discover available expiries
             options = self.india_client.get_option_chain()
             if not options:
                 self.log(mode, "❌ Could not fetch option chain. Aborting.", "error")
                 return
 
-            # Discover expiries
             all_expiries = self.get_valid_expiries(options)
             self.log(mode, f"Available Expiries: {all_expiries}", "info")
 
-            # Target is tomorrow (08:00 AM trade -> Next day 05:30 PM expiry)
             now_dt = datetime.datetime.now()
             target_dt = now_dt + datetime.timedelta(days=1)
-            target_d1 = target_dt.strftime('%d%m%y')
-            target_d2 = target_dt.strftime('%d%b%y').upper()
+            target_dates = [target_dt.strftime('%d%m%y'), target_dt.strftime('%d%b%y').upper()]
             
-            # Find the first available expiry that is today or later
-            target_dates = []
+            # Select target expiry
+            selected_exp = None
             for exp in all_expiries:
-                # Simple check: if expiry matches our target strings
-                if target_d1 in exp or target_d2 in exp:
-                    target_dates = [exp]
+                if any(td in exp for td in target_dates):
+                    selected_exp = [exp]
                     break
             
-            if not target_dates and all_expiries:
-                # Fallback: pick the first one that is at least 24h away if possible
-                target_dates = [all_expiries[0]]
+            if not selected_exp and all_expiries:
+                selected_exp = [all_expiries[0]]
             
-            if not target_dates:
+            if not selected_exp:
                 self.log(mode, "❌ No valid expiries found. Aborting.", "error")
                 return
 
-            self.log(mode, f"Target Expiry Selected: {target_dates}", "info")
+            self.log(mode, f"Target Expiry Selected: {selected_exp}", "info")
 
             if mode == 'LIVE': s['client'].sync_time()
-
             if self.current_btc_price <= 0:
                 self.current_btc_price = self.india_client.get_btc_price()
-            if self.current_btc_price <= 0:
-                self.log(mode, "❌ Cannot get BTC price. Aborting.", "error")
-                return
 
             btc = self.current_btc_price
             cfg = s['config']
-            target_prem = 100.0 # Strict $100 rule as per user request
+            target_prem = cfg.get('target_premium', 100.0)
 
-            # Get Options and find strikes
-            options = self.india_client.get_option_chain()
-            call_sym, call_prem, call_id = self.find_best_strike(options, 'call', target_prem, target_dates)
-            put_sym,  put_prem,  put_id  = self.find_best_strike(options, 'put',  target_prem, target_dates)
+            call_sym, call_prem, call_id, call_strike = self.find_best_strike(options, 'call', target_prem, selected_exp)
+            put_sym,  put_prem,  put_id,  put_strike  = self.find_best_strike(options, 'put',  target_prem, selected_exp)
 
             if not call_sym or not put_sym:
-                self.log(mode, f"❌ Could not find strikes for {target_dates} with premium >= ${target_prem}", "error")
+                self.log(mode, f"❌ Could not find strikes with premium >= ${target_prem}", "error")
                 return
 
             self.log(mode, f"SELECTED CE: {call_sym} @ ${call_prem:.2f}", "success")
             self.log(mode, f"SELECTED PE: {put_sym} @ ${put_prem:.2f}", "success")
 
-            # ── PAPER ──
-            if mode == 'PAPER':
-                bal  = s['balance']
-                pos  = s['positions']
-                # 200X leverage size calculation
-                c_sz = max(1, int((bal * cfg['allocation_pct'] * 200) / (call_prem + 1)))
-                p_sz = max(1, int((bal * cfg['allocation_pct'] * 200) / (put_prem + 1)))
-
-                pos['call'] = {
-                    'symbol': call_sym, 'strike': 0, 'side': 'SELL CALL',
-                    'entry_price': call_prem, 'current_price': call_prem,
-                    'size': c_sz, 'pnl': 0.0,
-                    'sl': round(call_prem * cfg['call_sl_mult'], 2),
-                    'sl_on': cfg['call_sl_on'],
-                    'tp': round(call_prem * cfg['call_tp_mult'], 2),
-                    'tp_on': cfg['call_tp_on'],
-                }
-                pos['put'] = {
-                    'symbol': put_sym, 'strike': 0, 'side': 'SELL PUT',
-                    'entry_price': put_prem, 'current_price': put_prem,
-                    'size': p_sz, 'pnl': 0.0,
-                    'sl': round(put_prem * cfg['put_sl_mult'], 2),
-                    'sl_on': cfg['put_sl_on'],
-                    'tp': round(put_prem * cfg['put_tp_mult'], 2),
-                    'tp_on': cfg['put_tp_on'],
-                }
-                self.log(mode, f"✅ PAPER EXECUTION COMPLETE. x{c_sz} CE, x{p_sz} PE", "success")
+            # ── Execute ──
+            bal = s['balance']
+            if mode == 'LIVE':
+                bal = s['client'].get_balance()
+                s['balance'] = bal
+            
+            if bal <= 0:
+                self.log(mode, "❌ Zero balance. Aborting.", "error")
                 return
 
-            # ── LIVE ──
-            if mode == 'LIVE':
-                client = s['client']
-                live_bal = client.get_balance()
-                if live_bal <= 0:
-                    self.log(mode, "❌ Zero USDT balance. Cannot trade.", "error")
-                    return
-                s['balance'] = live_bal
-                
-                # 200X leverage size calculation
-                c_sz = max(1, int((live_bal * cfg['allocation_pct'] * 200) / (call_prem + 1)))
-                p_sz = max(1, int((live_bal * cfg['allocation_pct'] * 200) / (put_prem + 1)))
-                pos  = s['positions']
+            # Leverage-based size
+            alloc = cfg.get('allocation_pct', 0.5)
+            c_sz = max(1, int((bal * alloc * 200) / (call_prem + 1)))
+            p_sz = max(1, int((bal * alloc * 200) / (put_prem + 1)))
 
-                for pid, sym, sz, prem, sl_m, tp_m, sl_on, tp_on, leg in [
-                    (call_id, call_sym, c_sz, call_prem, cfg['call_sl_mult'], cfg['call_tp_mult'], cfg['call_sl_on'], cfg['call_tp_on'], 'CALL'),
-                    (put_id,  put_sym,  p_sz, put_prem,  cfg['put_sl_mult'],  cfg['put_tp_mult'],  cfg['put_sl_on'],  cfg['put_tp_on'],  'PUT'),
+            if mode == 'PAPER':
+                s['positions']['call'] = {
+                    'symbol': call_sym, 'strike': call_strike, 'side': 'SELL CALL',
+                    'option_type': 'call', 'entry_price': call_prem, 'current_price': call_prem,
+                    'size': c_sz, 'pnl': 0.0,
+                    'sl': round(call_prem * cfg.get('call_sl_mult', 2.0), 2),
+                    'sl_on': cfg.get('call_sl_on', True),
+                    'tp': round(call_prem * cfg.get('call_tp_mult', 0.05), 2),
+                    'tp_on': cfg.get('call_tp_on', True),
+                }
+                s['positions']['put'] = {
+                    'symbol': put_sym, 'strike': put_strike, 'side': 'SELL PUT',
+                    'option_type': 'put', 'entry_price': put_prem, 'current_price': put_prem,
+                    'size': p_sz, 'pnl': 0.0,
+                    'sl': round(put_prem * cfg.get('put_sl_mult', 2.0), 2),
+                    'sl_on': cfg.get('put_sl_on', True),
+                    'tp': round(put_prem * cfg.get('put_tp_mult', 0.05), 2),
+                    'tp_on': cfg.get('put_tp_on', True),
+                }
+                self.log(mode, f"✅ PAPER EXECUTION COMPLETE. x{c_sz} CE, x{p_sz} PE", "success")
+            else:
+                client = s['client']
+                for pid, sym, sz, prem, strike, sl_m, tp_m, sl_on, tp_on, leg in [
+                    (call_id, call_sym, c_sz, call_prem, call_strike, cfg['call_sl_mult'], cfg['call_tp_mult'], cfg['call_sl_on'], cfg['call_tp_on'], 'call'),
+                    (put_id,  put_sym,  p_sz, put_prem,  put_strike,  cfg['put_sl_mult'],  cfg['put_tp_mult'],  cfg['put_sl_on'],  cfg['put_tp_on'],  'put'),
                 ]:
-                    # 1. Set Isolated Mode & 200X Leverage
-                    self.log(mode, f"Setting Isolated 200X for {sym}...", "info")
+                    self.log(mode, f"Placing {leg.upper()} order: {sym} x{sz}...", "info")
                     client.set_margin_mode(pid, 'isolated')
                     client.set_leverage(pid, 200)
-                    
-                    # 2. Place Order
-                    self.log(mode, f"Placing {leg} order: {sym} x{sz}...", "info")
                     res = client.place_order(pid, 'sell', sz, 'limit_order', prem)
                     
                     if res.get('success'):
-                        pos[leg.lower()] = {
-                            'symbol': sym, 'strike': 0, 'side': f'SELL {leg}',
-                            'entry_price': prem, 'current_price': prem,
+                        s['positions'][leg] = {
+                            'symbol': sym, 'strike': strike, 'side': f'SELL {leg.upper()}',
+                            'option_type': leg, 'entry_price': prem, 'current_price': prem,
                             'size': sz, 'pnl': 0.0,
-                            'sl': round(prem * sl_m, 2),
                             'sl_on': sl_on,
                             'tp': round(prem * tp_m, 2),
                             'tp_on': tp_on,
                         }
-                        self.log(mode, f"✅ {leg} Filled: {sym}", "success")
+                        self.log(mode, f"✅ {leg.upper()} Filled: {sym}", "success")
                     else:
-                        err = res.get('error', {})
-                        self.log(mode, f"❌ {leg} Failed: {err.get('message', 'Unknown error')}", "error")
-
+                        err_msg = res.get('error', {}).get('message', 'Unknown error')
+                        self.log(mode, f"❌ {leg.upper()} Failed: {err_msg}", "error")
                 self.log(mode, "✅ LIVE EXECUTION COMPLETE.", "success")
+            
+            self._save_state()
 
         except Exception as e:
-            self.log(mode, f"❌ Strategy error: {e}", "error")
             import traceback
-            traceback.print_exc()
+            self.log(mode, f"❌ Strategy error: {e}", "error")
+            print(traceback.format_exc())
 
 bot_instance = DeltaOptionsBot()
 

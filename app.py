@@ -2,7 +2,18 @@ from flask import Flask, render_template, request, jsonify
 from bot_core import bot_instance
 import os, threading, time, datetime
 
+from werkzeug.exceptions import HTTPException
+
 app = Flask(__name__, template_folder='.')
+
+# Global Error Handler to ensure all errors return JSON
+@app.errorhandler(Exception)
+def handle_exception(e):
+    if isinstance(e, HTTPException):
+        return e
+    import traceback
+    print(f"[GLOBAL ERROR] {traceback.format_exc()}")
+    return jsonify({"status": "error", "message": str(e), "type": str(type(e))}), 500
 
 # ─── KEEP-ALIVE PINGER ────────────────────────────────────────────────────────
 def keep_alive_pinger():
@@ -58,7 +69,7 @@ def get_status():
 
 @app.route('/api/connect', methods=['POST'])
 def connect_api():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     ok, msg = bot_instance.test_live_connection(data.get('api_key'), data.get('api_secret'))
     return jsonify({'status': 'success' if ok else 'error', 'message': msg})
 
@@ -96,8 +107,17 @@ def start_bot():
 
 @app.route('/api/stop', methods=['POST'])
 def stop_bot():
-    bot_instance.stop()
-    return jsonify({'status': 'success', 'message': 'Engine stopped.'})
+    print("[API] Received stop request.")
+    try:
+        data = request.get_json(silent=True) or {}
+        mode = data.get('mode', 'PAPER').upper()
+        print(f"[API] Stopping engine for mode: {mode}")
+        bot_instance.stop(mode)
+        return jsonify({'status': 'success', 'message': f'{mode} engine stopped.'})
+    except Exception as e:
+        import traceback
+        print(f"[STOP ERROR] {traceback.format_exc()}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/execute', methods=['POST'])
 def execute():
