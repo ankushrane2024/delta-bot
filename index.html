@@ -610,9 +610,18 @@ function executeNow() {
 }
 
 function clearPos() {
-  const msg = `⚠️ CLEAR ${currentMode} POSITIONS?\n\nThis will remove the trades from the dashboard so you can take new ones.\n\nNOTE: This does NOT close actual orders on the exchange in LIVE mode.`;
-  if (!confirm(msg)) return;
+  const btn = document.getElementById('btnClear');
+  if (btn.dataset.confirm !== '1') {
+    btn.dataset.confirm = '1';
+    btn.textContent = 'CONFIRM CLEAR?';
+    setTimeout(() => { 
+      btn.dataset.confirm = '0'; 
+      btn.textContent = '✕ Clear'; 
+    }, 3000);
+    return;
+  }
   
+  btn.textContent = 'CLEARING...';
   fetch('/api/clear', { 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -622,11 +631,13 @@ function clearPos() {
   .then(d => {
     showToast(d.message);
     addLog(currentMode, `🗑️ ${d.message}`, 'warn');
-    updateDashboard(); // Immediately refresh to show empty table
+    btn.dataset.confirm = '0';
+    btn.textContent = '✕ Clear';
+    updateDashboard(); 
   })
   .catch(e => {
-    showToast('Error clearing positions: ' + e, true);
-    addLog(currentMode, `❌ Error: ${e}`, 'error');
+    showToast('Error: ' + e, true);
+    btn.textContent = '✕ Clear';
   });
 }
 
@@ -647,18 +658,25 @@ function updateDashboard() {
       const btnCl = document.getElementById('btnClear');
       
       if (d.running) {
-        btnS.style.display  = 'none';
-        btnSt.style.display = 'block';
+        if(btnS) btnS.style.display = 'none';
+        if(btnSt) btnSt.style.display = 'block';
       } else {
-        btnS.style.display  = 'block';
-        btnSt.style.display = 'none';
+        if(btnS) btnS.style.display = 'block';
+        if(btnSt) btnSt.style.display = 'none';
       }
       
-      // Always allow manual trigger and clearing if positions exist
-      btnE.style.display = 'block';
+      // Always show manual trigger
+      if(btnE) btnE.style.display = 'block';
       
+      // Show clear button only if positions exist (regardless of engine state)
       const hasPos = (d.positions && (d.positions.call || d.positions.put));
-      btnCl.style.display = hasPos ? 'block' : 'none';
+      if(btnCl) {
+         btnCl.style.display = hasPos ? 'block' : 'none';
+         if (!hasPos) {
+           btnCl.textContent = '✕ Clear';
+           btnCl.dataset.confirm = '0';
+         }
+      }
 
       if (btnC) {
         if (d.is_connected) {
