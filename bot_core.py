@@ -139,24 +139,32 @@ class DeltaIndiaClient:
                         if price > 0: return price
         except: pass
 
-        # 2. Delta India History (We know this works on Render!)
+        # 2. Delta India History (Request 4h to be safe)
         try:
-            hist = self.get_history('BTCUSD', '1h', 1)
+            hist = self.get_history('BTCUSD', '1h', 4)
             if hist:
                 price = float(hist[-1].get('close', 0))
-                if price > 0: return price
+                if price > 0: 
+                    print(f"[PRICE] Using History API Fallback: {price}")
+                    return price
         except: pass
 
         # 3. Binance Public API
         try:
             b = _requests.get('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT', timeout=5).json()
-            if 'price' in b: return float(b['price'])
+            if 'price' in b: 
+                price = float(b['price'])
+                print(f"[PRICE] Using Binance Fallback: {price}")
+                return price
         except: pass
 
         # 4. CoinGecko Fallback
         try:
             cg = _requests.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', timeout=5).json()
-            return float(cg['bitcoin']['usd'])
+            if 'bitcoin' in cg:
+                price = float(cg['bitcoin']['usd'])
+                print(f"[PRICE] Using CoinGecko Fallback: {price}")
+                return price
         except: pass
         return 0.0
 
@@ -525,7 +533,8 @@ class DeltaOptionsBot:
                         if self.current_btc_price == 0:
                             self.log('SYSTEM', f"✅ BTC Price Feed Connected: ${price}", "success")
                         self.current_btc_price = price
-                    else:
+                    elif self.current_btc_price == 0:
+                        # Only log once if we are totally disconnected
                         self.log('SYSTEM', "⚠️ Price feed unavailable. Check connection.", "warn")
                     
                     r = self.india_client.get('/v2/tickers', {'contract_types': 'perpetual_futures', 'underlying_asset_symbol': 'BTC'})
