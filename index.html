@@ -714,10 +714,6 @@ function updateDashboard() {
         badge.textContent    = runningMode + ' ACTIVE';
         badge.style.background = runningMode === 'LIVE' ? 'rgba(246, 70, 93, 0.2)' : 'rgba(146, 84, 222, 0.2)';
         badge.style.color      = runningMode === 'LIVE' ? 'var(--red)' : 'var(--purple)';
-        document.getElementById('btnStart').style.display = 'none';
-        document.getElementById('btnStop').style.display  = 'block';
-        document.getElementById('btnExec').style.display  = 'block';
-        document.getElementById('btnClear').style.display = 'block';
       } else {
         if (isRunningGlobal) {
           badge.textContent    = runningMode + ' RUNNING';
@@ -728,10 +724,6 @@ function updateDashboard() {
           badge.style.background = '#222';
           badge.style.color      = '#666';
         }
-        document.getElementById('btnStart').style.display = 'block';
-        document.getElementById('btnStop').style.display  = 'none';
-        document.getElementById('btnExec').style.display  = 'none';
-        document.getElementById('btnClear').style.display = 'none';
       }
       
       document.getElementById('dotPaper').style.display = d.has_paper_pos ? 'inline-block' : 'none';
