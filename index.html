@@ -669,7 +669,7 @@ function updateDashboard() {
       if(btnE) btnE.style.display = 'block';
       
       // Show clear button only if positions exist (regardless of engine state)
-      const hasPos = (d.positions && (d.positions.call || d.positions.put));
+      const hasPos = currentMode === 'PAPER' ? d.has_paper_pos : d.has_live_pos;
       if(btnCl) {
          btnCl.style.display = hasPos ? 'block' : 'none';
          if (!hasPos) {
