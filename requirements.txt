@@ -1,6 +1,9 @@
-ccxt==4.2.14
-schedule==1.2.1
-python-dotenv==1.0.0
-Flask==3.0.0
-gunicorn==21.2.0
-requests==2.31.0
+requests
+python-dotenv
+schedule
+pytz
+websocket-client
+pandas
+numpy
+flask
+python-telegram-bot
