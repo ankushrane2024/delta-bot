@@ -1,6 +1,6 @@
 import requests
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
-from logger import error_logger, app_logger
+from logger import error_logger
 
 class TelegramNotifier:
     def __init__(self, token=None, chat_id=None):
@@ -16,7 +16,7 @@ class TelegramNotifier:
         payload = {
             "chat_id": self.chat_id,
             "text": message,
-            "parse_mode": "Markdown"
+            "parse_mode": "HTML"
         }
         
         try:
@@ -26,39 +26,40 @@ class TelegramNotifier:
         except Exception as e:
             error_logger.error(f"Telegram notification error: {e}")
 
-    def notify_entry(self, mode, strategy, call_sym, put_sym, lots):
-        msg = (
-            f"🚀 *{mode} Entry: {strategy}*\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"📅 Time: IST Morning\n"
-            f"📞 CE: `{call_sym}`\n"
-            f"📥 PE: `{put_sym}`\n"
-            f"📦 Lots: `{lots}` per leg\n"
-        )
+    def notify_startup(self, mode, capital):
+        self.send_message(f"🚀 <b>Bot Started in {mode} mode | Capital: ${capital}</b>")
+
+    def notify_entry(self, call_sym, put_sym, lots, premium):
+        self.send_message(f"🟢 <b>New Short Strangle Entered</b>\nSize: {lots} lots | Premium: ${premium:.2f}\nStrikes: {call_sym} & {put_sym}")
+
+    def notify_partial_profit(self, pnl):
+        self.send_message(f"💰 <b>Partial Profit Booked (50%)</b> | P&L: ${pnl:.2f}")
+
+    def notify_trailing_sl(self):
+        self.send_message("📈 <b>Trailing SL moved to Breakeven</b>")
+
+    def notify_stop_loss(self, loss, recost_triggered):
+        msg = f"🔴 <b>Stop Loss Hit (150%)</b> | Loss: ${loss:.2f}"
+        if recost_triggered:
+            msg += " | RECOST triggered"
         self.send_message(msg)
 
-    def notify_exit(self, mode, reason, pnl, total_pnl):
-        msg = (
-            f"🏁 *{mode} Exit*\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"❓ Reason: `{reason}`\n"
-            f"💵 PnL: `{pnl:.2f}`\n"
-            f"📈 Total PnL: `{total_pnl:.2f}`\n"
-        )
-        self.send_message(msg)
+    def notify_full_exit(self, reason, pnl):
+        self.send_message(f"🟡 <b>Position Closed</b> | Reason: {reason} | P&L: ${pnl:.2f}")
 
-    def notify_hedge(self, mode, delta, gamma, action):
+    def notify_recost(self):
+        self.send_message("🔄 <b>RECOST Re-entry executed with wider strikes</b>")
+
+    def notify_compliance_report(self, win_rate, pnl, drawdown):
         msg = (
-            f"🛡️ *{mode} Hedging*\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"📊 Net Delta: `{delta:.4f}`\n"
-            f"📈 Gamma: `{gamma:.4f}`\n"
-            f"⚡ Action: `{action}`\n"
+            f"📊 <b>Daily Rule Compliance Report</b>\n"
+            f"Win Rate: {win_rate}%\n"
+            f"Net P&L: ${pnl:.2f}\n"
+            f"Current Drawdown: {drawdown}%"
         )
         self.send_message(msg)
 
     def notify_error(self, error_msg):
-        msg = f"⚠️ *ERROR ALERT*\n`{error_msg}`"
-        self.send_message(msg)
+        self.send_message(f"⚠️ <b>Warning: {error_msg}</b>")
 
 notifier = TelegramNotifier()

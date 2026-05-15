@@ -35,7 +35,7 @@ class DeltaTradingEngine:
 
     def start(self):
         app_logger.info(f"Engine: Starting Delta BTC Options Bot in {BOT_MODE} mode with Capital: ${STARTING_CAPITAL}")
-        notifier.send_message(f"🚀 *Bot Started in {BOT_MODE} mode | Capital: ${STARTING_CAPITAL}*")
+        notifier.notify_startup(BOT_MODE, STARTING_CAPITAL)
         
         # Connect WebSockets for zero-latency feeds
         self.api_client.start_ws()
@@ -52,6 +52,7 @@ class DeltaTradingEngine:
         # Schedule rule verification
         schedule.every().day.at("09:30").do(self.run_rule_verification)
         schedule.every().day.at("18:00").do(self.run_rule_verification)
+        schedule.every().day.at("18:00").do(self.send_daily_report)
         
         # Run rule verification once on startup
         self.run_rule_verification()
@@ -111,9 +112,9 @@ class DeltaTradingEngine:
         self.api_client.subscribe_ws([call_opt['symbol'], put_opt['symbol']])
         
         # Notify
-        notifier.notify_entry(BOT_MODE, "Short Strangle", call_opt['symbol'], put_opt['symbol'], per_entry_size)
-        
-        self.total_entry_premium += (call_opt['mark_price'] + put_opt['mark_price']) * per_entry_size
+        total_premium_for_this_entry = (call_opt['mark_price'] + put_opt['mark_price']) * per_entry_size
+        self.total_entry_premium += total_premium_for_this_entry
+        notifier.notify_entry(call_opt['symbol'], put_opt['symbol'], per_entry_size, total_premium_for_this_entry)
 
     def run_exit_cycle(self):
         app_logger.info("Engine: Exit cycle triggered (Fixed Time Square-off)")
@@ -129,6 +130,7 @@ class DeltaTradingEngine:
             if current_total_value > 0:
                 profit = self.total_entry_premium - current_total_value
                 self._log_and_reset_trade(profit, "EOD Square-off")
+                notifier.notify_full_exit("End of Day Square-off", profit)
                 
         self.execution.close_all(reason="End of Day Square-off")
         self.reset_daily_state()
@@ -140,6 +142,11 @@ class DeltaTradingEngine:
             "results": results,
             "compliance": pct
         }
+
+    def send_daily_report(self):
+        metrics = self.performance_tracker.get_metrics(self.risk_manager.current_equity)
+        overall = metrics.get('overall', {})
+        notifier.notify_compliance_report(overall.get('win_rate', 0), overall.get('pnl', 0), overall.get('current_drawdown', 0))
 
     def monitor_loop(self):
         """Zero-latency real-time monitoring of PnL, SL/TP, and Hedging using WebSocket."""
@@ -180,25 +187,26 @@ class DeltaTradingEngine:
                             self._log_and_reset_trade(profit, "Stop Loss Hit")
                             self.execution.close_all(reason="Stop Loss Hit")
                             self.daily_loss_hits += 1
-                            notifier.notify_exit(BOT_MODE, "Stop Loss (150%)", profit, profit)
+                            recost_triggered = (self.re_entry_count < 1)
+                            notifier.notify_stop_loss(profit, recost_triggered)
                             self.handle_recost()
                         
                         elif action == "TAKE_PROFIT_ALL":
                             app_logger.info("Engine: Profit Target Hit (70%)!")
                             self._log_and_reset_trade(profit, "Profit Target Hit")
                             self.execution.close_all(reason="Profit Target Hit")
-                            notifier.notify_exit(BOT_MODE, "Target Profit (70%)", profit, profit)
+                            notifier.notify_full_exit("Profit Target (70%)", profit)
                         
                         elif action == "PARTIAL_PROFIT" and not self.partial_profit_hit:
                             app_logger.info("Engine: Partial Profit Triggered (50%)")
                             self.execution.partial_close(percentage=0.5)
                             self.partial_profit_hit = True
-                            notifier.send_message("💰 *Partial Profit (50%) booked!*")
+                            notifier.notify_partial_profit(profit)
 
                         elif action == "TRAILING_SL_TRIGGERED" and not self.trailing_sl_active:
                             app_logger.info("Engine: Trailing SL to BE active")
                             self.trailing_sl_active = True
-                            notifier.send_message("📈 *Trailing SL moved to Breakeven*")
+                            notifier.notify_trailing_sl()
 
                     # Hedging Check (Time-based triggers)
                     if should_check_hedge(self.last_hedge_check_time):
@@ -213,6 +221,7 @@ class DeltaTradingEngine:
                 time.sleep(0.5) # High frequency tight loop
             except Exception as e:
                 error_logger.error(f"Monitor: Error in monitor loop: {e}")
+                notifier.notify_error(f"Bot stopped or error occurred: {e}")
                 time.sleep(5)
 
     def handle_recost(self):
@@ -227,7 +236,7 @@ class DeltaTradingEngine:
                 size = self.risk_manager.calculate_lot_size()
                 self.execution.execute_strangle(call_opt, put_opt, size)
                 self.api_client.subscribe_ws([call_opt['symbol'], put_opt['symbol']])
-                notifier.send_message("🔄 *RECOST: 1-time re-entry executed with 20% wider strikes*")
+                notifier.notify_recost()
 
     def reset_daily_state(self):
         self.re_entry_count = 0
