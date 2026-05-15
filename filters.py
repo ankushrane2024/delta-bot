@@ -11,10 +11,10 @@ class TradingFilters:
         self.iv_file = 'iv_history.json'
 
     def check_day_filter(self):
-        """Skip Friday and Sunday."""
+        """Skip Friday, Saturday, and Sunday."""
         now = get_ist_now()
         day_name = now.strftime('%A')
-        if day_name in ['Friday', 'Sunday']:
+        if day_name in ['Friday', 'Saturday', 'Sunday']:
             app_logger.info(f"Filter: Skipping trade as today is {day_name}")
             return False
         return True
