@@ -255,8 +255,48 @@
             </div>
         </div>
 
-        <!-- Active Positions Panel -->
+        <!-- Performance Summary Panel -->
         <div class="panel">
+            <h2>Performance Summary</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- Today -->
+                <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="color: #38bdf8; font-weight: 600; margin-bottom: 10px; border-bottom: 1px solid rgba(56, 189, 248, 0.2); padding-bottom: 5px;">Today</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span class="stat-label">Net P&L</span>
+                        <span id="perf-today-pnl" style="font-weight: 800;">$0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span class="stat-label">Trades</span>
+                        <span id="perf-today-trades" style="font-weight: 600; color: var(--text-primary);">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span class="stat-label">Win Rate</span>
+                        <span id="perf-today-winrate" style="font-weight: 600; color: var(--text-primary);">0%</span>
+                    </div>
+                </div>
+
+                <!-- Overall -->
+                <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="color: #c084fc; font-weight: 600; margin-bottom: 10px; border-bottom: 1px solid rgba(192, 132, 252, 0.2); padding-bottom: 5px;">Overall</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span class="stat-label">Net P&L</span>
+                        <span id="perf-overall-pnl" style="font-weight: 800;">$0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span class="stat-label">Win Rate</span>
+                        <span id="perf-overall-winrate" style="font-weight: 600; color: var(--text-primary);">0%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span class="stat-label">Max Drawdown</span>
+                        <span id="perf-overall-maxdd" style="font-weight: 600; color: var(--danger);">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Positions Panel -->
+        <div class="panel full-width">
             <h2>Active Positions</h2>
             <div class="table-container">
                 <table>
@@ -315,6 +355,26 @@
                 document.getElementById('equity-val').textContent = `$${data.equity.toLocaleString()}`;
                 document.getElementById('mode-val').textContent = data.mode;
                 document.getElementById('loss-hits-val').textContent = `${data.daily_loss_hits} / 2`;
+
+                // Update Performance
+                if(data.performance) {
+                    const today = data.performance.today;
+                    const overall = data.performance.overall;
+                    
+                    const tPnl = document.getElementById('perf-today-pnl');
+                    tPnl.textContent = `$${today.pnl.toLocaleString()}`;
+                    tPnl.style.color = today.pnl >= 0 ? 'var(--success)' : 'var(--danger)';
+                    
+                    document.getElementById('perf-today-trades').textContent = today.trades;
+                    document.getElementById('perf-today-winrate').textContent = `${today.win_rate}%`;
+
+                    const oPnl = document.getElementById('perf-overall-pnl');
+                    oPnl.textContent = `$${overall.pnl.toLocaleString()}`;
+                    oPnl.style.color = overall.pnl >= 0 ? 'var(--success)' : 'var(--danger)';
+                    
+                    document.getElementById('perf-overall-winrate').textContent = `${overall.win_rate}%`;
+                    document.getElementById('perf-overall-maxdd').textContent = `${overall.max_drawdown}%`;
+                }
 
                 // Update Positions
                 const tbody = document.getElementById('positions-body');

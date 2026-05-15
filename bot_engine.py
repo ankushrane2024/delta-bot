@@ -10,6 +10,7 @@ from risk_manager import RiskManager
 from strategy import ShortStrangleStrategy
 from execution import ExecutionHandler
 from filters import TradingFilters
+from performance_tracker import PerformanceTracker
 
 class DeltaTradingEngine:
     def __init__(self):
@@ -18,6 +19,8 @@ class DeltaTradingEngine:
         self.strategy = ShortStrangleStrategy(self.api_client)
         self.execution = ExecutionHandler(self.api_client, mode=BOT_MODE)
         self.filters = TradingFilters(self.api_client)
+        self.performance_tracker = PerformanceTracker()
+        self.current_trade_info = {"calls": [], "puts": []}
         
         self.is_running = True
         self.re_entry_count = 0
@@ -92,6 +95,11 @@ class DeltaTradingEngine:
         # Execute
         self.execution.execute_strangle(call_opt, put_opt, per_entry_size)
         
+        # Save trade details for tracking
+        self.current_trade_info["entry_time"] = get_ist_now().isoformat()
+        self.current_trade_info["calls"].append(call_opt['symbol'])
+        self.current_trade_info["puts"].append(put_opt['symbol'])
+        
         # Sub to WebSocket for these new symbols if not already
         self.api_client.subscribe_ws([call_opt['symbol'], put_opt['symbol']])
         
@@ -102,6 +110,19 @@ class DeltaTradingEngine:
 
     def run_exit_cycle(self):
         app_logger.info("Engine: Exit cycle triggered (Fixed Time Square-off)")
+        
+        # Calculate PnL for logging before closing
+        if self.execution.active_positions and self.total_entry_premium > 0:
+            current_total_value = 0
+            for sym, data in self.execution.active_positions.items():
+                ws_data = self.api_client.get_realtime_ticker(sym)
+                if ws_data and 'mark_price' in ws_data:
+                    current_total_value += float(ws_data['mark_price']) * data['size']
+            
+            if current_total_value > 0:
+                profit = self.total_entry_premium - current_total_value
+                self._log_and_reset_trade(profit, "EOD Square-off")
+                
         self.execution.close_all(reason="End of Day Square-off")
         self.reset_daily_state()
 
@@ -141,6 +162,7 @@ class DeltaTradingEngine:
                         
                         if action == "STOP_LOSS_ALL":
                             app_logger.warning("Engine: Combined 150% Stop Loss Hit!")
+                            self._log_and_reset_trade(profit, "Stop Loss Hit")
                             self.execution.close_all(reason="Stop Loss Hit")
                             self.daily_loss_hits += 1
                             notifier.notify_exit(BOT_MODE, "Stop Loss (150%)", profit, profit)
@@ -148,6 +170,7 @@ class DeltaTradingEngine:
                         
                         elif action == "TAKE_PROFIT_ALL":
                             app_logger.info("Engine: Profit Target Hit (70%)!")
+                            self._log_and_reset_trade(profit, "Profit Target Hit")
                             self.execution.close_all(reason="Profit Target Hit")
                             notifier.notify_exit(BOT_MODE, "Target Profit (70%)", profit, profit)
                         
@@ -198,6 +221,22 @@ class DeltaTradingEngine:
         self.partial_profit_hit = False
         self.trailing_sl_active = False
         self.last_hedge_check_time = None
+        self.current_trade_info = {"calls": [], "puts": []}
         self.risk_manager.update_equity()
         self.daily_start_equity = self.risk_manager.current_equity
         app_logger.info("Engine: Daily state reset.")
+
+    def _log_and_reset_trade(self, profit, reason):
+        if self.current_trade_info.get("calls"):
+            c_syms = ",".join(self.current_trade_info["calls"])
+            p_syms = ",".join(self.current_trade_info["puts"])
+            self.performance_tracker.log_trade(
+                entry_time=self.current_trade_info.get("entry_time", ""),
+                call_symbol=c_syms,
+                put_symbol=p_syms,
+                premium_collected=self.total_entry_premium,
+                pnl=profit,
+                exit_reason=reason,
+                current_equity=self.risk_manager.current_equity
+            )
+            self.current_trade_info = {"calls": [], "puts": []}
