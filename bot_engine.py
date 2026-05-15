@@ -11,6 +11,7 @@ from strategy import ShortStrangleStrategy
 from execution import ExecutionHandler
 from filters import TradingFilters
 from performance_tracker import PerformanceTracker
+from rule_verifier import verify_all_rules
 
 class DeltaTradingEngine:
     def __init__(self):
@@ -30,6 +31,7 @@ class DeltaTradingEngine:
         self.trailing_sl_active = False
         self.last_hedge_check_time = None
         self.daily_start_equity = 0
+        self.latest_rule_report = None
 
     def start(self):
         app_logger.info(f"Engine: Starting Delta BTC Options Bot in {BOT_MODE} mode with Capital: ${STARTING_CAPITAL}")
@@ -42,12 +44,17 @@ class DeltaTradingEngine:
         self.risk_manager.update_equity()
         self.daily_start_equity = self.risk_manager.current_equity
         
-        # Schedule entries
+        # Schedule entry/exit
         for t in ENTRY_TIMES:
             schedule.every().day.at(t).do(self.run_entry_cycle)
-            
-        # Schedule exit check (5:00 PM IST)
         schedule.every().day.at(EXIT_TIME_START).do(self.run_exit_cycle)
+        
+        # Schedule rule verification
+        schedule.every().day.at("09:30").do(self.run_rule_verification)
+        schedule.every().day.at("18:00").do(self.run_rule_verification)
+        
+        # Run rule verification once on startup
+        self.run_rule_verification()
         
         # Monitor thread for real-time risk/hedge
         monitor_thread = threading.Thread(target=self.monitor_loop, daemon=True)
@@ -125,6 +132,14 @@ class DeltaTradingEngine:
                 
         self.execution.close_all(reason="End of Day Square-off")
         self.reset_daily_state()
+
+    def run_rule_verification(self):
+        text_report, results, pct = verify_all_rules()
+        app_logger.info(text_report)
+        self.latest_rule_report = {
+            "results": results,
+            "compliance": pct
+        }
 
     def monitor_loop(self):
         """Zero-latency real-time monitoring of PnL, SL/TP, and Hedging using WebSocket."""

@@ -315,6 +315,17 @@
             </div>
         </div>
 
+        <!-- Rule Compliance Panel -->
+        <div class="panel full-width">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">Rule Compliance Check</h2>
+                <div id="compliance-badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; border: 1px solid rgba(16, 185, 129, 0.2);">100% Compliant</div>
+            </div>
+            <div id="rules-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">Waiting for first rule check...</div>
+            </div>
+        </div>
+
         <!-- Live Terminal Panel -->
         <div class="panel full-width">
             <h2>Live System Logs</h2>
@@ -392,6 +403,32 @@
                     });
                 } else {
                     tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No active positions</td></tr>`;
+                }
+
+                // Update Rule Compliance
+                if(data.rule_report && data.rule_report.results) {
+                    const badge = document.getElementById('compliance-badge');
+                    badge.textContent = `${data.rule_report.compliance}% Compliant`;
+                    if(data.rule_report.compliance === 100) {
+                        badge.style.color = 'var(--success)';
+                        badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                        badge.style.background = 'rgba(16, 185, 129, 0.1)';
+                    } else {
+                        badge.style.color = 'var(--danger)';
+                        badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                        badge.style.background = 'rgba(239, 68, 68, 0.1)';
+                    }
+
+                    const rulesGrid = document.getElementById('rules-grid');
+                    rulesGrid.innerHTML = data.rule_report.results.map(r => `
+                        <div style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 10px;">
+                            <div style="font-size: 1.2rem;">${r.passed ? '✅' : '❌'}</div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.9rem;">${r.name}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">${r.expected}</div>
+                            </div>
+                        </div>
+                    `).join('');
                 }
 
                 // Update Logs
