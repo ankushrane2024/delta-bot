@@ -116,6 +116,11 @@ class TradingFilters:
             return True
 
     def all_passed(self):
+        today = get_ist_now()
+        if today.weekday() >= 4:  # Friday=4, Sat=5, Sun=6
+            app_logger.info("Filter: Skipping trade - Today is Friday/Weekend")
+            return False
+            
         return (self.check_day_filter() and 
                 self.check_iv_filter() and 
                 self.check_news_filter())
