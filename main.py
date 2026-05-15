@@ -1,4 +1,5 @@
 import sys
+import os
 import threading
 from bot_engine import DeltaTradingEngine
 from web_server import app, init_web_server
@@ -23,8 +24,9 @@ def main():
         engine_thread.start()
         
         # 4. Start Flask server on the main thread
-        app_logger.info("Starting Web Dashboard on http://127.0.0.1:5000")
-        app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+        port = int(os.environ.get('PORT', 5000))
+        app_logger.info(f"Starting Web Dashboard on port {port}")
+        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
         
     except KeyboardInterrupt:
         app_logger.info("Bot stopped by user.")
