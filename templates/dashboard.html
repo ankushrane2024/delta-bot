@@ -166,6 +166,19 @@
             transform: scale(1.02);
         }
 
+        .btn-test {
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            margin-top: 10px;
+            display: none; /* Hidden by default, shown in PAPER mode */
+        }
+        
+        .btn-test:hover {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+
         .table-container {
             width: 100%;
             overflow-x: auto;
@@ -300,6 +313,11 @@
             <div style="margin-top: 15px;">
                 <button class="btn-emergency" onclick="emergencyClose()">
                     🚨 EMERGENCY SQUARE OFF ALL 🚨
+                </button>
+            </div>
+            <div style="margin-top: 15px;">
+                <button id="btn-test-order" class="btn-test" onclick="runTestOrder()">
+                    🧪 TEST ORDER (1 Lot)
                 </button>
             </div>
         </div>
@@ -515,6 +533,12 @@
                 document.getElementById('equity-val').textContent = `$${data.equity.toLocaleString()}`;
                 document.getElementById('mode-val').textContent = data.mode;
                 document.getElementById('loss-hits-val').textContent = `${data.daily_loss_hits} / 2`;
+
+                // Show/Hide Test Order button based on mode
+                const testBtn = document.getElementById('btn-test-order');
+                if (testBtn) {
+                    testBtn.style.display = data.mode === 'PAPER' ? 'block' : 'none';
+                }
                 
                 // Update Badge and Toggle
                 const regimeBadge = document.getElementById('regime-badge');
@@ -716,6 +740,32 @@
                 const badge = document.getElementById('status-badge');
                 badge.textContent = `🔴 OFFLINE`;
                 badge.className = 'status-badge offline';
+            }
+        }
+
+        async function runTestOrder() {
+            const btn = document.getElementById('btn-test-order');
+            const originalText = btn.innerHTML;
+            
+            if (!confirm("Place a REAL 1-lot order for testing? It will automatically close after 10 seconds. (PAPER mode check will be verified)")) return;
+            
+            try {
+                btn.disabled = true;
+                btn.innerHTML = "⌛ PLACING TEST ORDER...";
+                
+                const response = await fetch('/api/test_order', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert("✅ Success: " + result.message);
+                } else {
+                    alert("❌ Error: " + (result.message || result.error));
+                }
+            } catch (error) {
+                alert("❌ Request Failed: " + error);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
         }
 

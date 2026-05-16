@@ -166,6 +166,50 @@ class DeltaTradingEngine:
         self.execution.close_all(reason="End of Day Square-off")
         self.reset_daily_state()
 
+    def run_test_order(self):
+        """Places a real 1-lot order, waits 10s, then closes it. PAPER mode only."""
+        if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
+            return False, "Test Order is only allowed in PAPER mode for safety."
+
+        app_logger.info("Engine: Running Test Order (1 Lot)...")
+        
+        try:
+            # 1. Find Strikes (Normal Strategy Logic)
+            expiry = get_next_expiry_date()
+            call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry)
+            
+            if not call_opt or not put_opt:
+                return False, "Could not find suitable strikes for test order."
+
+            # 2. Place Real Orders (1 Lot)
+            # We use api_client.place_order directly to bypass simulated paper execution
+            res_call = self.api_client.place_order(call_opt['product_id'], 'sell', 1)
+            res_put = self.api_client.place_order(put_opt['product_id'], 'sell', 1)
+            
+            if not res_call.get('success') or not res_put.get('success'):
+                err_call = res_call.get('error', {}).get('message', 'Unknown Error') if not res_call.get('success') else 'Success'
+                err_put = res_put.get('error', {}).get('message', 'Unknown Error') if not res_put.get('success') else 'Success'
+                return False, f"Failed to place real test orders. Call: {err_call}, Put: {err_put}"
+            
+            app_logger.info(f"Engine: Test orders placed. Call: {call_opt['symbol']}, Put: {put_opt['symbol']}")
+            notifier.notify_error(f"🧪 TEST ORDER PLACED (1 Lot)\nCall: {call_opt['symbol']}\nPut: {put_opt['symbol']}\nWaiting 10s to cancel...")
+            
+            # 3. Wait 10 seconds
+            time.sleep(10)
+            
+            # 4. Close both legs at market
+            res_close_call = self.api_client.place_order(call_opt['product_id'], 'buy', 1)
+            res_close_put = self.api_client.place_order(put_opt['product_id'], 'buy', 1)
+            
+            app_logger.info("Engine: Test orders closed/cancelled.")
+            notifier.notify_error("✅ TEST ORDER COMPLETED\nBoth legs squared off successfully after 10s.")
+            
+            return True, "Test Order Placed & Cancelled Successfully"
+            
+        except Exception as e:
+            app_logger.error(f"Engine: Test order exception: {e}")
+            return False, str(e)
+
     def run_rule_verification(self):
         text_report, results, pct = verify_all_rules()
         app_logger.info(text_report)

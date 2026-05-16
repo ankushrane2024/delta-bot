@@ -101,6 +101,17 @@ def toggle_regime():
     app_logger.info(f"Web: Market Regime Filter {state}")
     
     return jsonify({'status': 'success', 'enabled': bot_engine.market_regime_filter_enabled})
+    
+@app.route('/api/test_order', methods=['POST'])
+def test_order():
+    if not bot_engine:
+        return jsonify({'error': 'Engine not initialized'}), 500
+        
+    success, message = bot_engine.run_test_order()
+    if success:
+        return jsonify({'status': 'success', 'message': message})
+    else:
+        return jsonify({'status': 'error', 'message': message}), 400
 
 @app.route('/api/news', methods=['GET'])
 def get_news():
