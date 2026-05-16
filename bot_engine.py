@@ -34,6 +34,10 @@ class DeltaTradingEngine:
         self.latest_rule_report = None
         self.today_trade_status = "Pending"
         self.today_skip_reason = None
+        
+        self.market_regime_filter_enabled = False
+        self.current_market_regime = "Unknown"
+        self.current_adx_value = 0.0
 
     def start(self):
         app_logger.info(f"Engine: Starting Delta BTC Options Bot in {BOT_MODE} mode with Capital: ${STARTING_CAPITAL}")
@@ -92,6 +96,18 @@ class DeltaTradingEngine:
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = reason
             return
+            
+        # Market Regime Filter Check
+        regime, adx = self.filters.get_market_regime()
+        self.current_market_regime = regime
+        self.current_adx_value = adx
+        
+        if self.market_regime_filter_enabled:
+            if regime == "Trending":
+                app_logger.info(f"Engine: Market Regime Filter active. Skipping trade due to Trending market (ADX: {adx:.2f}).")
+                self.today_trade_status = "Trade Skipped"
+                self.today_skip_reason = f"Market Trending (ADX {adx:.2f} > 25)"
+                return
         
         # Find Strikes (Next-day expiry, checks Premium & Delta)
         expiry = get_next_expiry_date()
@@ -184,6 +200,15 @@ class DeltaTradingEngine:
                             self.api_client.ws_alert_sent = True
 
                 if self.execution.active_positions:
+                    # 30-Second Critical Data Failure Safeguard
+                    if time.time() - self.api_client.last_price_update_time > 30:
+                        app_logger.critical("Engine: TOTAL DATA FAILURE > 30s. Triggering Emergency Auto Square-Off.")
+                        notifier.notify_error("🚨 CRITICAL SAFEGUARD TRIGGERED 🚨\nTotal Data Failure (WS & HTTP) > 30s. Emergency Auto Square-Off executed to protect capital.")
+                        self.execution.close_all(reason="Critical Data Failure (>30s)")
+                        self.today_trade_status = "Emergency Auto Closed"
+                        self.today_skip_reason = "Critical Data Failure (>30s)"
+                        continue # Skip the rest of this loop iteration
+
                     # HTTP Polling Fallback Every 2 seconds
                     if time.time() - last_http_poll_time >= 2:
                         for sym in self.execution.active_positions.keys():
@@ -303,7 +328,8 @@ class DeltaTradingEngine:
                 premium_collected=self.total_entry_premium,
                 pnl=profit,
                 exit_reason=reason,
-                current_equity=self.risk_manager.current_equity
+                current_equity=self.risk_manager.current_equity,
+                regime_filter_enabled=self.market_regime_filter_enabled
             )
             self.current_trade_info = {"calls": [], "puts": []}
 

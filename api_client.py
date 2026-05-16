@@ -21,6 +21,7 @@ class DeltaIndiaClient:
         self.ws_reconnect_attempts = 0
         self.ws_last_disconnect_time = None
         self.ws_alert_sent = False
+        self.last_price_update_time = time.time()
         
         if self.api_key and self.api_secret:
             self.sync_time()
@@ -83,6 +84,12 @@ class DeltaIndiaClient:
     def get_tickers(self, params=None):
         return self.request("GET", "/v2/tickers", params=params)
 
+    def get_candles(self, symbol, resolution, start=None, end=None):
+        params = {"symbol": symbol, "resolution": resolution}
+        if start: params["start"] = start
+        if end: params["end"] = end
+        return self.request("GET", "/v2/history/candles", params=params)
+
     def place_order(self, product_id, side, size, order_type="market_order", limit_price=None):
         data = {
             "product_id": product_id,
@@ -120,8 +127,8 @@ class DeltaIndiaClient:
             data = json.loads(message)
             if data.get('type') == 'v2/ticker':
                 symbol = data.get('symbol')
-                # Store the exact live mark price and greeks for the monitor loop
                 self.ticker_data[symbol] = data
+                self.last_price_update_time = time.time()
         
         def on_error(ws, error):
             error_logger.error(f"WS Error: {error}")
@@ -200,3 +207,4 @@ class DeltaIndiaClient:
         }
         
         self.ticker_data[symbol] = formatted_data
+        self.last_price_update_time = time.time()

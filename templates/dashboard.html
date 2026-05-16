@@ -219,13 +219,57 @@
         @media (max-width: 768px) {
             .container { grid-template-columns: 1fr; }
         }
+        
+        /* Toggle Switch CSS */
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #334155; transition: .4s; border-radius: 26px;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 20px; width: 20px; left: 3px; bottom: 3px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(24px); }
+        
+        /* Emergency Button */
+        .btn-emergency {
+            width: 100%; padding: 13px; margin-top: 12px;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1.5px solid var(--danger);
+            color: var(--danger);
+            border-radius: 8px;
+            font-weight: 800; font-size: 1rem;
+            cursor: pointer; transition: all 0.2s;
+            letter-spacing: 0.5px;
+            animation: pulse-red 2.5s ease-in-out infinite;
+        }
+        .btn-emergency:hover {
+            background: var(--danger);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
+            animation: none;
+            transform: scale(1.02);
+        }
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.15); }
+        }
     </style>
 </head>
 <body>
 
     <header>
         <div>
-            <h1>Delta Engine</h1>
+            <h1 style="display: flex; align-items: center; gap: 15px;">
+                Delta Engine 
+                <span id="regime-badge" style="font-size: 0.9rem; padding: 4px 10px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                    Regime: Unknown
+                </span>
+            </h1>
             <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 5px;">Automated Short Strangle Strategy</div>
         </div>
         <div id="status-badge" class="status-badge">🟢 CONNECTING...</div>
@@ -252,6 +296,26 @@
             <div class="controls">
                 <button class="btn-start" onclick="sendCommand('start')">▶ START BOT</button>
                 <button class="btn-stop" onclick="sendCommand('stop')">⏹ STOP BOT</button>
+            </div>
+            <div style="margin-top: 15px;">
+                <button class="btn-emergency" onclick="emergencyClose()">
+                    🚨 EMERGENCY SQUARE OFF ALL 🚨
+                </button>
+            </div>
+        </div>
+
+        <!-- Risk Management & Settings Panel -->
+        <div class="panel">
+            <h2>Risk Management</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                <div>
+                    <div style="font-weight: 600; color: #fff; margin-bottom: 5px;">Market Regime Filter (ADX)</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Skips trades when market is Trending (ADX > 25)</div>
+                </div>
+                <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                    <input type="checkbox" id="regime-toggle" onchange="toggleRegimeFilter()" style="opacity: 0; width: 0; height: 0;">
+                    <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 26px;"></span>
+                </label>
             </div>
         </div>
 
@@ -291,6 +355,29 @@
                         <span class="stat-label">Max Drawdown</span>
                         <span id="perf-overall-maxdd" style="font-weight: 600; color: var(--danger);">0%</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- Filter Comparison -->
+            <div style="margin-top: 20px; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="color: #f59e0b; font-weight: 600; margin-bottom: 10px; border-bottom: 1px solid rgba(245, 158, 11, 0.2); padding-bottom: 5px;">Filter Comparison (ADX Regime)</div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem;">
+                    <div>
+                        <div style="color: var(--text-secondary); margin-bottom: 5px; font-weight: bold;">Filter OFF (Before)</div>
+                        <div style="display: flex; justify-content: space-between;"><span>Win Rate:</span> <span id="comp-off-wr" style="color:#fff;">0%</span></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Net P&L:</span> <span id="comp-off-pnl" style="color:#fff;">$0.00</span></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Max DD:</span> <span id="comp-off-dd" style="color:var(--danger);">0%</span></div>
+                    </div>
+                    <div>
+                        <div style="color: var(--success); margin-bottom: 5px; font-weight: bold;">Filter ON (After)</div>
+                        <div style="display: flex; justify-content: space-between;"><span>Win Rate:</span> <span id="comp-on-wr" style="color:#fff;">0%</span></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Net P&L:</span> <span id="comp-on-pnl" style="color:#fff;">$0.00</span></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Max DD:</span> <span id="comp-on-dd" style="color:var(--danger);">0%</span></div>
+                    </div>
+                </div>
+                <div id="comp-diff" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); font-size: 0.9rem; text-align: center; color: var(--text-secondary);">
+                    Difference: -
                 </div>
             </div>
         </div>
@@ -394,6 +481,21 @@
                 document.getElementById('equity-val').textContent = `$${data.equity.toLocaleString()}`;
                 document.getElementById('mode-val').textContent = data.mode;
                 document.getElementById('loss-hits-val').textContent = `${data.daily_loss_hits} / 2`;
+                
+                // Update Badge and Toggle
+                const regimeBadge = document.getElementById('regime-badge');
+                if(data.current_market_regime !== undefined) {
+                    let rColor = data.current_market_regime === 'Trending' ? 'var(--danger)' : 'var(--success)';
+                    let rIcon = data.current_market_regime === 'Trending' ? '🔴' : '🟢';
+                    if (data.current_market_regime === 'Unknown') { rColor = 'var(--text-secondary)'; rIcon = '⚪'; }
+                    regimeBadge.innerHTML = `${rIcon} ${data.current_market_regime} (ADX: ${data.current_adx_value.toFixed(1)})`;
+                    regimeBadge.style.color = rColor;
+                }
+                
+                const regimeToggle = document.getElementById('regime-toggle');
+                if(data.regime_filter_enabled !== undefined && document.activeElement !== regimeToggle) {
+                    regimeToggle.checked = data.regime_filter_enabled;
+                }
 
                 // Update Performance
                 if(data.performance) {
@@ -413,6 +515,30 @@
                     
                     document.getElementById('perf-overall-winrate').textContent = `${overall.win_rate}%`;
                     document.getElementById('perf-overall-maxdd').textContent = `${overall.max_drawdown}%`;
+                    
+                    // Filter Comparison
+                    if(data.performance.comparison) {
+                        const comp = data.performance.comparison;
+                        
+                        document.getElementById('comp-off-wr').textContent = `${comp.filter_off.win_rate}%`;
+                        document.getElementById('comp-off-pnl').textContent = `$${comp.filter_off.pnl.toFixed(2)}`;
+                        document.getElementById('comp-off-dd').textContent = `${comp.filter_off.max_drawdown}%`;
+                        
+                        document.getElementById('comp-on-wr').textContent = `${comp.filter_on.win_rate}%`;
+                        document.getElementById('comp-on-pnl').textContent = `$${comp.filter_on.pnl.toFixed(2)}`;
+                        document.getElementById('comp-on-dd').textContent = `${comp.filter_on.max_drawdown}%`;
+                        
+                        const diffWr = (comp.filter_on.win_rate - comp.filter_off.win_rate).toFixed(1);
+                        const diffPnl = (comp.filter_on.pnl - comp.filter_off.pnl).toFixed(2);
+                        const diffDd = (comp.filter_on.max_drawdown - comp.filter_off.max_drawdown).toFixed(1);
+                        
+                        document.getElementById('comp-diff').innerHTML = `
+                            Difference: 
+                            <span style="color: ${diffWr >= 0 ? 'var(--success)' : 'var(--danger)'}">${diffWr >= 0 ? '+' : ''}${diffWr}% Win Rate</span>,
+                            <span style="color: ${diffPnl >= 0 ? 'var(--success)' : 'var(--danger)'}">${diffPnl >= 0 ? '+' : ''}$${diffPnl} Profit</span>,
+                            <span style="color: ${diffDd <= 0 ? 'var(--success)' : 'var(--danger)'}">${diffDd > 0 ? '+' : ''}${diffDd}% Max DD</span>
+                        `;
+                    }
                 }
 
                 // Update Positions
@@ -543,6 +669,31 @@
                 const badge = document.getElementById('status-badge');
                 badge.textContent = `🔴 OFFLINE`;
                 badge.className = 'status-badge offline';
+            }
+        }
+
+        async function emergencyClose() {
+            if (confirm("🚨 ARE YOU SURE YOU WANT TO EMERGENCY CLOSE ALL POSITIONS? 🚨\n\nThis will execute MARKET orders to square off your ENTIRE portfolio immediately.\n\nThis action CANNOT be undone.")) {
+                try {
+                    const btn = event.target;
+                    btn.textContent = '⏳ Closing...';
+                    btn.disabled = true;
+                    const res = await fetch('/api/emergency_close', { method: 'POST' });
+                    if(res.ok) {
+                        btn.textContent = '✅ All Closed';
+                        setTimeout(() => { btn.textContent = '🚨 EMERGENCY SQUARE OFF ALL 🚨'; btn.disabled = false; }, 3000);
+                        fetchStatus();
+                    }
+                } catch(e) { console.error("Emergency fail", e); }
+            }
+        }
+
+        async function toggleRegimeFilter() {
+            try {
+                const res = await fetch('/api/toggle_regime', { method: 'POST' });
+                if(res.ok) fetchStatus();
+            } catch(e) {
+                console.error("Toggle fail", e);
             }
         }
 

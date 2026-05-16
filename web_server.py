@@ -53,7 +53,10 @@ def get_status():
         'logs': logs,
         'performance': bot_engine.performance_tracker.get_metrics(bot_engine.risk_manager.current_equity),
         'rule_report': bot_engine.latest_rule_report,
-        'schedule_info': bot_engine.get_schedule_info()
+        'schedule_info': bot_engine.get_schedule_info(),
+        'regime_filter_enabled': bot_engine.market_regime_filter_enabled,
+        'current_market_regime': bot_engine.current_market_regime,
+        'current_adx_value': bot_engine.current_adx_value
     })
 
 @app.route('/api/start', methods=['POST'])
@@ -73,3 +76,28 @@ def stop_bot():
     bot_engine.is_running = False
     app_logger.warning("Web: Engine stopped via dashboard.")
     return jsonify({'status': 'success'})
+
+@app.route('/api/emergency_close', methods=['POST'])
+def emergency_close():
+    if not bot_engine:
+        return jsonify({'error': 'Engine not initialized'}), 500
+        
+    bot_engine.execution.close_all(reason="Emergency Manual Square-Off")
+    bot_engine.today_trade_status = "Emergency Manual Closed"
+    bot_engine.today_skip_reason = "User Triggered Emergency"
+    
+    from notifier import notify_error
+    notify_error("🚨 USER EMERGENCY 🚨\nAll positions squared off manually via Dashboard.")
+    
+    return jsonify({'status': 'success'})
+
+@app.route('/api/toggle_regime', methods=['POST'])
+def toggle_regime():
+    if not bot_engine:
+        return jsonify({'error': 'Engine not initialized'}), 500
+        
+    bot_engine.market_regime_filter_enabled = not bot_engine.market_regime_filter_enabled
+    state = "ENABLED" if bot_engine.market_regime_filter_enabled else "DISABLED"
+    app_logger.info(f"Web: Market Regime Filter {state}")
+    
+    return jsonify({'status': 'success', 'enabled': bot_engine.market_regime_filter_enabled})

@@ -7,3 +7,4 @@ pandas
 numpy
 flask
 python-telegram-bot
+pandas_ta

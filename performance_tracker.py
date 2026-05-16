@@ -40,7 +40,7 @@ class PerformanceTracker:
             self.max_equity = current_equity
             self._save_history()
 
-    def log_trade(self, entry_time, call_symbol, put_symbol, premium_collected, pnl, exit_reason, current_equity):
+    def log_trade(self, entry_time, call_symbol, put_symbol, premium_collected, pnl, exit_reason, current_equity, regime_filter_enabled=False):
         """Logs a completed trade with full details."""
         today = get_ist_date()
         
@@ -53,13 +53,14 @@ class PerformanceTracker:
             "premium_collected": premium_collected,
             "pnl": pnl,
             "exit_reason": exit_reason,
-            "equity_after": current_equity
+            "equity_after": current_equity,
+            "regime_filter_enabled": regime_filter_enabled
         }
         
         self.trades.append(trade_record)
         self.update_high_water_mark(current_equity)
         self._save_history()
-        app_logger.info(f"Tracker: Logged trade -> {exit_reason} | PnL: ${pnl:.2f}")
+        app_logger.info(f"Tracker: Logged trade -> {exit_reason} | PnL: ${pnl:.2f} | Filter: {'ON' if regime_filter_enabled else 'OFF'}")
 
     def get_metrics(self, current_equity):
         """Calculates advanced performance metrics, splitting Today vs Overall."""
@@ -101,6 +102,34 @@ class PerformanceTracker:
         overall_pnl = sum([t.get("pnl", 0) for t in self.trades])
         overall_win_rate = (overall_wins / overall_total * 100) if overall_total > 0 else 0.0
 
+        # Comparison tracking
+        trades_filter_off = [t for t in self.trades if not t.get("regime_filter_enabled", False)]
+        trades_filter_on = [t for t in self.trades if t.get("regime_filter_enabled", False)]
+        
+        def calc_stats(trade_list):
+            total = len(trade_list)
+            wins = len([t for t in trade_list if t.get("pnl", 0) > 0])
+            pnl = sum([t.get("pnl", 0) for t in trade_list])
+            win_rate = (wins / total * 100) if total > 0 else 0.0
+            # Calculate simple max drawdown for the subset
+            peak = 0.0
+            max_dd = 0.0
+            for t in trade_list:
+                eq = t.get("equity_after", 0)
+                if eq > peak: peak = eq
+                elif peak > 0:
+                    dd = ((peak - eq) / peak) * 100.0
+                    if dd > max_dd: max_dd = dd
+            return {
+                "trades": total,
+                "win_rate": round(win_rate, 2),
+                "pnl": round(pnl, 2),
+                "max_drawdown": round(max_dd, 2)
+            }
+            
+        stats_off = calc_stats(trades_filter_off)
+        stats_on = calc_stats(trades_filter_on)
+
         return {
             "today": {
                 "trades": today_total,
@@ -113,5 +142,9 @@ class PerformanceTracker:
                 "pnl": round(overall_pnl, 2),
                 "current_drawdown": round(current_drawdown_pct, 2),
                 "max_drawdown": round(max_drawdown_pct, 2)
+            },
+            "comparison": {
+                "filter_off": stats_off,
+                "filter_on": stats_on
             }
         }

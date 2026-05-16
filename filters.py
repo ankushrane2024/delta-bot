@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import requests
 import datetime
 from utils import get_ist_now
@@ -186,3 +187,52 @@ class TradingFilters:
             })
             
         return schedule
+
+    def get_market_regime(self):
+        """Calculates 14-period ADX on 4H BTC perp candles. Returns (regime, adx_value)."""
+        import pandas as pd
+        import pandas_ta as ta
+        
+        try:
+            # Fetch 4H candles for BTCUSD perp for the last few days (enough for 14-period ADX calculation)
+            # 14 periods of 4H = 56 hours. We fetch last 7 days to be safe.
+            end_time = int(time.time())
+            start_time = end_time - (7 * 24 * 3600)
+            
+            res = self.api_client.get_candles("BTCUSD", "4h", start=start_time, end=end_time)
+            
+            if res and res.get('success'):
+                candles = res.get('result', [])
+                if not candles or len(candles) < 15:
+                    app_logger.warning("Filter: Not enough candle data to calculate ADX.")
+                    return "Unknown", 0.0
+                    
+                df = pd.DataFrame(candles)
+                # Ensure correct types
+                df['high'] = df['high'].astype(float)
+                df['low'] = df['low'].astype(float)
+                df['close'] = df['close'].astype(float)
+                
+                # Sort chronologically just in case
+                if 'time' in df.columns:
+                    df = df.sort_values(by='time')
+                    
+                # Calculate ADX (default is 14 period)
+                adx_df = df.ta.adx(length=14)
+                if adx_df is not None and not adx_df.empty:
+                    # Get the most recent ADX value (typically column name is 'ADX_14')
+                    adx_col = [c for c in adx_df.columns if 'ADX' in c][0]
+                    current_adx = float(adx_df.iloc[-1][adx_col])
+                    
+                    regime = "Trending" if current_adx > 25 else "Ranging"
+                    app_logger.info(f"Filter: Market Regime is {regime} (ADX: {current_adx:.2f})")
+                    return regime, current_adx
+                else:
+                    app_logger.warning("Filter: Failed to compute ADX.")
+                    return "Unknown", 0.0
+            else:
+                app_logger.warning("Filter: Failed to fetch candles for ADX.")
+                return "Unknown", 0.0
+        except Exception as e:
+            app_logger.error(f"Filter: Error calculating ADX: {e}")
+            return "Unknown", 0.0
