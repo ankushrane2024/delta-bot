@@ -202,8 +202,15 @@ class DeltaTradingEngine:
             res_put = self.api_client.place_order(put_opt['product_id'], 'sell', 1)
             
             if not res_call.get('success') or not res_put.get('success'):
-                err_call = res_call.get('error', {}).get('message', 'Unknown Error') if not res_call.get('success') else 'Success'
-                err_put = res_put.get('error', {}).get('message', 'Unknown Error') if not res_put.get('success') else 'Success'
+                def get_err(res):
+                    if not res or res.get('success'): return 'Success'
+                    err_obj = res.get('error', {})
+                    if isinstance(err_obj, dict):
+                        return err_obj.get('message') or err_obj.get('code') or 'Unknown Error'
+                    return str(err_obj)
+                    
+                err_call = get_err(res_call)
+                err_put = get_err(res_put)
                 return False, f"Failed to place real test orders. Call: {err_call}, Put: {err_put}"
             
             app_logger.info(f"Engine: Test orders placed. Call: {call_opt['symbol']}, Put: {put_opt['symbol']}")

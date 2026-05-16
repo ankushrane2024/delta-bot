@@ -72,10 +72,13 @@ class DeltaIndiaClient:
             
         try:
             response = self.session.request(method, url, headers=headers, data=body, timeout=15)
-            return response.json()
+            res_json = response.json()
+            if not res_json.get('success') and 'error' in res_json:
+                error_logger.warning(f"API Error Response: {method} {path} - {res_json['error']}")
+            return res_json
         except Exception as e:
             error_logger.error(f"API Request failed: {method} {path} - {e}")
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": {"message": str(e), "code": "exception"}}
 
     # --- REST Endpoints ---
     def get_balances(self):
