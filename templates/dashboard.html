@@ -304,6 +304,9 @@
             </div>
         </div>
 
+           <!-- Right Column: Risk Management + News stacked -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+
         <!-- Risk Management & Settings Panel -->
         <div class="panel">
             <h2>Risk Management</h2>
@@ -320,6 +323,35 @@
                 </button>
             </div>
         </div>
+
+        <!-- News & Volatility Alerts (right column, below Risk Management) -->
+        <div class="panel" id="news-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <h2 style="margin: 0;">📰 News &amp; Volatility Alerts</h2>
+                <div id="news-alert-badge" style="display: none; background: rgba(239,68,68,0.12); border: 1.5px solid var(--danger); color: var(--danger); padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 0.82rem; animation: pulse-red 2s ease-in-out infinite;">
+                    🚨 High-Impact News in Next 48h
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date (UTC)</th>
+                            <th>Event</th>
+                            <th>Ctry</th>
+                            <th>Impact</th>
+                        </tr>
+                    </thead>
+                    <tbody id="news-body">
+                        <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Loading news...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 8px; font-size: 0.78rem; color: var(--text-secondary);">Source: ForexFactory &middot; Updates every 6h</div>
+        </div>
+
+        </div><!-- end right column -->       </div>
 
         <!-- Performance Summary Panel -->
         <div class="panel full-width">
@@ -452,35 +484,8 @@
         </div>
         </div>
 
-        <!-- News & Events / Volatility Alerts Panel -->
-        <div class="panel full-width" id="news-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-                <h2 style="margin: 0;">📰 News &amp; Volatility Alerts</h2>
-                <div id="news-alert-badge" style="display: none; background: rgba(239,68,68,0.12); border: 1.5px solid var(--danger); color: var(--danger); padding: 7px 14px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; animation: pulse-red 2s ease-in-out infinite;">
-                    🚨 High-Impact News in Next 48 Hours — Consider Skipping Trade
-                </div>
-            </div>
 
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date &amp; Time (UTC)</th>
-                            <th>Event</th>
-                            <th>Country</th>
-                            <th>Impact</th>
-                            <th>Previous</th>
-                            <th>Forecast</th>
-                        </tr>
-                    </thead>
-                    <tbody id="news-body">
-                        <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Loading news...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary);">Source: ForexFactory · Updates every 6 hours · Showing USD high/medium impact events this week</div>
-        </div>
-    </div>
+
 
     <script>
         // Command API
@@ -789,19 +794,17 @@
                 });
                 if(alertBadge) alertBadge.style.display = urgentEvent ? 'block' : 'none';
 
-                // Render rows
+                // Render rows — compact 4-col layout for right column
                 tbody.innerHTML = events.map(e => {
                     const isHigh = e.impact === 'High';
                     const impactColor = isHigh ? 'var(--danger)' : 'var(--warning)';
                     const impactBg   = isHigh ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)';
-                    const rowHighlight = isHigh ? 'border-left: 3px solid var(--danger);' : '';
-                    return `<tr style="${rowHighlight}">
-                        <td style="font-weight:600; color: var(--text-primary);">${e.date}</td>
-                        <td>${e.title}</td>
-                        <td style="color: var(--text-secondary);">${e.country}</td>
-                        <td><span style="background:${impactBg}; color:${impactColor}; padding: 3px 10px; border-radius: 12px; font-weight:700; font-size:0.8rem;">${e.impact}</span></td>
-                        <td style="color: var(--text-secondary);">${e.previous || '-'}</td>
-                        <td style="color: var(--text-secondary);">${e.forecast || '-'}</td>
+                    const rowStyle   = isHigh ? 'border-left: 3px solid var(--danger);' : '';
+                    return `<tr style="${rowStyle}">
+                        <td style="font-weight:600; color: var(--text-primary); font-size:0.85rem;">${e.date}</td>
+                        <td style="font-size:0.85rem;">${e.title}</td>
+                        <td style="color: var(--text-secondary); font-size:0.85rem;">${e.country}</td>
+                        <td><span style="background:${impactBg}; color:${impactColor}; padding: 2px 9px; border-radius: 12px; font-weight:700; font-size:0.78rem;">${e.impact}</span></td>
                     </tr>`;
                 }).join('');
             } catch(e) {
