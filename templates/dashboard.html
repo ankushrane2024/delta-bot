@@ -450,6 +450,36 @@
                 <div class="log-line">Initializing connection to engine...</div>
             </div>
         </div>
+        </div>
+
+        <!-- News & Events / Volatility Alerts Panel -->
+        <div class="panel full-width" id="news-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <h2 style="margin: 0;">📰 News &amp; Volatility Alerts</h2>
+                <div id="news-alert-badge" style="display: none; background: rgba(239,68,68,0.12); border: 1.5px solid var(--danger); color: var(--danger); padding: 7px 14px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; animation: pulse-red 2s ease-in-out infinite;">
+                    🚨 High-Impact News in Next 48 Hours — Consider Skipping Trade
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date &amp; Time (UTC)</th>
+                            <th>Event</th>
+                            <th>Country</th>
+                            <th>Impact</th>
+                            <th>Previous</th>
+                            <th>Forecast</th>
+                        </tr>
+                    </thead>
+                    <tbody id="news-body">
+                        <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Loading news...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary);">Source: ForexFactory · Updates every 6 hours · Showing USD high/medium impact events this week</div>
+        </div>
     </div>
 
     <script>
@@ -733,6 +763,55 @@
         // Poll every 2 seconds
         setInterval(fetchStatus, 2000);
         fetchStatus();
+
+        // --- News & Events ---
+        async function fetchNews() {
+            try {
+                const res = await fetch('/api/news');
+                if(!res.ok) return;
+                const events = await res.json();
+
+                const tbody = document.getElementById('news-body');
+                const alertBadge = document.getElementById('news-alert-badge');
+                
+                if(!events || events.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-secondary);">No high/medium impact USD events found this week.</td></tr>';
+                    if(alertBadge) alertBadge.style.display = 'none';
+                    return;
+                }
+
+                // Check if any HIGH impact event is within 48 hours
+                const now = Date.now();
+                const in48h = now + (48 * 60 * 60 * 1000);
+                const urgentEvent = events.find(e => {
+                    const t = new Date(e.date).getTime();
+                    return e.impact === 'High' && t >= now && t <= in48h;
+                });
+                if(alertBadge) alertBadge.style.display = urgentEvent ? 'block' : 'none';
+
+                // Render rows
+                tbody.innerHTML = events.map(e => {
+                    const isHigh = e.impact === 'High';
+                    const impactColor = isHigh ? 'var(--danger)' : 'var(--warning)';
+                    const impactBg   = isHigh ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)';
+                    const rowHighlight = isHigh ? 'border-left: 3px solid var(--danger);' : '';
+                    return `<tr style="${rowHighlight}">
+                        <td style="font-weight:600; color: var(--text-primary);">${e.date}</td>
+                        <td>${e.title}</td>
+                        <td style="color: var(--text-secondary);">${e.country}</td>
+                        <td><span style="background:${impactBg}; color:${impactColor}; padding: 3px 10px; border-radius: 12px; font-weight:700; font-size:0.8rem;">${e.impact}</span></td>
+                        <td style="color: var(--text-secondary);">${e.previous || '-'}</td>
+                        <td style="color: var(--text-secondary);">${e.forecast || '-'}</td>
+                    </tr>`;
+                }).join('');
+            } catch(e) {
+                console.error('News fetch failed', e);
+            }
+        }
+
+        // Fetch news on load and every 6 hours
+        fetchNews();
+        setInterval(fetchNews, 6 * 60 * 60 * 1000);
     </script>
 </body>
 </html>

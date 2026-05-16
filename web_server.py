@@ -101,3 +101,57 @@ def toggle_regime():
     app_logger.info(f"Web: Market Regime Filter {state}")
     
     return jsonify({'status': 'success', 'enabled': bot_engine.market_regime_filter_enabled})
+
+@app.route('/api/news', methods=['GET'])
+def get_news():
+    """Fetch this week's high/medium impact USD & global events from ForexFactory calendar."""
+    import requests as req
+    from datetime import datetime, timezone, timedelta
+    
+    try:
+        url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        r = req.get(url, headers=headers, timeout=10)
+        if r.status_code != 200:
+            return jsonify([])
+        
+        all_events = r.json()
+        now_utc = datetime.now(timezone.utc)
+        week_end = now_utc + timedelta(days=7)
+        
+        filtered = []
+        for e in all_events:
+            impact = e.get('impact', '')
+            country = e.get('country', '')
+            
+            # Only show High/Medium impact events for BTC-relevant currencies
+            if impact not in ('High', 'Medium'):
+                continue
+            if country not in ('USD', 'EUR', 'GBP', 'JPY', 'CNY', 'BTC'):
+                continue
+            
+            # Parse event date
+            raw_date = e.get('date', '')
+            try:
+                dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
+                if dt < now_utc or dt > week_end:
+                    continue
+                date_str = dt.strftime('%b %d  %H:%M UTC')
+            except Exception:
+                date_str = raw_date
+            
+            filtered.append({
+                'date': date_str,
+                'title': e.get('title', 'Unknown Event'),
+                'country': country,
+                'impact': impact,
+                'previous': e.get('previous', ''),
+                'forecast': e.get('forecast', '')
+            })
+        
+        # Sort by date string (they come chronologically from the feed)
+        return jsonify(filtered)
+        
+    except Exception as ex:
+        app_logger.error(f"News API error: {ex}")
+        return jsonify([])
