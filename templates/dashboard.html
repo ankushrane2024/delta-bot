@@ -503,6 +503,8 @@
     </div>
 
     <script>
+        console.log("Dashboard: Script Initializing...");
+
         // Command API
         async function sendCommand(action) {
             try {
@@ -744,12 +746,17 @@
         }
 
         async function runTestOrder() {
+            console.log("Dashboard: runTestOrder() triggered");
             const btn = document.getElementById('btn-test-order');
             const originalText = btn.innerHTML;
             
-            if (!confirm("Place a REAL 1-lot order for testing? It will automatically close after 10 seconds. (PAPER mode check will be verified)")) return;
+            if (!confirm("Place a REAL 1-lot order for testing? It will automatically close after 10 seconds. (PAPER mode check will be verified)")) {
+                console.log("Dashboard: Test order cancelled by user");
+                return;
+            }
             
             try {
+                console.log("Dashboard: Sending request to /api/test_order...");
                 btn.disabled = true;
                 btn.innerHTML = "⌛ PLACING TEST ORDER...";
                 
@@ -772,13 +779,17 @@
         async function emergencyClose() {
             if (confirm("🚨 ARE YOU SURE YOU WANT TO EMERGENCY CLOSE ALL POSITIONS? 🚨\n\nThis will execute MARKET orders to square off your ENTIRE portfolio immediately.\n\nThis action CANNOT be undone.")) {
                 try {
-                    const btn = event.target;
-                    btn.textContent = '⏳ Closing...';
-                    btn.disabled = true;
+                    const btn = document.querySelector('.btn-emergency');
+                    if (btn) {
+                        btn.textContent = '⏳ Closing...';
+                        btn.disabled = true;
+                    }
                     const res = await fetch('/api/emergency_close', { method: 'POST' });
                     if(res.ok) {
-                        btn.textContent = '✅ All Closed';
-                        setTimeout(() => { btn.textContent = '🚨 EMERGENCY SQUARE OFF ALL 🚨'; btn.disabled = false; }, 3000);
+                        if (btn) {
+                            btn.textContent = '✅ All Closed';
+                            setTimeout(() => { btn.textContent = '🚨 EMERGENCY SQUARE OFF ALL 🚨'; btn.disabled = false; }, 3000);
+                        }
                         fetchStatus();
                     }
                 } catch(e) { console.error("Emergency fail", e); }

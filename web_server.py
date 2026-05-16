@@ -105,12 +105,17 @@ def toggle_regime():
 @app.route('/api/test_order', methods=['POST'])
 def test_order():
     if not bot_engine:
+        app_logger.error("Web: Test order failed - Engine not initialized")
         return jsonify({'error': 'Engine not initialized'}), 500
         
+    app_logger.info("Web: Received Test Order request from dashboard")
     success, message = bot_engine.run_test_order()
+    
     if success:
+        app_logger.info(f"Web: Test order success: {message}")
         return jsonify({'status': 'success', 'message': message})
     else:
+        app_logger.error(f"Web: Test order failed: {message}")
         return jsonify({'status': 'error', 'message': message}), 400
 
 @app.route('/api/news', methods=['GET'])

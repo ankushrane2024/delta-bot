@@ -168,7 +168,9 @@ class DeltaTradingEngine:
 
     def run_test_order(self):
         """Places a real 1-lot order, waits 10s, then closes it. PAPER mode only."""
+        app_logger.info("Engine: run_test_order start")
         if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
+            app_logger.warning("Engine: Test order blocked (Mode is LIVE)")
             return False, "Test Order is only allowed in PAPER mode for safety."
 
         app_logger.info("Engine: Running Test Order (1 Lot)...")
@@ -176,6 +178,7 @@ class DeltaTradingEngine:
         try:
             # 1. Find Strikes (Normal Strategy Logic)
             expiry = get_next_expiry_date()
+            app_logger.info(f"Engine: Searching strikes for expiry {expiry}")
             call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry)
             
             if not call_opt or not put_opt:
