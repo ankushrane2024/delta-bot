@@ -189,50 +189,92 @@ class TradingFilters:
         return schedule
 
     def get_market_regime(self):
-        """Calculates 14-period ADX on 4H BTC perp candles. Returns (regime, adx_value)."""
+        """Calculates 14-period ADX on 4H BTC perp candles using pure pandas/numpy.
+        Returns (regime, adx_value). No external TA libraries needed."""
         import pandas as pd
-        import pandas_ta as ta
+        import numpy as np
         
         try:
-            # Fetch 4H candles for BTCUSD perp for the last few days (enough for 14-period ADX calculation)
-            # 14 periods of 4H = 56 hours. We fetch last 7 days to be safe.
+            # Fetch 7 days of 4H candles to ensure enough data for a stable 14-period ADX
             end_time = int(time.time())
             start_time = end_time - (7 * 24 * 3600)
             
             res = self.api_client.get_candles("BTCUSD", "4h", start=start_time, end=end_time)
             
-            if res and res.get('success'):
-                candles = res.get('result', [])
-                if not candles or len(candles) < 15:
-                    app_logger.warning("Filter: Not enough candle data to calculate ADX.")
-                    return "Unknown", 0.0
-                    
-                df = pd.DataFrame(candles)
-                # Ensure correct types
-                df['high'] = df['high'].astype(float)
-                df['low'] = df['low'].astype(float)
-                df['close'] = df['close'].astype(float)
-                
-                # Sort chronologically just in case
-                if 'time' in df.columns:
-                    df = df.sort_values(by='time')
-                    
-                # Calculate ADX (default is 14 period)
-                adx_df = df.ta.adx(length=14)
-                if adx_df is not None and not adx_df.empty:
-                    # Get the most recent ADX value (typically column name is 'ADX_14')
-                    adx_col = [c for c in adx_df.columns if 'ADX' in c][0]
-                    current_adx = float(adx_df.iloc[-1][adx_col])
-                    
-                    regime = "Trending" if current_adx > 25 else "Ranging"
-                    app_logger.info(f"Filter: Market Regime is {regime} (ADX: {current_adx:.2f})")
-                    return regime, current_adx
-                else:
-                    app_logger.warning("Filter: Failed to compute ADX.")
-                    return "Unknown", 0.0
-            else:
+            if not (res and res.get('success')):
                 app_logger.warning("Filter: Failed to fetch candles for ADX.")
                 return "Unknown", 0.0
+                
+            candles = res.get('result', [])
+            if not candles or len(candles) < 28:  # need ~2x period for stable Wilder's smoothing
+                app_logger.warning(f"Filter: Not enough candle data ({len(candles) if candles else 0} bars) to calculate ADX.")
+                return "Unknown", 0.0
+                
+            df = pd.DataFrame(candles)
+            df['high']  = df['high'].astype(float)
+            df['low']   = df['low'].astype(float)
+            df['close'] = df['close'].astype(float)
+            if 'time' in df.columns:
+                df = df.sort_values(by='time').reset_index(drop=True)
+            
+            period = 14
+            
+            # --- True Range ---
+            df['prev_close'] = df['close'].shift(1)
+            df['tr'] = np.maximum(
+                df['high'] - df['low'],
+                np.maximum(
+                    (df['high'] - df['prev_close']).abs(),
+                    (df['low']  - df['prev_close']).abs()
+                )
+            )
+            
+            # --- Directional Movement ---
+            df['prev_high'] = df['high'].shift(1)
+            df['prev_low']  = df['low'].shift(1)
+            df['up_move']   = df['high'] - df['prev_high']
+            df['down_move'] = df['prev_low'] - df['low']
+            
+            df['plus_dm']  = np.where((df['up_move'] > df['down_move']) & (df['up_move'] > 0), df['up_move'], 0.0)
+            df['minus_dm'] = np.where((df['down_move'] > df['up_move']) & (df['down_move'] > 0), df['down_move'], 0.0)
+            
+            # --- Wilder's Smoothing (RMA) ---
+            def wilders(series, n):
+                result = [np.nan] * len(series)
+                # Seed with simple average of first n values
+                seed_start = series.first_valid_index()
+                vals = series.dropna().values
+                if len(vals) < n:
+                    return pd.Series(result, index=series.index)
+                result_arr = np.full(len(series), np.nan)
+                # Find first non-nan position
+                first_idx = series.first_valid_index()
+                pos = series.index.get_loc(first_idx)
+                result_arr[pos + n - 1] = vals[:n].mean()
+                for i in range(n, len(vals)):
+                    result_arr[pos + i] = (result_arr[pos + i - 1] * (n - 1) + vals[i]) / n
+                return pd.Series(result_arr, index=series.index)
+            
+            df = df.dropna(subset=['tr', 'plus_dm', 'minus_dm']).reset_index(drop=True)
+            
+            smoothed_tr       = wilders(df['tr'],       period)
+            smoothed_plus_dm  = wilders(df['plus_dm'],  period)
+            smoothed_minus_dm = wilders(df['minus_dm'], period)
+            
+            plus_di  = 100 * smoothed_plus_dm  / smoothed_tr.replace(0, np.nan)
+            minus_di = 100 * smoothed_minus_dm / smoothed_tr.replace(0, np.nan)
+            
+            di_sum  = (plus_di + minus_di).replace(0, np.nan)
+            dx      = 100 * (plus_di - minus_di).abs() / di_sum
+            
+            adx_series = wilders(dx.dropna().reset_index(drop=True), period)
+            
+            current_adx = float(adx_series.dropna().iloc[-1])
+            
+            regime = "Trending" if current_adx > 25 else "Ranging"
+            app_logger.info(f"Filter: Market Regime is {regime} (ADX: {current_adx:.2f})")
+            return regime, round(current_adx, 2)
+            
         except Exception as e:
             app_logger.error(f"Filter: Error calculating ADX: {e}")
             return "Unknown", 0.0
