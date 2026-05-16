@@ -15,6 +15,11 @@ def init_web_server(engine):
 def index():
     return render_template('dashboard.html')
 
+@app.route('/ping')
+def ping():
+    # Lightweight endpoint for Keep-Alive pinger and UptimeRobot
+    return jsonify({'status': 'OK', 'message': 'Keep-alive ping successful.'})
+
 @app.route('/api/status')
 def get_status():
     if not bot_engine:

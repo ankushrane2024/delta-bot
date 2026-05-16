@@ -1,6 +1,8 @@
 import sys
 import os
 import threading
+import time
+import requests
 from bot_engine import DeltaTradingEngine
 from web_server import app, init_web_server
 from logger import app_logger
@@ -10,6 +12,24 @@ def run_bot_engine(engine):
         engine.start()
     except Exception as e:
         app_logger.critical(f"Critical error in engine thread: {e}")
+
+def keep_alive_pinger():
+    """
+    Background Keep-Alive Pinger
+    This prevents the Render.com free tier from putting the web service to sleep.
+    Render sleeps apps after 15 minutes of inactivity. By pinging our own /ping 
+    endpoint every 4 minutes, the instance registers activity and stays awake 24/7.
+    """
+    time.sleep(60)
+    url = os.environ.get('RENDER_EXTERNAL_URL', 'http://localhost:5000')
+    app_logger.info(f"Keep-alive pinger started. Target URL: {url}")
+    while True:
+        try:
+            requests.get(f"{url}/ping", timeout=15)
+            app_logger.info("[KEEPALIVE] Keep-alive ping successful.")
+        except Exception as e:
+            app_logger.warning(f"[KEEPALIVE] Keep-alive ping failed: {e}")
+        time.sleep(240)  # Ping every 4 minutes
 
 def main():
     try:
@@ -22,6 +42,10 @@ def main():
         # 3. Start Engine in a background thread
         engine_thread = threading.Thread(target=run_bot_engine, args=(engine,), daemon=True)
         engine_thread.start()
+        
+        # 4. Start keep-alive pinger in a background thread
+        pinger_thread = threading.Thread(target=keep_alive_pinger, daemon=True)
+        pinger_thread.start()
         
         # 4. Start Flask server on the main thread
         port = int(os.environ.get('PORT', 5000))

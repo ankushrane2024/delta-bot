@@ -150,8 +150,14 @@ class DeltaTradingEngine:
 
     def monitor_loop(self):
         """Zero-latency real-time monitoring of PnL, SL/TP, and Hedging using WebSocket."""
+        last_heartbeat = time.time()
         while self.is_running:
             try:
+                # 5 minute heartbeat log
+                if time.time() - last_heartbeat >= 300:
+                    app_logger.info("Engine Heartbeat: Monitor loop is active and running 24/7.")
+                    last_heartbeat = time.time()
+
                 if self.execution.active_positions:
                     current_total_value = 0
                     net_delta = 0
