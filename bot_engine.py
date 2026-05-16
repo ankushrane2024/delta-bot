@@ -178,11 +178,23 @@ class DeltaTradingEngine:
         try:
             # 1. Find Strikes (Normal Strategy Logic)
             expiry = get_next_expiry_date()
-            app_logger.info(f"Engine: Searching strikes for expiry {expiry}")
-            call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry)
+            app_logger.info(f"Engine: Searching strikes for test order (Expiry: {expiry})...")
             
+            # First attempt: Full strategy logic (Target Delta + Premium + Tomorrow's Expiry)
+            call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, check_premium=True)
+            
+            # Second attempt: Bypass Premium (helpful for weekends/low vol)
             if not call_opt or not put_opt:
-                return False, "Could not find suitable strikes for test order."
+                app_logger.info("Engine: No strikes found with premium filter. Retrying WITHOUT premium check...")
+                call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, check_premium=False)
+                
+            # Third attempt: Bypass Expiry (helpful if next-day expiry isn't available yet)
+            if not call_opt or not put_opt:
+                app_logger.info("Engine: No strikes found for tomorrow's expiry. Retrying on ANY available expiry...")
+                call_opt, put_opt = self.strategy.find_strikes(expiry_date=None, check_premium=False)
+
+            if not call_opt or not put_opt:
+                return False, "Could not find ANY suitable strikes for test order even after bypassing filters."
 
             # 2. Place Real Orders (1 Lot)
             # We use api_client.place_order directly to bypass simulated paper execution
