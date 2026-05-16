@@ -124,3 +124,65 @@ class TradingFilters:
         return (self.check_day_filter() and 
                 self.check_iv_filter() and 
                 self.check_news_filter())
+
+    def get_filter_status(self):
+        """Returns (passed: bool, reason: str) prioritized by Weekend > News > IV"""
+        if not self.check_day_filter():
+            return False, "Weekend (Fri/Sat/Sun)"
+        if not self.check_news_filter():
+            return False, "High Impact USD News"
+        if not self.check_iv_filter():
+            return False, "Low IV (Current IV <= 7d Avg)"
+        return True, "All Filters Passed"
+
+    def get_schedule(self, days=7):
+        """Calculates skip status for the next 'days' days."""
+        schedule = []
+        today = get_ist_now().date()
+        
+        # Pre-fetch news for the week
+        news_events = []
+        try:
+            url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                news_events = response.json()
+        except Exception:
+            pass
+
+        for i in range(days):
+            target_date = today + datetime.timedelta(days=i)
+            target_date_str = target_date.strftime('%Y-%m-%d')
+            day_name = target_date.strftime('%A')
+            
+            skip = False
+            reason = None
+            skip_type = 'normal' # normal or severe (for styling)
+            
+            # 1. Weekend Check
+            if day_name in ['Friday', 'Saturday', 'Sunday']:
+                skip = True
+                reason = f"Weekend ({day_name})"
+                skip_type = 'severe'
+            
+            # 2. News Check
+            if not skip:
+                for event in news_events:
+                    if event.get('impact') == 'High' and event.get('country') == 'USD':
+                        event_date = event.get('date', '')[:10]
+                        if event_date == target_date_str:
+                            skip = True
+                            reason = f"High Impact News"
+                            skip_type = 'severe'
+                            break
+            
+            schedule.append({
+                'date': target_date.strftime('%b %d'),
+                'day': day_name,
+                'skip': skip,
+                'reason': reason,
+                'skip_type': skip_type
+            })
+            
+        return schedule

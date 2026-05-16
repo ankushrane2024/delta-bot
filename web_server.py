@@ -52,7 +52,8 @@ def get_status():
         'positions': positions,
         'logs': logs,
         'performance': bot_engine.performance_tracker.get_metrics(bot_engine.risk_manager.current_equity),
-        'rule_report': bot_engine.latest_rule_report
+        'rule_report': bot_engine.latest_rule_report,
+        'schedule_info': bot_engine.get_schedule_info()
     })
 
 @app.route('/api/start', methods=['POST'])

@@ -32,6 +32,8 @@ class DeltaTradingEngine:
         self.last_hedge_check_time = None
         self.daily_start_equity = 0
         self.latest_rule_report = None
+        self.today_trade_status = "Pending"
+        self.today_skip_reason = None
 
     def start(self):
         app_logger.info(f"Engine: Starting Delta BTC Options Bot in {BOT_MODE} mode with Capital: ${STARTING_CAPITAL}")
@@ -72,16 +74,23 @@ class DeltaTradingEngine:
         self.risk_manager.update_equity()
         if self.daily_loss_hits >= 2:
             app_logger.warning("Engine: Max daily loss limit hit (2 SLs). Skipping entry.")
+            self.today_trade_status = "Trade Skipped"
+            self.today_skip_reason = "Daily Loss Limit Hit (2 SLs)"
             return
             
         if self.daily_start_equity > 0:
             loss_pct = (self.daily_start_equity - self.risk_manager.current_equity) / self.daily_start_equity
             if loss_pct >= MAX_DAILY_LOSS_PCT:
                 app_logger.warning("Engine: Daily -3% account loss limit hit. Stopping trading for the day.")
+                self.today_trade_status = "Trade Skipped"
+                self.today_skip_reason = "Daily Loss Limit Hit (-3%)"
                 return
 
-        if not self.filters.all_passed():
-            app_logger.info("Engine: Filters not passed. Skipping entry.")
+        passed, reason = self.filters.get_filter_status()
+        if not passed:
+            app_logger.info(f"Engine: Filters not passed: {reason}. Skipping entry.")
+            self.today_trade_status = "Trade Skipped"
+            self.today_skip_reason = reason
             return
         
         # Find Strikes (Next-day expiry, checks Premium & Delta)
@@ -90,6 +99,8 @@ class DeltaTradingEngine:
         
         if not call_opt or not put_opt:
             app_logger.error("Engine: Could not find suitable strikes.")
+            self.today_trade_status = "Trade Skipped"
+            self.today_skip_reason = "No suitable strikes found"
             return
 
         # Calculate Lot Size
@@ -98,10 +109,14 @@ class DeltaTradingEngine:
         # Safety check: skip trade if calculated lots < 1
         if per_entry_size < 1:
             app_logger.warning("Engine: Safety check failed. Calculated lot size < 1. Skipping entry.")
+            self.today_trade_status = "Trade Skipped"
+            self.today_skip_reason = "Insufficient capital for 1 lot"
             return
         
         # Execute
         self.execution.execute_strangle(call_opt, put_opt, per_entry_size)
+        self.today_trade_status = "Trade Taken"
+        self.today_skip_reason = None
         
         # Save trade details for tracking
         self.current_trade_info["entry_time"] = get_ist_now().isoformat()
@@ -254,6 +269,8 @@ class DeltaTradingEngine:
         self.current_trade_info = {"calls": [], "puts": []}
         self.risk_manager.update_equity()
         self.daily_start_equity = self.risk_manager.current_equity
+        self.today_trade_status = "Pending"
+        self.today_skip_reason = None
         app_logger.info("Engine: Daily state reset.")
 
     def _log_and_reset_trade(self, profit, reason):
@@ -270,3 +287,10 @@ class DeltaTradingEngine:
                 current_equity=self.risk_manager.current_equity
             )
             self.current_trade_info = {"calls": [], "puts": []}
+
+    def get_schedule_info(self):
+        return {
+            "today_status": self.today_trade_status,
+            "today_reason": self.today_skip_reason,
+            "upcoming_schedule": self.filters.get_schedule(days=7)
+        }
