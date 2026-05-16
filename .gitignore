@@ -6,3 +6,5 @@ __pycache__/
 bot_state.json
 credentials.json
 bot_system.log
+reports/
+daily_reports.json

@@ -38,6 +38,7 @@ class DeltaTradingEngine:
         self.market_regime_filter_enabled = False
         self.current_market_regime = "Unknown"
         self.current_adx_value = 0.0
+        self.hedging_triggered_today = False
 
     def start(self):
         app_logger.info(f"Engine: Starting Delta BTC Options Bot in {BOT_MODE} mode with Capital: ${STARTING_CAPITAL}")
@@ -58,7 +59,7 @@ class DeltaTradingEngine:
         # Schedule rule verification
         schedule.every().day.at("09:30").do(self.run_rule_verification)
         schedule.every().day.at("18:00").do(self.run_rule_verification)
-        schedule.every().day.at("18:00").do(self.send_daily_report)
+        schedule.every().day.at("17:30").do(self.send_daily_report)
         
         # Run rule verification once on startup
         self.run_rule_verification()
@@ -241,9 +242,99 @@ class DeltaTradingEngine:
         }
 
     def send_daily_report(self):
-        metrics = self.performance_tracker.get_metrics(self.risk_manager.current_equity)
-        overall = metrics.get('overall', {})
-        notifier.notify_compliance_report(overall.get('win_rate', 0), overall.get('pnl', 0), overall.get('current_drawdown', 0))
+        """Automatically called at 17:30 IST to generate and send report."""
+        success, msg = self.generate_actual_report()
+        if success:
+            metrics = self.performance_tracker.get_metrics(self.risk_manager.current_equity)
+            overall = metrics.get('overall', {})
+            notifier.notify_compliance_report(overall.get('win_rate', 0), overall.get('pnl', 0), overall.get('current_drawdown', 0))
+        else:
+            app_logger.error(f"Engine: Scheduled report failed: {msg}")
+
+    def generate_actual_report(self, date_str=None):
+        """Builds the report data, generates PDF/Excel, and saves metadata."""
+        import report_generator
+        from utils import get_ist_now
+        
+        if date_str is None:
+            date_str = get_ist_now().strftime('%Y-%m-%d')
+            
+        app_logger.info(f"Engine: Generating Actual Report for {date_str}...")
+        
+        try:
+            # 1. Collect trades for the date
+            today_trades_raw = [t for t in self.performance_tracker.trades if t.get("date") == date_str]
+            
+            # Map to report generator format
+            today_trades = []
+            for t in today_trades_raw:
+                today_trades.append({
+                    "entry_time": t.get("entry_time", ""),
+                    "exit_time": t.get("exit_time", ""),
+                    "call_strike": t.get("call_symbol", "N/A"),
+                    "put_strike": t.get("put_symbol", "N/A"),
+                    "entry_premium": t.get("premium_collected", 0),
+                    "exit_reason": t.get("exit_reason", ""),
+                    "pnl_usd": t.get("pnl", 0)
+                })
+                
+            # 2. Calculate summary
+            total_trades = len(today_trades)
+            wins = len([t for t in today_trades if t.get("pnl_usd", 0) > 0])
+            win_rate = (wins / total_trades * 100) if total_trades > 0 else 0.0
+            net_pnl_usd = sum([t.get("pnl_usd", 0) for t in today_trades])
+            net_pnl_inr = net_pnl_usd * report_generator.USD_INR_RATE
+            
+            metrics = self.performance_tracker.get_metrics(self.risk_manager.current_equity)
+            max_dd = metrics.get('overall', {}).get('max_drawdown', 0.0)
+            
+            # 3. Market conditions
+            news_summary = "None"
+            try:
+                passed, reason = self.filters.get_filter_status()
+                if not passed and "News" in reason:
+                    news_summary = reason
+            except: pass
+
+            data = {
+                "date": date_str,
+                "summary": {
+                    "total_trades": total_trades,
+                    "win_rate": win_rate,
+                    "net_pnl_usd": net_pnl_usd,
+                    "net_pnl_inr": net_pnl_inr,
+                    "max_drawdown": max_dd,
+                    "market_regime": self.current_market_regime,
+                    "regime_filter_enabled": self.market_regime_filter_enabled
+                },
+                "trades": today_trades,
+                "risk": {
+                    "daily_loss_limit_hit": (self.daily_loss_hits >= 2),
+                    "sl_hits": len([t for t in today_trades if "Stop Loss" in t['exit_reason']]),
+                    "hedging_activity": "Active" if self.hedging_triggered_today else "None"
+                },
+                "market": {
+                    "adx": self.current_adx_value,
+                    "iv": self.filters._update_and_get_iv()[0],
+                    "news": news_summary
+                },
+                "pdf_path": f"/reports/Daily_Report_{date_str}.pdf",
+                "xlsx_path": f"/reports/Daily_Report_{date_str}.xlsx"
+            }
+            
+            # 4. Generate files
+            pdf_file = f"reports/Daily_Report_{date_str}.pdf"
+            xlsx_file = f"reports/Daily_Report_{date_str}.xlsx"
+            
+            report_generator.generate_pdf_report(data, pdf_file)
+            report_generator.generate_xlsx_report(data, xlsx_file)
+            report_generator.save_report_data(data)
+            
+            return True, f"Report for {date_str} generated successfully."
+            
+        except Exception as e:
+            app_logger.error(f"Engine: Report generation error: {e}")
+            return False, str(e)
 
     def monitor_loop(self):
         """Zero-latency real-time monitoring of PnL, SL/TP, and Hedging using WebSocket (with HTTP fallback)."""
@@ -345,6 +436,7 @@ class DeltaTradingEngine:
                         if abs(net_delta) > HEDGE_DELTA_THRESHOLD and abs(total_gamma) > HEDGE_GAMMA_THRESHOLD:
                             app_logger.info(f"Engine: Hedge limits exceeded. Net Delta: {net_delta:.4f}, Gamma: {total_gamma:.4f}")
                             self.execution.hedge_with_futures(net_delta)
+                            self.hedging_triggered_today = True
                             notifier.notify_hedge(BOT_MODE, net_delta, total_gamma, "Rebalancing Futures")
                 else:
                     time.sleep(1) # Sleep slightly longer if no positions
@@ -376,6 +468,7 @@ class DeltaTradingEngine:
         self.partial_profit_hit = False
         self.trailing_sl_active = False
         self.last_hedge_check_time = None
+        self.hedging_triggered_today = False
         self.current_trade_info = {"calls": [], "puts": []}
         self.risk_manager.update_equity()
         self.daily_start_equity = self.risk_manager.current_equity

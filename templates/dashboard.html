@@ -499,6 +499,27 @@
             <div class="log-terminal" id="log-terminal">
                 <div class="log-line">Initializing connection to engine...</div>
             </div>
+        <!-- Daily Reports Panel -->
+        <div class="panel full-width">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">Daily Trading Reports</h2>
+                <button onclick="generateReportNow(event)" style="padding: 6px 16px; font-size: 0.85rem; width: auto; flex: none; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); color: #fff;">Generate Report Now</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Net P&L (USD)</th>
+                            <th>Performance Summary</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reports-body">
+                        <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Loading reports...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -872,7 +893,65 @@
             }
         }
 
-        // Fetch news on load and every 6 hours
+        // --- Daily Reports ---
+        async function fetchReports() {
+            try {
+                const res = await fetch('/api/reports');
+                const reports = await res.json();
+                const tbody = document.getElementById('reports-body');
+                
+                if (!reports || Object.keys(reports).length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No reports available yet.</td></tr>';
+                    return;
+                }
+                
+                let html = '';
+                for (const [date, data] of Object.entries(reports)) {
+                    const pnl = data.summary.net_pnl_usd;
+                    const pnlColor = pnl >= 0 ? 'var(--success)' : 'var(--danger)';
+                    html += `
+                        <tr>
+                            <td style="font-weight: 600;">${date}</td>
+                            <td style="color: ${pnlColor}; font-weight: 800;">$${pnl.toFixed(2)}</td>
+                            <td>${data.summary.total_trades} Trades (${data.summary.win_rate.toFixed(1)}% Win)</td>
+                            <td style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <button onclick="window.open('${data.pdf_path}', '_blank')" style="padding: 4px 10px; font-size: 0.8rem; background: rgba(255,255,255,0.1); color: #fff; width: auto; flex: none; border-radius: 8px;">View</button>
+                                <a href="${data.pdf_path}" download style="padding: 6px 12px; font-size: 0.8rem; background: rgba(16, 185, 129, 0.2); color: var(--success); border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">PDF</a>
+                                <a href="${data.xlsx_path}" download style="padding: 6px 12px; font-size: 0.8rem; background: rgba(245, 158, 11, 0.2); color: var(--warning); border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">Excel</a>
+                            </td>
+                        </tr>
+                    `;
+                }
+                tbody.innerHTML = html;
+            } catch (e) {
+                console.error('Fetch reports failed', e);
+            }
+        }
+
+        async function generateReportNow(event) {
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = "Generating...";
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/generate_report', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    alert('✅ ' + data.message);
+                    fetchReports();
+                } else {
+                    alert('❌ Error: ' + (data.message || data.error));
+                }
+            } catch (e) {
+                alert('❌ Network Error');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Initialize
+        fetchReports();
         fetchNews();
         setInterval(fetchNews, 6 * 60 * 60 * 1000);
     </script>

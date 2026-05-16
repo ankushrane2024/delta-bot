@@ -171,3 +171,30 @@ def get_news():
     except Exception as ex:
         app_logger.error(f"News API error: {ex}")
         return jsonify([])
+
+@app.route('/reports/<path:filename>')
+def serve_report(filename):
+    from flask import send_from_directory
+    return send_from_directory('reports', filename)
+
+@app.route('/api/reports')
+def list_reports():
+    import json
+    if os.path.exists('daily_reports.json'):
+        try:
+            with open('daily_reports.json', 'r') as f:
+                return jsonify(json.load(f))
+        except:
+            return jsonify({})
+    return jsonify({})
+
+@app.route('/api/generate_report', methods=['POST'])
+def generate_report_now():
+    if not bot_engine:
+        return jsonify({'error': 'Engine not initialized'}), 500
+    
+    success, message = bot_engine.generate_actual_report()
+    if success:
+        return jsonify({'status': 'success', 'message': message})
+    else:
+        return jsonify({'status': 'error', 'message': message}), 500
