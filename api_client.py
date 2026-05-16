@@ -17,6 +17,10 @@ class DeltaIndiaClient:
         self.ws = None
         self.ticker_data = {} # Live WebSocket Feed
         self.ws_thread = None
+        self.ws_connected = False
+        self.ws_reconnect_attempts = 0
+        self.ws_last_disconnect_time = None
+        self.ws_alert_sent = False
         
         if self.api_key and self.api_secret:
             self.sync_time()
@@ -123,12 +127,24 @@ class DeltaIndiaClient:
             error_logger.error(f"WS Error: {error}")
 
         def on_close(ws, close_status_code, close_msg):
-            app_logger.warning("WS Connection Closed. Reconnecting...")
-            time.sleep(5)
-            self.start_ws(symbols)
+            self.ws_connected = False
+            if not self.ws_last_disconnect_time:
+                self.ws_last_disconnect_time = time.time()
+                
+            if self.ws_reconnect_attempts < 10:
+                delay = min(2 ** self.ws_reconnect_attempts, 60)
+                app_logger.warning(f"WS Connection Closed. Reconnecting in {delay}s (Attempt {self.ws_reconnect_attempts + 1}/10)...")
+                self.ws_reconnect_attempts += 1
+                threading.Timer(delay, self.start_ws, args=[symbols]).start()
+            else:
+                app_logger.error("WS Max Reconnection Attempts Reached. Falling back purely to HTTP.")
 
         def on_open(ws):
             app_logger.info("WS Connection Opened")
+            self.ws_connected = True
+            self.ws_reconnect_attempts = 0
+            self.ws_last_disconnect_time = None
+            self.ws_alert_sent = False
             if symbols:
                 self.subscribe_ws(symbols)
 
@@ -161,3 +177,26 @@ class DeltaIndiaClient:
     def get_realtime_ticker(self, symbol):
         """Zero-latency read from memory cache."""
         return self.ticker_data.get(symbol)
+
+    def update_ticker_from_http(self, symbol, data):
+        """Safely updates the ticker_data cache with HTTP fallback data."""
+        if not symbol or not data:
+            return
+            
+        # Parse Greeks if available from HTTP. Some endpoints nest it, some keep it flat.
+        greeks = data.get('greeks', {})
+        if not greeks and 'delta' in data:
+            greeks = {
+                'delta': data.get('delta', 0),
+                'gamma': data.get('gamma', 0),
+                'theta': data.get('theta', 0),
+                'vega': data.get('vega', 0)
+            }
+            
+        formatted_data = {
+            'symbol': symbol,
+            'mark_price': data.get('mark_price') or data.get('close') or 0,
+            'greeks': greeks
+        }
+        
+        self.ticker_data[symbol] = formatted_data

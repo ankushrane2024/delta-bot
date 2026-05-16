@@ -164,16 +164,35 @@ class DeltaTradingEngine:
         notifier.notify_compliance_report(overall.get('win_rate', 0), overall.get('pnl', 0), overall.get('current_drawdown', 0))
 
     def monitor_loop(self):
-        """Zero-latency real-time monitoring of PnL, SL/TP, and Hedging using WebSocket."""
+        """Zero-latency real-time monitoring of PnL, SL/TP, and Hedging using WebSocket (with HTTP fallback)."""
         last_heartbeat = time.time()
+        last_http_poll_time = 0
+        
         while self.is_running:
             try:
                 # 5 minute heartbeat log
                 if time.time() - last_heartbeat >= 300:
                     app_logger.info("Engine Heartbeat: Monitor loop is active and running 24/7.")
                     last_heartbeat = time.time()
+                    
+                # 15s WS Disconnect Alert
+                if not self.api_client.ws_connected and self.api_client.ws_last_disconnect_time:
+                    if time.time() - self.api_client.ws_last_disconnect_time > 15:
+                        if not self.api_client.ws_alert_sent:
+                            app_logger.error("Monitor: WebSocket disconnected for > 15s. Sending alert.")
+                            notifier.notify_error("⚠️ WebSocket Disconnected > 15s. Bot is operating in HTTP Fallback Mode.")
+                            self.api_client.ws_alert_sent = True
 
                 if self.execution.active_positions:
+                    # HTTP Polling Fallback Every 2 seconds
+                    if time.time() - last_http_poll_time >= 2:
+                        for sym in self.execution.active_positions.keys():
+                            res = self.api_client.get_tickers({'symbol': sym})
+                            if res and res.get('success'):
+                                data = res.get('result')
+                                self.api_client.update_ticker_from_http(sym, data)
+                        last_http_poll_time = time.time()
+
                     current_total_value = 0
                     net_delta = 0
                     total_gamma = 0
