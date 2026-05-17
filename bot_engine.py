@@ -198,69 +198,110 @@ class DeltaTradingEngine:
         self.reset_daily_state()
 
     def run_test_order(self):
-        """Places a real 1-lot order, waits 10s, then closes it. PAPER mode only."""
-        app_logger.info("Engine: run_test_order start")
-        if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
-            app_logger.warning("Engine: Test order blocked (Mode is LIVE)")
+        """
+        PAPER MODE ONLY — Pure simulation of a 1-lot strangle.
+        Never places any real order on Delta Exchange.
+        Applies realistic slippage + execution delay for accuracy.
+        """
+        app_logger.info("Engine [TEST]: run_test_order triggered")
+        if getattr(self.execution, 'mode', 'PAPER') != 'PAPER':
+            app_logger.warning("Engine [TEST]: Blocked — mode is LIVE")
             return False, "Test Order is only allowed in PAPER mode for safety."
 
-        app_logger.info("Engine: Running Test Order (1 Lot)...")
-        
         try:
-            # 1. Find Strikes (Normal Strategy Logic)
+            # ── Step 1: Find Strikes (3-attempt fallback, bypasses all entry filters) ──
             expiry = get_next_expiry_date()
-            app_logger.info(f"Engine: Searching strikes for test order (Expiry: {expiry})...")
-            
-            # First attempt: Full strategy logic (Target Delta + Premium + Tomorrow's Expiry)
+            app_logger.info(f"Engine [TEST]: Searching strikes (Expiry: {expiry})...")
+
             call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, check_premium=True)
-            
-            # Second attempt: Bypass Premium (helpful for weekends/low vol)
+
             if not call_opt or not put_opt:
-                app_logger.info("Engine: No strikes found with premium filter. Retrying WITHOUT premium check...")
+                app_logger.info("Engine [TEST]: Retrying without premium filter...")
                 call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, check_premium=False)
-                
-            # Third attempt: Bypass Expiry (helpful if next-day expiry isn't available yet)
+
             if not call_opt or not put_opt:
-                app_logger.info("Engine: No strikes found for tomorrow's expiry. Retrying on ANY available expiry...")
+                app_logger.info("Engine [TEST]: Retrying on any available expiry...")
                 call_opt, put_opt = self.strategy.find_strikes(expiry_date=None, check_premium=False)
 
             if not call_opt or not put_opt:
-                return False, "Could not find ANY suitable strikes for test order even after bypassing filters."
+                return False, "Could not find any suitable strikes even after bypassing all filters."
 
-            # 2. Place Real Orders (1 Lot)
-            # We use api_client.place_order directly to bypass simulated paper execution
-            res_call = self.api_client.place_order(call_opt['product_id'], 'sell', 1)
-            res_put = self.api_client.place_order(put_opt['product_id'], 'sell', 1)
-            
-            if not res_call.get('success') or not res_put.get('success'):
-                def get_err(res):
-                    if not res or res.get('success'): return 'Success'
-                    err_obj = res.get('error', {})
-                    if isinstance(err_obj, dict):
-                        return err_obj.get('message') or err_obj.get('code') or 'Unknown Error'
-                    return str(err_obj)
-                    
-                err_call = get_err(res_call)
-                err_put = get_err(res_put)
-                return False, f"Failed to place real test orders. Call: {err_call}, Put: {err_put}"
-            
-            app_logger.info(f"Engine: Test orders placed. Call: {call_opt['symbol']}, Put: {put_opt['symbol']}")
-            notifier.notify_error(f"🧪 TEST ORDER PLACED (1 Lot)\nCall: {call_opt['symbol']}\nPut: {put_opt['symbol']}\nWaiting 10s to cancel...")
-            
-            # 3. Wait 10 seconds
+            call_sym  = call_opt['symbol']
+            put_sym   = put_opt['symbol']
+            call_entry = float(call_opt.get('mark_price', 0))
+            put_entry  = float(put_opt.get('mark_price', 0))
+
+            app_logger.info(
+                f"Engine [TEST]: Strikes found — Call: {call_sym} @ {call_entry}, "
+                f"Put: {put_sym} @ {put_entry}"
+            )
+
+            # ── Step 2: Simulated Entry (no API call, no margin check) ──
+            entry_slippage = random.uniform(0.3, 1.2)   # small entry slippage
+            simulated_call_entry = call_entry + entry_slippage
+            simulated_put_entry  = put_entry  + entry_slippage
+            entry_premium_total  = (simulated_call_entry + simulated_put_entry) * 1   # 1 lot
+
+            app_logger.info(
+                f"Engine [TEST]: PAPER Entry simulated. "
+                f"Call entry: {simulated_call_entry:.4f}, Put entry: {simulated_put_entry:.4f} "
+                f"(entry slippage: +{entry_slippage:.2f})"
+            )
+
+            # ── Step 3: Simulated execution delay ──
+            delay_ms = random.randint(200, 500)
+            app_logger.info(f"Engine [TEST]: Simulating execution delay: {delay_ms}ms")
+            time.sleep(delay_ms / 1000.0)
+
+            # ── Step 4: Telegram alert — order placed ──
+            notifier.notify_error(
+                f"🧪 TEST ORDER SIMULATED (PAPER)\n"
+                f"Call: {call_sym} @ ~{simulated_call_entry:.2f}\n"
+                f"Put:  {put_sym} @ ~{simulated_put_entry:.2f}\n"
+                f"Total Entry Premium: ~{entry_premium_total:.2f} USDT\n"
+                f"Waiting 10s then auto-cancelling..."
+            )
+
+            # ── Step 5: Wait 10 seconds (simulating position hold) ──
+            app_logger.info("Engine [TEST]: Waiting 10 seconds before simulated exit...")
             time.sleep(10)
-            
-            # 4. Close both legs at market
-            res_close_call = self.api_client.place_order(call_opt['product_id'], 'buy', 1)
-            res_close_put = self.api_client.place_order(put_opt['product_id'], 'buy', 1)
-            
-            app_logger.info("Engine: Test orders closed/cancelled.")
-            notifier.notify_error("✅ TEST ORDER COMPLETED\nBoth legs squared off successfully after 10s.")
-            
-            return True, "Test Order Placed & Cancelled Successfully"
-            
+
+            # ── Step 6: Simulated Exit with slippage ──
+            exit_slippage = self.calculate_paper_slippage(is_sl=False)
+            simulated_call_exit = call_entry + exit_slippage
+            simulated_put_exit  = put_entry  + exit_slippage
+            exit_premium_total  = (simulated_call_exit + simulated_put_exit) * 1
+
+            simulated_pnl = entry_premium_total - exit_premium_total
+            pnl_inr       = simulated_pnl * 83.0   # USD → INR approx
+
+            app_logger.info(
+                f"Engine [TEST]: PAPER Exit simulated. "
+                f"Exit slippage: {exit_slippage:.2f} pts. "
+                f"Call exit: {simulated_call_exit:.4f}, Put exit: {simulated_put_exit:.4f}. "
+                f"Simulated P&L: {simulated_pnl:+.4f} USDT (~₹{pnl_inr:+.2f})"
+            )
+
+            # ── Step 7: Final Telegram alert ──
+            notifier.notify_error(
+                f"✅ TEST ORDER COMPLETED (PAPER SIMULATION)\n"
+                f"Call exit: {call_sym} @ ~{simulated_call_exit:.2f}\n"
+                f"Put exit:  {put_sym} @ ~{simulated_put_exit:.2f}\n"
+                f"Slippage applied: {exit_slippage:.2f} pts\n"
+                f"Simulated P&L: {simulated_pnl:+.4f} USDT (~₹{pnl_inr:+.2f})\n"
+                f"No real orders were placed."
+            )
+
+            return True, (
+                f"Simulated successfully with slippage ({exit_slippage:.2f} pts). "
+                f"Call: {call_sym}, Put: {put_sym}. "
+                f"Simulated P&L: {simulated_pnl:+.4f} USDT (~₹{pnl_inr:+.2f})"
+            )
+
         except Exception as e:
-            app_logger.error(f"Engine: Test order exception: {e}")
+            import traceback
+            tb = traceback.format_exc()
+            app_logger.error(f"Engine [TEST]: Exception in run_test_order: {e}\n{tb}")
             return False, str(e)
 
     def run_rule_verification(self):
