@@ -817,26 +817,39 @@
             const btn = document.getElementById('btn-test-order');
             const originalText = btn.innerHTML;
             
-            if (!confirm("Place a REAL 1-lot order for testing? It will automatically close after 10 seconds. (PAPER mode check will be verified)")) {
+            if (!confirm("Place a REAL 1-lot order for testing?\n\nIt will automatically close after 10 seconds.\n\nOnly works in PAPER mode.")) {
                 console.log("Dashboard: Test order cancelled by user");
                 return;
             }
             
             try {
-                console.log("Dashboard: Sending request to /api/test_order...");
+                console.log("Dashboard: Sending POST to /api/test_order...");
                 btn.disabled = true;
                 btn.innerHTML = "⌛ PLACING TEST ORDER...";
                 
                 const response = await fetch('/api/test_order', { method: 'POST' });
-                const result = await response.json();
                 
-                if (result.status === 'success') {
-                    alert("✅ Success: " + result.message);
+                // Always read as text first to diagnose non-JSON responses
+                const raw = await response.text();
+                console.log("Dashboard: Raw response:", raw);
+                
+                let result;
+                try {
+                    result = JSON.parse(raw);
+                } catch (parseErr) {
+                    console.error("Dashboard: Response is not valid JSON:", raw);
+                    alert("❌ Server Error: The server returned an unexpected response.\nCheck backend logs for details.\n\n" + raw.substring(0, 200));
+                    return;
+                }
+                
+                if (result.success === true) {
+                    alert("✅ Test Order Success!\n\n" + result.message);
                 } else {
-                    alert("❌ Error: " + (result.message || result.error));
+                    alert("❌ Test Order Failed:\n\n" + (result.error || result.message || "Unknown error"));
                 }
             } catch (error) {
-                alert("❌ Request Failed: " + error);
+                console.error("Dashboard: Test order fetch error:", error);
+                alert("❌ Network Error: " + error.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;

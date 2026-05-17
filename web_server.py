@@ -106,19 +106,35 @@ def toggle_regime():
     
 @app.route('/api/test_order', methods=['POST'])
 def test_order():
-    if not bot_engine:
-        app_logger.error("Web: Test order failed - Engine not initialized")
-        return jsonify({'error': 'Engine not initialized'}), 500
-        
-    app_logger.info("Web: Received Test Order request from dashboard")
-    success, message = bot_engine.run_test_order()
-    
-    if success:
-        app_logger.info(f"Web: Test order success: {message}")
-        return jsonify({'status': 'success', 'message': message})
-    else:
-        app_logger.error(f"Web: Test order failed: {message}")
-        return jsonify({'status': 'error', 'message': message}), 400
+    try:
+        if not bot_engine:
+            app_logger.error("Web [test_order]: Engine not initialized")
+            return jsonify({'success': False, 'error': 'Engine not initialized'}), 200
+
+        mode = getattr(bot_engine.execution, 'mode', 'PAPER')
+        if mode != 'PAPER':
+            app_logger.warning(f"Web [test_order]: Blocked — mode is {mode}, not PAPER")
+            return jsonify({'success': False, 'error': 'Test Order is only available in PAPER mode.'}), 200
+
+        app_logger.info("Web [test_order]: Running test order via bot_engine...")
+        success, message = bot_engine.run_test_order()
+
+        if success:
+            app_logger.info(f"Web [test_order]: SUCCESS — {message}")
+            return jsonify({'success': True, 'message': message}), 200
+        else:
+            app_logger.error(f"Web [test_order]: FAILED — {message}")
+            return jsonify({'success': False, 'error': message}), 200
+
+    except AttributeError as e:
+        msg = f"run_test_order() not found on engine: {e}"
+        app_logger.error(f"Web [test_order]: AttributeError — {msg}")
+        return jsonify({'success': False, 'error': msg}), 200
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        app_logger.error(f"Web [test_order]: Unhandled exception — {e}\n{tb}")
+        return jsonify({'success': False, 'error': str(e)}), 200
 
 @app.route('/api/news', methods=['GET'])
 def get_news():
