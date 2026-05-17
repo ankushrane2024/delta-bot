@@ -13,6 +13,33 @@ class ExecutionHandler:
         """Places the short strangle orders."""
         app_logger.info(f"Execution: Placing {self.mode} Strangle. Size: {size}")
         
+        # In PAPER mode, completely skip real API calls and only do pure simulation
+        if self.mode != 'LIVE':
+            import random
+            import time
+            
+            # Apply simulated execution delay of 200–500 milliseconds
+            delay_ms = random.randint(200, 500)
+            app_logger.info(f"Execution [PAPER]: Simulating execution delay of {delay_ms}ms...")
+            time.sleep(delay_ms / 1000.0)
+            
+            results = []
+            for opt in [call_opt, put_opt]:
+                # Apply small entry slippage (0.3 to 1.2 points)
+                entry_slippage = random.uniform(0.3, 1.2)
+                simulated_entry_price = float(opt.get('mark_price', 0)) + entry_slippage
+                
+                app_logger.info(f"Execution [PAPER]: Simulating sell of {opt['symbol']} @ {simulated_entry_price:.4f} (slippage: +{entry_slippage:.2f})")
+                self.active_positions[opt['symbol']] = {
+                    'entry_price': simulated_entry_price,
+                    'size': size,
+                    'product_id': opt['product_id'],
+                    'side': 'SELL'
+                }
+                results.append({'success': True})
+            return results
+
+        # ── LIVE ──
         results = []
         for opt in [call_opt, put_opt]:
             # Set Portfolio Margin mode strictly before executing options
@@ -30,15 +57,6 @@ class ExecutionHandler:
                     }
                 else:
                     app_logger.error(f"Execution: Failed to sell {opt['symbol']}: {res}")
-            else:
-                app_logger.info(f"Execution [PAPER]: Simulating sell of {opt['symbol']} @ {opt['mark_price']}")
-                self.active_positions[opt['symbol']] = {
-                    'entry_price': opt['mark_price'],
-                    'size': size,
-                    'product_id': opt['product_id'],
-                    'side': 'SELL'
-                }
-                results.append({'success': True})
         
         return results
 

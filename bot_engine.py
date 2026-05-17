@@ -173,9 +173,14 @@ class DeltaTradingEngine:
         # Sub to WebSocket for these new symbols if not already
         self.api_client.subscribe_ws([call_opt['symbol'], put_opt['symbol']])
         
-        # Notify
-        total_premium_for_this_entry = (call_opt['mark_price'] + put_opt['mark_price']) * per_entry_size
+        # Fetch the exact entry prices that were simulated in active_positions (includes slippage)
+        call_entry = self.execution.active_positions.get(call_opt['symbol'], {}).get('entry_price', call_opt['mark_price'])
+        put_entry = self.execution.active_positions.get(put_opt['symbol'], {}).get('entry_price', put_opt['mark_price'])
+        
+        total_premium_for_this_entry = (call_entry + put_entry) * per_entry_size
         self.total_entry_premium += total_premium_for_this_entry
+        
+        # Notify
         notifier.notify_entry(call_opt['symbol'], put_opt['symbol'], per_entry_size, total_premium_for_this_entry)
 
     def run_exit_cycle(self):
