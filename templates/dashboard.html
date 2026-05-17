@@ -41,6 +41,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 24px;
+            align-items: stretch;
         }
 
         header {
@@ -295,7 +296,7 @@
             <div class="stat-label">Current Equity (USDT)</div>
             <div id="equity-val" class="stat-value">$0.00</div>
             
-            <div style="display: flex; gap: 20px; margin-top: 15px;">
+            <div style="display: flex; gap: 20px; margin-top: 15px; flex-wrap: wrap;">
                 <div>
                     <div class="stat-label">Mode</div>
                     <div id="mode-val" style="font-weight: 600; color: #38bdf8; font-size: 1.1rem;">-</div>
@@ -304,6 +305,18 @@
                     <div class="stat-label">Daily Loss Hits</div>
                     <div id="loss-hits-val" style="font-weight: 600; color: var(--danger); font-size: 1.1rem;">0 / 2</div>
                 </div>
+                <div>
+                    <div class="stat-label">Current Size</div>
+                    <div id="lot-multiplier-val" style="font-weight: 600; color: var(--warning); font-size: 1.1rem;">100% of base</div>
+                </div>
+                <div>
+                    <div class="stat-label">API Status</div>
+                    <div id="api-status-badge" style="font-weight: 600; font-size: 1.1rem;">Unknown</div>
+                </div>
+            </div>
+            
+            <div id="paper-mode-note" style="display: none; margin-top: 15px; padding: 12px; background: rgba(56, 189, 248, 0.1); border: 1.5px solid rgba(56, 189, 248, 0.2); border-radius: 8px; font-size: 0.85rem; color: #38bdf8; line-height: 1.4;">
+                ℹ️ <strong>PAPER MODE</strong> - Realistic slippage + Smart Position Sizing enabled (No USDT balance required).
             </div>
 
             <div class="controls">
@@ -342,7 +355,20 @@
             </div>
 
             <!-- News & Events / Volatility Alerts Panel -->
-            <div class="panel" id="news-panel">
+            <div class="panel" id="news-panel" style="flex: 1;">
+                <style>
+                    #news-panel .table-container {
+                        max-height: 320px;
+                        overflow-y: auto;
+                        flex: 1;
+                    }
+                    #news-panel th {
+                        position: sticky;
+                        top: 0;
+                        background: #141928;
+                        z-index: 10;
+                    }
+                </style>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
                     <h2 style="margin: 0;">📰 News &amp; Volatility Alerts</h2>
                     <div id="news-alert-badge" style="display: none; background: rgba(239,68,68,0.12); border: 1.5px solid var(--danger); color: var(--danger); padding: 7px 14px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; animation: pulse-red 2s ease-in-out infinite;">
@@ -556,6 +582,26 @@
                 document.getElementById('equity-val').textContent = `$${data.equity.toLocaleString()}`;
                 document.getElementById('mode-val').textContent = data.mode;
                 document.getElementById('loss-hits-val').textContent = `${data.daily_loss_hits} / 2`;
+
+                // Update PAPER Mode enhancements
+                const paperNote = document.getElementById('paper-mode-note');
+                if (paperNote) {
+                    paperNote.style.display = data.mode === 'PAPER' ? 'block' : 'none';
+                }
+                const lotMultVal = document.getElementById('lot-multiplier-val');
+                if (lotMultVal) {
+                    lotMultVal.textContent = `${(data.paper_lot_multiplier * 100).toFixed(0)}% of base`;
+                }
+                const apiStatusBadge = document.getElementById('api-status-badge');
+                if (apiStatusBadge) {
+                    if (data.api_connected) {
+                        apiStatusBadge.textContent = '🟢 Connected';
+                        apiStatusBadge.style.color = 'var(--success)';
+                    } else {
+                        apiStatusBadge.textContent = '🔴 Disconnected';
+                        apiStatusBadge.style.color = 'var(--danger)';
+                    }
+                }
 
                 // Show/Hide Test Order button based on mode
                 const testBtn = document.getElementById('btn-test-order');

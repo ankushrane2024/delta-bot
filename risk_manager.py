@@ -1,4 +1,4 @@
-from config import RISK_PERCENT, STARTING_CAPITAL, BASE_CAPITAL_FOR_SCALING, BASE_LOTS_TARGET
+from config import RISK_PERCENT, STARTING_CAPITAL, BASE_CAPITAL_FOR_SCALING, BASE_LOTS_TARGET, BOT_MODE
 from logger import app_logger
 
 class RiskManager:
@@ -8,6 +8,11 @@ class RiskManager:
 
     def update_equity(self):
         """Fetch current equity from exchange."""
+        if BOT_MODE == 'PAPER':
+            # Bypass API call in PAPER mode
+            app_logger.info(f"Risk [PAPER]: Simulated equity is ${self.current_equity:.2f} (No live check)")
+            return
+        
         try:
             res = self.api_client.get_balances()
             if res.get('success'):

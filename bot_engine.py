@@ -1,6 +1,7 @@
 import time
 import schedule
 import threading
+import random
 from config import BOT_MODE, ENTRY_TIMES, EXIT_TIME_START, MAX_DAILY_LOSS_PCT, HEDGE_DELTA_THRESHOLD, HEDGE_GAMMA_THRESHOLD, STARTING_CAPITAL
 from utils import get_ist_now, get_next_expiry_date, should_check_hedge
 from logger import app_logger, error_logger
@@ -39,6 +40,12 @@ class DeltaTradingEngine:
         self.current_market_regime = "Unknown"
         self.current_adx_value = 0.0
         self.hedging_triggered_today = False
+        
+        # PAPER mode enhancements
+        self.paper_lot_multiplier = 1.0
+        self.consecutive_losses = 0
+        self.paper_trading_paused = False
+        self.btc_price_history = []
 
     def start(self):
         app_logger.info(f"Engine: Starting Delta BTC Options Bot in {BOT_MODE} mode with Capital: ${STARTING_CAPITAL}")
@@ -74,6 +81,17 @@ class DeltaTradingEngine:
 
     def run_entry_cycle(self):
         app_logger.info("Engine: Entry cycle triggered")
+        
+        # Verify and Auto-Reconnect API in PAPER mode
+        if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
+            api_ok = self.verify_and_reconnect_api()
+            app_logger.info(f"Engine [PAPER]: API connection status before trade entry: {'Connected' if api_ok else 'Disconnected'}")
+            if not api_ok:
+                app_logger.error("Engine [PAPER]: API connection failed after 3 attempts. Skipping trade!")
+                notifier.notify_error("🚨 API connection failed - Trade skipped")
+                self.today_trade_status = "Trade Skipped"
+                self.today_skip_reason = "API connection failed - Trade skipped"
+                return
         
         # Daily Limits Check
         self.risk_manager.update_equity()
@@ -122,6 +140,18 @@ class DeltaTradingEngine:
 
         # Calculate Lot Size
         per_entry_size = self.risk_manager.calculate_lot_size()
+        
+        # Apply PAPER dynamic lot size if in PAPER mode
+        if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
+            if self.paper_trading_paused:
+                app_logger.warning("Engine [PAPER]: Trading is paused for today due to 3 consecutive losses. Skipping entry.")
+                self.today_trade_status = "Trade Skipped"
+                self.today_skip_reason = "Paper Trading Paused (3 consecutive losses)"
+                return
+            
+            original_size = per_entry_size
+            per_entry_size = int(per_entry_size * self.paper_lot_multiplier)
+            app_logger.info(f"Engine [PAPER]: Dynamic lot sizing applied: {original_size} lots * {self.paper_lot_multiplier*100:.1f}% = {per_entry_size} lots")
         
         # Safety check: skip trade if calculated lots < 1
         if per_entry_size < 1:
@@ -347,6 +377,16 @@ class DeltaTradingEngine:
                 if time.time() - last_heartbeat >= 300:
                     app_logger.info("Engine Heartbeat: Monitor loop is active and running 24/7.")
                     last_heartbeat = time.time()
+                
+                # Maintain BTC Price History for 5-minute slippage checks (600s history)
+                try:
+                    btc_ws = self.api_client.get_realtime_ticker("BTCUSD")
+                    if btc_ws and 'mark_price' in btc_ws:
+                        current_btc_p = float(btc_ws['mark_price'])
+                        self.btc_price_history.append((time.time(), current_btc_p))
+                        self.btc_price_history = [x for x in self.btc_price_history if x[0] >= (time.time() - 600)]
+                except Exception as btc_err:
+                    error_logger.error(f"Error maintaining BTC history: {btc_err}")
                     
                 # 15s WS Disconnect Alert
                 if not self.api_client.ws_connected and self.api_client.ws_last_disconnect_time:
@@ -404,6 +444,28 @@ class DeltaTradingEngine:
                         
                         action = self.risk_manager.check_sl_tp(collected_premium, current_option_value, pnl_pct)
                         
+                        if self.trailing_sl_active and pnl_pct <= 0.0:
+                            action = "TRAILING_SL_EXIT"
+                        
+                        if action in ["STOP_LOSS_ALL", "TAKE_PROFIT_ALL", "TRAILING_SL_EXIT"]:
+                            # Apply slippage and execution delay in PAPER mode
+                            if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
+                                is_sl = (action == "STOP_LOSS_ALL")
+                                slippage_per_lot = self.calculate_paper_slippage(is_sl)
+                                total_size = sum([d['size'] for d in self.execution.active_positions.values()])
+                                total_slippage = slippage_per_lot * total_size
+                                adjusted_profit = profit - total_slippage
+                                
+                                # Execution delay of 200-500 milliseconds
+                                delay = random.uniform(0.2, 0.5)
+                                app_logger.info(f"Engine [PAPER]: Delaying trade exit by {delay*1000:.0f}ms...")
+                                time.sleep(delay)
+                                
+                                # Log the decision
+                                app_logger.info(f"Engine [PAPER] Slippage Log: timestamp={time.time()} | original_price={current_option_value:.4f} | price_after_slippage={current_option_value + total_slippage:.4f} | lot_size={total_size} | reason_for_change={action} | api_connected={'Connected' if self.api_client.ws_connected else 'Disconnected'}")
+                                
+                                profit = adjusted_profit
+                        
                         if action == "STOP_LOSS_ALL":
                             app_logger.warning("Engine: Combined 150% Stop Loss Hit!")
                             self._log_and_reset_trade(profit, "Stop Loss Hit")
@@ -418,13 +480,19 @@ class DeltaTradingEngine:
                             self._log_and_reset_trade(profit, "Profit Target Hit")
                             self.execution.close_all(reason="Profit Target Hit")
                             notifier.notify_full_exit("Profit Target (70%)", profit)
+                            
+                        elif action == "TRAILING_SL_EXIT":
+                            app_logger.info("Engine: Trailing Stop Loss Hit (Breakeven)!")
+                            self._log_and_reset_trade(profit, "Trailing SL Hit")
+                            self.execution.close_all(reason="Trailing SL Hit")
+                            notifier.notify_full_exit("Trailing SL Hit (Breakeven)", profit)
                         
                         elif action == "PARTIAL_PROFIT" and not self.partial_profit_hit:
                             app_logger.info("Engine: Partial Profit Triggered (50%)")
                             self.execution.partial_close(percentage=0.5)
                             self.partial_profit_hit = True
                             notifier.notify_partial_profit(profit)
-
+ 
                         elif action == "TRAILING_SL_TRIGGERED" and not self.trailing_sl_active:
                             app_logger.info("Engine: Trailing SL to BE active")
                             self.trailing_sl_active = True
@@ -457,6 +525,9 @@ class DeltaTradingEngine:
             if call_opt and put_opt:
                 self.risk_manager.update_equity()
                 size = self.risk_manager.calculate_lot_size()
+                if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
+                    size = int(size * self.paper_lot_multiplier)
+                    app_logger.info(f"Engine [PAPER]: Re-entry lot sizing applied: {size} lots")
                 self.execution.execute_strangle(call_opt, put_opt, size)
                 self.api_client.subscribe_ws([call_opt['symbol'], put_opt['symbol']])
                 notifier.notify_recost()
@@ -474,12 +545,41 @@ class DeltaTradingEngine:
         self.daily_start_equity = self.risk_manager.current_equity
         self.today_trade_status = "Pending"
         self.today_skip_reason = None
+        
+        # Reset PAPER-specific state at EOD
+        self.consecutive_losses = 0
+        self.paper_trading_paused = False
         app_logger.info("Engine: Daily state reset.")
 
     def _log_and_reset_trade(self, profit, reason):
         if self.current_trade_info.get("calls"):
             c_syms = ",".join(self.current_trade_info["calls"])
             p_syms = ",".join(self.current_trade_info["puts"])
+            
+            # Update simulated equity and lot multiplier in PAPER mode
+            if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
+                self.risk_manager.current_equity += profit
+                
+                # Check if it is a winning trade or losing trade
+                if profit > 0:
+                    # Win: Increase by +5%, cap at 1.30 (130%)
+                    self.paper_lot_multiplier = min(1.30, self.paper_lot_multiplier + 0.05)
+                    self.consecutive_losses = 0
+                    app_logger.info(f"Engine [PAPER]: Winning trade (+${profit:.2f}). New Lot Multiplier: {self.paper_lot_multiplier*100:.1f}%. Consecutive Losses reset to 0.")
+                else:
+                    # Loss
+                    self.consecutive_losses += 1
+                    if self.consecutive_losses == 1:
+                        self.paper_lot_multiplier = max(0.10, self.paper_lot_multiplier - 0.10)
+                        app_logger.info(f"Engine [PAPER]: Losing trade (-${abs(profit):.2f}). 1st loss. New Lot Multiplier: {self.paper_lot_multiplier*100:.1f}%.")
+                    elif self.consecutive_losses == 2:
+                        self.paper_lot_multiplier = max(0.10, self.paper_lot_multiplier - 0.20)
+                        app_logger.info(f"Engine [PAPER]: Losing trade (-${abs(profit):.2f}). 2nd consecutive loss. New Lot Multiplier: {self.paper_lot_multiplier*100:.1f}%.")
+                    elif self.consecutive_losses >= 3:
+                        self.paper_trading_paused = True
+                        app_logger.warning(f"Engine [PAPER]: 3 consecutive losses! Pausing paper trading for the rest of the day. Lot Multiplier remains: {self.paper_lot_multiplier*100:.1f}%.")
+                        notifier.notify_error("⚠️ PAPER TRADING PAUSED ⚠️\n3 consecutive losses reached in PAPER mode. Trading paused for today.")
+
             self.performance_tracker.log_trade(
                 entry_time=self.current_trade_info.get("entry_time", ""),
                 call_symbol=c_syms,
@@ -498,3 +598,89 @@ class DeltaTradingEngine:
             "today_reason": self.today_skip_reason,
             "upcoming_schedule": self.filters.get_schedule(days=7)
         }
+
+    def verify_and_reconnect_api(self):
+        """
+        PAPER MODE ONLY: Safety Check to verify API & WS connection.
+        Attempts auto-reconnection up to 3 times if down.
+        """
+        app_logger.info("Engine [PAPER]: Verifying API connection before trade...")
+        for attempt in range(1, 4):
+            rest_ok = False
+            try:
+                res = self.api_client.get_tickers({'symbol': 'BTCUSD'})
+                if res and res.get('success'):
+                    rest_ok = True
+            except Exception:
+                pass
+            
+            ws_ok = self.api_client.ws_connected
+            
+            app_logger.info(f"Engine [PAPER]: API Status (REST: {'OK' if rest_ok else 'DOWN'}, WS: {'OK' if ws_ok else 'DOWN'}) - Attempt {attempt}/3")
+            
+            if rest_ok and ws_ok:
+                return True
+                
+            app_logger.warning(f"Engine [PAPER]: Connection down. Attempting reconnect (Attempt {attempt})...")
+            try:
+                if not ws_ok:
+                    if self.api_client.ws:
+                        try:
+                            self.api_client.ws.close()
+                        except:
+                            pass
+                    self.api_client.start_ws()
+            except Exception as ws_err:
+                app_logger.error(f"Engine [PAPER]: Failed to restart WS: {ws_err}")
+                
+            try:
+                self.api_client.sync_time()
+            except Exception:
+                pass
+                
+            time.sleep(2)
+            
+        return False
+
+    def calculate_paper_slippage(self, is_sl=False):
+        """
+        PAPER MODE ONLY: Calculates random slippage per lot based on volatility/regime/SL rules.
+        """
+        slippage = random.uniform(0.5, 2.5)
+        
+        iv = 0.0
+        try:
+            iv, _ = self.filters._update_and_get_iv()
+        except Exception:
+            pass
+            
+        btc_moved_high = False
+        pct_move = 0.0
+        try:
+            if len(self.btc_price_history) >= 2:
+                current_price = self.btc_price_history[-1][1]
+                five_mins_ago = time.time() - 300
+                price_5m = None
+                for t, p in self.btc_price_history:
+                    if t >= five_mins_ago:
+                        price_5m = p
+                        break
+                if price_5m is None:
+                    price_5m = self.btc_price_history[0][1]
+                
+                pct_move = abs(current_price - price_5m) / price_5m * 100.0
+                if pct_move > 1.5:
+                    btc_moved_high = True
+        except Exception as e:
+            app_logger.error(f"Engine [PAPER]: Slippage BTC move check error: {e}")
+            
+        if iv > 0.80 or btc_moved_high:
+            slippage *= 2.5
+            app_logger.info(f"Engine [PAPER]: Dynamic slippage multiplier active! IV: {iv*100:.1f}%, BTC 5m Move: {pct_move:.2f}%. Slippage multiplied by 2.5x to {slippage:.2f}")
+            
+        if is_sl:
+            extra = random.uniform(0.5, 1.5)
+            slippage += extra
+            app_logger.info(f"Engine [PAPER]: SL Slippage added: +{extra:.2f}. Total slippage per lot: {slippage:.2f}")
+            
+        return slippage

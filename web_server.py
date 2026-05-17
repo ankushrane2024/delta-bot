@@ -56,7 +56,9 @@ def get_status():
         'schedule_info': bot_engine.get_schedule_info(),
         'regime_filter_enabled': bot_engine.market_regime_filter_enabled,
         'current_market_regime': bot_engine.current_market_regime,
-        'current_adx_value': bot_engine.current_adx_value
+        'current_adx_value': bot_engine.current_adx_value,
+        'paper_lot_multiplier': getattr(bot_engine, 'paper_lot_multiplier', 1.0),
+        'api_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False
     })
 
 @app.route('/api/start', methods=['POST'])
