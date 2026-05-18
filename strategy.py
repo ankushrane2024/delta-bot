@@ -140,11 +140,15 @@ class ShortStrangleStrategy:
                     # Score formula:
                     # 1. Matches premiums as close as possible to each other (1.5x weight)
                     # 2. Minimizes premiums toward ₹100
+                    # 3. Penalizes premiums exceeding ₹150 to strongly prefer the ₹100–₹150 range
                     diff = abs(c['premium_inr'] - p['premium_inr'])
                     c_dist = c['premium_inr'] - 100.0
                     p_dist = p['premium_inr'] - 100.0
                     
-                    score = 1.5 * diff + c_dist + p_dist
+                    penalty_c = max(0.0, c['premium_inr'] - 150.0) * 2.0
+                    penalty_p = max(0.0, p['premium_inr'] - 150.0) * 2.0
+                    
+                    score = 1.5 * diff + c_dist + p_dist + penalty_c + penalty_p
                     if score < best_score:
                         best_score = score
                         best_pair = (c, p)

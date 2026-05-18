@@ -466,6 +466,16 @@ class DeltaTradingEngine:
                             self.api_client.ws_alert_sent = True
 
                 if self.execution.active_positions:
+                    # EOD Hard Exit Square-off Safeguard at 17:00 IST (5:00 PM) Same Day
+                    try:
+                        now_ist = get_ist_now()
+                        if now_ist.hour >= 17:
+                            app_logger.info("Engine Monitor Safeguard: Time is past 17:00 IST with active positions. Triggering EOD Square-off.")
+                            self.run_exit_cycle()
+                            continue
+                    except Exception as time_err:
+                        error_logger.error(f"Error checking time safeguard in monitor loop: {time_err}")
+
                     # 30-Second Critical Data Failure Safeguard
                     if time.time() - self.api_client.last_price_update_time > 30:
                         app_logger.critical("Engine: TOTAL DATA FAILURE > 30s. Triggering Emergency Auto Square-Off.")
