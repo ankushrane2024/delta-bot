@@ -114,16 +114,16 @@ class ShortStrangleStrategy:
             app_logger.warning("Strategy: No strikes met the maximum delta 0.45 safety cap.")
             return None, None
 
-        # Enforce premium and OTM constraints
+        # Enforce strict premium and OTM constraints
         calls_premium = []
         puts_premium = []
         for c in eligible_calls:
-            if 100.0 <= c['premium_inr'] <= 450.0:
+            if c['premium_inr'] >= 100.0:
                 if atm_idx + 5 < len(all_strikes) and c['strike'] >= all_strikes[atm_idx + 5]:
                     calls_premium.append(c)
                     
         for p in eligible_puts:
-            if 100.0 <= p['premium_inr'] <= 450.0:
+            if p['premium_inr'] >= 100.0:
                 if atm_idx - 5 >= 0 and p['strike'] <= all_strikes[atm_idx - 5]:
                     puts_premium.append(p)
                     
@@ -131,14 +131,27 @@ class ShortStrangleStrategy:
         best_put = None
         
         if check_premium and calls_premium and puts_premium:
-            # Primary rule: premium between ₹100 and ₹450, closest to ₹100–₹300 range
-            def premium_metric(x):
-                p = x['premium_inr']
-                dist = 0.0 if 100.0 <= p <= 300.0 else p - 300.0
-                return (dist, p)
-            best_call = min(calls_premium, key=premium_metric)
-            best_put = min(puts_premium, key=premium_metric)
-            app_logger.info(f"Strategy: Selected strikes via premium rule (Call: {best_call['symbol']} Premium: Rs. {best_call['premium_inr']:.2f}, Put: {best_put['symbol']} Premium: Rs. {best_put['premium_inr']:.2f})")
+            # Joint score evaluation to satisfy all premium criteria simultaneously
+            best_pair = None
+            best_score = float('inf')
+            
+            for c in calls_premium:
+                for p in puts_premium:
+                    # Score formula:
+                    # 1. Matches premiums as close as possible to each other (1.5x weight)
+                    # 2. Minimizes premiums toward ₹100
+                    diff = abs(c['premium_inr'] - p['premium_inr'])
+                    c_dist = c['premium_inr'] - 100.0
+                    p_dist = p['premium_inr'] - 100.0
+                    
+                    score = 1.5 * diff + c_dist + p_dist
+                    if score < best_score:
+                        best_score = score
+                        best_pair = (c, p)
+                        
+            if best_pair:
+                best_call, best_put = best_pair
+                app_logger.info(f"Strategy: Selected strikes via joint premium score rule (Call: {best_call['symbol']} Premium: Rs. {best_call['premium_inr']:.2f}, Put: {best_put['symbol']} Premium: Rs. {best_put['premium_inr']:.2f}, Diff: Rs. {abs(best_call['premium_inr'] - best_put['premium_inr']):.2f})")
         else:
             # Soft fallback: closest to target delta
             best_call = min(eligible_calls, key=lambda x: abs(x['delta'] - target_delta))
