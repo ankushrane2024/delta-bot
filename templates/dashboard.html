@@ -508,6 +508,16 @@
             <div id="rules-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
                 <div style="color: var(--text-secondary); font-size: 0.9rem;">Waiting for first rule check...</div>
             </div>
+            
+            <!-- Today's Skip Reason Section -->
+            <div id="skip-reason-container" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px dashed rgba(255, 255, 255, 0.1);">
+                <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin: 0 0 10px 0; display: flex; align-items: center; gap: 6px;">
+                    🚫 Today's Skip Reason
+                </h3>
+                <div id="skip-reason-text" style="font-size: 0.9rem; color: #fca5a5; background: rgba(239, 68, 68, 0.08); border: 1.5px solid rgba(239, 68, 68, 0.15); padding: 12px 16px; border-radius: 8px; font-weight: 600; line-height: 1.4;">
+                    -
+                </div>
+            </div>
         </div>
 
         <!-- Skip & Schedule Info Panel -->
@@ -741,28 +751,71 @@
 
                 // Update Rule Compliance
                 if(data.rule_report && data.rule_report.results) {
+                    // Check if today was skipped and map to rules
+                    const skipReason = data.today_skip_reason || "";
+                    let failedRuleName = null;
+                    
+                    if (skipReason) {
+                        const reasonLower = skipReason.toLowerCase();
+                        if (reasonLower.includes("weekend") || reasonLower.includes("iv") || reasonLower.includes("news")) {
+                            failedRuleName = "Filters";
+                        } else if (reasonLower.includes("loss limit") || reasonLower.includes("sls")) {
+                            failedRuleName = "Daily Loss Limit";
+                        } else if (reasonLower.includes("strike") || reasonLower.includes("premium")) {
+                            failedRuleName = "Strike Selection";
+                        } else if (reasonLower.includes("capital") || reasonLower.includes("lot size") || reasonLower.includes("insufficient") || reasonLower.includes("consecutive losses")) {
+                            failedRuleName = "Lot Size";
+                        }
+                    }
+
                     const badge = document.getElementById('compliance-badge');
-                    badge.textContent = `${data.rule_report.compliance}% Compliant`;
-                    if(data.rule_report.compliance === 100) {
-                        badge.style.color = 'var(--success)';
-                        badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
-                        badge.style.background = 'rgba(16, 185, 129, 0.1)';
+                    if (failedRuleName) {
+                        const activePassedCount = data.rule_report.results.length - 1;
+                        const activeCompliancePct = Math.round((activePassedCount / data.rule_report.results.length) * 100);
+                        badge.textContent = `${activeCompliancePct}% Active Compliance (Skip Active)`;
+                        badge.style.color = 'var(--warning)';
+                        badge.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+                        badge.style.background = 'rgba(245, 158, 11, 0.1)';
                     } else {
-                        badge.style.color = 'var(--danger)';
-                        badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
-                        badge.style.background = 'rgba(239, 68, 68, 0.1)';
+                        badge.textContent = `${data.rule_report.compliance}% Compliant`;
+                        if(data.rule_report.compliance === 100) {
+                            badge.style.color = 'var(--success)';
+                            badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                            badge.style.background = 'rgba(16, 185, 129, 0.1)';
+                        } else {
+                            badge.style.color = 'var(--danger)';
+                            badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                            badge.style.background = 'rgba(239, 68, 68, 0.1)';
+                        }
                     }
 
                     const rulesGrid = document.getElementById('rules-grid');
-                    rulesGrid.innerHTML = data.rule_report.results.map(r => `
-                        <div style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 10px;">
-                            <div style="font-size: 1.2rem;">${r.passed ? '✅' : '❌'}</div>
-                            <div>
-                                <div style="font-weight: 600; font-size: 0.9rem;">${r.name}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">${r.expected}</div>
+                    rulesGrid.innerHTML = data.rule_report.results.map(r => {
+                        const isFailed = (r.name === failedRuleName) || !r.passed;
+                        const bg = isFailed ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.06)';
+                        const border = isFailed ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(16, 185, 129, 0.18)';
+                        const icon = isFailed ? '❌' : '✅';
+                        
+                        return `
+                            <div style="background: ${bg}; padding: 12px; border-radius: 8px; border: ${border}; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
+                                <div style="font-size: 1.2rem;">${icon}</div>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.9rem; color: #fff;">${r.name}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">${r.expected}</div>
+                                </div>
                             </div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
+
+                    // Today's Skip Reason Section update
+                    const skipContainer = document.getElementById('skip-reason-container');
+                    const skipText = document.getElementById('skip-reason-text');
+                    if (data.today_skip_reason) {
+                        skipContainer.style.display = 'block';
+                        skipText.textContent = data.today_skip_reason;
+                    } else {
+                        skipContainer.style.display = 'none';
+                    }
                 }
 
                 // Update Skip & Schedule Info

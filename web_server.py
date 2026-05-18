@@ -61,7 +61,8 @@ def get_status():
         'api_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False,
         'current_iv': getattr(bot_engine, 'current_iv', 0.0),
         'avg_7d_iv': getattr(bot_engine, 'avg_7d_iv', 0.0),
-        'iv_status': getattr(bot_engine, 'iv_status', 'Normal')
+        'iv_status': getattr(bot_engine, 'iv_status', 'Normal'),
+        'today_skip_reason': getattr(bot_engine, 'today_skip_reason', None)
     })
 
 @app.route('/api/start', methods=['POST'])
