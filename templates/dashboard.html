@@ -510,12 +510,12 @@
             </div>
             
             <!-- Today's Skip Reason Section -->
-            <div id="skip-reason-container" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px dashed rgba(255, 255, 255, 0.1);">
-                <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin: 0 0 10px 0; display: flex; align-items: center; gap: 6px;">
-                    🚫 Today's Skip Reason
+            <div id="skip-reason-container" style="display: block; margin-top: 20px; padding-top: 20px; border-top: 1px dashed rgba(255, 255, 255, 0.1);">
+                <h3 id="skip-reason-title" style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin: 0 0 10px 0; display: flex; align-items: center; gap: 6px;">
+                    ℹ️ Today's Skip Reason
                 </h3>
-                <div id="skip-reason-text" style="font-size: 0.9rem; color: #fca5a5; background: rgba(239, 68, 68, 0.08); border: 1.5px solid rgba(239, 68, 68, 0.15); padding: 12px 16px; border-radius: 8px; font-weight: 600; line-height: 1.4;">
-                    -
+                <div id="skip-reason-text" style="font-size: 0.9rem; color: var(--text-secondary); background: rgba(255, 255, 255, 0.03); border: 1.5px solid rgba(255, 255, 255, 0.08); padding: 12px 16px; border-radius: 8px; font-weight: 600; line-height: 1.4;">
+                    None (System running normally)
                 </div>
             </div>
         </div>
@@ -804,13 +804,30 @@
                     }).join('');
 
                     // Today's Skip Reason Section update
-                    const skipContainer = document.getElementById('skip-reason-container');
+                    const skipTitle = document.getElementById('skip-reason-title');
                     const skipText = document.getElementById('skip-reason-text');
+                    
                     if (data.today_skip_reason) {
-                        skipContainer.style.display = 'block';
+                        // We have an active skip today! Style in red.
+                        skipTitle.innerHTML = "🚫 Today's Skip Reason";
                         skipText.textContent = data.today_skip_reason;
+                        skipText.style.color = "#fca5a5";
+                        skipText.style.background = "rgba(239, 68, 68, 0.08)";
+                        skipText.style.borderColor = "rgba(239, 68, 68, 0.15)";
+                    } else if (data.schedule_info && data.schedule_info.today_status === "Trade Taken") {
+                        // Trade taken successfully! Style in green.
+                        skipTitle.innerHTML = "✅ Today's Status";
+                        skipText.textContent = "Trade taken successfully";
+                        skipText.style.color = "#a7f3d0";
+                        skipText.style.background = "rgba(16, 185, 129, 0.08)";
+                        skipText.style.borderColor = "rgba(16, 185, 129, 0.18)";
                     } else {
-                        skipContainer.style.display = 'none';
+                        // No active skips/trades yet today (system normal). Style in grey/secondary.
+                        skipTitle.innerHTML = "ℹ️ Today's Status";
+                        skipText.textContent = "None (System running normally)";
+                        skipText.style.color = "var(--text-secondary)";
+                        skipText.style.background = "rgba(255, 255, 255, 0.03)";
+                        skipText.style.borderColor = "rgba(255, 255, 255, 0.08)";
                     }
                 }
 
