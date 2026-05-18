@@ -757,36 +757,32 @@
                     
                     if (skipReason) {
                         const reasonLower = skipReason.toLowerCase();
-                        if (reasonLower.includes("weekend") || reasonLower.includes("iv") || reasonLower.includes("news")) {
-                            failedRuleName = "Filters";
-                        } else if (reasonLower.includes("loss limit") || reasonLower.includes("sls")) {
+                        if (reasonLower.includes("loss limit") || reasonLower.includes("sls") || reasonLower.includes("max loss")) {
                             failedRuleName = "Daily Loss Limit";
-                        } else if (reasonLower.includes("strike") || reasonLower.includes("premium")) {
+                        } else if (reasonLower.includes("strike") || reasonLower.includes("premium") || reasonLower.includes("net delta")) {
                             failedRuleName = "Strike Selection";
                         } else if (reasonLower.includes("capital") || reasonLower.includes("lot size") || reasonLower.includes("insufficient") || reasonLower.includes("consecutive losses")) {
                             failedRuleName = "Lot Size";
+                        } else if (reasonLower.includes("exit")) {
+                            failedRuleName = "Exit Time";
+                        } else if (reasonLower.includes("hedge")) {
+                            failedRuleName = "Hedging";
                         }
                     }
 
                     const badge = document.getElementById('compliance-badge');
                     if (failedRuleName) {
-                        const activePassedCount = data.rule_report.results.length - 1;
-                        const activeCompliancePct = Math.round((activePassedCount / data.rule_report.results.length) * 100);
-                        badge.textContent = `${activeCompliancePct}% Active Compliance (Skip Active)`;
-                        badge.style.color = 'var(--warning)';
-                        badge.style.borderColor = 'rgba(245, 158, 11, 0.2)';
-                        badge.style.background = 'rgba(245, 158, 11, 0.1)';
+                        const failedCount = data.rule_report.results.filter(r => r.name === failedRuleName || !r.passed).length;
+                        const compliancePct = Math.round(((data.rule_report.results.length - failedCount) / data.rule_report.results.length) * 100);
+                        badge.textContent = `${compliancePct}% Compliant`;
+                        badge.style.color = 'var(--danger)';
+                        badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                        badge.style.background = 'rgba(239, 68, 68, 0.1)';
                     } else {
-                        badge.textContent = `${data.rule_report.compliance}% Compliant`;
-                        if(data.rule_report.compliance === 100) {
-                            badge.style.color = 'var(--success)';
-                            badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
-                            badge.style.background = 'rgba(16, 185, 129, 0.1)';
-                        } else {
-                            badge.style.color = 'var(--danger)';
-                            badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
-                            badge.style.background = 'rgba(239, 68, 68, 0.1)';
-                        }
+                        badge.textContent = `100% Compliant`;
+                        badge.style.color = 'var(--success)';
+                        badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                        badge.style.background = 'rgba(16, 185, 129, 0.1)';
                     }
 
                     const rulesGrid = document.getElementById('rules-grid');

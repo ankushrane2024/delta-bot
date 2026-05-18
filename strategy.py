@@ -118,12 +118,12 @@ class ShortStrangleStrategy:
         calls_premium = []
         puts_premium = []
         for c in eligible_calls:
-            if c['premium_inr'] >= 100.0:
+            if 100.0 <= c['premium_inr'] <= 250.0:
                 if atm_idx + 5 < len(all_strikes) and c['strike'] >= all_strikes[atm_idx + 5]:
                     calls_premium.append(c)
                     
         for p in eligible_puts:
-            if p['premium_inr'] >= 100.0:
+            if 100.0 <= p['premium_inr'] <= 250.0:
                 if atm_idx - 5 >= 0 and p['strike'] <= all_strikes[atm_idx - 5]:
                     puts_premium.append(p)
                     
