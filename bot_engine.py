@@ -290,7 +290,7 @@ class DeltaTradingEngine:
                 f"Engine [TEST]: PAPER Exit simulated. "
                 f"Exit slippage: {exit_slippage:.2f} pts. "
                 f"Call exit: {simulated_call_exit:.4f}, Put exit: {simulated_put_exit:.4f}. "
-                f"Simulated P&L: {simulated_pnl:+.4f} USDT (~₹{pnl_inr:+.2f})"
+                f"Simulated P&L: {simulated_pnl:+.4f} USDT (~Rs. {pnl_inr:+.2f})"
             )
 
             # ── Step 7: Final Telegram alert ──
@@ -299,14 +299,14 @@ class DeltaTradingEngine:
                 f"Call exit: {call_sym} @ ~{simulated_call_exit:.2f}\n"
                 f"Put exit:  {put_sym} @ ~{simulated_put_exit:.2f}\n"
                 f"Slippage applied: {exit_slippage:.2f} pts\n"
-                f"Simulated P&L: {simulated_pnl:+.4f} USDT (~₹{pnl_inr:+.2f})\n"
+                f"Simulated P&L: {simulated_pnl:+.4f} USDT (~Rs. {pnl_inr:+.2f})\n"
                 f"No real orders were placed."
             )
 
             return True, (
                 f"Simulated successfully with slippage ({exit_slippage:.2f} pts). "
                 f"Call: {call_sym}, Put: {put_sym}. "
-                f"Simulated P&L: {simulated_pnl:+.4f} USDT (~₹{pnl_inr:+.2f})"
+                f"Simulated P&L: {simulated_pnl:+.4f} USDT (~Rs. {pnl_inr:+.2f})"
             )
 
         except Exception as e:

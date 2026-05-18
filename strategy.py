@@ -89,7 +89,7 @@ class ShortStrangleStrategy:
             delta = float(greeks.get('delta', 0))
             mark_price = float(t.get('mark_price', 0))
             strike = float(t.get('strike_price', 0))
-            premium_inr = mark_price * 83.0
+            premium_inr = mark_price
             
             # Soft fallback/safety cap: absolute delta <= 0.45
             if abs(delta) > 0.45:
@@ -106,26 +106,26 @@ class ShortStrangleStrategy:
             }
             
             if 'call' in c_type:
-                eligible_calls.append(item)
+                if atm_idx + 5 < len(all_strikes) and strike >= all_strikes[atm_idx + 5]:
+                    eligible_calls.append(item)
             elif 'put' in c_type:
-                eligible_puts.append(item)
+                if atm_idx - 5 >= 0 and strike <= all_strikes[atm_idx - 5]:
+                    eligible_puts.append(item)
                 
         if not eligible_calls or not eligible_puts:
-            app_logger.warning("Strategy: No strikes met the maximum delta 0.45 safety cap.")
+            app_logger.warning("Strategy: No strikes met the maximum delta 0.45 safety cap + strict 5-strike OTM rule.")
             return None, None
 
-        # Enforce strict premium and OTM constraints
+        # Enforce strict premium constraints (already filtered for 5+ OTM)
         calls_premium = []
         puts_premium = []
         for c in eligible_calls:
             if 100.0 <= c['premium_inr'] <= 250.0:
-                if atm_idx + 5 < len(all_strikes) and c['strike'] >= all_strikes[atm_idx + 5]:
-                    calls_premium.append(c)
+                calls_premium.append(c)
                     
         for p in eligible_puts:
             if 100.0 <= p['premium_inr'] <= 250.0:
-                if atm_idx - 5 >= 0 and p['strike'] <= all_strikes[atm_idx - 5]:
-                    puts_premium.append(p)
+                puts_premium.append(p)
                     
         best_call = None
         best_put = None
