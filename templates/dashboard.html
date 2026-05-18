@@ -354,6 +354,25 @@
                 </div>
             </div>
 
+            <!-- IV Status Panel -->
+            <div class="panel" id="iv-panel">
+                <h2>📈 IV Status</h2>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span class="stat-label">Current IV</span>
+                        <span id="current-iv-val" style="font-weight: 800; font-size: 1.1rem; color: #fff;">0.00%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span class="stat-label">7-Day Average IV</span>
+                        <span id="avg-iv-val" style="font-weight: 600; font-size: 1.0rem; color: var(--text-secondary);">0.00%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span class="stat-label">Status</span>
+                        <span id="iv-status-badge" style="font-weight: 700; font-size: 0.9rem; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-secondary);">Evaluating...</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- News & Events / Volatility Alerts Panel -->
             <div class="panel" id="news-panel" style="flex: 1;">
                 <style>
@@ -584,6 +603,25 @@
                 document.getElementById('equity-val').textContent = `$${data.equity.toLocaleString()}`;
                 document.getElementById('mode-val').textContent = data.mode;
                 document.getElementById('loss-hits-val').textContent = `${data.daily_loss_hits} / 2`;
+
+                // Update IV Status Card
+                if (data.current_iv !== undefined) {
+                    document.getElementById('current-iv-val').textContent = `${data.current_iv.toFixed(2)}%`;
+                    document.getElementById('avg-iv-val').textContent = `${data.avg_7d_iv.toFixed(2)}%`;
+                    
+                    const ivBadge = document.getElementById('iv-status-badge');
+                    if (data.iv_status === 'Normal') {
+                        ivBadge.textContent = '🟢 Normal';
+                        ivBadge.style.color = 'var(--success)';
+                        ivBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+                        ivBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                    } else {
+                        ivBadge.textContent = '🔴 Low';
+                        ivBadge.style.color = 'var(--danger)';
+                        ivBadge.style.background = 'rgba(239, 68, 68, 0.1)';
+                        ivBadge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                    }
+                }
 
                 // Update PAPER Mode enhancements
                 const paperNote = document.getElementById('paper-mode-note');

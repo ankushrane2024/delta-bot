@@ -58,7 +58,10 @@ def get_status():
         'current_market_regime': bot_engine.current_market_regime,
         'current_adx_value': bot_engine.current_adx_value,
         'paper_lot_multiplier': getattr(bot_engine, 'paper_lot_multiplier', 1.0),
-        'api_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False
+        'api_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False,
+        'current_iv': getattr(bot_engine, 'current_iv', 0.0),
+        'avg_7d_iv': getattr(bot_engine, 'avg_7d_iv', 0.0),
+        'iv_status': getattr(bot_engine, 'iv_status', 'Normal')
     })
 
 @app.route('/api/start', methods=['POST'])

@@ -46,6 +46,12 @@ class DeltaTradingEngine:
         self.consecutive_losses = 0
         self.paper_trading_paused = False
         self.btc_price_history = []
+        
+        # IV Status fields
+        self.current_iv = 0.0
+        self.avg_7d_iv = 0.0
+        self.iv_status = "Normal"
+        self.last_iv_fetch_time = 0.0
 
     def start(self):
         app_logger.info(f"Engine: Starting Delta BTC Options Bot in {BOT_MODE} mode with Capital: ${STARTING_CAPITAL}")
@@ -419,6 +425,23 @@ class DeltaTradingEngine:
         
         while self.is_running:
             try:
+                # Periodic IV Update (every 15 seconds)
+                if time.time() - self.last_iv_fetch_time >= 15:
+                    try:
+                        c_iv, a_iv = self.filters._update_and_get_iv()
+                        if c_iv > 0:
+                            self.current_iv = round(c_iv * 100, 2)
+                            self.avg_7d_iv = round(a_iv * 100, 2)
+                            
+                            limit_iv = a_iv * 0.88
+                            if c_iv >= limit_iv:
+                                self.iv_status = "Normal"
+                            else:
+                                self.iv_status = "Low"
+                        self.last_iv_fetch_time = time.time()
+                    except Exception as iv_err:
+                        error_logger.error(f"Error fetching live IV in monitor loop: {iv_err}")
+
                 # 5 minute heartbeat log
                 if time.time() - last_heartbeat >= 300:
                     app_logger.info("Engine Heartbeat: Monitor loop is active and running 24/7.")
