@@ -2,7 +2,7 @@ import time
 import schedule
 import threading
 import random
-from config import BOT_MODE, ENTRY_TIMES, EXIT_TIME_START, MAX_DAILY_LOSS_PCT, HEDGE_DELTA_THRESHOLD, HEDGE_GAMMA_THRESHOLD, STARTING_CAPITAL
+from config import BOT_MODE, ENTRY_TIMES, EXIT_TIME_START, MAX_DAILY_LOSS_PCT, HEDGE_DELTA_THRESHOLD, HEDGE_GAMMA_THRESHOLD, STARTING_CAPITAL, MANUAL_TOTAL_LOTS
 from utils import get_ist_now, get_next_expiry_date, should_check_hedge
 from logger import app_logger, error_logger
 from notifier import notifier
@@ -52,6 +52,11 @@ class DeltaTradingEngine:
         self.avg_7d_iv = 0.0
         self.iv_status = "Normal"
         self.last_iv_fetch_time = 0.0
+        
+        # 24/7 Option Chain Monitor Cache (NEW)
+        self.cached_option_chain = []
+        self.last_cache_time = 0.0
+        self.trades_taken_today = 0
 
     def start(self):
         app_logger.info(f"Engine: Starting Delta BTC Options Bot in {BOT_MODE} mode with Capital: ${STARTING_CAPITAL}")
@@ -77,6 +82,10 @@ class DeltaTradingEngine:
         # Run rule verification once on startup
         self.run_rule_verification()
         
+        # Monitor thread for 24/7 option chain fetching
+        chain_thread = threading.Thread(target=self.option_chain_monitor_loop, daemon=True)
+        chain_thread.start()
+        
         # Monitor thread for real-time risk/hedge
         monitor_thread = threading.Thread(target=self.monitor_loop, daemon=True)
         monitor_thread.start()
@@ -88,6 +97,13 @@ class DeltaTradingEngine:
     def run_entry_cycle(self):
         app_logger.info("Engine: Entry cycle triggered")
         
+        # 1. Maximum 1 trade per day safety check (no same-day re-entry or RECOST)
+        if self.trades_taken_today >= 1:
+            app_logger.warning("Engine: Maximum 1 trade per day rule met. Skipping entry.")
+            self.today_trade_status = "Trade Skipped"
+            self.today_skip_reason = "Maximum 1 trade per day limit met"
+            return
+            
         # Verify and Auto-Reconnect API in PAPER mode
         if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
             api_ok = self.verify_and_reconnect_api()
@@ -99,7 +115,7 @@ class DeltaTradingEngine:
                 self.today_skip_reason = "API connection failed - Trade skipped"
                 return
         
-        # Daily Limits Check
+        # 2. Daily Loss Limit Check
         self.risk_manager.update_equity()
         if self.daily_loss_hits >= 2:
             app_logger.warning("Engine: Max daily loss limit hit (2 SLs). Skipping entry.")
@@ -115,6 +131,7 @@ class DeltaTradingEngine:
                 self.today_skip_reason = "Daily Loss Limit Hit (-3%)"
                 return
 
+        # 3. IV, News, and Weekend Filter Checks
         passed, reason = self.filters.get_filter_status()
         if not passed:
             app_logger.info(f"Engine: Filters not passed: {reason}. Skipping entry.")
@@ -144,32 +161,26 @@ class DeltaTradingEngine:
             self.today_skip_reason = "No suitable strikes found"
             return
 
-        # Calculate Lot Size
-        per_entry_size = self.risk_manager.calculate_lot_size()
-        
-        # Apply PAPER dynamic lot size if in PAPER mode
-        if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
-            if self.paper_trading_paused:
-                app_logger.warning("Engine [PAPER]: Trading is paused for today due to 3 consecutive losses. Skipping entry.")
-                self.today_trade_status = "Trade Skipped"
-                self.today_skip_reason = "Paper Trading Paused (3 consecutive losses)"
-                return
+        # 4. Manual Lot Sizing (NEW - overrides all old dynamic sizing)
+        if MANUAL_TOTAL_LOTS > 0:
+            per_entry_size = int(MANUAL_TOTAL_LOTS / 2)
+            app_logger.info(f"Engine: Manual lot sizing applied. Total lots: {MANUAL_TOTAL_LOTS} -> size per leg: {per_entry_size}")
+        else:
+            # Fallback/Safety
+            per_entry_size = 100
+            app_logger.warning("Engine: MANUAL_TOTAL_LOTS is invalid. Defaulting to 100 lots per leg.")
             
-            original_size = per_entry_size
-            per_entry_size = int(per_entry_size * self.paper_lot_multiplier)
-            app_logger.info(f"Engine [PAPER]: Dynamic lot sizing applied: {original_size} lots * {self.paper_lot_multiplier*100:.1f}% = {per_entry_size} lots")
-        
-        # Safety check: skip trade if calculated lots < 1
         if per_entry_size < 1:
-            app_logger.warning("Engine: Safety check failed. Calculated lot size < 1. Skipping entry.")
+            app_logger.warning("Engine: Safety check failed. Lot size per leg < 1. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
-            self.today_skip_reason = "Insufficient capital for 1 lot"
+            self.today_skip_reason = "Manual Lot Size < 1"
             return
         
         # Execute
         self.execution.execute_strangle(call_opt, put_opt, per_entry_size)
         self.today_trade_status = "Trade Taken"
         self.today_skip_reason = None
+        self.trades_taken_today += 1
         
         # Save trade details for tracking
         self.current_trade_info["entry_time"] = get_ist_now().isoformat()
@@ -248,15 +259,18 @@ class DeltaTradingEngine:
             )
 
             # ── Step 2: Simulated Entry (no API call, no margin check) ──
+            lots = int(MANUAL_TOTAL_LOTS / 2) if MANUAL_TOTAL_LOTS > 0 else 1
+            if lots < 1:
+                lots = 1
             entry_slippage = random.uniform(0.3, 1.2)   # small entry slippage
             simulated_call_entry = call_entry + entry_slippage
             simulated_put_entry  = put_entry  + entry_slippage
-            entry_premium_total  = (simulated_call_entry + simulated_put_entry) * 1   # 1 lot
+            entry_premium_total  = (simulated_call_entry + simulated_put_entry) * lots   # 1 lot
 
             app_logger.info(
                 f"Engine [TEST]: PAPER Entry simulated. "
                 f"Call entry: {simulated_call_entry:.4f}, Put entry: {simulated_put_entry:.4f} "
-                f"(entry slippage: +{entry_slippage:.2f})"
+                f"(lots per leg: {lots}, entry slippage: +{entry_slippage:.2f})"
             )
 
             # ── Step 3: Simulated execution delay ──
@@ -269,6 +283,7 @@ class DeltaTradingEngine:
                 f"🧪 TEST ORDER SIMULATED (PAPER)\n"
                 f"Call: {call_sym} @ ~{simulated_call_entry:.2f}\n"
                 f"Put:  {put_sym} @ ~{simulated_put_entry:.2f}\n"
+                f"Lots per leg: {lots}\n"
                 f"Total Entry Premium: ~{entry_premium_total:.2f} USDT\n"
                 f"Waiting 10s then auto-cancelling..."
             )
@@ -281,7 +296,7 @@ class DeltaTradingEngine:
             exit_slippage = self.calculate_paper_slippage(is_sl=False)
             simulated_call_exit = call_entry + exit_slippage
             simulated_put_exit  = put_entry  + exit_slippage
-            exit_premium_total  = (simulated_call_exit + simulated_put_exit) * 1
+            exit_premium_total  = (simulated_call_exit + simulated_put_exit) * lots
 
             simulated_pnl = entry_premium_total - exit_premium_total
             pnl_inr       = simulated_pnl * 83.0   # USD → INR approx
@@ -314,6 +329,42 @@ class DeltaTradingEngine:
             tb = traceback.format_exc()
             app_logger.error(f"Engine [TEST]: Exception in run_test_order: {e}\n{tb}")
             return False, str(e)
+
+    def option_chain_monitor_loop(self):
+        """24/7 background Option Chain Monitor Loop."""
+        app_logger.info("Engine: Starting 24/7 background Option Chain Monitor...")
+        while self.is_running:
+            try:
+                res = self.api_client.get_tickers({
+                    'contract_types': 'call_options,put_options',
+                    'underlying_asset_symbol': 'BTC'
+                })
+                if res and res.get('success'):
+                    tickers = res.get('result', [])
+                    self.cached_option_chain = tickers
+                    self.last_cache_time = time.time()
+                    
+                    # Update live IV
+                    ivs = [float(t.get('mark_iv', 0)) for t in tickers if t.get('mark_iv')]
+                    if ivs:
+                        current_avg_iv = sum(ivs) / len(ivs)
+                        self.current_iv = round(current_avg_iv * 100, 2)
+                        
+                    # Calculate 7d Average IV via filters
+                    c_iv, a_iv = self.filters._update_and_get_iv()
+                    if a_iv > 0:
+                        self.avg_7d_iv = round(a_iv * 100, 2)
+                        
+                    limit_iv = self.avg_7d_iv * 0.85
+                    if self.current_iv > 65.0 and self.current_iv < limit_iv:
+                        self.iv_status = "Normal"
+                    else:
+                        self.iv_status = "Skipped"
+                        
+            except Exception as e:
+                error_logger.error(f"Engine [Option Chain Monitor]: Fetch error: {e}")
+                
+            time.sleep(12)
 
     def run_rule_verification(self):
         text_report, results, pct = verify_all_rules()
@@ -425,23 +476,6 @@ class DeltaTradingEngine:
         
         while self.is_running:
             try:
-                # Periodic IV Update (every 15 seconds)
-                if time.time() - self.last_iv_fetch_time >= 15:
-                    try:
-                        c_iv, a_iv = self.filters._update_and_get_iv()
-                        if c_iv > 0:
-                            self.current_iv = round(c_iv * 100, 2)
-                            self.avg_7d_iv = round(a_iv * 100, 2)
-                            
-                            limit_iv = a_iv * 0.88
-                            if c_iv >= limit_iv:
-                                self.iv_status = "Normal"
-                            else:
-                                self.iv_status = "Low"
-                        self.last_iv_fetch_time = time.time()
-                    except Exception as iv_err:
-                        error_logger.error(f"Error fetching live IV in monitor loop: {iv_err}")
-
                 # 5 minute heartbeat log
                 if time.time() - last_heartbeat >= 300:
                     app_logger.info("Engine Heartbeat: Monitor loop is active and running 24/7.")
@@ -464,18 +498,20 @@ class DeltaTradingEngine:
                             app_logger.error("Monitor: WebSocket disconnected for > 15s. Sending alert.")
                             notifier.notify_error("⚠️ WebSocket Disconnected > 15s. Bot is operating in HTTP Fallback Mode.")
                             self.api_client.ws_alert_sent = True
-
+ 
                 if self.execution.active_positions:
-                    # EOD Hard Exit Square-off Safeguard at 17:00 IST (5:00 PM) Same Day
+                    # EOD Hard Exit Square-off Safeguard starting at 16:55 IST Same Day
                     try:
                         now_ist = get_ist_now()
-                        if now_ist.hour >= 17:
-                            app_logger.info("Engine Monitor Safeguard: Time is past 17:00 IST with active positions. Triggering EOD Square-off.")
+                        current_time_minutes = now_ist.hour * 60 + now_ist.minute
+                        # 16:55 IST is 1015 minutes, 17:00 IST is 1020 minutes
+                        if current_time_minutes >= 1015:
+                            app_logger.info(f"Engine Monitor Safeguard: Time is {now_ist.strftime('%H:%M')} IST (>= 16:55 IST) with active positions. Triggering EOD Force Square-off.")
                             self.run_exit_cycle()
                             continue
                     except Exception as time_err:
                         error_logger.error(f"Error checking time safeguard in monitor loop: {time_err}")
-
+ 
                     # 30-Second Critical Data Failure Safeguard
                     if time.time() - self.api_client.last_price_update_time > 30:
                         app_logger.critical("Engine: TOTAL DATA FAILURE > 30s. Triggering Emergency Auto Square-Off.")
@@ -484,7 +520,7 @@ class DeltaTradingEngine:
                         self.today_trade_status = "Emergency Auto Closed"
                         self.today_skip_reason = "Critical Data Failure (>30s)"
                         continue # Skip the rest of this loop iteration
-
+ 
                     # HTTP Polling Fallback Every 2 seconds
                     if time.time() - last_http_poll_time >= 2:
                         for sym in self.execution.active_positions.keys():
@@ -493,7 +529,7 @@ class DeltaTradingEngine:
                                 data = res.get('result')
                                 self.api_client.update_ticker_from_http(sym, data)
                         last_http_poll_time = time.time()
-
+ 
                     current_total_value = 0
                     net_delta = 0
                     total_gamma = 0
@@ -520,6 +556,20 @@ class DeltaTradingEngine:
                         # For short positions, profit = collected_premium - current_option_value
                         profit = collected_premium - current_option_value
                         pnl_pct = profit / collected_premium
+                        
+                        # Continuous Daily Loss Limit Check (-3% at any time)
+                        if self.daily_start_equity > 0:
+                            floating_equity = self.risk_manager.current_equity + profit
+                            loss_pct = (self.daily_start_equity - floating_equity) / self.daily_start_equity
+                            if loss_pct >= 0.03:
+                                app_logger.critical(f"Engine: Daily -3% loss limit hit on floating equity! Floating loss: {loss_pct*100:.2f}%. Triggering immediate emergency full square-off.")
+                                notifier.notify_error(f"🚨 DAILY LOSS LIMIT HIT (-3%) 🚨\nFloating equity loss reached {loss_pct*100:.2f}%. Triggering immediate full square-off.")
+                                self.execution.close_all(reason="Daily Loss Limit Hit (-3%)")
+                                self.today_trade_status = "Emergency Auto Closed"
+                                self.today_skip_reason = "Daily Loss Limit Hit (-3%)"
+                                self.daily_loss_hits += 2 # Block future trades for the day
+                                self.reset_daily_state()
+                                continue
                         
                         action = self.risk_manager.check_sl_tp(collected_premium, current_option_value, pnl_pct)
                         
@@ -550,9 +600,7 @@ class DeltaTradingEngine:
                             self._log_and_reset_trade(profit, "Stop Loss Hit")
                             self.execution.close_all(reason="Stop Loss Hit")
                             self.daily_loss_hits += 1
-                            recost_triggered = (self.re_entry_count < 1)
-                            notifier.notify_stop_loss(profit, recost_triggered)
-                            self.handle_recost()
+                            notifier.notify_stop_loss(profit, False) # RECOST is completely disabled
                         
                         elif action == "TAKE_PROFIT_ALL":
                             app_logger.info("Engine: Profit Target Hit (70%)!")
@@ -571,12 +619,12 @@ class DeltaTradingEngine:
                             self.execution.partial_close(percentage=0.5)
                             self.partial_profit_hit = True
                             notifier.notify_partial_profit(profit)
- 
+  
                         elif action == "TRAILING_SL_TRIGGERED" and not self.trailing_sl_active:
                             app_logger.info("Engine: Trailing SL to BE active")
                             self.trailing_sl_active = True
                             notifier.notify_trailing_sl()
-
+ 
                     # Hedging Check (Time-based triggers)
                     if should_check_hedge(self.last_hedge_check_time):
                         self.last_hedge_check_time = get_ist_now()
@@ -594,23 +642,6 @@ class DeltaTradingEngine:
                 notifier.notify_error(f"Bot stopped or error occurred: {e}")
                 time.sleep(5)
 
-    def handle_recost(self):
-        """1-time re-entry after SL with wider strikes."""
-        if self.re_entry_count < 1:
-            app_logger.info("Engine: RECOST Re-entry triggered")
-            self.re_entry_count += 1
-            expiry = get_next_expiry_date()
-            call_opt, put_opt = self.strategy.get_recost_strikes(expiry)
-            if call_opt and put_opt:
-                self.risk_manager.update_equity()
-                size = self.risk_manager.calculate_lot_size()
-                if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
-                    size = int(size * self.paper_lot_multiplier)
-                    app_logger.info(f"Engine [PAPER]: Re-entry lot sizing applied: {size} lots")
-                self.execution.execute_strangle(call_opt, put_opt, size)
-                self.api_client.subscribe_ws([call_opt['symbol'], put_opt['symbol']])
-                notifier.notify_recost()
-
     def reset_daily_state(self):
         self.re_entry_count = 0
         self.daily_loss_hits = 0
@@ -624,6 +655,7 @@ class DeltaTradingEngine:
         self.daily_start_equity = self.risk_manager.current_equity
         self.today_trade_status = "Pending"
         self.today_skip_reason = None
+        self.trades_taken_today = 0
         
         # Reset PAPER-specific state at EOD
         self.consecutive_losses = 0

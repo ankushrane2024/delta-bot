@@ -69,19 +69,20 @@ class TradingFilters:
         return current_avg_iv, seven_day_avg
 
     def check_iv_filter(self):
-        """Check if current IV >= 0.88 * 7-day average IV."""
+        """Check if current IV > 0.65 AND current IV < 0.85 * 7-day average IV."""
         current_iv, avg_7d_iv = self._update_and_get_iv()
         
         if current_iv == 0:
             app_logger.warning("Filter: Could not determine IV. Skipping trade to be safe.")
             return False
 
-        limit_iv = avg_7d_iv * 0.88
-        if current_iv >= limit_iv:
-            app_logger.info(f"Filter: IV check passed. Current: {current_iv:.4f} >= 88% of 7d Avg ({limit_iv:.4f})")
+        limit_iv = avg_7d_iv * 0.85
+        if current_iv > 0.65 and current_iv < limit_iv:
+            app_logger.info(f"Filter: IV check passed. Current: {current_iv:.4f} > 0.65 and < 85% of 7d Avg ({limit_iv:.4f})")
             return True
         else:
-            app_logger.info(f"Filter: IV check failed. Current: {current_iv:.4f} < 88% of 7d Avg ({limit_iv:.4f})")
+            reason = f"Current IV ({current_iv:.4f}) is out of bounds (0.65, 85% of 7d Avg: {limit_iv:.4f})"
+            app_logger.info(f"Filter: IV check failed. {reason}")
             return False
 
     def check_news_filter(self):
@@ -133,8 +134,17 @@ class TradingFilters:
             return False, "Weekend (Fri/Sat/Sun)"
         if not self.check_news_filter():
             return False, "High Impact USD News"
-        if not self.check_iv_filter():
-            return False, "Low IV (Current IV < 88% of 7d Avg)"
+        
+        current_iv, avg_7d_iv = self._update_and_get_iv()
+        if current_iv == 0:
+            return False, "Could not determine IV"
+            
+        limit_iv = avg_7d_iv * 0.85
+        if current_iv <= 0.65:
+            return False, f"Low IV (Current IV = {current_iv:.4f} <= 0.65)"
+        if current_iv >= limit_iv:
+            return False, f"High/Normal IV (Current IV = {current_iv:.4f} >= 85% of 7d Avg: {limit_iv:.4f})"
+            
         return True, "All Filters Passed"
 
     def get_schedule(self, days=7):

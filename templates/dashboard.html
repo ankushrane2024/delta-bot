@@ -329,6 +329,11 @@
                 </button>
             </div>
             <div style="margin-top: 15px;">
+                <button id="btn-manual-order" class="btn-start" onclick="runManualOrder()" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); border: 1px solid rgba(168, 85, 247, 0.4); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.25); text-shadow: 0 1px 2px rgba(0,0,0,0.3); font-weight: 700; width: 100%; transition: all 0.3s ease;">
+                    ⚡ FORCE STRANGLE ENTRY (LIVE/PAPER)
+                </button>
+            </div>
+            <div style="margin-top: 15px;">
                 <button id="btn-test-order" class="btn-test" onclick="runTestOrder()">
                     🧪 TEST ORDER (1 Lot)
                 </button>
@@ -955,6 +960,48 @@
                 }
             } catch (error) {
                 console.error("Dashboard: Test order fetch error:", error);
+                alert("❌ Network Error: " + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function runManualOrder() {
+            console.log("Dashboard: runManualOrder() triggered");
+            const btn = document.getElementById('btn-manual-order');
+            const originalText = btn.innerHTML;
+            
+            if (!confirm("Are you sure you want to FORCE trigger the strangle entry cycle immediately?\n\nThis will look up strikes and execute a trade in the current mode (LIVE or PAPER).")) {
+                console.log("Dashboard: Manual order cancelled by user");
+                return;
+            }
+            
+            try {
+                console.log("Dashboard: Sending POST to /api/manual_order...");
+                btn.disabled = true;
+                btn.innerHTML = "⌛ TRIGGERING STRANGLE ENTRY...";
+                
+                const response = await fetch('/api/manual_order', { method: 'POST' });
+                const raw = await response.text();
+                console.log("Dashboard: Raw response:", raw);
+                
+                let result;
+                try {
+                    result = JSON.parse(raw);
+                } catch (parseErr) {
+                    console.error("Dashboard: Response is not valid JSON:", raw);
+                    alert("❌ Server Error: The server returned an unexpected response.\n\n" + raw.substring(0, 200));
+                    return;
+                }
+                
+                if (result.status === 'success') {
+                    alert("✅ Success!\n\n" + (result.message || "Manual strangle entry cycle triggered successfully!"));
+                } else {
+                    alert("❌ Failed:\n\n" + (result.error || result.message || "Unknown error"));
+                }
+            } catch (error) {
+                console.error("Dashboard: Manual order fetch error:", error);
                 alert("❌ Network Error: " + error.message);
             } finally {
                 btn.disabled = false;

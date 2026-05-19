@@ -140,6 +140,30 @@ def test_order():
         app_logger.error(f"Web [test_order]: Unhandled exception — {e}\n{tb}")
         return jsonify({'success': False, 'error': str(e)}), 200
 
+@app.route('/api/manual_order', methods=['POST'])
+def manual_order():
+    try:
+        if not bot_engine:
+            app_logger.error("Web [manual_order]: Engine not initialized")
+            return jsonify({'success': False, 'error': 'Engine not initialized'}), 200
+
+        app_logger.info("Web [manual_order]: Manual strangle entry cycle triggered via dashboard.")
+        
+        # Temporarily bypass the "1 trade per day limit" just for manual force execution
+        bot_engine.trades_taken_today = 0
+        
+        # Trigger the entry cycle asynchronously in a background thread
+        import threading
+        threading.Thread(target=bot_engine.run_entry_cycle, daemon=True).start()
+        
+        return jsonify({'status': 'success', 'message': 'Manual strangle entry cycle triggered successfully!'}), 200
+
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        app_logger.error(f"Web [manual_order]: Unhandled exception — {e}\n{tb}")
+        return jsonify({'status': 'error', 'error': str(e)}), 200
+
 @app.route('/api/news', methods=['GET'])
 def get_news():
     """Fetch this week's high/medium impact USD & global events from ForexFactory calendar."""

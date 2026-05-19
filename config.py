@@ -27,6 +27,10 @@ BASE_CAPITAL_FOR_SCALING = 50000.0
 BASE_LOTS_TARGET = 500
 MAX_DAILY_LOSS_PCT = 0.03 # Stop trading if -3% account loss
 
+# --- Manual Lot Sizing (NEW - overrides all old dynamic sizing) ---
+MANUAL_TOTAL_LOTS = int(os.getenv("MANUAL_TOTAL_LOTS", 200)) # User sets this (e.g. 200 total lots)
+
+
 # --- Entry/Exit Times (IST) ---
 ENTRY_TIMES = ["08:30", "09:00", "09:30"]
 EXIT_TIME_START = "17:00"

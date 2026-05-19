@@ -112,57 +112,47 @@ class ShortStrangleStrategy:
                 if atm_idx - 5 >= 0 and strike <= all_strikes[atm_idx - 5]:
                     eligible_puts.append(item)
                 
-        if not eligible_calls or not eligible_puts:
-            app_logger.warning("Strategy: No strikes met the maximum delta 0.45 safety cap + strict 5-strike OTM rule.")
-            return None, None
-
-        # Enforce strict premium constraints (already filtered for 5+ OTM)
-        calls_premium = []
-        puts_premium = []
-        for c in eligible_calls:
-            if 100.0 <= c['premium_inr'] <= 250.0:
-                calls_premium.append(c)
-                    
-        for p in eligible_puts:
-            if 100.0 <= p['premium_inr'] <= 250.0:
-                puts_premium.append(p)
-                    
         best_call = None
         best_put = None
         
-        if check_premium and calls_premium and puts_premium:
-            # Joint score evaluation to satisfy all premium criteria simultaneously
-            best_pair = None
-            best_score = float('inf')
-            
-            for c in calls_premium:
-                for p in puts_premium:
-                    # Score formula:
-                    # 1. Matches premiums as close as possible to each other (1.5x weight)
-                    # 2. Minimizes premiums toward ₹100
-                    # 3. Penalizes premiums exceeding ₹150 to strongly prefer the ₹100–₹150 range
-                    diff = abs(c['premium_inr'] - p['premium_inr'])
-                    c_dist = c['premium_inr'] - 100.0
-                    p_dist = p['premium_inr'] - 100.0
-                    
-                    penalty_c = max(0.0, c['premium_inr'] - 150.0) * 2.0
-                    penalty_p = max(0.0, p['premium_inr'] - 150.0) * 2.0
-                    
-                    score = 1.5 * diff + c_dist + p_dist + penalty_c + penalty_p
-                    if score < best_score:
-                        best_score = score
-                        best_pair = (c, p)
-                        
-            if best_pair:
-                best_call, best_put = best_pair
-                app_logger.info(f"Strategy: Selected strikes via joint premium score rule (Call: {best_call['symbol']} Premium: Rs. {best_call['premium_inr']:.2f}, Put: {best_put['symbol']} Premium: Rs. {best_put['premium_inr']:.2f}, Diff: Rs. {abs(best_call['premium_inr'] - best_put['premium_inr']):.2f})")
-        else:
-            # Soft fallback: closest to target delta
-            best_call = min(eligible_calls, key=lambda x: abs(x['delta'] - target_delta))
-            best_put = min(eligible_puts, key=lambda x: abs(x['delta'] - (-target_delta)))
-            app_logger.info(f"Strategy: Falling back to delta-based selection (Call: {best_call['symbol']} Delta: {best_call['delta']:.4f}, Put: {best_put['symbol']} Delta: {best_put['delta']:.4f})")
+        # Filter calls and puts that meet premium boundaries
+        valid_pairs = []
+        if check_premium:
+            for c in eligible_calls:
+                if not (100.0 <= c['premium_inr'] <= 250.0):
+                    continue
+                for p in eligible_puts:
+                    if not (100.0 <= p['premium_inr'] <= 250.0):
+                        continue
+                    # Put premium must be <= 1.35 * Call premium
+                    if p['premium_inr'] > 1.35 * c['premium_inr']:
+                        continue
+                    valid_pairs.append((c, p))
 
-        # Net Delta Safety Check (new)
+        if check_premium and valid_pairs:
+            # Select the pair with the most balanced premiums (minimum difference)
+            best_pair = min(valid_pairs, key=lambda pair: abs(pair[0]['premium_inr'] - pair[1]['premium_inr']))
+            best_call, best_put = best_pair
+            app_logger.info(
+                f"Strategy: Selected balanced strikes (Call: {best_call['symbol']} Premium: {best_call['premium_inr']:.2f}, "
+                f"Put: {best_put['symbol']} Premium: {best_put['premium_inr']:.2f}, "
+                f"Diff: {abs(best_call['premium_inr'] - best_put['premium_inr']):.2f})"
+            )
+        else:
+            # Soft fallback: closest to target delta (absolute cap of 0.45 individual delta)
+            if eligible_calls and eligible_puts:
+                best_call = min(eligible_calls, key=lambda x: abs(x['delta'] - target_delta))
+                best_put = min(eligible_puts, key=lambda x: abs(x['delta'] - (-target_delta)))
+                app_logger.info(
+                    f"Strategy: Soft fallback to delta-based selection (Call: {best_call['symbol']} Delta: {best_call['delta']:.4f}, "
+                    f"Put: {best_put['symbol']} Delta: {best_put['delta']:.4f})"
+                )
+
+        if not best_call or not best_put:
+            app_logger.warning("Strategy: No Call or Put strikes could be resolved.")
+            return None, None
+
+        # Net Delta Safety Check
         net_delta = best_call['delta'] + best_put['delta']
         if abs(net_delta) > 0.15:
             app_logger.info(f"Strategy: Net Delta Safety Check triggered. Current Net Delta: {net_delta:.4f} (> 0.15)")
@@ -189,7 +179,7 @@ class ShortStrangleStrategy:
                                         'mark_price': mp,
                                         'strike': next_strike,
                                         'product_id': t.get('product_id'),
-                                        'premium_inr': mp * 83.0
+                                        'premium_inr': mp
                                     }
                                     break
                         if next_call:
@@ -220,7 +210,7 @@ class ShortStrangleStrategy:
                                         'mark_price': mp,
                                         'strike': next_strike,
                                         'product_id': t.get('product_id'),
-                                        'premium_inr': mp * 83.0
+                                        'premium_inr': mp
                                     }
                                     break
                         if next_put:
@@ -230,8 +220,3 @@ class ShortStrangleStrategy:
                     pass
 
         return best_call, best_put
-
-    def get_recost_strikes(self, expiry_date):
-        """Finds wider strikes for RECOST re-entry complying with the new rules."""
-        target = (RECOST_DELTA_MIN + RECOST_DELTA_MAX) / 2
-        return self.find_strikes(target_delta=target, expiry_date=expiry_date, check_premium=True)

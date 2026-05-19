@@ -27,8 +27,7 @@ def verify_all_rules():
     check("Strike Selection", "Premium close to Rs. 100, min >=Rs. 100, max Rs. 250, 5+ OTM strikes, Net Delta <=0.15 at entry", True)
 
     # 3. Lot Size
-    lots = int(config.STARTING_CAPITAL / config.BASE_CAPITAL_FOR_SCALING * config.BASE_LOTS_TARGET)
-    check("Lot Size", f"Dynamic ({lots} lots for Rs. {int(config.STARTING_CAPITAL):,})", config.BASE_CAPITAL_FOR_SCALING == 50000.0)
+    check("Lot Size", f"Manual ({config.MANUAL_TOTAL_LOTS} total lots)", config.MANUAL_TOTAL_LOTS > 0)
 
     # 4. SL Rule
     check("SL Rule", "150% of Premium", config.SL_PERCENT == 1.50)
@@ -40,13 +39,13 @@ def verify_all_rules():
     check("Trailing SL", "Breakeven after 40%", config.TRAILING_SL_TRIGGER == 0.40 and config.TRAILING_SL_LEVEL == 0.0)
 
     # 7. RECOST
-    check("RECOST", "1-time only", True)
+    check("RECOST", "Disabled (Maximum 1 trade per day)", True)
 
     # 8. Hedging
     check("Hedging", "Delta >0.20, Gamma >0.02", config.HEDGE_DELTA_THRESHOLD == 0.20 and config.HEDGE_GAMMA_THRESHOLD == 0.02)
 
     # 9. Exit Time
-    check("Exit Time", "By 17:00 (5:00 PM)", config.EXIT_TIME_START == "17:00")
+    check("Exit Time", "Starting 16:55 IST, EOD by 17:00", config.EXIT_TIME_START == "17:00")
 
     # 10. Daily Loss Limit
     check("Daily Loss Limit", "Max 3% / 2 SLs", config.MAX_DAILY_LOSS_PCT == 0.03 and config.RISK_PERCENT == 0.015)
