@@ -77,11 +77,11 @@ class TradingFilters:
             return False
 
         limit_iv = avg_7d_iv * 0.85
-        if current_iv > 0.65 and current_iv < limit_iv:
-            app_logger.info(f"Filter: IV check passed. Current: {current_iv:.4f} > 0.65 and < 85% of 7d Avg ({limit_iv:.4f})")
+        if current_iv > 0.58 and current_iv < limit_iv:
+            app_logger.info(f"Filter: IV check passed. Current: {current_iv:.4f} > 0.58 and < 85% of 7d Avg ({limit_iv:.4f})")
             return True
         else:
-            reason = f"Current IV ({current_iv:.4f}) is out of bounds (0.65, 85% of 7d Avg: {limit_iv:.4f})"
+            reason = f"Current IV ({current_iv:.4f}) is out of bounds (0.58, 85% of 7d Avg: {limit_iv:.4f})"
             app_logger.info(f"Filter: IV check failed. {reason}")
             return False
 
@@ -140,8 +140,8 @@ class TradingFilters:
             return False, "Could not determine IV"
             
         limit_iv = avg_7d_iv * 0.85
-        if current_iv <= 0.65:
-            return False, f"Low IV (Current IV = {current_iv:.4f} <= 0.65)"
+        if current_iv <= 0.58:
+            return False, f"Low IV (Current IV = {current_iv:.4f} <= 0.58)"
         if current_iv >= limit_iv:
             return False, f"High/Normal IV (Current IV = {current_iv:.4f} >= 85% of 7d Avg: {limit_iv:.4f})"
             

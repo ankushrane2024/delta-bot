@@ -42,7 +42,7 @@ def verify_all_rules():
     check("Max Trades Limit", "Max 1 trade per day, no re-entry/RECOST", True)
 
     # 8. IV Filter
-    check("IV Filter", "Current IV > 0.65 and < 0.85 * 7d Avg", True)
+    check("IV Filter", "Current IV > 0.58 and < 0.85 * 7d Avg", True)
 
     # 9. Hedging
     check("Hedging", "Delta >0.20, Gamma >0.02", config.HEDGE_DELTA_THRESHOLD == 0.20 and config.HEDGE_GAMMA_THRESHOLD == 0.02)

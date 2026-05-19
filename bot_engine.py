@@ -361,7 +361,7 @@ class DeltaTradingEngine:
                         self.avg_7d_iv = round(a_iv * 100, 2)
                         
                     limit_iv = self.avg_7d_iv * 0.85
-                    if self.current_iv > 65.0 and self.current_iv < limit_iv:
+                    if self.current_iv > 58.0 and self.current_iv < limit_iv:
                         self.iv_status = "Normal"
                     else:
                         self.iv_status = "Skipped"
