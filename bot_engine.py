@@ -95,7 +95,7 @@ class DeltaTradingEngine:
             time.sleep(1)
 
     def get_saved_lot_size(self):
-        """Read lot_size.json if exists, else fallback to config.MANUAL_TOTAL_LOTS"""
+        """Read lot_size.json if exists, else fallback to MANUAL_TOTAL_LOTS from config."""
         import json, os
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -103,10 +103,10 @@ class DeltaTradingEngine:
             if os.path.exists(path):
                 with open(path, 'r') as f:
                     data = json.load(f)
-                return int(data.get('total_lots', config.MANUAL_TOTAL_LOTS))
+                return int(data.get('total_lots', MANUAL_TOTAL_LOTS))
         except Exception as e:
             app_logger.error(f"Engine: Failed to read lot_size.json – {e}")
-        return int(config.MANUAL_TOTAL_LOTS)
+        return int(MANUAL_TOTAL_LOTS)
 
     def run_entry_cycle(self):
         app_logger.info("Engine: Entry cycle triggered")
