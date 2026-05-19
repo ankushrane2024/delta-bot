@@ -38,7 +38,13 @@ class TradingFilters:
             res = self.api_client.get_tickers({'contract_types': 'call_options,put_options', 'underlying_asset_symbol': 'BTC'})
             if res.get('success'):
                 tickers = res.get('result', [])
-                ivs = [float(t.get('mark_iv', 0)) for t in tickers if t.get('mark_iv')]
+                # mark_iv is nested inside t['quotes'] in Delta Exchange API
+                ivs = []
+                for t in tickers:
+                    quotes = t.get('quotes') or {}
+                    iv_val = float(quotes.get('mark_iv', 0) or t.get('mark_vol', 0) or 0)
+                    if iv_val > 0:
+                        ivs.append(iv_val)
                 if ivs:
                     current_avg_iv = sum(ivs) / len(ivs)
                     # Update today's record

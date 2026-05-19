@@ -349,8 +349,13 @@ class DeltaTradingEngine:
                     self.cached_option_chain = tickers
                     self.last_cache_time = time.time()
                     
-                    # Update live IV
-                    ivs = [float(t.get('mark_iv', 0)) for t in tickers if t.get('mark_iv')]
+                    # Update live IV — mark_iv is nested inside t['quotes']
+                    ivs = []
+                    for t in tickers:
+                        quotes = t.get('quotes') or {}
+                        iv_val = float(quotes.get('mark_iv', 0) or t.get('mark_vol', 0) or 0)
+                        if iv_val > 0:
+                            ivs.append(iv_val)
                     if ivs:
                         current_avg_iv = sum(ivs) / len(ivs)
                         self.current_iv = round(current_avg_iv * 100, 2)
