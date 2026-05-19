@@ -94,16 +94,28 @@ class DeltaTradingEngine:
             schedule.run_pending()
             time.sleep(1)
 
+    def get_saved_lot_size(self):
+        """Read lot_size.json if exists, else fallback to config.MANUAL_TOTAL_LOTS"""
+        import json, os
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            path = os.path.join(base_dir, 'lot_size.json')
+            if os.path.exists(path):
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                return int(data.get('total_lots', config.MANUAL_TOTAL_LOTS))
+        except Exception as e:
+            app_logger.error(f"Engine: Failed to read lot_size.json – {e}")
+        return int(config.MANUAL_TOTAL_LOTS)
+
     def run_entry_cycle(self):
         app_logger.info("Engine: Entry cycle triggered")
-        
         # 1. Maximum 1 trade per day safety check (no same-day re-entry or RECOST)
         if self.trades_taken_today >= 1:
             app_logger.warning("Engine: Maximum 1 trade per day rule met. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Maximum 1 trade per day limit met"
             return
-            
         # Verify and Auto-Reconnect API in PAPER mode
         if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
             api_ok = self.verify_and_reconnect_api()
@@ -114,7 +126,6 @@ class DeltaTradingEngine:
                 self.today_trade_status = "Trade Skipped"
                 self.today_skip_reason = "API connection failed - Trade skipped"
                 return
-        
         # 2. Daily Loss Limit Check
         self.risk_manager.update_equity()
         if self.daily_loss_hits >= 2:
@@ -122,7 +133,6 @@ class DeltaTradingEngine:
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Daily Loss Limit Hit (2 SLs)"
             return
-            
         if self.daily_start_equity > 0:
             loss_pct = (self.daily_start_equity - self.risk_manager.current_equity) / self.daily_start_equity
             if loss_pct >= MAX_DAILY_LOSS_PCT:
@@ -130,73 +140,65 @@ class DeltaTradingEngine:
                 self.today_trade_status = "Trade Skipped"
                 self.today_skip_reason = "Daily Loss Limit Hit (-3%)"
                 return
-
-        # 3. IV, News, and Weekend Filter Checks
+        # 3. Filters
         passed, reason = self.filters.get_filter_status()
         if not passed:
             app_logger.info(f"Engine: Filters not passed: {reason}. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = reason
             return
-            
-        # Market Regime Filter Check
+        # Market Regime Filter
         regime, adx = self.filters.get_market_regime()
         self.current_market_regime = regime
         self.current_adx_value = adx
-        
         if self.market_regime_filter_enabled:
             if regime == "Trending":
                 app_logger.info(f"Engine: Market Regime Filter active. Skipping trade due to Trending market (ADX: {adx:.2f}).")
                 self.today_trade_status = "Trade Skipped"
                 self.today_skip_reason = f"Market Trending (ADX {adx:.2f} > 25)"
                 return
-        
-        # Find Strikes (Next-day expiry, checks Premium & Delta)
+        # Find Strikes
         expiry = get_next_expiry_date()
         call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry)
-        
         if not call_opt or not put_opt:
             app_logger.error("Engine: Could not find suitable strikes.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "No suitable strikes found"
             return
-
-        # 4. Manual Lot Sizing (NEW - overrides all old dynamic sizing)
-        if MANUAL_TOTAL_LOTS > 0:
-            per_entry_size = int(MANUAL_TOTAL_LOTS / 2)
-            app_logger.info(f"Engine: Manual lot sizing applied. Total lots: {MANUAL_TOTAL_LOTS} -> size per leg: {per_entry_size}")
+        # 4. Manual Lot Sizing (NEW) – read latest saved size
+        saved_total = self.get_saved_lot_size()
+        if saved_total > 0:
+            per_entry_size = int(saved_total / 2)
+            app_logger.info(f"Engine: Using saved manual lot size. Total lots: {saved_total} -> per leg: {per_entry_size}")
         else:
-            # Fallback/Safety
             per_entry_size = 100
-            app_logger.warning("Engine: MANUAL_TOTAL_LOTS is invalid. Defaulting to 100 lots per leg.")
-            
+            app_logger.warning("Engine: Saved lot size invalid. Defaulting to 100 lots per leg.")
         if per_entry_size < 1:
             app_logger.warning("Engine: Safety check failed. Lot size per leg < 1. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Manual Lot Size < 1"
             return
-        
         # Execute
         self.execution.execute_strangle(call_opt, put_opt, per_entry_size)
         self.today_trade_status = "Trade Taken"
         self.today_skip_reason = None
         self.trades_taken_today += 1
-        
+
         # Save trade details for tracking
         self.current_trade_info["entry_time"] = get_ist_now().isoformat()
         self.current_trade_info["calls"].append(call_opt['symbol'])
         self.current_trade_info["puts"].append(put_opt['symbol'])
-        
+
         # Sub to WebSocket for these new symbols if not already
         self.api_client.subscribe_ws([call_opt['symbol'], put_opt['symbol']])
-        
+
         # Fetch the exact entry prices that were simulated in active_positions (includes slippage)
         call_entry = self.execution.active_positions.get(call_opt['symbol'], {}).get('entry_price', call_opt['mark_price'])
-        put_entry = self.execution.active_positions.get(put_opt['symbol'], {}).get('entry_price', put_opt['mark_price'])
-        
+        put_entry  = self.execution.active_positions.get(put_opt['symbol'], {}).get('entry_price', put_opt['mark_price'])
+
         total_premium_for_this_entry = (call_entry + put_entry) * per_entry_size
         self.total_entry_premium += total_premium_for_this_entry
-        
+
         # Notify
         notifier.notify_entry(call_opt['symbol'], put_opt['symbol'], per_entry_size, total_premium_for_this_entry)
 
@@ -259,9 +261,12 @@ class DeltaTradingEngine:
             )
 
             # ── Step 2: Simulated Entry (no API call, no margin check) ──
-            lots = int(MANUAL_TOTAL_LOTS / 2) if MANUAL_TOTAL_LOTS > 0 else 1
+            # Always use the latest saved lot size from the dashboard panel (lot_size.json)
+            saved_total = self.get_saved_lot_size()
+            lots = int(saved_total / 2) if saved_total > 0 else 1
             if lots < 1:
                 lots = 1
+            app_logger.info(f"Engine [TEST]: Using saved lot size — total: {saved_total}, per leg: {lots}")
             entry_slippage = random.uniform(0.3, 1.2)   # small entry slippage
             simulated_call_entry = call_entry + entry_slippage
             simulated_put_entry  = put_entry  + entry_slippage

@@ -244,3 +244,55 @@ def generate_report_now():
         return jsonify({'status': 'success', 'message': message})
     else:
         return jsonify({'status': 'error', 'message': message}), 500
+
+# ─── Lot Size Settings Endpoints ──────────────────────────────────────────────
+
+LOT_SIZE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lot_size.json')
+
+def _read_lot_size_file():
+    """Read current saved lot size. Falls back to MANUAL_TOTAL_LOTS from config."""
+    import json
+    try:
+        from config import MANUAL_TOTAL_LOTS as cfg_lots
+        if os.path.exists(LOT_SIZE_FILE):
+            with open(LOT_SIZE_FILE, 'r') as f:
+                data = json.load(f)
+            return int(data.get('total_lots', cfg_lots))
+        return int(cfg_lots)
+    except Exception:
+        return 200  # hard fallback
+
+@app.route('/api/get_lot_size', methods=['GET'])
+def get_lot_size():
+    """Return the currently active saved lot size."""
+    total = _read_lot_size_file()
+    return jsonify({'total_lots': total, 'per_leg': int(total / 2)})
+
+@app.route('/api/save_lot_size', methods=['POST'])
+def save_lot_size():
+    """Save a new lot size to lot_size.json (persists across restarts)."""
+    import json
+    try:
+        data = request.get_json(force=True)
+        if not data or 'total_lots' not in data:
+            return jsonify({'success': False, 'error': 'Missing total_lots field'}), 400
+
+        new_lots = int(data['total_lots'])
+        if new_lots < 1:
+            return jsonify({'success': False, 'error': 'Lot size must be at least 1'}), 400
+        if new_lots > 10000:
+            return jsonify({'success': False, 'error': 'Lot size too large (max 10 000)'}), 400
+
+        payload = {'total_lots': new_lots}
+        with open(LOT_SIZE_FILE, 'w') as f:
+            json.dump(payload, f)
+
+        app_logger.info(f"Web [save_lot_size]: Saved new lot size → {new_lots} total ({new_lots // 2} per leg)")
+        return jsonify({'success': True, 'total_lots': new_lots, 'per_leg': new_lots // 2})
+
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'error': 'Invalid value – must be a whole number'}), 400
+    except Exception as e:
+        app_logger.error(f"Web [save_lot_size]: Error – {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+

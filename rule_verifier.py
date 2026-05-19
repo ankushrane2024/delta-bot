@@ -27,7 +27,7 @@ def verify_all_rules():
     check("Strike Selection", "CE >= Rs.100, PE <= 1.35*CE, 5+ OTM strikes, Net Delta shift", True)
 
     # 3. Lot Size
-    check("Lot Size", f"Manual ({config.MANUAL_TOTAL_LOTS} total lots)", config.MANUAL_TOTAL_LOTS > 0)
+    check("Lot Size", "Manual (using saved value from dashboard)", config.MANUAL_TOTAL_LOTS > 0)
 
     # 4. SL & Target
     check("SL & Target", "150% SL, 70% Full Target", config.SL_PERCENT == 1.50 and config.EXIT_PROFIT_TARGET == 0.70)

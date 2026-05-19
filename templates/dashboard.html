@@ -359,7 +359,78 @@
                 </div>
             </div>
 
+            <!-- Manual Lot Size Settings Panel -->
+            <div class="panel" id="lot-size-panel">
+                <h2>⚙️ Manual Lot Size Settings</h2>
+                <div style="display:flex; flex-direction:column; gap:14px; margin-top:12px;">
+
+                    <!-- Current Active Lot Size -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:rgba(255,255,255,0.04); border-radius:10px; border:1px solid rgba(255,255,255,0.07);">
+                        <div>
+                            <div style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:3px;">Current Active Lot Size</div>
+                            <div style="font-size:1.3rem; font-weight:800; color:#a78bfa;" id="active-lot-display">— lots</div>
+                            <div style="font-size:0.78rem; color:#6b7280; margin-top:2px;" id="active-lot-perleg">— per leg</div>
+                        </div>
+                        <span style="font-size:2rem;">📊</span>
+                    </div>
+
+                    <!-- Input Row -->
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <div style="flex:1;">
+                            <label for="lotSizeInput" style="font-size:0.82rem; color:var(--text-secondary); display:block; margin-bottom:5px;">New Total Lots</label>
+                            <input
+                                id="lotSizeInput"
+                                type="number"
+                                min="1"
+                                max="10000"
+                                placeholder="e.g. 200"
+                                style="
+                                    width:100%;
+                                    padding:10px 14px;
+                                    background:rgba(255,255,255,0.06);
+                                    border:1.5px solid rgba(167,139,250,0.35);
+                                    border-radius:8px;
+                                    color:#fff;
+                                    font-size:1rem;
+                                    font-weight:700;
+                                    outline:none;
+                                    box-sizing:border-box;
+                                    transition:border-color 0.2s;
+                                "
+                                onfocus="this.style.borderColor='#a78bfa'"
+                                onblur="this.style.borderColor='rgba(167,139,250,0.35)'"
+                            />
+                        </div>
+                        <div>
+                            <label style="font-size:0.82rem; color:transparent; display:block; margin-bottom:5px;">.</label>
+                            <button
+                                id="saveLotSizeBtn"
+                                onclick="saveLotSize()"
+                                style="
+                                    padding:10px 22px;
+                                    background:linear-gradient(135deg,#7c3aed,#a78bfa);
+                                    border:none;
+                                    border-radius:8px;
+                                    color:#fff;
+                                    font-weight:800;
+                                    font-size:0.92rem;
+                                    cursor:pointer;
+                                    white-space:nowrap;
+                                    transition:opacity 0.2s,transform 0.15s;
+                                "
+                                onmouseover="this.style.opacity='0.85'"
+                                onmouseout="this.style.opacity='1'"
+                            >💾 Save</button>
+                        </div>
+                    </div>
+
+                    <!-- Feedback message -->
+                    <div id="lotSizeFeedback" style="font-size:0.83rem; min-height:18px; font-weight:600;"></div>
+                </div>
+            </div>
+
             <!-- IV Status Panel -->
+
             <div class="panel" id="iv-panel">
                 <h2>📈 IV Status</h2>
                 <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
@@ -1166,6 +1237,64 @@
         fetchReports();
         fetchNews();
         setInterval(fetchNews, 6 * 60 * 60 * 1000);
+
+        // ── Manual Lot Size Settings ───────────────────────────────────────────
+        async function loadLotSize() {
+            try {
+                const res = await fetch('/api/get_lot_size');
+                const data = await res.json();
+                document.getElementById('active-lot-display').textContent = data.total_lots + ' lots';
+                document.getElementById('active-lot-perleg').textContent = data.per_leg + ' per leg';
+                // Pre-fill the input with the current saved value
+                document.getElementById('lotSizeInput').value = data.total_lots;
+            } catch (e) {
+                console.warn('loadLotSize failed:', e);
+            }
+        }
+
+        async function saveLotSize() {
+            const input = document.getElementById('lotSizeInput');
+            const feedback = document.getElementById('lotSizeFeedback');
+            const btn = document.getElementById('saveLotSizeBtn');
+            const val = parseInt(input.value, 10);
+
+            if (isNaN(val) || val < 1) {
+                feedback.style.color = '#f87171';
+                feedback.textContent = '⚠ Please enter a valid lot size (minimum 1).';
+                return;
+            }
+
+            btn.textContent = '⏳ Saving...';
+            btn.disabled = true;
+            feedback.textContent = '';
+
+            try {
+                const res = await fetch('/api/save_lot_size', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ total_lots: val })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('active-lot-display').textContent = data.total_lots + ' lots';
+                    document.getElementById('active-lot-perleg').textContent = data.per_leg + ' per leg';
+                    feedback.style.color = '#4ade80';
+                    feedback.textContent = `✅ Saved! ${data.total_lots} total lots (${data.per_leg} per leg). Active immediately.`;
+                } else {
+                    feedback.style.color = '#f87171';
+                    feedback.textContent = '❌ ' + (data.error || 'Save failed.');
+                }
+            } catch (e) {
+                feedback.style.color = '#f87171';
+                feedback.textContent = '❌ Network error – could not save.';
+            } finally {
+                btn.textContent = '💾 Save';
+                btn.disabled = false;
+            }
+        }
+
+        // Load lot size on page load
+        loadLotSize();
     </script>
 </body>
 </html>
