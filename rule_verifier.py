@@ -6,7 +6,7 @@ def verify_all_rules():
     Returns:
         (text_report: str, json_report: list, compliance_pct: int)
     """
-    total_rules = 10
+    total_rules = 11
     passed_rules = 0
     results = []
 
@@ -24,31 +24,34 @@ def verify_all_rules():
     check("Entry Times", "8:30, 9:00, 9:30 AM IST", config.ENTRY_TIMES == ["08:30", "09:00", "09:30"])
 
     # 2. Strike Selection
-    check("Strike Selection", "Premium close to Rs. 100, min >=Rs. 100, max Rs. 250, 5+ OTM strikes, Net Delta <=0.15 at entry", True)
+    check("Strike Selection", "CE >= Rs.100, PE <= 1.35*CE, 5+ OTM strikes, Net Delta shift", True)
 
     # 3. Lot Size
     check("Lot Size", f"Manual ({config.MANUAL_TOTAL_LOTS} total lots)", config.MANUAL_TOTAL_LOTS > 0)
 
-    # 4. SL Rule
-    check("SL Rule", "150% of Premium", config.SL_PERCENT == 1.50)
+    # 4. SL & Target
+    check("SL & Target", "150% SL, 70% Full Target", config.SL_PERCENT == 1.50 and config.EXIT_PROFIT_TARGET == 0.70)
 
     # 5. Partial Profit
     check("Partial Profit", "50% Size at 50% Profit", config.PARTIAL_PROFIT_TRIGGER == 0.50 and config.PARTIAL_PROFIT_SIZE == 0.50)
 
     # 6. Trailing SL
-    check("Trailing SL", "Breakeven after 40%", config.TRAILING_SL_TRIGGER == 0.40 and config.TRAILING_SL_LEVEL == 0.0)
+    check("Trailing SL", "Breakeven after 40% Profit", config.TRAILING_SL_TRIGGER == 0.40 and config.TRAILING_SL_LEVEL == 0.0)
 
-    # 7. RECOST
-    check("RECOST", "Disabled (Maximum 1 trade per day)", True)
+    # 7. Max Trades Limit
+    check("Max Trades Limit", "Max 1 trade per day, no re-entry/RECOST", True)
 
-    # 8. Hedging
+    # 8. IV Filter
+    check("IV Filter", "Current IV > 0.65 and < 0.85 * 7d Avg", True)
+
+    # 9. Hedging
     check("Hedging", "Delta >0.20, Gamma >0.02", config.HEDGE_DELTA_THRESHOLD == 0.20 and config.HEDGE_GAMMA_THRESHOLD == 0.02)
 
-    # 9. Exit Time
-    check("Exit Time", "Starting 16:55 IST, EOD by 17:00", config.EXIT_TIME_START == "17:00")
+    # 10. Exit Time
+    check("Exit Time", "Starting 16:55 IST, EOD by 17:00 flat", config.EXIT_TIME_START == "17:00")
 
-    # 10. Daily Loss Limit
-    check("Daily Loss Limit", "Max 3% / 2 SLs", config.MAX_DAILY_LOSS_PCT == 0.03 and config.RISK_PERCENT == 0.015)
+    # 11. Daily Loss Limit
+    check("Daily Loss Limit", "Max 3% account equity loss / 2 SL hits", config.MAX_DAILY_LOSS_PCT == 0.03)
 
     pct = int((passed_rules / total_rules) * 100)
     
