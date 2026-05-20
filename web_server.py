@@ -111,9 +111,7 @@ def get_status():
         })
     
     # Total P&L across all legs
-    total_current_value = sum(float(bot_engine.api_client.get_realtime_ticker(s).get('mark_price', d['entry_price']) if bot_engine.api_client.get_realtime_ticker(s) else d['entry_price']) * d['size']
-                              for s, d in bot_engine.execution.active_positions.items()) if bot_engine.execution.active_positions else 0
-    total_pnl_usd = round(total_entry_premium - total_current_value, 2) if total_entry_premium > 0 else 0.0
+    total_pnl_usd = round(sum(pos['leg_pnl_usd'] for pos in positions), 2) if positions else 0.0
     total_pnl_inr = round(total_pnl_usd * 84.0, 2)
     
     return jsonify({
