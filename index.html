@@ -1110,92 +1110,6 @@
                 }
 
                 
-                // --- Calculate Tomorrow's Probability ---
-                if (data.schedule_info && data.schedule_info.upcoming_schedule && data.schedule_info.upcoming_schedule.length > 1) {
-                    let prob = 50; // Base probability
-                    let titleText = "";
-                    let titleColor = "";
-                    
-                    // 1. Schedule Check
-                    const tomorrow = data.schedule_info.upcoming_schedule[1]; // Index 1 is tomorrow
-                    let schedStatus = '<span class="prob-positive">Clear</span>';
-                    
-                    if (tomorrow.skip) {
-                        prob = 0;
-                        if (tomorrow.reason && tomorrow.reason.includes("Weekend")) {
-                            schedStatus = '<span class="prob-negative">Weekend</span>';
-                            titleText = "0% - Weekend (No Trading)";
-                        } else if (tomorrow.reason && tomorrow.reason.includes("News")) {
-                            schedStatus = '<span class="prob-negative">High Impact News</span>';
-                            titleText = "Very Low - Major News Expected";
-                        } else {
-                            schedStatus = '<span class="prob-negative">Skipped</span>';
-                            titleText = "0% - Skipped";
-                        }
-                    } else {
-                        // Check if IV is good
-                        const ivLimit = (data.avg_7d_iv || 40) * 0.92;
-                        const ivGood = (data.current_iv > 0.35 && data.current_iv < ivLimit);
-                        let ivText = "";
-                        if (ivGood) {
-                            prob += 35;
-                            ivText = '<span class="prob-positive">Favorable</span>';
-                        } else {
-                            prob -= 20;
-                            ivText = '<span class="prob-negative">Unfavorable</span>';
-                        }
-                        
-                        // Check ADX
-                        const adx = data.current_adx_value || 0;
-                        let adxText = "";
-                        if (adx > 25) {
-                            prob -= 20;
-                            adxText = `<span class="prob-negative">Trending (${adx.toFixed(1)})</span>`;
-                        } else {
-                            prob += 15;
-                            adxText = `<span class="prob-positive">Ranging (${adx.toFixed(1)})</span>`;
-                        }
-                        
-                        // Clamp
-                        if (prob > 95) prob = 95;
-                        if (prob < 5) prob = 5;
-                        
-                        // Set Title
-                        if (prob >= 75) {
-                            titleText = "High Chance — Conditions look favorable";
-                            titleColor = "var(--success)";
-                        } else if (prob >= 40) {
-                            titleText = "Moderate Chance — Mixed conditions";
-                            titleColor = "var(--warning)";
-                        } else {
-                            titleText = "Low Chance — Unfavorable conditions";
-                            titleColor = "var(--danger)";
-                        }
-                        
-                        document.getElementById('prob-iv').innerHTML = ivText;
-                        document.getElementById('prob-adx').innerHTML = adxText;
-                    }
-                    
-                    document.getElementById('prob-schedule').innerHTML = schedStatus;
-                    if(prob === 0) {
-                        titleColor = "var(--danger)";
-                        document.getElementById('prob-iv').innerHTML = '<span class="prob-neutral">N/A</span>';
-                        document.getElementById('prob-adx').innerHTML = '<span class="prob-neutral">N/A</span>';
-                    }
-                    
-                    document.getElementById('prob-title').textContent = titleText;
-                    document.getElementById('prob-title').style.color = titleColor;
-                    document.getElementById('prob-percent').textContent = prob + "%";
-                    
-                    // Update Gauge
-                    const dashArray = `${prob}, 100`;
-                    const gaugePath = document.getElementById('prob-gauge-path');
-                    if (gaugePath) {
-                        gaugePath.setAttribute('stroke-dasharray', dashArray);
-                        gaugePath.setAttribute('stroke', titleColor);
-                    }
-                }
-
                 // Update Skip & Schedule Info
                 if(data.schedule_info) {
                     const statusBadge = document.getElementById('today-status-badge');
@@ -1465,6 +1379,50 @@
             }
         }
 
+        async function fetchTradeProbability() {
+            try {
+                const res = await fetch('/api/trade_probability');
+                if(!res.ok) return;
+                const data = await res.json();
+                
+                const prob = data.probability;
+                let titleColor = 'var(--success)';
+                if (data.verdict_level === 'medium') titleColor = 'var(--warning)';
+                if (data.verdict_level === 'low' || data.verdict_level === 'none') titleColor = 'var(--danger)';
+                
+                document.getElementById('prob-title').textContent = data.verdict;
+                document.getElementById('prob-title').style.color = titleColor;
+                document.getElementById('prob-percent').textContent = prob + '%';
+                
+                const gaugePath = document.getElementById('prob-gauge-path');
+                if (gaugePath) {
+                    gaugePath.setAttribute('stroke-dasharray', prob + ', 100');
+                    gaugePath.setAttribute('stroke', titleColor);
+                }
+                
+                // Set Factors
+                const fSched = data.factors.find(f => f.name === 'Schedule') || {};
+                const fNews = data.factors.find(f => f.name.includes('News')) || {};
+                let schedHtml = '<span class="prob-positive">Clear</span>';
+                if(fSched.status === 'bad') schedHtml = `<span class="prob-negative">${fSched.label}</span>`;
+                if(fNews.status === 'bad') schedHtml += ` <br><span class="prob-negative">${fNews.label}</span>`;
+                else if(fNews.status === 'neutral') schedHtml += ` <br><span class="prob-neutral">${fNews.label}</span>`;
+                document.getElementById('prob-schedule').innerHTML = schedHtml;
+                
+                const fIv = data.factors.find(f => f.name.includes('IV')) || {};
+                let ivClass = fIv.status === 'good' ? 'prob-positive' : (fIv.status === 'bad' ? 'prob-negative' : 'prob-neutral');
+                document.getElementById('prob-iv').innerHTML = `<span class="${ivClass}">${fIv.label}</span>`;
+                
+                const fAdx = data.factors.find(f => f.name.includes('ADX')) || {};
+                let adxClass = fAdx.status === 'good' ? 'prob-positive' : (fAdx.status === 'bad' ? 'prob-negative' : 'prob-neutral');
+                document.getElementById('prob-adx').innerHTML = `<span class="${adxClass}">${fAdx.label}</span>`;
+                
+            } catch(e) {
+                console.error('Failed to fetch trade probability', e);
+            }
+        }
+
+
         // --- Daily Reports ---
         async function fetchReports() {
             try {
@@ -1526,6 +1484,8 @@
         fetchReports();
         fetchNews();
         setInterval(fetchNews, 6 * 60 * 60 * 1000);
+        fetchTradeProbability();
+        setInterval(fetchTradeProbability, 10 * 60 * 1000);
 
         // ── Manual Lot Size Settings ───────────────────────────────────────────
         async function loadLotSize() {
