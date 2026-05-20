@@ -371,3 +371,123 @@ def save_lot_size():
         app_logger.error(f"Web [save_lot_size]: Error – {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+# ─── Tomorrow's Trade Probability ─────────────────────────────────────────────
+
+@app.route('/api/trade_probability')
+def trade_probability():
+    """
+    Calculates probability of taking a trade tomorrow.
+    Weighted scoring across 4 factors (total = 100 pts):
+      1. Day / Schedule check   → 0 or 35 pts
+      2. IV Filter condition    → 0–25 pts
+      3. Market Regime (ADX)    → 0–20 pts
+      4. High-Impact News (24h) → 0–20 pts
+    """
+    import requests as req
+    from datetime import datetime, timezone, timedelta
+
+    try:
+        from utils import get_ist_now
+        now_ist = get_ist_now()
+    except Exception:
+        now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+
+    tomorrow_ist     = now_ist + timedelta(days=1)
+    tomorrow_weekday = tomorrow_ist.weekday()   # 0=Mon … 6=Sun
+    day_names        = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+    tomorrow_name    = day_names[tomorrow_weekday]
+    skip_days        = [4, 5, 6]   # Fri / Sat / Sun
+
+    factors = []
+    score   = 0
+
+    # ── 1. Day / Schedule (35 pts) ───────────────────────────────────────────
+    if tomorrow_weekday in skip_days:
+        day_score, day_label, day_status = 0, f"Skip day ({tomorrow_name})", "bad"
+    else:
+        day_score, day_label, day_status = 35, f"Trading day ({tomorrow_name})", "good"
+    score += day_score
+    factors.append({'name': 'Schedule', 'score': day_score, 'max': 35,
+                    'label': day_label, 'status': day_status})
+
+    # ── 2. IV Filter (25 pts) ────────────────────────────────────────────────
+    current_iv = getattr(bot_engine, 'current_iv', 0.0)  if bot_engine else 0.0
+    avg_5d_iv  = getattr(bot_engine, 'avg_7d_iv',  0.0)  if bot_engine else 0.0
+    iv_lower   = current_iv > 0.35
+    iv_upper   = avg_5d_iv > 0 and current_iv < 0.92 * avg_5d_iv
+
+    if iv_lower and iv_upper:
+        iv_score, iv_label, iv_status = 25, f"IV {current_iv:.1f}% — Filter PASS", "good"
+    elif iv_lower:
+        iv_score, iv_label, iv_status = 10, f"IV {current_iv:.1f}% — High vs 5d avg", "neutral"
+    else:
+        iv_score, iv_label, iv_status = 0,  f"IV {current_iv:.1f}% — Too low (<0.35)", "bad"
+    score += iv_score
+    factors.append({'name': 'IV Environment', 'score': iv_score, 'max': 25,
+                    'label': iv_label, 'status': iv_status})
+
+    # ── 3. Market Regime / ADX (20 pts) ─────────────────────────────────────
+    adx = getattr(bot_engine, 'current_adx_value', 0.0) if bot_engine else 0.0
+    if adx == 0:
+        adx_score, adx_label, adx_status = 10, "Regime unknown (ADX=0)", "neutral"
+    elif adx < 20:
+        adx_score, adx_label, adx_status = 20, f"Ranging strongly (ADX={adx:.1f})", "good"
+    elif adx < 25:
+        adx_score, adx_label, adx_status = 15, f"Mildly ranging (ADX={adx:.1f})", "good"
+    elif adx < 35:
+        adx_score, adx_label, adx_status = 5,  f"Trending (ADX={adx:.1f})", "neutral"
+    else:
+        adx_score, adx_label, adx_status = 0,  f"Strong trend (ADX={adx:.1f})", "bad"
+    score += adx_score
+    factors.append({'name': 'Market Regime (ADX)', 'score': adx_score, 'max': 20,
+                    'label': adx_label, 'status': adx_status})
+
+    # ── 4. High-Impact News in next 24h (20 pts) ─────────────────────────────
+    news_score, news_label, news_status, news_events = 20, "No high-impact news in 24h", "good", []
+    try:
+        r = req.get("https://nfs.faireconomy.media/ff_calendar_thisweek.json",
+                    headers={'User-Agent': 'Mozilla/5.0'}, timeout=8)
+        if r.status_code == 200:
+            now_utc = datetime.now(timezone.utc)
+            cutoff  = now_utc + timedelta(hours=24)
+            for e in r.json():
+                if e.get('impact') != 'High':
+                    continue
+                if e.get('country') not in ('USD', 'EUR', 'GBP', 'JPY', 'CNY'):
+                    continue
+                try:
+                    dt = datetime.fromisoformat(e.get('date','').replace('Z','+00:00'))
+                    if now_utc <= dt <= cutoff:
+                        news_events.append(e.get('title','Unknown'))
+                except Exception:
+                    pass
+            if news_events:
+                news_score, news_label, news_status = 0, f"{len(news_events)} high-impact event(s) in 24h", "bad"
+    except Exception:
+        news_score, news_label, news_status = 10, "News feed unavailable", "neutral"
+    score += news_score
+    factors.append({'name': 'High-Impact News (24h)', 'score': news_score, 'max': 20,
+                    'label': news_label, 'status': news_status})
+
+    # ── Final score ───────────────────────────────────────────────────────────
+    prob = 0 if tomorrow_weekday in skip_days else max(0, min(100, score))
+
+    if prob >= 80:
+        verdict, verdict_level = "High chance — Conditions look excellent", "high"
+    elif prob >= 55:
+        verdict, verdict_level = "Moderate chance — Bot may trade tomorrow", "medium"
+    elif prob >= 25:
+        verdict, verdict_level = "Low chance — Unfavorable conditions", "low"
+    else:
+        verdict, verdict_level = "Very unlikely — Trade will almost certainly be skipped", "none"
+
+    return jsonify({
+        'probability':   prob,
+        'verdict':       verdict,
+        'verdict_level': verdict_level,
+        'tomorrow_day':  tomorrow_name,
+        'factors':       factors,
+        'news_events':   news_events[:5],
+        'calculated_at': now_ist.strftime('%H:%M IST')
+    })
