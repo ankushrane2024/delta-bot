@@ -17,24 +17,32 @@ class ExecutionHandler:
         if self.mode != 'LIVE':
             import random
             import time
+            from utils import get_ist_now
             
             # Apply simulated execution delay of 200–500 milliseconds
             delay_ms = random.randint(200, 500)
             app_logger.info(f"Execution [PAPER]: Simulating execution delay of {delay_ms}ms...")
             time.sleep(delay_ms / 1000.0)
             
+            entry_time_str = get_ist_now().isoformat()
             results = []
             for opt in [call_opt, put_opt]:
                 # Apply small entry slippage (0.3 to 1.2 points)
                 entry_slippage = random.uniform(0.3, 1.2)
-                simulated_entry_price = float(opt.get('mark_price', 0)) + entry_slippage
+                raw_mark = float(opt.get('mark_price', 0))
+                simulated_entry_price = raw_mark + entry_slippage
+                leg_type = 'call' if 'call' in opt.get('contract_type', '').lower() or 'C' in opt.get('symbol', '')[-3:] else 'put'
                 
                 app_logger.info(f"Execution [PAPER]: Simulating sell of {opt['symbol']} @ {simulated_entry_price:.4f} (slippage: +{entry_slippage:.2f})")
                 self.active_positions[opt['symbol']] = {
                     'entry_price': simulated_entry_price,
+                    'entry_price_raw': raw_mark,
                     'size': size,
                     'product_id': opt['product_id'],
-                    'side': 'SELL'
+                    'side': 'SELL',
+                    'leg_type': leg_type,
+                    'strike': opt.get('strike_price', opt.get('strike', 0)),
+                    'entry_time': entry_time_str,
                 }
                 results.append({'success': True})
             return results

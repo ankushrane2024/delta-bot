@@ -11,25 +11,25 @@ DELTA_INDIA_BASE_URL = "https://api.india.delta.exchange"
 DELTA_INDIA_WS_URL = "wss://socket.india.delta.exchange"
 
 # --- Bot Mode ---
+# Set BOT_MODE to "PAPER" for simulation or "LIVE" for real trading.
 BOT_MODE = os.getenv("BOT_MODE", "PAPER").upper()
 
 # --- Capital & Risk ---
-# User can change this (e.g., 2000, 10000, 50000). Lot sizes scale dynamically based on this.
-# Example: 
-# STARTING_CAPITAL = 50000 -> 500 lots total (approx 166 per entry)
-# STARTING_CAPITAL = 10000 -> 100 lots total (approx 33 per entry)
-# STARTING_CAPITAL = 2000  -> 20 lots total (approx 6 per entry)
+# STARTING_CAPITAL is used only for paper-mode equity simulation and reporting.
+# Example: STARTING_CAPITAL = 50000 means bot starts with a $50,000 paper balance.
 STARTING_CAPITAL = float(os.getenv("STARTING_CAPITAL", 50000))
-# Exactly 1.5% max loss of CURRENT account equity on 150% SL hit
-RISK_PERCENT = 0.015 
-# The base logic: 50,000 capital = 500 lots total (split across 3 entries)
-BASE_CAPITAL_FOR_SCALING = 50000.0
-BASE_LOTS_TARGET = 500
-MAX_DAILY_LOSS_PCT = 0.03 # Stop trading if -3% account loss
 
-# --- Manual Lot Sizing (NEW - overrides all old dynamic sizing) ---
-MANUAL_TOTAL_LOTS = int(os.getenv("MANUAL_TOTAL_LOTS", 200)) # User sets this (e.g. 200 total lots)
+# Maximum allowed daily loss as a percentage of starting equity.
+# Bot stops trading for the day if floating loss >= 3%.
+MAX_DAILY_LOSS_PCT = 0.03
 
+# --- Manual Lot Sizing ---
+# MANUAL_TOTAL_LOTS is the total number of lots for a strangle trade.
+# This value is overridden by the dashboard "Manual Lot Size Settings" panel
+# which writes to lot_size.json. On bot startup, lot_size.json is checked first.
+# If lot_size.json is absent, this value is used as the default.
+# Example: 200 = 100 lots per leg (call side + put side).
+MANUAL_TOTAL_LOTS = int(os.getenv("MANUAL_TOTAL_LOTS", 200))
 
 # --- Entry/Exit Times (IST) ---
 ENTRY_TIMES = ["08:30", "09:00", "09:30"]
@@ -42,27 +42,20 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # --- Strategy Parameters ---
-# Delta
+# Target delta for strike selection (approximate 0.22 delta OTM strikes).
 DELTA_TARGET = 0.22
 DELTA_TOLERANCE = 0.03
 
-# Premium (₹70-100 equivalent in USDT, assuming ~83 INR/USD -> ~0.85 to 1.20 USDT)
-PREMIUM_MIN_USDT = 0.80
-PREMIUM_MAX_USDT = 1.25
-
-# Stop Loss & Profit Booking
-SL_PERCENT = 1.50         # 150% of premium
-PARTIAL_PROFIT_TRIGGER = 0.50 # 50% profit
-PARTIAL_PROFIT_SIZE = 0.50    # Close 50% of legs
-TRAILING_SL_TRIGGER = 0.40    # Trail after 40% profit
-TRAILING_SL_LEVEL = 0.0       # Move to breakeven
-EXIT_PROFIT_TARGET = 0.70     # 70% overall profit
-
-# RECOST Rules (1-time same-day re-entry after SL)
-RECOST_DELTA_MIN = 0.18
-RECOST_DELTA_MAX = 0.20
+# --- Stop Loss & Profit Booking ---
+SL_PERCENT = 1.50              # 150% of collected premium → triggers full exit
+PARTIAL_PROFIT_TRIGGER = 0.50  # 50% profit reached → trigger partial close
+PARTIAL_PROFIT_SIZE = 0.50     # Close 50% of position size on partial profit
+TRAILING_SL_TRIGGER = 0.40    # After 40% profit → activate trailing SL to breakeven
+TRAILING_SL_LEVEL = 0.0       # Trailing SL level: breakeven (0% profit)
+EXIT_PROFIT_TARGET = 0.70     # 70% total profit → full exit
 
 # --- Hedging Parameters ---
-HEDGE_SYMBOL = "BTCUSD" # Perpetual futures contract
-HEDGE_DELTA_THRESHOLD = 0.20
-HEDGE_GAMMA_THRESHOLD = 0.02
+# When net Delta or Gamma exceed these thresholds, the bot hedges using BTC futures.
+HEDGE_SYMBOL = "BTCUSD"           # BTC Perpetual futures contract symbol
+HEDGE_DELTA_THRESHOLD = 0.20      # Net delta above 0.20 triggers hedging
+HEDGE_GAMMA_THRESHOLD = 0.02      # Net gamma above 0.02 triggers hedging

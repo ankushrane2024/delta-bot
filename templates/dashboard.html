@@ -275,6 +275,10 @@
             0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
             50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.15); }
         }
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+            50% { box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.3); }
+        }
     </style>
 </head>
 <body>
@@ -562,22 +566,61 @@
         </div>
 
         <!-- Active Positions Panel -->
-        <div class="panel full-width">
-            <h2>Active Positions</h2>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Symbol</th>
-                            <th>Side</th>
-                            <th>Size</th>
-                            <th>Entry</th>
-                        </tr>
-                    </thead>
-                    <tbody id="positions-body">
-                        <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No active positions</td></tr>
-                    </tbody>
-                </table>
+        <div class="panel full-width" id="positions-panel">
+            <style>
+                .pos-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+                .pos-summary-bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+                .pos-summary-chip { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 14px; font-size: 0.82rem; }
+                .pos-summary-chip span { font-weight: 800; font-size: 0.95rem; }
+                .pos-cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 16px; }
+                .pos-card { background: rgba(255,255,255,0.035); border: 1.5px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 18px 20px; transition: border-color 0.3s; }
+                .pos-card:hover { border-color: rgba(99,102,241,0.4); }
+                .pos-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+                .pos-symbol { font-size: 0.85rem; font-weight: 700; color: #e2e8f0; letter-spacing: 0.3px; }
+                .pos-strike-label { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+                .pos-status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.4px; white-space: nowrap; }
+                .status-running   { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+                .status-partial   { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+                .status-trailing  { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+                .pos-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+                .pos-metric { background: rgba(255,255,255,0.025); border-radius: 8px; padding: 8px 10px; }
+                .pos-metric-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 3px; }
+                .pos-metric-value { font-size: 0.92rem; font-weight: 700; color: #e2e8f0; }
+                .pos-metric-sub   { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; }
+                .pos-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 14px 0; }
+                .pos-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.75rem; color: var(--text-secondary); }
+                .pos-footer-chip { display: flex; align-items: center; gap: 5px; }
+                .pos-call-label { color: #34d399; font-weight: 700; }
+                .pos-put-label  { color: #f87171; font-weight: 700; }
+                .pos-empty { text-align: center; padding: 40px 0; color: var(--text-secondary); }
+                .pos-empty-icon { font-size: 2.5rem; margin-bottom: 10px; opacity: 0.4; }
+                .pos-total-bar { display: flex; gap: 20px; flex-wrap: wrap; padding: 12px 16px; background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15); border-radius: 10px; margin-bottom: 18px; align-items: center; }
+                .pnl-pos { color: #34d399; }
+                .pnl-neg { color: #f87171; }
+            </style>
+
+            <div class="pos-header-row">
+                <h2 style="margin:0;">📊 Active Positions</h2>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div id="pos-live-dot" style="width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399;animation:pulse-green 2s infinite;"></div>
+                    <span style="font-size:0.8rem;color:var(--text-secondary);">Live · updates every 4s</span>
+                </div>
+            </div>
+
+            <!-- Total P&L Summary Bar (hidden when no positions) -->
+            <div id="pos-total-bar" class="pos-total-bar" style="display:none;">
+                <div class="pos-summary-chip">Total Entry Premium <span id="pos-total-entry">—</span> USDT</div>
+                <div class="pos-summary-chip">Total P&L <span id="pos-total-pnl-usd">—</span> USDT &nbsp;|&nbsp; <span id="pos-total-pnl-inr">—</span> INR</div>
+                <div class="pos-summary-chip">⏱ Time to Square-off <span id="pos-time-remaining">—</span></div>
+            </div>
+
+            <!-- Cards container -->
+            <div id="positions-cards" class="pos-cards-grid">
+                <div class="pos-empty">
+                    <div class="pos-empty-icon">📭</div>
+                    <div style="font-weight:600;color:var(--text-secondary);">No Active Positions</div>
+                    <div style="font-size:0.8rem;margin-top:6px;opacity:0.6;">The bot has no open trades right now.</div>
+                </div>
             </div>
         </div>
 
@@ -812,22 +855,129 @@
                     }
                 }
 
-                // Update Positions
-                const tbody = document.getElementById('positions-body');
-                if(data.positions && data.positions.length > 0) {
-                    tbody.innerHTML = '';
-                    data.positions.forEach(pos => {
-                        tbody.innerHTML += `
-                            <tr>
-                                <td style="font-weight: 600;">${pos.symbol}</td>
-                                <td style="color: ${pos.side === 'SELL' ? 'var(--danger)' : 'var(--success)'};">${pos.side}</td>
-                                <td>${pos.size}</td>
-                                <td>$${pos.entry_price}</td>
-                            </tr>
-                        `;
-                    });
+                // ── Update Active Positions ──────────────────────────────────────────
+                const posCards  = document.getElementById('positions-cards');
+                const totalBar  = document.getElementById('pos-total-bar');
+                
+                if (data.positions && data.positions.length > 0) {
+                    totalBar.style.display = 'flex';
+                    
+                    // Update summary bar
+                    const totalPnlUsd = data.total_pnl_usd || 0;
+                    const totalPnlInr = data.total_pnl_inr || 0;
+                    document.getElementById('pos-total-entry').textContent = (data.total_entry_premium || 0).toFixed(2);
+                    
+                    const pnlUsdEl = document.getElementById('pos-total-pnl-usd');
+                    pnlUsdEl.textContent = (totalPnlUsd >= 0 ? '+' : '') + totalPnlUsd.toFixed(2);
+                    pnlUsdEl.className = totalPnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg';
+                    
+                    const pnlInrEl = document.getElementById('pos-total-pnl-inr');
+                    pnlInrEl.textContent = (totalPnlInr >= 0 ? '+' : '') + totalPnlInr.toFixed(0);
+                    pnlInrEl.className = totalPnlInr >= 0 ? 'pnl-pos' : 'pnl-neg';
+                    
+                    const mins = data.positions[0]?.mins_to_squareoff ?? 0;
+                    const hh = Math.floor(mins / 60);
+                    const mm = mins % 60;
+                    document.getElementById('pos-time-remaining').textContent = mins > 0 ? `${hh}h ${mm}m` : 'Market Closed';
+
+                    // Build one card per leg
+                    posCards.innerHTML = data.positions.map(pos => {
+                        const isCall = pos.leg_type === 'call';
+                        const legLabel = isCall
+                            ? '<span class="pos-call-label">📈 CALL</span>'
+                            : '<span class="pos-put-label">📉 PUT</span>';
+                        
+                        const pnlClass  = pos.leg_pnl_usd >= 0 ? 'pnl-pos' : 'pnl-neg';
+                        const pnlSign   = pos.leg_pnl_usd >= 0 ? '+' : '';
+                        const pnlInrSign = pos.leg_pnl_inr >= 0 ? '+' : '';
+
+                        let statusClass = 'status-running';
+                        let statusIcon  = '🟢 Running';
+                        if (pos.trade_status === 'Trailing SL Active') { statusClass = 'status-trailing'; statusIcon = '🔴 Trailing SL'; }
+                        else if (pos.trade_status === 'Partial Profit Booked') { statusClass = 'status-partial'; statusIcon = '🟡 Partial Profit'; }
+
+                        // Entry time formatting
+                        let entryTimeDisplay = '—';
+                        if (pos.entry_time) {
+                            try {
+                                const d = new Date(pos.entry_time);
+                                entryTimeDisplay = d.toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true});
+                            } catch(e) { entryTimeDisplay = pos.entry_time.slice(11, 16); }
+                        }
+
+                        const minsLeft = pos.mins_to_squareoff || 0;
+                        const hh2 = Math.floor(minsLeft / 60), mm2 = minsLeft % 60;
+                        const timeLeft = minsLeft > 0 ? `${hh2}h ${mm2}m` : '—';
+
+                        // Premium change %
+                        const premChangePct = pos.entry_price > 0
+                            ? (((pos.current_price - pos.entry_price) / pos.entry_price) * 100).toFixed(1)
+                            : '0.0';
+                        const premChangeSign = parseFloat(premChangePct) >= 0 ? '+' : '';
+
+                        return `
+                        <div class="pos-card">
+                            <div class="pos-card-header">
+                                <div>
+                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                                        ${legLabel}
+                                        <span style="font-size:0.7rem;color:var(--text-secondary);background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:4px;">${pos.side}</span>
+                                    </div>
+                                    <div class="pos-symbol">${pos.symbol}</div>
+                                    ${pos.strike ? `<div class="pos-strike-label">Strike: $${parseFloat(pos.strike).toLocaleString()}</div>` : ''}
+                                </div>
+                                <div class="pos-status-badge ${statusClass}">${statusIcon}</div>
+                            </div>
+
+                            <div class="pos-metrics">
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Entry Premium</div>
+                                    <div class="pos-metric-value">${pos.entry_price.toFixed(2)}</div>
+                                    <div class="pos-metric-sub">USDT / lot</div>
+                                </div>
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Current Premium</div>
+                                    <div class="pos-metric-value" style="color:${parseFloat(premChangePct)<0?'#34d399':'#f87171'}">${pos.current_price.toFixed(2)}</div>
+                                    <div class="pos-metric-sub">${premChangeSign}${premChangePct}% from entry</div>
+                                </div>
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Leg P&amp;L</div>
+                                    <div class="pos-metric-value ${pnlClass}">${pnlSign}${pos.leg_pnl_usd.toFixed(2)} $</div>
+                                    <div class="pos-metric-sub">${pnlInrSign}₹${pos.leg_pnl_inr.toFixed(0)}</div>
+                                </div>
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Lot Size</div>
+                                    <div class="pos-metric-value">${pos.size}</div>
+                                    <div class="pos-metric-sub">contracts</div>
+                                </div>
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Delta / Gamma</div>
+                                    <div class="pos-metric-value">${pos.delta.toFixed(3)}</div>
+                                    <div class="pos-metric-sub">γ ${pos.gamma.toFixed(4)}</div>
+                                </div>
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Live IV</div>
+                                    <div class="pos-metric-value">${pos.current_iv_pct.toFixed(2)}%</div>
+                                    <div class="pos-metric-sub">Implied Volatility</div>
+                                </div>
+                            </div>
+
+                            <div class="pos-divider"></div>
+                            <div class="pos-footer">
+                                <div class="pos-footer-chip">🕐 Entry: <strong>${entryTimeDisplay} IST</strong></div>
+                                <div class="pos-footer-chip">⏱ SqOff in: <strong>${timeLeft}</strong></div>
+                            </div>
+                        </div>`;
+                    }).join('');
+
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No active positions</td></tr>`;
+                    totalBar.style.display = 'none';
+                    posCards.innerHTML = `
+                        <div class="pos-empty">
+                            <div class="pos-empty-icon">📭</div>
+                            <div style="font-weight:600;color:var(--text-secondary);">No Active Positions</div>
+                            <div style="font-size:0.8rem;margin-top:6px;opacity:0.6;">The bot has no open trades right now.</div>
+                        </div>`;
                 }
 
                 // Update Rule Compliance
@@ -1133,7 +1283,7 @@
         }
 
         // Poll every 2 seconds
-        setInterval(fetchStatus, 2000);
+        setInterval(fetchStatus, 4000);
         fetchStatus();
 
         // --- News & Events ---

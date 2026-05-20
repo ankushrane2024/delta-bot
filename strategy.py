@@ -1,4 +1,4 @@
-from config import DELTA_TARGET, DELTA_TOLERANCE, RECOST_DELTA_MIN, RECOST_DELTA_MAX, PREMIUM_MIN_USDT, PREMIUM_MAX_USDT
+from config import DELTA_TARGET, DELTA_TOLERANCE
 from logger import app_logger
 
 class ShortStrangleStrategy:

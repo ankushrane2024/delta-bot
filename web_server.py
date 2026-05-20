@@ -34,22 +34,97 @@ def get_status():
     except Exception:
         logs = ["Log file not found."]
 
-    # Format active positions
+    # Format active positions with rich real-time data
+    from datetime import datetime, timezone, timedelta
     positions = []
+    
+    # Get trade status from engine for position cards
+    partial_profit_hit = getattr(bot_engine, 'partial_profit_hit', False)
+    trailing_sl_active = getattr(bot_engine, 'trailing_sl_active', False)
+    total_entry_premium = getattr(bot_engine, 'total_entry_premium', 0)
+    
+    # Compute time remaining to 17:00 IST
+    try:
+        from utils import get_ist_now
+        now_ist = get_ist_now()
+        target_ist = now_ist.replace(hour=17, minute=0, second=0, microsecond=0)
+        if now_ist >= target_ist:
+            mins_remaining = 0
+        else:
+            mins_remaining = int((target_ist - now_ist).total_seconds() / 60)
+    except Exception:
+        mins_remaining = 0
+    
+    current_iv_pct = getattr(bot_engine, 'current_iv', 0.0)  # already in % scale
+    
     for sym, data in bot_engine.execution.active_positions.items():
+        entry_price = data.get('entry_price', 0)
+        size = data.get('size', 0)
+        leg_type = data.get('leg_type', 'unknown')
+        entry_time_str = data.get('entry_time', '')
+        strike = data.get('strike', 0)
+        
+        # Live price from WebSocket / HTTP cache
+        current_price = entry_price  # fallback
+        delta_val = 0.0
+        gamma_val = 0.0
+        try:
+            ws_data = bot_engine.api_client.get_realtime_ticker(sym)
+            if ws_data and 'mark_price' in ws_data:
+                current_price = float(ws_data['mark_price'])
+                greeks = ws_data.get('greeks') or {}
+                delta_val = float(greeks.get('delta', 0))
+                gamma_val = float(greeks.get('gamma', 0))
+        except Exception:
+            pass
+        
+        # P&L for this leg (short position: profit = entry - current)
+        leg_pnl_usd = (entry_price - current_price) * size
+        leg_pnl_inr = leg_pnl_usd * 84.0  # approx INR conversion
+        
+        # Trade status label
+        if trailing_sl_active:
+            trade_status = "Trailing SL Active"
+        elif partial_profit_hit:
+            trade_status = "Partial Profit Booked"
+        elif len(bot_engine.execution.active_positions) > 0:
+            trade_status = "Running"
+        else:
+            trade_status = "Unknown"
+        
         positions.append({
             'symbol': sym,
-            'side': data.get('side', ''),
-            'size': data.get('size', 0),
-            'entry_price': data.get('entry_price', 0)
+            'leg_type': leg_type,
+            'strike': strike,
+            'side': data.get('side', 'SELL'),
+            'size': size,
+            'entry_price': round(entry_price, 4),
+            'current_price': round(current_price, 4),
+            'leg_pnl_usd': round(leg_pnl_usd, 2),
+            'leg_pnl_inr': round(leg_pnl_inr, 2),
+            'delta': round(delta_val, 4),
+            'gamma': round(gamma_val, 5),
+            'entry_time': entry_time_str,
+            'mins_to_squareoff': mins_remaining,
+            'current_iv_pct': current_iv_pct,
+            'trade_status': trade_status,
         })
-
+    
+    # Total P&L across all legs
+    total_current_value = sum(float(bot_engine.api_client.get_realtime_ticker(s).get('mark_price', d['entry_price']) if bot_engine.api_client.get_realtime_ticker(s) else d['entry_price']) * d['size']
+                              for s, d in bot_engine.execution.active_positions.items()) if bot_engine.execution.active_positions else 0
+    total_pnl_usd = round(total_entry_premium - total_current_value, 2) if total_entry_premium > 0 else 0.0
+    total_pnl_inr = round(total_pnl_usd * 84.0, 2)
+    
     return jsonify({
         'is_running': bot_engine.is_running,
         'mode': getattr(bot_engine.execution, 'mode', 'UNKNOWN'),
         'equity': round(bot_engine.risk_manager.current_equity, 2),
         'daily_loss_hits': bot_engine.daily_loss_hits,
         'positions': positions,
+        'total_entry_premium': round(total_entry_premium, 4),
+        'total_pnl_usd': total_pnl_usd,
+        'total_pnl_inr': total_pnl_inr,
         'logs': logs,
         'performance': bot_engine.performance_tracker.get_metrics(bot_engine.risk_manager.current_equity),
         'rule_report': bot_engine.latest_rule_report,
