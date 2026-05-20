@@ -1,4 +1,4 @@
-from config import RISK_PERCENT, STARTING_CAPITAL, BASE_CAPITAL_FOR_SCALING, BASE_LOTS_TARGET, BOT_MODE
+from config import STARTING_CAPITAL, BOT_MODE
 from logger import app_logger
 
 class RiskManager:
