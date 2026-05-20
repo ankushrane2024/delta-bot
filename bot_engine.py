@@ -360,13 +360,13 @@ class DeltaTradingEngine:
                         current_avg_iv = sum(ivs) / len(ivs)
                         self.current_iv = round(current_avg_iv * 100, 2)
                         
-                    # Calculate 7d Average IV via filters
+                    # Calculate 5d Average IV via filters
                     c_iv, a_iv = self.filters._update_and_get_iv()
                     if a_iv > 0:
                         self.avg_7d_iv = round(a_iv * 100, 2)
                         
-                    limit_iv = self.avg_7d_iv * 0.85
-                    if self.current_iv > 58.0 and self.current_iv < limit_iv:
+                    limit_iv = self.avg_7d_iv * 0.92
+                    if self.current_iv > 35.0 and self.current_iv < limit_iv:
                         self.iv_status = "Normal"
                     else:
                         self.iv_status = "Skipped"

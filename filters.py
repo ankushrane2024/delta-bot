@@ -57,37 +57,37 @@ class TradingFilters:
             error_logger.error(f"Filter: Failed to fetch current IV: {e}")
             return 0, 0
 
-        # Calculate 7-day average
-        past_7_days_ivs = []
-        for i in range(1, 8):
+        # Calculate 5-day average
+        past_5_days_ivs = []
+        for i in range(1, 6):
             d_str = (get_ist_now() - datetime.timedelta(days=i)).strftime('%Y-%m-%d')
             if d_str in history:
-                past_7_days_ivs.append(history[d_str])
+                past_5_days_ivs.append(history[d_str])
 
-        seven_day_avg = 0
-        if past_7_days_ivs:
-            seven_day_avg = sum(past_7_days_ivs) / len(past_7_days_ivs)
+        five_day_avg = 0
+        if past_5_days_ivs:
+            five_day_avg = sum(past_5_days_ivs) / len(past_5_days_ivs)
         else:
-            # If no history, assume 7-day avg is slightly below current to allow trading,
+            # If no history, assume 5-day avg is slightly below current to allow trading,
             # or just return current_avg_iv as the baseline.
-            seven_day_avg = current_avg_iv * 0.99 
+            five_day_avg = current_avg_iv * 0.99 
 
-        return current_avg_iv, seven_day_avg
+        return current_avg_iv, five_day_avg
 
     def check_iv_filter(self):
-        """Check if current IV > 0.65 AND current IV < 0.85 * 7-day average IV."""
-        current_iv, avg_7d_iv = self._update_and_get_iv()
+        """Check if current IV > 0.35 AND current IV < 0.92 * 5-day average IV."""
+        current_iv, avg_5d_iv = self._update_and_get_iv()
         
         if current_iv == 0:
             app_logger.warning("Filter: Could not determine IV. Skipping trade to be safe.")
             return False
 
-        limit_iv = avg_7d_iv * 0.85
-        if current_iv > 0.58 and current_iv < limit_iv:
-            app_logger.info(f"Filter: IV check passed. Current: {current_iv:.4f} > 0.58 and < 85% of 7d Avg ({limit_iv:.4f})")
+        limit_iv = avg_5d_iv * 0.92
+        if current_iv > 0.35 and current_iv < limit_iv:
+            app_logger.info(f"Filter: IV check passed. Current: {current_iv:.4f} > 0.35 and < 92% of 5d Avg ({limit_iv:.4f})")
             return True
         else:
-            reason = f"Current IV ({current_iv:.4f}) is out of bounds (0.58, 85% of 7d Avg: {limit_iv:.4f})"
+            reason = f"Current IV ({current_iv:.4f}) is out of bounds (0.35, 92% of 5d Avg: {limit_iv:.4f})"
             app_logger.info(f"Filter: IV check failed. {reason}")
             return False
 
@@ -141,15 +141,15 @@ class TradingFilters:
         if not self.check_news_filter():
             return False, "High Impact USD News"
         
-        current_iv, avg_7d_iv = self._update_and_get_iv()
+        current_iv, avg_5d_iv = self._update_and_get_iv()
         if current_iv == 0:
             return False, "Could not determine IV"
             
-        limit_iv = avg_7d_iv * 0.85
-        if current_iv <= 0.58:
-            return False, f"Low IV (Current IV = {current_iv:.4f} <= 0.58)"
+        limit_iv = avg_5d_iv * 0.92
+        if current_iv <= 0.35:
+            return False, f"Low IV (Current IV = {current_iv:.4f} <= 0.35)"
         if current_iv >= limit_iv:
-            return False, f"High/Normal IV (Current IV = {current_iv:.4f} >= 85% of 7d Avg: {limit_iv:.4f})"
+            return False, f"High/Normal IV (Current IV = {current_iv:.4f} >= 92% of 5d Avg: {limit_iv:.4f})"
             
         return True, "All Filters Passed"
 
