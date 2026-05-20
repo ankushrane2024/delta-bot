@@ -42,7 +42,7 @@
             display: grid;
             grid-template-columns: 1.05fr 1fr;
             gap: 24px;
-            align-items: start;
+            align-items: stretch;
         }
 
         header {
@@ -298,7 +298,7 @@
 
     <div class="container">
         <!-- Left Column (Stacked) -->
-        <div style="display: flex; flex-direction: column; gap: 24px;">
+        <div style="display: flex; flex-direction: column; gap: 24px; height: 100%;">
             <!-- Equity & Mode Panel -->
             <div class="panel">
                 <h2>Account Overview</h2>
@@ -350,7 +350,7 @@
             </div>
 
             <!-- Manual Lot Size Settings Panel -->
-            <div class="panel" id="lot-size-panel">
+            <div class="panel" id="lot-size-panel" style="flex: 1; display: flex; flex-direction: column;">
                 <h2>⚙️ Manual Lot Size Settings</h2>
                 <div style="display:flex; flex-direction:column; gap:14px; margin-top:12px;">
 
@@ -421,7 +421,7 @@
         </div>
 
         <!-- Right Column (Stacked) -->
-        <div style="display: flex; flex-direction: column; gap: 24px;">
+        <div style="display: flex; flex-direction: column; gap: 24px; height: 100%;">
             <!-- Risk Management & Settings Panel -->
             <div class="panel">
                 <h2>Risk Management</h2>
@@ -459,7 +459,7 @@
             </div>
 
             <!-- News & Events / Volatility Alerts Panel -->
-            <div class="panel" id="news-panel" style="flex: 1;">
+            <div class="panel" id="news-panel" style="flex: 1; display: flex; flex-direction: column;">
                 <style>
                     #news-panel .table-container {
                         max-height: 320px;
@@ -501,6 +501,52 @@
             </div>
         </div>
     </div>
+
+        <!-- Tomorrow's Trade Probability Panel -->
+        <div class="panel full-width">
+            <h2 style="margin: 0 0 20px 0;">🔮 Tomorrow's Trade Chance</h2>
+            <div style="display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
+                
+                <!-- Circular Gauge -->
+                <div style="position: relative; width: 120px; height: 120px;">
+                    <svg viewBox="0 0 36 36" style="width:100%; height:100%; transform: rotate(-90deg);">
+                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" />
+                        <path id="prob-gauge-path" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--success)" stroke-width="3" stroke-dasharray="0, 100" />
+                    </svg>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                        <div id="prob-percent" style="font-size: 1.8rem; font-weight: 800; color: #fff;">--%</div>
+                    </div>
+                </div>
+
+                <!-- Details & Factors -->
+                <div style="flex: 1; min-width: 250px;">
+                    <h3 id="prob-title" style="margin: 0 0 12px 0; color: var(--success); font-size: 1.2rem;">Calculating...</h3>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                        <div class="prob-factor">
+                            <div class="prob-label">Schedule & News</div>
+                            <div id="prob-schedule" class="prob-value">--</div>
+                        </div>
+                        <div class="prob-factor">
+                            <div class="prob-label">IV Environment</div>
+                            <div id="prob-iv" class="prob-value">--</div>
+                        </div>
+                        <div class="prob-factor">
+                            <div class="prob-label">Market Regime (ADX)</div>
+                            <div id="prob-adx" class="prob-value">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <style>
+                .prob-factor { background: rgba(255,255,255,0.03); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+                .prob-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+                .prob-value { font-size: 0.95rem; font-weight: 600; color: #fff; }
+                .prob-positive { color: #34d399; }
+                .prob-negative { color: #f87171; }
+                .prob-neutral { color: #fbbf24; }
+            </style>
+        </div>
 
         <!-- Performance Summary Panel -->
         <div class="panel full-width">
@@ -646,52 +692,6 @@
         </div>
 
         
-        <!-- Tomorrow's Trade Probability Panel -->
-        <div class="panel full-width">
-            <h2 style="margin: 0 0 20px 0;">🔮 Tomorrow's Trade Chance</h2>
-            <div style="display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
-                
-                <!-- Circular Gauge -->
-                <div style="position: relative; width: 120px; height: 120px;">
-                    <svg viewBox="0 0 36 36" style="width:100%; height:100%; transform: rotate(-90deg);">
-                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" />
-                        <path id="prob-gauge-path" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--success)" stroke-width="3" stroke-dasharray="0, 100" />
-                    </svg>
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-                        <div id="prob-percent" style="font-size: 1.8rem; font-weight: 800; color: #fff;">--%</div>
-                    </div>
-                </div>
-
-                <!-- Details & Factors -->
-                <div style="flex: 1; min-width: 250px;">
-                    <h3 id="prob-title" style="margin: 0 0 12px 0; color: var(--success); font-size: 1.2rem;">Calculating...</h3>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-                        <div class="prob-factor">
-                            <div class="prob-label">Schedule & News</div>
-                            <div id="prob-schedule" class="prob-value">--</div>
-                        </div>
-                        <div class="prob-factor">
-                            <div class="prob-label">IV Environment</div>
-                            <div id="prob-iv" class="prob-value">--</div>
-                        </div>
-                        <div class="prob-factor">
-                            <div class="prob-label">Market Regime (ADX)</div>
-                            <div id="prob-adx" class="prob-value">--</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <style>
-                .prob-factor { background: rgba(255,255,255,0.03); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
-                .prob-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-                .prob-value { font-size: 0.95rem; font-weight: 600; color: #fff; }
-                .prob-positive { color: #34d399; }
-                .prob-negative { color: #f87171; }
-                .prob-neutral { color: #fbbf24; }
-            </style>
-        </div>
-
         <!-- Skip & Schedule Info Panel -->
         <div class="panel full-width">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
