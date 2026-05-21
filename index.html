@@ -1364,7 +1364,7 @@
                     if (data.schedule_info.upcoming_schedule && data.schedule_info.upcoming_schedule.length > 0) {
                         schedBody.innerHTML = '';
                         data.schedule_info.upcoming_schedule.forEach((day, index) => {
-                            if ((index === 1 || index === 2) && day.skip) {
+                            if ((index === 1 || index === 2) && day.skip && !showWarning) {
                                 showWarning = true;
                                 warningText = `⚠️ EARLY WARNING: Trading will be skipped on ${day.day} (${day.reason})`;
                             }
