@@ -16,10 +16,8 @@ class TradingFilters:
 
     def check_dvol_percentile_filter(self):
         """DVOL Percentile must be between 20% and 80% (Section 2)."""
-        if not self.dvol_provider:
-            return True, "DVOL provider not available, allowing trade"
-        can_trade, reason = self.dvol_provider.should_trade()
-        return can_trade, reason
+        # TEMPORARILY DISABLED FOR TESTING (as requested)
+        return True, "DVOL Percentile Filter (Temporarily Disabled for Testing)"
 
     def check_day_filter(self):
         """Allow trading on all 7 days."""
@@ -81,20 +79,9 @@ class TradingFilters:
 
     def check_iv_filter(self):
         """Check if current IV > 0.35 AND current IV < 0.92 * 5-day average IV."""
-        current_iv, avg_5d_iv = self._update_and_get_iv()
-        
-        if current_iv == 0:
-            app_logger.warning("Filter: Could not determine IV. Skipping trade to be safe.")
-            return False
-
-        limit_iv = avg_5d_iv * 0.92
-        if current_iv > 0.35 and current_iv < limit_iv:
-            app_logger.info(f"Filter: IV check passed. Current: {current_iv:.4f} > 0.35 and < 92% of 5d Avg ({limit_iv:.4f})")
-            return True
-        else:
-            reason = f"Current IV ({current_iv:.4f}) is out of bounds (0.35, 92% of 5d Avg: {limit_iv:.4f})"
-            app_logger.info(f"Filter: IV check failed. {reason}")
-            return False
+        # TEMPORARILY DISABLED FOR TESTING (as requested)
+        app_logger.info("Filter: IV check TEMPORARILY DISABLED FOR TESTING. Allowing trade.")
+        return True
 
     def _update_news_cache(self):
         """Helper to fetch and cache news calendar from ForexFactory every 6 hours."""
