@@ -62,4 +62,66 @@ class TelegramNotifier:
     def notify_error(self, error_msg):
         self.send_message(f"⚠️ <b>Warning: {error_msg}</b>")
 
+    def notify_hedge_executed(self, timestamp, iv, net_delta, hedge_type, size_btc, order_id):
+        """Hedge executed notification with full details."""
+        msg = (
+            f"🛡️ <b>HEDGE EXECUTED</b>\n"
+            f"Time: {timestamp}\n"
+            f"IV: {iv:.1f}%\n"
+            f"Net Delta: {net_delta:.4f}\n"
+            f"Hedge Type: {hedge_type}\n"
+            f"Size: {size_btc:.6f} BTC\n"
+            f"Order ID: {order_id}"
+        )
+        self.send_message(msg)
+
+    def notify_hedge_escalated(self, timestamp, from_pct, to_pct, loss_pct):
+        """Hedge escalated due to increasing loss."""
+        msg = (
+            f"⚠️ <b>EMERGENCY HEDGE INCREASED</b>\n"
+            f"Time: {timestamp}\n"
+            f"From: {from_pct:.0f}% → To: {to_pct:.0f}%\n"
+            f"Unrealized Loss: {loss_pct:.1f}%"
+        )
+        self.send_message(msg)
+
+    def notify_hedge_failed(self):
+        """Critical alert when hedging fails after retries."""
+        self.send_message("🚨 <b>HEDGING FAILED - Manual intervention needed!</b>\nAll retry attempts exhausted. Check positions immediately.")
+
+    def notify_dvol_skip(self, dvol, percentile, reason):
+        """Trade skipped due to DVOL percentile filter."""
+        self.send_message(
+            f"📊 <b>Trade Skipped (DVOL Filter)</b>\n"
+            f"Current DVOL: {dvol:.2f}%\n"
+            f"DVOL Percentile: {percentile:.1f}%\n"
+            f"Reason: {reason}"
+        )
+
+    def notify_size_adjusted(self, base_lots, adjusted_lots, multiplier, reason):
+        """Position size dynamically adjusted."""
+        self.send_message(
+            f"📐 <b>Position Size Adjusted</b>\n"
+            f"Base: {base_lots} lots → Adjusted: {adjusted_lots} lots\n"
+            f"Multiplier: {multiplier:.2f}x\n"
+            f"Reason: {reason}"
+        )
+
+    def notify_daily_loss_limit(self, loss_pct, equity):
+        """Daily loss limit hit - trading stopped."""
+        self.send_message(
+            f"🛑 <b>DAILY LOSS LIMIT HIT</b>\n"
+            f"Daily Loss: {loss_pct:.2f}%\n"
+            f"Current Equity: ${equity:.2f}\n"
+            f"Trading stopped for the day. All positions squared off."
+        )
+
+    def notify_next_day_paused(self, loss_pct):
+        """Tomorrow paused due to today's heavy loss."""
+        self.send_message(
+            f"⏸️ <b>Tomorrow Trading PAUSED</b>\n"
+            f"Today's Loss: {loss_pct:.2f}%\n"
+            f"Exceeds 2.5% threshold. Next trading day will be skipped."
+        )
+
 notifier = TelegramNotifier()

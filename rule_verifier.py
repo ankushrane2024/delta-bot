@@ -1,69 +1,105 @@
 import config
 
 def verify_all_rules():
-    """
-    Strictly verifies all current bot parameters against the core strategy rules.
-    Returns:
-        (text_report: str, json_report: list, compliance_pct: int)
-    """
-    total_rules = 11
-    passed_rules = 0
-    results = []
+    """Verifies all trading rules against config. Returns (text_report, json_report, compliance_pct)."""
+    rules = [
+        {
+            "id": 1,
+            "name": "Entry Times",
+            "expected": "8:30, 9:00, 9:30 AM IST",
+            "check": config.ENTRY_TIMES == ["08:30", "09:00", "09:30"]
+        },
+        {
+            "id": 2,
+            "name": "Strike Selection (IV-Based + 4 OTM)",
+            "expected": "DVOL-based premium ranges, Min 4 strikes OTM, Put <= 1.35xCall, Net Delta <= 0.15",
+            "check": config.MIN_OTM_STRIKES == 4 and config.PUT_SKEW_CAP == 1.35 and config.NET_DELTA_ENTRY_LIMIT == 0.15
+        },
+        {
+            "id": 3,
+            "name": "Lot Size (Manual + Dynamic)",
+            "expected": "Manual from dashboard + DVOL/loss-based dynamic sizing",
+            "check": config.MANUAL_TOTAL_LOTS > 0 and hasattr(config, 'DVOL_MID_SIZE_BOOST')
+        },
+        {
+            "id": 4,
+            "name": "Stop Loss & Target",
+            "expected": "150% SL, 70% Full Target",
+            "check": config.SL_PERCENT == 1.50 and config.EXIT_PROFIT_TARGET == 0.70
+        },
+        {
+            "id": 5,
+            "name": "Partial Profit",
+            "expected": "50% Size at 50% Profit",
+            "check": config.PARTIAL_PROFIT_TRIGGER == 0.50 and config.PARTIAL_PROFIT_SIZE == 0.50
+        },
+        {
+            "id": 6,
+            "name": "Trailing Stop Loss",
+            "expected": "Breakeven after 40% Profit",
+            "check": config.TRAILING_SL_TRIGGER == 0.40 and config.TRAILING_SL_LEVEL == 0.0
+        },
+        {
+            "id": 7,
+            "name": "DVOL Percentile Filter",
+            "expected": "Trade only if DVOL Percentile 20%-80%",
+            "check": config.DVOL_PERCENTILE_MIN == 20 and config.DVOL_PERCENTILE_MAX == 80
+        },
+        {
+            "id": 8,
+            "name": "Smart Hedging",
+            "expected": "IV-based thresholds: <45% delta>0.20, 45-55% delta>0.17, >55% delta>0.12",
+            "check": (hasattr(config, 'HEDGE_IV_THRESHOLDS') and
+                      config.HEDGE_IV_THRESHOLDS['low']['delta_trigger'] == 0.20 and
+                      config.HEDGE_IV_THRESHOLDS['mid']['delta_trigger'] == 0.17 and
+                      config.HEDGE_IV_THRESHOLDS['high']['delta_trigger'] == 0.12)
+        },
+        {
+            "id": 9,
+            "name": "Dynamic Position Sizing",
+            "expected": "DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%",
+            "check": (config.DVOL_MID_SIZE_BOOST == 0.20 and
+                      config.CONSECUTIVE_LOSS_REDUCE_PCT == 0.20 and
+                      config.DAILY_LOSS_REDUCE_PCT == 0.30)
+        },
+        {
+            "id": 10,
+            "name": "Money Management",
+            "expected": "1.5% risk/trade, 3% daily limit, 3 consecutive losses stop, 2.5% pause next day",
+            "check": (config.MAX_RISK_PER_TRADE_PCT == 0.015 and
+                      config.DAILY_LOSS_LIMIT_PCT == 0.03 and
+                      config.MAX_CONSECUTIVE_LOSSES_DAY == 3 and
+                      config.DAILY_LOSS_PAUSE_THRESHOLD == 0.025)
+        },
+        {
+            "id": 11,
+            "name": "Exit Time",
+            "expected": "Prepare 16:55 IST, Hard Exit 17:00 IST",
+            "check": config.EXIT_PREPARE_TIME == "16:55" and config.EXIT_TIME_HARD == "17:00"
+        },
+    ]
 
-    def check(name, expected_str, condition):
-        nonlocal passed_rules
-        if condition:
-            passed_rules += 1
-            results.append({"name": name, "expected": expected_str, "passed": True})
-            return True
-        else:
-            results.append({"name": name, "expected": expected_str, "passed": False})
-            return False
+    passed_count = 0
+    total = len(rules)
+    lines = []
+    json_report = []
 
-    # 1. Entry Times
-    check("Entry Times", "8:30, 9:00, 9:30 AM IST", config.ENTRY_TIMES == ["08:30", "09:00", "09:30"])
+    for rule in rules:
+        status = "[PASS]" if rule['check'] else "[FAIL]"
+        if rule['check']:
+            passed_count += 1
+        lines.append(f"Rule {rule['id']}: {rule['name']} - {status}")
+        lines.append(f"   Expected: {rule['expected']}")
+        json_report.append({
+            "id": rule['id'],
+            "name": rule['name'],
+            "expected": rule['expected'],
+            "status": "PASS" if rule['check'] else "FAIL",
+            "passed": bool(rule['check'])
+        })
 
-    # 2. Strike Selection
-    check("Strike Selection", "CE >= Rs.100, PE <= 1.35*CE, 5+ OTM strikes, Net Delta shift", True)
+    compliance_pct = int((passed_count / total) * 100) if total > 0 else 0
+    text_report = f"Rule Compliance: {compliance_pct}% ({passed_count}/{total})\n" + "\n".join(lines)
 
-    # 3. Lot Size
-    check("Lot Size", "Manual (using saved value from dashboard)", config.MANUAL_TOTAL_LOTS > 0)
+    return text_report, json_report, compliance_pct
 
-    # 4. SL & Target
-    check("SL & Target", "150% SL, 70% Full Target", config.SL_PERCENT == 1.50 and config.EXIT_PROFIT_TARGET == 0.70)
-
-    # 5. Partial Profit
-    check("Partial Profit", "50% Size at 50% Profit", config.PARTIAL_PROFIT_TRIGGER == 0.50 and config.PARTIAL_PROFIT_SIZE == 0.50)
-
-    # 6. Trailing SL
-    check("Trailing SL", "Breakeven after 40% Profit", config.TRAILING_SL_TRIGGER == 0.40 and config.TRAILING_SL_LEVEL == 0.0)
-
-    # 7. Max Trades Limit
-    check("Max Trades Limit", "Max 1 trade per day, no re-entry/RECOST", True)
-
-    # 8. IV Filter
-    check("IV Filter", "Current IV > 0.35 AND Current IV < 0.92 × 5-day average (Relaxed - Trade almost every day)", True)
-
-    # 9. Hedging
-    check("Hedging", "Delta >0.20, Gamma >0.02", config.HEDGE_DELTA_THRESHOLD == 0.20 and config.HEDGE_GAMMA_THRESHOLD == 0.02)
-
-    # 10. Exit Time
-    check("Exit Time", "Starting 16:55 IST, EOD by 17:00 flat", config.EXIT_TIME_START == "17:00")
-
-    # 11. Daily Loss Limit
-    check("Daily Loss Limit", "Max 3% account equity loss / 2 SL hits", config.MAX_DAILY_LOSS_PCT == 0.03)
-
-    pct = int((passed_rules / total_rules) * 100)
-    
-    # Generate Text Report
-    report_lines = ["\n=== DAILY RULE VERIFICATION REPORT ==="]
-    for r in results:
-        icon = "✅" if r["passed"] else "❌"
-        report_lines.append(f"{icon} {r['name']}: {r['expected']}")
-    
-    report_lines.append(f"Overall Rule Compliance: {pct}%")
-    report_lines.append("======================================")
-    
-    text_report = "\n".join(report_lines)
-    
-    return text_report, results, pct

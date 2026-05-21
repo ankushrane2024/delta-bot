@@ -1,14 +1,15 @@
-from config import STARTING_CAPITAL, BOT_MODE
+import config
 from logger import app_logger
 
 class RiskManager:
     def __init__(self, api_client):
         self.api_client = api_client
-        self.current_equity = STARTING_CAPITAL
-
+        self.current_equity = config.STARTING_CAPITAL
+        self.sl_multiplier = config.SL_PERCENT  # Default 1.50 (150% of premium)
+        
     def update_equity(self):
         """Fetch current equity from exchange."""
-        if BOT_MODE == 'PAPER':
+        if config.BOT_MODE == 'PAPER':
             # Bypass API call in PAPER mode
             app_logger.info(f"Risk [PAPER]: Simulated equity is ${self.current_equity:.2f} (No live check)")
             return
@@ -24,20 +25,22 @@ class RiskManager:
         except Exception as e:
             app_logger.error(f"Risk: Failed to update equity. Using fallback ${self.current_equity:.2f}. {e}")
 
-    def calculate_lot_size(self):
-        """
-        Calculates exact lot size scaling based on user rules:
-        Rule: "equal lots so total target = 500 lots per leg when capital is ₹50k"
-        Scaling Formula: (Current Equity / 50000) * 500
-        """
-        # E.g., if equity is 50000, target is 500.
-        # If equity is 25000, target is 250.
-        total_lots_target = (self.current_equity / BASE_CAPITAL_FOR_SCALING) * BASE_LOTS_TARGET
-        
-        # We split the total lots across 3 entries (8:30, 9:00, 9:30)
-        lots_per_entry = int(total_lots_target / 3)
-        
-        return max(1, lots_per_entry)
+    def tighten_stop_loss(self, level):
+        """Tighten option SL during emergency hedging (e.g. 1.05 for 105%)."""
+        self.sl_multiplier = level
+        app_logger.warning(f"Risk: EMERGENCY SL tightened to {level*100:.1f}%")
+
+    def get_dynamic_sl(self):
+        """Returns the active SL multiplier."""
+        return self.sl_multiplier
+
+    def reset_sl_multiplier(self):
+        """Reset SL to default level."""
+        self.sl_multiplier = config.SL_PERCENT
+
+    def calculate_max_risk_per_trade(self):
+        """Returns the maximum absolute USDT risk allowed for a single trade based on 1.5% rule."""
+        return self.current_equity * config.MAX_RISK_PER_TRADE_PCT
 
     def check_sl_tp(self, total_entry_premium, current_total_premium, pnl_pct):
         """
@@ -46,19 +49,20 @@ class RiskManager:
         # Partial Profit: Close 50% at 50% profit
         # Trailing SL: After 40% profit, trail to breakeven (0%)
         # Exit: at 70% profit
-        # SL: Trigger when unrealized loss reaches 150% of collected premium (i.e., pnl_pct <= -1.50)
+        # SL: Trigger when unrealized loss reaches sl_multiplier of collected premium
         
         action = None
         
-        if pnl_pct >= 0.70:
+        if pnl_pct >= config.EXIT_PROFIT_TARGET:
             action = "TAKE_PROFIT_ALL"
-        elif pnl_pct >= 0.50:
+        elif pnl_pct >= config.PARTIAL_PROFIT_TRIGGER:
             action = "PARTIAL_PROFIT"
-        elif pnl_pct >= 0.40:
+        elif pnl_pct >= config.TRAILING_SL_TRIGGER:
             action = "TRAILING_SL_TRIGGERED"
             
-        # SL condition: Unrealized loss is >= 150% of premium collected
-        if pnl_pct <= -1.50:
+        # SL condition: Unrealized loss is >= sl_multiplier of premium collected (negative P&L)
+        if pnl_pct <= -self.sl_multiplier:
             action = "STOP_LOSS_ALL"
             
         return action
+

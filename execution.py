@@ -1,4 +1,4 @@
-from config import HEDGE_SYMBOL
+from config import HEDGE_SYMBOL, HEDGE_RETRY_COUNT, HEDGE_RETRY_DELAY, HEDGE_LIMIT_ORDER_SPREAD
 from logger import app_logger, trade_logger
 import math
 
@@ -8,6 +8,8 @@ class ExecutionHandler:
         self.mode = mode
         self.active_positions = {} # symbol -> data
         self.hedge_position = 0 # Net BTC futures size
+        self.hedge_size_btc = 0.0  # Actual BTC size of current hedge
+        self.hedge_order_id = None  # Last hedge order ID
 
     def execute_strangle(self, call_opt, put_opt, size):
         """Places the short strangle orders."""
@@ -85,8 +87,8 @@ class ExecutionHandler:
                 del self.active_positions[symbol]
         
         # Close Hedge
-        if self.hedge_position != 0:
-            self.hedge_with_futures(0, action="CLOSE_HEDGE")
+        if self.hedge_position != 0 or abs(self.hedge_size_btc) > 0.0001:
+            self.close_hedge()
 
     def partial_close(self, percentage=0.5):
         """Closes a portion of all active positions."""
@@ -146,3 +148,103 @@ class ExecutionHandler:
         else:
             app_logger.info(f"Execution [PAPER]: Simulating hedge {side} {size_to_execute} on {HEDGE_SYMBOL}")
             self.hedge_position = required_hedge_position
+
+    def place_hedge_order(self, size_btc, direction, use_limit=False):
+        """
+        Places a hedge order on BTCUSD perpetual with retry logic.
+        
+        Args:
+            size_btc: Size in BTC to hedge
+            direction: 'buy' or 'sell' 
+            use_limit: If True, use limit order within 0.1% of mark price
+            
+        Returns:
+            dict with 'success', 'order_id', 'fill_price' or None on failure
+        """
+        if size_btc <= 0:
+            return None
+            
+        contract_size = abs(int(size_btc * 1000))  # Convert BTC to contracts
+        if contract_size == 0:
+            contract_size = 1
+        
+        for attempt in range(1, HEDGE_RETRY_COUNT + 2):  # Initial + retries
+            try:
+                if self.mode == 'LIVE':
+                    # Resolve product ID
+                    res_ticker = self.api_client.get_tickers({'symbol': HEDGE_SYMBOL})
+                    if not (res_ticker.get('success') and res_ticker.get('result')):
+                        app_logger.error(f"Hedge: Could not find {HEDGE_SYMBOL} product ID (attempt {attempt})")
+                        if attempt <= HEDGE_RETRY_COUNT:
+                            import time
+                            time.sleep(HEDGE_RETRY_DELAY)
+                            continue
+                        return None
+                    
+                    prod_id = res_ticker['result'][0]['product_id']
+                    mark_price = float(res_ticker['result'][0].get('mark_price', 0))
+                    
+                    if use_limit and mark_price > 0:
+                        # Place limit order within 0.1% of mark price
+                        if direction == 'buy':
+                            limit_price = round(mark_price * (1 + HEDGE_LIMIT_ORDER_SPREAD), 2)
+                        else:
+                            limit_price = round(mark_price * (1 - HEDGE_LIMIT_ORDER_SPREAD), 2)
+                        
+                        res = self.api_client.place_order(
+                            prod_id, direction, contract_size, 
+                            order_type='limit_order', limit_price=limit_price
+                        )
+                    else:
+                        res = self.api_client.place_order(
+                            prod_id, direction, contract_size, 'market_order'
+                        )
+                    
+                    if res.get('success'):
+                        order_id = res.get('result', {}).get('id', 'N/A')
+                        fill_price = float(res.get('result', {}).get('average_fill_price', mark_price))
+                        self.hedge_size_btc += size_btc if direction == 'buy' else -size_btc
+                        self.hedge_order_id = order_id
+                        app_logger.info(f"Hedge: Order filled. ID: {order_id}, Size: {contract_size}, Price: {fill_price}")
+                        return {'success': True, 'order_id': order_id, 'fill_price': fill_price}
+                    else:
+                        app_logger.error(f"Hedge: Order failed (attempt {attempt}): {res}")
+                else:
+                    # PAPER mode simulation
+                    import random
+                    order_id = f"PAPER-HEDGE-{random.randint(10000, 99999)}"
+                    self.hedge_size_btc += size_btc if direction == 'buy' else -size_btc
+                    self.hedge_order_id = order_id
+                    self.hedge_position += size_btc if direction == 'buy' else -size_btc
+                    app_logger.info(f"Hedge [PAPER]: Simulated {direction} {contract_size} contracts. ID: {order_id}")
+                    return {'success': True, 'order_id': order_id, 'fill_price': 0}
+                    
+            except Exception as e:
+                app_logger.error(f"Hedge: Exception on attempt {attempt}: {e}")
+            
+            if attempt <= HEDGE_RETRY_COUNT:
+                import time
+                app_logger.info(f"Hedge: Retrying in {HEDGE_RETRY_DELAY}s... (attempt {attempt + 1})")
+                time.sleep(HEDGE_RETRY_DELAY)
+        
+        app_logger.error(f"Hedge: All {HEDGE_RETRY_COUNT + 1} attempts failed!")
+        return None
+
+    def close_hedge(self):
+        """Closes all active hedge positions."""
+        if abs(self.hedge_size_btc) < 0.0001 and self.hedge_position == 0:
+            return
+        
+        direction = 'sell' if self.hedge_size_btc > 0 or self.hedge_position > 0 else 'buy'
+        size = abs(self.hedge_size_btc) if abs(self.hedge_size_btc) > 0 else abs(self.hedge_position)
+        
+        app_logger.info(f"Hedge: Closing hedge position. Size: {size:.6f} BTC")
+        result = self.place_hedge_order(size, direction)
+        
+        if result and result['success']:
+            self.hedge_size_btc = 0.0
+            self.hedge_position = 0
+            self.hedge_order_id = None
+            app_logger.info("Hedge: All hedge positions closed")
+        else:
+            app_logger.error("Hedge: Failed to close hedge positions")

@@ -7,9 +7,19 @@ from utils import get_ist_now
 from logger import app_logger, error_logger
 
 class TradingFilters:
-    def __init__(self, api_client):
+    def __init__(self, api_client, dvol_provider=None):
         self.api_client = api_client
+        self.dvol_provider = dvol_provider
         self.iv_file = 'iv_history.json'
+        self.cached_news = []
+        self.last_news_fetch_time = 0.0
+
+    def check_dvol_percentile_filter(self):
+        """DVOL Percentile must be between 20% and 80% (Section 2)."""
+        if not self.dvol_provider:
+            return True, "DVOL provider not available, allowing trade"
+        can_trade, reason = self.dvol_provider.should_trade()
+        return can_trade, reason
 
     def check_day_filter(self):
         """Skip Friday, Saturday, and Sunday."""
@@ -91,35 +101,44 @@ class TradingFilters:
             app_logger.info(f"Filter: IV check failed. {reason}")
             return False
 
-    def check_news_filter(self):
-        """Skip major news days using live API."""
-        try:
-            # ForexFactory or similar open API for calendar
-            # Using a public free economic calendar endpoint if available, 
-            # otherwise fallback to checking a predefined critical list if API is unreachable.
+    def _update_news_cache(self):
+        """Helper to fetch and cache news calendar from ForexFactory every 6 hours."""
+        current_time = time.time()
+        # If cache is fresh (less than 6 hours old), do not fetch
+        if self.cached_news and (current_time - self.last_news_fetch_time < 21600):
+            return
             
-            # Since ForexFactory blocks automated simple requests often, we use an open aggregator
+        try:
             url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
             headers = {'User-Agent': 'Mozilla/5.0'}
             response = requests.get(url, headers=headers, timeout=10)
-            
             if response.status_code == 200:
-                events = response.json()
-                today_str = get_ist_now().strftime('%Y-%m-%d')
-                
-                for event in events:
-                    # Check if event is High impact, for USD (which drives BTC), and occurs today
-                    if event.get('impact') == 'High' and event.get('country') == 'USD':
-                        event_date = event.get('date', '')[:10]
-                        if event_date == today_str:
-                            app_logger.info(f"Filter: Skipping trade due to HIGH impact USD news today: {event.get('title')}")
-                            return False
-                
-                app_logger.info("Filter: News check passed. No High impact USD news today.")
+                self.cached_news = response.json()
+                self.last_news_fetch_time = current_time
+                app_logger.info("Filters: ForexFactory calendar cache updated.")
+        except Exception as e:
+            app_logger.warning(f"Filters: Failed to fetch ForexFactory calendar: {e}")
+
+    def check_news_filter(self):
+        """Skip major news days using cached calendar API."""
+        try:
+            self._update_news_cache()
+            events = self.cached_news
+            if not events:
+                app_logger.warning("Filter: News cache is empty. Proceeding with caution.")
                 return True
-            else:
-                app_logger.warning(f"Filter: News API returned {response.status_code}. Proceeding with caution.")
-                return True
+                
+            today_str = get_ist_now().strftime('%Y-%m-%d')
+            for event in events:
+                # Check if event is High impact, for USD (which drives BTC), and occurs today
+                if event.get('impact') == 'High' and event.get('country') == 'USD':
+                    event_date = event.get('date', '')[:10]
+                    if event_date == today_str:
+                        app_logger.info(f"Filter: Skipping trade due to HIGH impact USD news today: {event.get('title')}")
+                        return False
+            
+            app_logger.info("Filter: News check passed. No High impact USD news today.")
+            return True
         except Exception as e:
             app_logger.warning(f"Filter: News check error, proceeding anyway. {e}")
             return True
@@ -131,43 +150,29 @@ class TradingFilters:
             return False
             
         return (self.check_day_filter() and 
-                self.check_iv_filter() and 
+                self.check_dvol_percentile_filter()[0] and 
                 self.check_news_filter())
 
     def get_filter_status(self):
-        """Returns (passed: bool, reason: str) prioritized by Weekend > News > IV"""
+        """Returns (passed: bool, reason: str) prioritized by Weekend > News > DVOL Percentile"""
         if not self.check_day_filter():
             return False, "Weekend (Fri/Sat/Sun)"
         if not self.check_news_filter():
             return False, "High Impact USD News"
         
-        current_iv, avg_5d_iv = self._update_and_get_iv()
-        if current_iv == 0:
-            return False, "Could not determine IV"
-            
-        limit_iv = avg_5d_iv * 0.92
-        if current_iv <= 0.35:
-            return False, f"Low IV (Current IV = {current_iv:.4f} <= 0.35)"
-        if current_iv >= limit_iv:
-            return False, f"High/Normal IV (Current IV = {current_iv:.4f} >= 92% of 5d Avg: {limit_iv:.4f})"
+        dvol_ok, dvol_reason = self.check_dvol_percentile_filter()
+        if not dvol_ok:
+            return False, f"DVOL Percentile Filter: {dvol_reason}"
             
         return True, "All Filters Passed"
 
     def get_schedule(self, days=7):
-        """Calculates skip status for the next 'days' days."""
+        """Calculates skip status for the next 'days' days using cached news."""
         schedule = []
         today = get_ist_now().date()
         
-        # Pre-fetch news for the week
-        news_events = []
-        try:
-            url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                news_events = response.json()
-        except Exception:
-            pass
+        self._update_news_cache()
+        news_events = self.cached_news
 
         for i in range(days):
             target_date = today + datetime.timedelta(days=i)
@@ -185,7 +190,7 @@ class TradingFilters:
                 skip_type = 'severe'
             
             # 2. News Check
-            if not skip:
+            if not skip and news_events:
                 for event in news_events:
                     if event.get('impact') == 'High' and event.get('country') == 'USD':
                         event_date = event.get('date', '')[:10]

@@ -1,13 +1,29 @@
-from config import DELTA_TARGET, DELTA_TOLERANCE
+from config import DELTA_TARGET, DELTA_TOLERANCE, MIN_OTM_STRIKES, PUT_SKEW_CAP, NET_DELTA_ENTRY_LIMIT
 from logger import app_logger
 
 class ShortStrangleStrategy:
     def __init__(self, api_client):
         self.api_client = api_client
 
-    def find_strikes(self, target_delta=DELTA_TARGET, expiry_date=None, check_premium=True):
+    def find_strikes(self, target_delta=DELTA_TARGET, expiry_date=None, check_premium=True, dvol_provider=None):
         """
-        Finds the best Call and Put strikes based on the new strike selection rules.
+        Finds the best Call and Put strikes based on the advanced strike selection rules.
+        
+        Section 1 Rules Applied:
+        - Use Deribit DVOL for premium target range (if dvol_provider given)
+        - Minimum MIN_OTM_STRIKES (4) strikes OTM from ATM
+        - Put premium <= PUT_SKEW_CAP (1.35) × Call premium
+        - Net Delta at entry <= NET_DELTA_ENTRY_LIMIT (0.15)
+        - If |Net Delta| > 0.15 → Shift higher premium leg 1 strike further OTM (only once)
+        
+        Args:
+            target_delta: Target delta for delta-based fallback selection
+            expiry_date: Expiry date string to filter options (e.g., "210526")
+            check_premium: If True, apply premium-based pair selection
+            dvol_provider: DVOLProvider instance for IV-based premium ranges (optional)
+            
+        Returns:
+            (best_call, best_put) tuple or (None, None) if no valid strikes found
         """
         res = self.api_client.get_tickers({
             'contract_types': 'call_options,put_options',
@@ -80,7 +96,20 @@ class ShortStrangleStrategy:
         ATM = min(all_strikes, key=lambda s: abs(s - btc_price))
         atm_idx = all_strikes.index(ATM)
 
-        # Separate and filter options
+        # Determine premium range from DVOL provider (Section 1: IV-Based Premium Target)
+        if dvol_provider and check_premium:
+            premium_min, premium_max = dvol_provider.get_premium_range()
+            current_dvol = dvol_provider.get_current_dvol()
+            app_logger.info(
+                f"Strategy: Using DVOL-based premium range. DVOL: {current_dvol:.2f}%, "
+                f"Target: ${premium_min}–${premium_max}"
+            )
+        else:
+            premium_min, premium_max = 100, 250  # Legacy fallback
+            app_logger.info(f"Strategy: Using legacy premium range ${premium_min}–${premium_max}")
+
+        # Separate and filter options (Section 1: Minimum MIN_OTM_STRIKES OTM from ATM)
+        min_otm = MIN_OTM_STRIKES  # 4 strikes OTM minimum
         eligible_calls = []
         eligible_puts = []
         for t in expiry_tickers:
@@ -106,26 +135,26 @@ class ShortStrangleStrategy:
             }
             
             if 'call' in c_type:
-                if atm_idx + 5 < len(all_strikes) and strike >= all_strikes[atm_idx + 5]:
+                if atm_idx + min_otm < len(all_strikes) and strike >= all_strikes[atm_idx + min_otm]:
                     eligible_calls.append(item)
             elif 'put' in c_type:
-                if atm_idx - 5 >= 0 and strike <= all_strikes[atm_idx - 5]:
+                if atm_idx - min_otm >= 0 and strike <= all_strikes[atm_idx - min_otm]:
                     eligible_puts.append(item)
                 
         best_call = None
         best_put = None
         
-        # Filter calls and puts that meet premium boundaries
+        # Filter calls and puts that meet premium boundaries (Section 1: IV-Based Premium Target)
         valid_pairs = []
         if check_premium:
             for c in eligible_calls:
-                if not (100.0 <= c['premium_inr'] <= 250.0):
+                if not (premium_min <= c['premium_inr'] <= premium_max):
                     continue
                 for p in eligible_puts:
-                    if not (100.0 <= p['premium_inr'] <= 250.0):
+                    if not (premium_min <= p['premium_inr'] <= premium_max):
                         continue
-                    # Put premium must be <= 1.35 * Call premium
-                    if p['premium_inr'] > 1.35 * c['premium_inr']:
+                    # Put premium must be <= PUT_SKEW_CAP * Call premium (Section 1)
+                    if p['premium_inr'] > PUT_SKEW_CAP * c['premium_inr']:
                         continue
                     valid_pairs.append((c, p))
 
@@ -152,10 +181,10 @@ class ShortStrangleStrategy:
             app_logger.warning("Strategy: No Call or Put strikes could be resolved.")
             return None, None
 
-        # Net Delta Safety Check
+        # Net Delta Safety Check (Section 1: Net Delta at entry <= 0.15)
         net_delta = best_call['delta'] + best_put['delta']
-        if abs(net_delta) > 0.15:
-            app_logger.info(f"Strategy: Net Delta Safety Check triggered. Current Net Delta: {net_delta:.4f} (> 0.15)")
+        if abs(net_delta) > NET_DELTA_ENTRY_LIMIT:
+            app_logger.info(f"Strategy: Net Delta Safety Check triggered. Current Net Delta: {net_delta:.4f} (> {NET_DELTA_ENTRY_LIMIT})")
             if best_call['premium_inr'] >= best_put['premium_inr']:
                 # Call side has higher premium, shift Call 1 strike further OTM (higher strike)
                 curr_strike = best_call['strike']
@@ -218,5 +247,13 @@ class ShortStrangleStrategy:
                             app_logger.info(f"Strategy: Shifted Put OTM to strike {next_strike} (New Delta: {best_put['delta']:.4f})")
                 except ValueError:
                     pass
+
+        # Log final selection with net delta
+        final_net_delta = best_call['delta'] + best_put['delta']
+        app_logger.info(
+            f"Strategy: Final selection — Call: {best_call['symbol']} (Δ={best_call['delta']:.4f}, P=${best_call['premium_inr']:.2f}), "
+            f"Put: {best_put['symbol']} (Δ={best_put['delta']:.4f}, P=${best_put['premium_inr']:.2f}), "
+            f"Net Delta: {final_net_delta:.4f}"
+        )
 
         return best_call, best_put

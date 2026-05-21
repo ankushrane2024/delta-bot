@@ -114,6 +114,9 @@ def get_status():
     total_pnl_usd = round(sum(pos['leg_pnl_usd'] for pos in positions), 2) if positions else 0.0
     total_pnl_inr = round(total_pnl_usd * 84.0, 2)
     
+    dvol_status = bot_engine.dvol_provider.get_status() if getattr(bot_engine, 'dvol_provider', None) else {}
+    hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
+    
     return jsonify({
         'is_running': bot_engine.is_running,
         'mode': getattr(bot_engine.execution, 'mode', 'UNKNOWN'),
@@ -135,7 +138,14 @@ def get_status():
         'current_iv': getattr(bot_engine, 'current_iv', 0.0),
         'avg_7d_iv': getattr(bot_engine, 'avg_7d_iv', 0.0),
         'iv_status': getattr(bot_engine, 'iv_status', 'Normal'),
-        'today_skip_reason': getattr(bot_engine, 'today_skip_reason', None)
+        'today_skip_reason': getattr(bot_engine, 'today_skip_reason', None),
+        # New advanced metrics
+        'dvol_status': dvol_status,
+        'hedge_status': hedge_status,
+        'size_multiplier': round(getattr(bot_engine, 'size_multiplier', 1.0), 2),
+        'consecutive_loss_count': getattr(bot_engine, 'consecutive_loss_count', 0),
+        'next_day_paused': getattr(bot_engine, 'next_day_paused', False),
+        'reduced_size_trades_remaining': getattr(bot_engine, 'reduced_size_trades_remaining', 0)
     })
 
 @app.route('/api/start', methods=['POST'])
@@ -489,3 +499,44 @@ def trade_probability():
         'news_events':   news_events[:5],
         'calculated_at': now_ist.strftime('%H:%M IST')
     })
+
+@app.route('/api/backtest', methods=['POST'])
+def run_backtest():
+    """Runs the advanced strangle backtest and returns metrics and curve data."""
+    try:
+        from backtester import AdvancedBacktester
+        
+        data = request.get_json(force=True) or {}
+        starting_capital = float(data.get('starting_capital', 50000.0))
+        start_str = data.get('start_date')
+        end_str = data.get('end_date')
+        
+        days = 90
+        if start_str and end_str:
+            from datetime import date
+            try:
+                s_dt = date.fromisoformat(start_str)
+                e_dt = date.fromisoformat(end_str)
+                days = (e_dt - s_dt).days
+                if days <= 0:
+                    days = 90
+            except Exception:
+                pass
+                
+        app_logger.info(f"Web: Running backtest for {days} days, capital: ${starting_capital}...")
+        backtester = AdvancedBacktester(starting_capital=starting_capital)
+        results = backtester.run(days=days, start_date=start_str, end_date=end_str)
+        
+        return jsonify({
+            'success': True,
+            'metrics': results.get('metrics', {}),
+            'trades': results.get('trades', [])[:100],  # Limit trade logs to avoid overloading
+            'equity_curve': results.get('equity_curve', [])
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        app_logger.error(f"Web [backtest]: Backtester error: {e}\n{tb}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+

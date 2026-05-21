@@ -2,7 +2,14 @@ import time
 import schedule
 import threading
 import random
-from config import BOT_MODE, ENTRY_TIMES, EXIT_TIME_START, MAX_DAILY_LOSS_PCT, HEDGE_DELTA_THRESHOLD, HEDGE_GAMMA_THRESHOLD, STARTING_CAPITAL, MANUAL_TOTAL_LOTS
+from config import (
+    BOT_MODE, ENTRY_TIMES, EXIT_TIME_START, MAX_DAILY_LOSS_PCT,
+    HEDGE_DELTA_THRESHOLD, HEDGE_GAMMA_THRESHOLD, STARTING_CAPITAL, MANUAL_TOTAL_LOTS,
+    MAX_CONSECUTIVE_LOSSES_DAY, DAILY_LOSS_LIMIT_PCT, SL_PERCENT, HEDGE_RECHECK_INTERVAL,
+    DVOL_MID_SIZE_BOOST, CONSECUTIVE_LOSS_REDUCE_PCT, CONSECUTIVE_LOSS_THRESHOLD,
+    CONSECUTIVE_LOSS_COOLDOWN_TRADES, DAILY_LOSS_REDUCE_THRESHOLD, DAILY_LOSS_REDUCE_PCT,
+    MAX_RISK_PER_TRADE_PCT, DAILY_LOSS_PAUSE_THRESHOLD
+)
 from utils import get_ist_now, get_next_expiry_date, should_check_hedge
 from logger import app_logger, error_logger
 from notifier import notifier
@@ -13,14 +20,20 @@ from execution import ExecutionHandler
 from filters import TradingFilters
 from performance_tracker import PerformanceTracker
 from rule_verifier import verify_all_rules
+from dvol_provider import DVOLProvider
+from smart_hedging import SmartHedgingManager
+
 
 class DeltaTradingEngine:
     def __init__(self):
         self.api_client = DeltaIndiaClient()
+        self.dvol_provider = DVOLProvider()
+        self.dvol_provider.start()
         self.risk_manager = RiskManager(self.api_client)
         self.strategy = ShortStrangleStrategy(self.api_client)
         self.execution = ExecutionHandler(self.api_client, mode=BOT_MODE)
-        self.filters = TradingFilters(self.api_client)
+        self.filters = TradingFilters(self.api_client, dvol_provider=self.dvol_provider)
+        self.smart_hedging = SmartHedgingManager(self.execution, self.dvol_provider, self.risk_manager, self.api_client)
         self.performance_tracker = PerformanceTracker()
         self.current_trade_info = {"calls": [], "puts": []}
         
@@ -33,6 +46,14 @@ class DeltaTradingEngine:
         self.last_hedge_check_time = None
         self.daily_start_equity = 0
         self.latest_rule_report = None
+        
+        # New state variables for advanced position sizing & money management
+        self.consecutive_loss_count = 0
+        self.reduced_size_trades_remaining = 0
+        self.size_multiplier = 1.0
+        self.next_day_paused = False
+        self.daily_loss_pct = 0.0
+
         self.today_trade_status = "Pending"
         self.today_skip_reason = None
         
@@ -116,6 +137,21 @@ class DeltaTradingEngine:
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Maximum 1 trade per day limit met"
             return
+            
+        # Guard 3: Next day pause check (NEW — Section 5)
+        if self.next_day_paused:
+            app_logger.warning("Engine: Paused today due to yesterday's >2.5% loss pause trigger")
+            self.today_trade_status = "Trade Skipped"
+            self.today_skip_reason = "Next day pause active (yesterday loss > 2.5%)"
+            return
+            
+        # Guard 4: Daily consecutive loss stop (NEW — Section 5)
+        if self.daily_loss_hits >= MAX_CONSECUTIVE_LOSSES_DAY:
+            app_logger.warning("Engine: Max consecutive losses hit today. Skipping entry.")
+            self.today_trade_status = "Trade Skipped"
+            self.today_skip_reason = "Max daily consecutive losses reached"
+            return
+
         # Verify and Auto-Reconnect API in PAPER mode
         if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
             api_ok = self.verify_and_reconnect_api()
@@ -128,14 +164,10 @@ class DeltaTradingEngine:
                 return
         # 2. Daily Loss Limit Check
         self.risk_manager.update_equity()
-        if self.daily_loss_hits >= 2:
-            app_logger.warning("Engine: Max daily loss limit hit (2 SLs). Skipping entry.")
-            self.today_trade_status = "Trade Skipped"
-            self.today_skip_reason = "Daily Loss Limit Hit (2 SLs)"
-            return
         if self.daily_start_equity > 0:
             loss_pct = (self.daily_start_equity - self.risk_manager.current_equity) / self.daily_start_equity
-            if loss_pct >= MAX_DAILY_LOSS_PCT:
+            self.daily_loss_pct = max(0.0, loss_pct)
+            if loss_pct >= DAILY_LOSS_LIMIT_PCT:
                 app_logger.warning("Engine: Daily -3% account loss limit hit. Stopping trading for the day.")
                 self.today_trade_status = "Trade Skipped"
                 self.today_skip_reason = "Daily Loss Limit Hit (-3%)"
@@ -157,27 +189,28 @@ class DeltaTradingEngine:
                 self.today_trade_status = "Trade Skipped"
                 self.today_skip_reason = f"Market Trending (ADX {adx:.2f} > 25)"
                 return
-        # Find Strikes
+        # Find Strikes with DVOL Integration (MODIFIED)
         expiry = get_next_expiry_date()
-        call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry)
+        call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, dvol_provider=self.dvol_provider)
         if not call_opt or not put_opt:
             app_logger.error("Engine: Could not find suitable strikes.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "No suitable strikes found"
             return
-        # 4. Manual Lot Sizing (NEW) – read latest saved size
-        saved_total = self.get_saved_lot_size()
-        if saved_total > 0:
-            per_entry_size = int(saved_total / 2)
-            app_logger.info(f"Engine: Using saved manual lot size. Total lots: {saved_total} -> per leg: {per_entry_size}")
-        else:
-            per_entry_size = 100
-            app_logger.warning("Engine: Saved lot size invalid. Defaulting to 100 lots per leg.")
-        if per_entry_size < 1:
-            app_logger.warning("Engine: Safety check failed. Lot size per leg < 1. Skipping entry.")
+            
+        # 4. Dynamic Position Sizing (NEW — Section 4)
+        base_lots = self.get_saved_lot_size()
+        adjusted_lots = self._apply_dynamic_sizing(base_lots)
+        
+        # Max risk per trade check (NEW — Section 5)
+        if not self._check_max_risk(adjusted_lots, call_opt, put_opt):
+            app_logger.warning("Engine: Max risk check failed. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
-            self.today_skip_reason = "Manual Lot Size < 1"
+            self.today_skip_reason = "Max 1.5% risk per trade exceeded"
             return
+            
+        per_entry_size = max(1, int(adjusted_lots / 2))
+        
         # Execute
         self.execution.execute_strangle(call_opt, put_opt, per_entry_size)
         self.today_trade_status = "Trade Taken"
@@ -202,6 +235,11 @@ class DeltaTradingEngine:
         # Notify
         notifier.notify_entry(call_opt['symbol'], put_opt['symbol'], per_entry_size, total_premium_for_this_entry)
 
+        # Smart Hedging Pipeline — Step 1 (NEW)
+        threading.Thread(target=self.smart_hedging.run_post_entry_hedge, 
+                         args=(self.execution.active_positions,), daemon=True).start()
+
+
     def run_exit_cycle(self):
         app_logger.info("Engine: Exit cycle triggered (Fixed Time Square-off)")
         
@@ -219,6 +257,7 @@ class DeltaTradingEngine:
                 notifier.notify_full_exit("End of Day Square-off", profit)
                 
         self.execution.close_all(reason="End of Day Square-off")
+        self.smart_hedging.close_hedge()
         self.reset_daily_state()
 
     def run_test_order(self):
@@ -635,14 +674,15 @@ class DeltaTradingEngine:
                             self.trailing_sl_active = True
                             notifier.notify_trailing_sl()
  
-                    # Hedging Check (Time-based triggers)
-                    if should_check_hedge(self.last_hedge_check_time):
-                        self.last_hedge_check_time = get_ist_now()
-                        if abs(net_delta) > HEDGE_DELTA_THRESHOLD and abs(total_gamma) > HEDGE_GAMMA_THRESHOLD:
-                            app_logger.info(f"Engine: Hedge limits exceeded. Net Delta: {net_delta:.4f}, Gamma: {total_gamma:.4f}")
-                            self.execution.hedge_with_futures(net_delta)
-                            self.hedging_triggered_today = True
-                            notifier.notify_hedge(BOT_MODE, net_delta, total_gamma, "Rebalancing Futures")
+                    # Smart Hedge Management — Step 4 (NEW, every 30s)
+                    if not self.last_hedge_check_time or (time.time() - self.last_hedge_check_time >= HEDGE_RECHECK_INTERVAL):
+                        self.last_hedge_check_time = time.time()
+                        unrealized_loss_pct = -pnl_pct if ('pnl_pct' in locals() and pnl_pct is not None) else 0.0
+                        self.smart_hedging.manage_hedge(
+                            self.execution.active_positions, unrealized_loss_pct
+                        )
+                        self.hedging_triggered_today = self.smart_hedging.hedge_active
+
                 else:
                     time.sleep(1) # Sleep slightly longer if no positions
                     
@@ -701,6 +741,37 @@ class DeltaTradingEngine:
                         app_logger.warning(f"Engine [PAPER]: 3 consecutive losses! Pausing paper trading for the rest of the day. Lot Multiplier remains: {self.paper_lot_multiplier*100:.1f}%.")
                         notifier.notify_error("⚠️ PAPER TRADING PAUSED ⚠️\n3 consecutive losses reached in PAPER mode. Trading paused for today.")
 
+            # Advanced Money Management state updates
+            if profit <= 0:
+                self.consecutive_loss_count += 1
+                self.daily_loss_hits += 1
+                if self.consecutive_loss_count >= CONSECUTIVE_LOSS_THRESHOLD:
+                    self.reduced_size_trades_remaining = CONSECUTIVE_LOSS_COOLDOWN_TRADES
+                    app_logger.info(f"Engine: {self.consecutive_loss_count} consecutive losses. Cooldown of {self.reduced_size_trades_remaining} trades activated.")
+            else:
+                self.consecutive_loss_count = 0
+                
+            if self.reduced_size_trades_remaining > 0:
+                self.reduced_size_trades_remaining -= 1
+                app_logger.info(f"Engine: Decremented cooldown trades remaining to {self.reduced_size_trades_remaining}")
+
+            self.risk_manager.update_equity()
+            if self.daily_start_equity > 0:
+                loss_pct = (self.daily_start_equity - self.risk_manager.current_equity) / self.daily_start_equity
+                self.daily_loss_pct = max(0.0, loss_pct)
+                
+                if self.daily_loss_pct >= DAILY_LOSS_PAUSE_THRESHOLD:
+                    self.next_day_paused = True
+                    app_logger.warning(f"Engine: Daily loss {self.daily_loss_pct*100:.2f}% >= 2.5%. Next day trading paused.")
+                    notifier.notify_next_day_paused(self.daily_loss_pct * 100)
+                    
+                if self.daily_loss_pct >= DAILY_LOSS_LIMIT_PCT:
+                    app_logger.critical(f"Engine: Daily loss limit hit: {self.daily_loss_pct*100:.2f}%")
+                    notifier.notify_daily_loss_limit(self.daily_loss_pct * 100, self.risk_manager.current_equity)
+                    
+                if self.daily_loss_pct >= DAILY_LOSS_REDUCE_THRESHOLD:
+                    self.size_multiplier = min(1.0, self.size_multiplier)
+
             self.performance_tracker.log_trade(
                 entry_time=self.current_trade_info.get("entry_time", ""),
                 call_symbol=c_syms,
@@ -712,6 +783,79 @@ class DeltaTradingEngine:
                 regime_filter_enabled=self.market_regime_filter_enabled
             )
             self.current_trade_info = {"calls": [], "puts": []}
+
+    def _apply_dynamic_sizing(self, base_lots):
+        """Calculates the dynamic size multiplier based on DVOL and money management (Section 4)."""
+        multiplier = 1.0
+        reasons = []
+
+        # 1. DVOL-based size boost: +20% boost when DVOL is 40–55%
+        dvol = self.dvol_provider.get_current_dvol()
+        if 40.0 <= dvol <= 55.0:
+            # Never increase size after a big loss day
+            if self.daily_loss_pct < DAILY_LOSS_REDUCE_THRESHOLD:
+                multiplier += DVOL_MID_SIZE_BOOST
+                reasons.append(f"DVOL 40-55% boost (+{DVOL_MID_SIZE_BOOST*100:.0f}%)")
+
+        # 2. Consecutive losses reduction: -20% size reduction for next 3 trades after 2 consecutive losses
+        if self.reduced_size_trades_remaining > 0:
+            multiplier -= CONSECUTIVE_LOSS_REDUCE_PCT
+            reasons.append(f"Consecutive loss cooldown (-{CONSECUTIVE_LOSS_REDUCE_PCT*100:.0f}%)")
+
+        # 3. Daily loss check: -30% size reduction if daily loss > 2%
+        if self.daily_loss_pct >= DAILY_LOSS_REDUCE_THRESHOLD:
+            multiplier -= DAILY_LOSS_REDUCE_PCT
+            reasons.append(f"Daily loss >= 2% reduction (-{DAILY_LOSS_REDUCE_PCT*100:.0f}%)")
+
+        # Never increase size after a big loss day (cap at 1.0)
+        if self.daily_loss_pct >= DAILY_LOSS_REDUCE_THRESHOLD:
+            if multiplier > 1.0:
+                multiplier = 1.0
+                reasons.append("Capped at 1.0x due to big loss day")
+
+        # Apply PAPER lot multiplier if in PAPER mode
+        if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
+            multiplier *= self.paper_lot_multiplier
+            reasons.append(f"Paper multiplier ({self.paper_lot_multiplier:.2f}x)")
+
+        # Ensure multiplier is never negative or zero
+        multiplier = max(0.10, multiplier)
+        self.size_multiplier = multiplier
+
+        adjusted_lots = int(round(base_lots * multiplier))
+        # Ensure at least 1 lot per leg, meaning total_lots >= 2 (1 call + 1 put)
+        adjusted_lots = max(2, adjusted_lots)
+        
+        reason_str = ", ".join(reasons) if reasons else "Base Sizing"
+        app_logger.info(f"Engine: Dynamic sizing applied. Base: {base_lots} lots, Adjusted: {adjusted_lots} lots (Multiplier: {multiplier:.2f}x, Reasons: {reason_str})")
+        notifier.notify_size_adjusted(base_lots, adjusted_lots, multiplier, reason_str)
+        
+        return adjusted_lots
+
+    def _check_max_risk(self, lots, call_opt, put_opt):
+        """Dynamically check collected premium vs 1.5% max risk threshold (Section 5)."""
+        premium_sum = float(call_opt.get('mark_price', 0)) + float(put_opt.get('mark_price', 0))
+        scale_factor = 0.001 if premium_sum > 5.0 else 1.0
+        estimated_premium = premium_sum * lots * scale_factor
+        
+        # Stop loss triggers at 150% unrealized loss, so maximum risk is 1.50 * estimated_premium
+        estimated_risk = estimated_premium * SL_PERCENT
+        
+        self.risk_manager.update_equity()
+        max_allowed_risk = self.risk_manager.calculate_max_risk_per_trade()
+        
+        app_logger.info(
+            f"Engine: Risk Check — Lots: {lots}, Premium Sum: {premium_sum:.2f}, "
+            f"Scale: {scale_factor}, Est. Premium: ${estimated_premium:.2f}, "
+            f"Est. Risk: ${estimated_risk:.2f}, Max Allowed: ${max_allowed_risk:.2f}"
+        )
+        
+        if estimated_risk > max_allowed_risk:
+            app_logger.warning(f"Engine: Risk check failed! Estimated risk ${estimated_risk:.2f} > Max allowed risk ${max_allowed_risk:.2f} (1.5% of equity)")
+            return False
+            
+        app_logger.info("Engine: Risk check passed.")
+        return True
 
     def get_schedule_info(self):
         return {
