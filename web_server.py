@@ -405,7 +405,7 @@ def trade_probability():
     tomorrow_weekday = tomorrow_ist.weekday()   # 0=Mon … 6=Sun
     day_names        = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
     tomorrow_name    = day_names[tomorrow_weekday]
-    skip_days        = [4, 5, 6]   # Fri / Sat / Sun
+    skip_days        = []   # Fri / Sat / Sun - Disabled (Trade all 7 days)
 
     factors = []
     score   = 0

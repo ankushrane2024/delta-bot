@@ -22,12 +22,7 @@ class TradingFilters:
         return can_trade, reason
 
     def check_day_filter(self):
-        """Skip Friday, Saturday, and Sunday."""
-        now = get_ist_now()
-        day_name = now.strftime('%A')
-        if day_name in ['Friday', 'Saturday', 'Sunday']:
-            app_logger.info(f"Filter: Skipping trade as today is {day_name}")
-            return False
+        """Allow trading on all 7 days."""
         return True
 
     def _update_and_get_iv(self):
@@ -144,19 +139,12 @@ class TradingFilters:
             return True
 
     def all_passed(self):
-        today = get_ist_now()
-        if today.weekday() >= 4:  # Friday=4, Sat=5, Sun=6
-            app_logger.info("Filter: Skipping trade - Today is Friday/Weekend")
-            return False
-            
         return (self.check_day_filter() and 
                 self.check_dvol_percentile_filter()[0] and 
                 self.check_news_filter())
 
     def get_filter_status(self):
-        """Returns (passed: bool, reason: str) prioritized by Weekend > News > DVOL Percentile"""
-        if not self.check_day_filter():
-            return False, "Weekend (Fri/Sat/Sun)"
+        """Returns (passed: bool, reason: str) prioritized by News > DVOL Percentile"""
         if not self.check_news_filter():
             return False, "High Impact USD News"
         
@@ -183,11 +171,7 @@ class TradingFilters:
             reason = None
             skip_type = 'normal' # normal or severe (for styling)
             
-            # 1. Weekend Check
-            if day_name in ['Friday', 'Saturday', 'Sunday']:
-                skip = True
-                reason = f"Weekend ({day_name})"
-                skip_type = 'severe'
+            # 1. Weekend Check - Disabled (Trade 7 days a week)
             
             # 2. News Check
             if not skip and news_events:

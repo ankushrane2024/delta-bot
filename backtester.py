@@ -244,9 +244,8 @@ class AdvancedBacktester:
                 if e_dt and dt > e_dt:
                     continue
                     
-                # Existing schedule: Mon-Thu (weekday 0, 1, 2, 3)
-                if dt.weekday() < 4:
-                    filtered_records.append(r)
+                # Mon-Sun schedule (All 7 days)
+                filtered_records.append(r)
             except Exception:
                 continue
 
