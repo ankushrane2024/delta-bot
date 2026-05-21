@@ -544,16 +544,19 @@ class AdvancedBacktester:
             'losing_trades': len(losses),
             'win_rate': round(win_rate, 1),
             'total_pnl': round(total_pnl, 2),
+            'total_pnl_usd': round(total_pnl, 2),  # Frontend compatibility
             'avg_winner': round(avg_winner, 2),
             'avg_loser': round(avg_loser, 2),
             'best_trade': round(best_trade, 2),
             'worst_trade': round(worst_trade, 2),
             'profit_factor': round(profit_factor, 2) if profit_factor != float('inf') else 999.0,
             'max_drawdown_pct': round(max_dd * 100, 2),
+            'max_drawdown': round(max_dd * 100, 2),  # Frontend compatibility
             'sharpe_ratio': round(sharpe, 2),
             'final_equity': round(self.capital, 2),
             'total_return_pct': round((self.capital - self.starting_capital) / self.starting_capital * 100, 2),
             'hedge_triggered_count': hedge_count,
+            'hedge_trades': hedge_count,  # Frontend compatibility
             'monthly_returns': monthly_returns
         }
 
@@ -567,11 +570,11 @@ class AdvancedBacktester:
         """Returns empty metrics dict when no trades were executed."""
         return {
             'total_trades': 0, 'winning_trades': 0, 'losing_trades': 0,
-            'win_rate': 0, 'total_pnl': 0, 'avg_winner': 0, 'avg_loser': 0,
+            'win_rate': 0, 'total_pnl': 0, 'total_pnl_usd': 0.0, 'avg_winner': 0, 'avg_loser': 0,
             'best_trade': 0, 'worst_trade': 0, 'profit_factor': 0,
-            'max_drawdown_pct': 0, 'sharpe_ratio': 0,
+            'max_drawdown_pct': 0, 'max_drawdown': 0.0, 'sharpe_ratio': 0,
             'final_equity': self.starting_capital, 'total_return_pct': 0,
-            'hedge_triggered_count': 0, 'monthly_returns': {}
+            'hedge_triggered_count': 0, 'hedge_trades': 0, 'monthly_returns': {}
         }
 
 
