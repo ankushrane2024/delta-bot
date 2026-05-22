@@ -818,13 +818,13 @@ class DeltaTradingEngine:
             multiplier *= self.paper_lot_multiplier
             reasons.append(f"Paper multiplier ({self.paper_lot_multiplier:.2f}x)")
 
-        # 4. DVOL percentile paper trade reduction: if DVOL percentile is outside bounds and we are in PAPER mode, reduce lot size by 50%
-        import config
-        pct = self.dvol_provider.get_dvol_percentile()
-        if pct < config.DVOL_PERCENTILE_MIN or pct > config.DVOL_PERCENTILE_MAX:
-            if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
-                multiplier *= 0.50
-                reasons.append(f"DVOL Percentile {pct:.1f}% outside [{config.DVOL_PERCENTILE_MIN}-{config.DVOL_PERCENTILE_MAX}] paper reduction (-50%)")
+        # 4. DVOL percentile paper trade reduction: DISABLED (Completely bypassed as requested)
+        # import config
+        # pct = self.dvol_provider.get_dvol_percentile()
+        # if pct < config.DVOL_PERCENTILE_MIN or pct > config.DVOL_PERCENTILE_MAX:
+        #     if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
+        #         multiplier *= 0.50
+        #         reasons.append(f"DVOL Percentile {pct:.1f}% outside [{config.DVOL_PERCENTILE_MIN}-{config.DVOL_PERCENTILE_MAX}] paper reduction (-50%)")
 
         # Ensure multiplier is never negative or zero
         multiplier = max(0.10, multiplier)
