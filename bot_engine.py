@@ -404,11 +404,8 @@ class DeltaTradingEngine:
                     if a_iv > 0:
                         self.avg_7d_iv = round(a_iv * 100, 2)
                         
-                    limit_iv = self.avg_7d_iv * 0.92
-                    if self.current_iv > 35.0 and self.current_iv < limit_iv:
-                        self.iv_status = "Normal"
-                    else:
-                        self.iv_status = "Skipped"
+                    # Bypassed for testing as requested by user
+                    self.iv_status = "Bypassed"
                         
             except Exception as e:
                 error_logger.error(f"Engine [Option Chain Monitor]: Fetch error: {e}")

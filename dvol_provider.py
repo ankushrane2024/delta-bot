@@ -177,6 +177,7 @@ class DVOLProvider:
                 "current_dvol": round(self.current_dvol, 2),
                 "dvol_percentile": round(self.dvol_percentile, 1),
                 "eligible_to_trade": config.DVOL_PERCENTILE_MIN <= self.dvol_percentile <= config.DVOL_PERCENTILE_MAX,
+                "is_bypassed": True,  # Added to signal DVOL filter is completely disabled for testing
                 "premium_range": self.get_premium_range(),
                 "last_update": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_update_time))
             }

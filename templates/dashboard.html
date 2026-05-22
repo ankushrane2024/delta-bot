@@ -942,6 +942,11 @@
                         ivBadge.style.color = 'var(--success)';
                         ivBadge.style.background = 'rgba(16, 185, 129, 0.1)';
                         ivBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                    } else if (data.iv_status === 'Bypassed' || data.iv_status === 'Disabled') {
+                        ivBadge.textContent = '🟢 Bypassed (Testing)';
+                        ivBadge.style.color = 'var(--success)';
+                        ivBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+                        ivBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
                     } else {
                         ivBadge.textContent = '🔴 Low';
                         ivBadge.style.color = 'var(--danger)';
@@ -1000,7 +1005,12 @@
                     
                     const dvolBadge = document.getElementById('dvol-can-trade-badge');
                     if (dvolBadge) {
-                        if (data.dvol_status.eligible_to_trade) {
+                        if (data.dvol_status.is_bypassed) {
+                            dvolBadge.textContent = '🟢 Bypassed (Testing)';
+                            dvolBadge.style.color = 'var(--success)';
+                            dvolBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+                            dvolBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                        } else if (data.dvol_status.eligible_to_trade) {
                             dvolBadge.textContent = '🟢 Safe to Trade';
                             dvolBadge.style.color = 'var(--success)';
                             dvolBadge.style.background = 'rgba(16, 185, 129, 0.1)';
