@@ -235,9 +235,9 @@ def manual_order():
         # Temporarily bypass the "1 trade per day limit" just for manual force execution
         bot_engine.trades_taken_today = 0
         
-        # Trigger the entry cycle asynchronously in a background thread
+        # Trigger the entry cycle asynchronously in a background thread with force=True
         import threading
-        threading.Thread(target=bot_engine.run_entry_cycle, daemon=True).start()
+        threading.Thread(target=bot_engine.run_entry_cycle, kwargs={'force': True}, daemon=True).start()
         
         return jsonify({'status': 'success', 'message': 'Manual strangle entry cycle triggered successfully!'}), 200
 

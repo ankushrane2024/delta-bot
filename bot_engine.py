@@ -129,24 +129,24 @@ class DeltaTradingEngine:
             app_logger.error(f"Engine: Failed to read lot_size.json – {e}")
         return int(MANUAL_TOTAL_LOTS)
 
-    def run_entry_cycle(self):
-        app_logger.info("Engine: Entry cycle triggered")
+    def run_entry_cycle(self, force=False):
+        app_logger.info(f"Engine: Entry cycle triggered (force={force})")
         # 1. Maximum 1 trade per day safety check (no same-day re-entry or RECOST)
-        if self.trades_taken_today >= 1:
+        if not force and self.trades_taken_today >= 1:
             app_logger.warning("Engine: Maximum 1 trade per day rule met. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Maximum 1 trade per day limit met"
             return
             
         # Guard 3: Next day pause check (NEW — Section 5)
-        if self.next_day_paused:
+        if not force and self.next_day_paused:
             app_logger.warning("Engine: Paused today due to yesterday's >2.5% loss pause trigger")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Next day pause active (yesterday loss > 2.5%)"
             return
             
         # Guard 4: Daily consecutive loss stop (NEW — Section 5)
-        if self.daily_loss_hits >= MAX_CONSECUTIVE_LOSSES_DAY:
+        if not force and self.daily_loss_hits >= MAX_CONSECUTIVE_LOSSES_DAY:
             app_logger.warning("Engine: Max consecutive losses hit today. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Max daily consecutive losses reached"
@@ -164,7 +164,7 @@ class DeltaTradingEngine:
                 return
         # 2. Daily Loss Limit Check
         self.risk_manager.update_equity()
-        if self.daily_start_equity > 0:
+        if not force and self.daily_start_equity > 0:
             loss_pct = (self.daily_start_equity - self.risk_manager.current_equity) / self.daily_start_equity
             self.daily_loss_pct = max(0.0, loss_pct)
             if loss_pct >= DAILY_LOSS_LIMIT_PCT:
@@ -173,25 +173,35 @@ class DeltaTradingEngine:
                 self.today_skip_reason = "Daily Loss Limit Hit (-3%)"
                 return
         # 3. Filters
-        passed, reason = self.filters.get_filter_status()
-        if not passed:
-            app_logger.info(f"Engine: Filters not passed: {reason}. Skipping entry.")
-            self.today_trade_status = "Trade Skipped"
-            self.today_skip_reason = reason
-            return
-        # Market Regime Filter
-        regime, adx = self.filters.get_market_regime()
-        self.current_market_regime = regime
-        self.current_adx_value = adx
-        if self.market_regime_filter_enabled:
-            if regime == "Trending":
-                app_logger.info(f"Engine: Market Regime Filter active. Skipping trade due to Trending market (ADX: {adx:.2f}).")
+        if not force:
+            passed, reason = self.filters.get_filter_status()
+            if not passed:
+                app_logger.info(f"Engine: Filters not passed: {reason}. Skipping entry.")
                 self.today_trade_status = "Trade Skipped"
-                self.today_skip_reason = f"Market Trending (ADX {adx:.2f} > 25)"
+                self.today_skip_reason = reason
                 return
+            # Market Regime Filter
+            regime, adx = self.filters.get_market_regime()
+            self.current_market_regime = regime
+            self.current_adx_value = adx
+            if self.market_regime_filter_enabled:
+                if regime == "Trending":
+                    app_logger.info(f"Engine: Market Regime Filter active. Skipping trade due to Trending market (ADX: {adx:.2f}).")
+                    self.today_trade_status = "Trade Skipped"
+                    self.today_skip_reason = f"Market Trending (ADX {adx:.2f} > 25)"
+                    return
         # Find Strikes with DVOL Integration (MODIFIED)
         expiry = get_next_expiry_date()
         call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, dvol_provider=self.dvol_provider)
+        
+        # Robust multi-stage fallback search for strikes when forced
+        if force and (not call_opt or not put_opt):
+            app_logger.info("Engine [FORCE]: Retrying without premium filter...")
+            call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, dvol_provider=None, check_premium=False)
+        if force and (not call_opt or not put_opt):
+            app_logger.info("Engine [FORCE]: Retrying on any available expiry...")
+            call_opt, put_opt = self.strategy.find_strikes(expiry_date=None, dvol_provider=None, check_premium=False)
+
         if not call_opt or not put_opt:
             app_logger.error("Engine: Could not find suitable strikes.")
             self.today_trade_status = "Trade Skipped"
@@ -203,7 +213,7 @@ class DeltaTradingEngine:
         adjusted_lots = self._apply_dynamic_sizing(base_lots)
         
         # Max risk per trade check (NEW — Section 5)
-        if not self._check_max_risk(adjusted_lots, call_opt, put_opt):
+        if not force and not self._check_max_risk(adjusted_lots, call_opt, put_opt):
             app_logger.warning("Engine: Max risk check failed. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Max 1.5% risk per trade exceeded"
