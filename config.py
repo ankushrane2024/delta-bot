@@ -119,5 +119,5 @@ DAILY_LOSS_PAUSE_THRESHOLD = 0.025    # 2.5% loss → pause next trading day
 # Never increase position size after a big loss day (enforced in bot_engine.py)
 
 # --- DVOL Percentile Boundaries (Section 2) ---
-DVOL_PERCENTILE_MIN = 20              # Minimum DVOL percentile to trade
-DVOL_PERCENTILE_MAX = 80              # Maximum DVOL percentile to trade
+DVOL_PERCENTILE_MIN = 10              # Minimum DVOL percentile to trade
+DVOL_PERCENTILE_MAX = 90              # Maximum DVOL percentile to trade

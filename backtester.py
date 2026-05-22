@@ -296,8 +296,8 @@ class AdvancedBacktester:
                 self.equity_curve.append({'date': current_date, 'equity': round(self.capital, 2)})
                 continue
 
-            # DVOL Percentile filter (20-80%)
-            if percentile < 20.0 or percentile > 80.0:
+            # DVOL Percentile filter
+            if percentile < config.DVOL_PERCENTILE_MIN or percentile > config.DVOL_PERCENTILE_MAX:
                 self.equity_curve.append({'date': current_date, 'equity': round(self.capital, 2)})
                 continue
 

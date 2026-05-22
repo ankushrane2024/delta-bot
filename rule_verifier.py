@@ -42,8 +42,8 @@ def verify_all_rules():
         {
             "id": 7,
             "name": "DVOL Percentile Filter",
-            "expected": "Trade only if DVOL Percentile 20%-80%",
-            "check": config.DVOL_PERCENTILE_MIN == 20 and config.DVOL_PERCENTILE_MAX == 80
+            "expected": "Trade only if DVOL Percentile 10%-90%",
+            "check": config.DVOL_PERCENTILE_MIN == 10 and config.DVOL_PERCENTILE_MAX == 90
         },
         {
             "id": 8,

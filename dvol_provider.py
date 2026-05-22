@@ -4,6 +4,7 @@ import json
 import os
 import threading
 import logging
+import config
 from typing import List, Tuple, Dict, Any
 
 logger = logging.getLogger("trading_bot")
@@ -159,15 +160,15 @@ class DVOLProvider:
             return (110.0, 240.0)
 
     def should_trade(self) -> Tuple[bool, str]:
-        """Check if percentile is between 20% and 80% to trade."""
+        """Check if percentile is between config.DVOL_PERCENTILE_MIN and config.DVOL_PERCENTILE_MAX to trade."""
         pct = self.get_dvol_percentile()
         dvol = self.get_current_dvol()
         
         # Safe zone check
-        if 20.0 <= pct <= 80.0:
-            return True, f"DVOL Percentile {pct:.1f}% (DVOL {dvol:.2f}) is in the safe zone [20-80]."
+        if config.DVOL_PERCENTILE_MIN <= pct <= config.DVOL_PERCENTILE_MAX:
+            return True, f"DVOL Percentile {pct:.1f}% (DVOL {dvol:.2f}) is in the safe zone [{config.DVOL_PERCENTILE_MIN}-{config.DVOL_PERCENTILE_MAX}]."
         else:
-            return False, f"DVOL Percentile {pct:.1f}% (DVOL {dvol:.2f}) is outside the safe zone [20-80]. Skipping trade."
+            return False, f"DVOL Percentile {pct:.1f}% (DVOL {dvol:.2f}) is outside the safe zone [{config.DVOL_PERCENTILE_MIN}-{config.DVOL_PERCENTILE_MAX}]. Skipping trade."
 
     def get_status(self) -> Dict[str, Any]:
         """Get status dictionary for web server status endpoint."""
@@ -175,7 +176,7 @@ class DVOLProvider:
             return {
                 "current_dvol": round(self.current_dvol, 2),
                 "dvol_percentile": round(self.dvol_percentile, 1),
-                "eligible_to_trade": 20.0 <= self.dvol_percentile <= 80.0,
+                "eligible_to_trade": config.DVOL_PERCENTILE_MIN <= self.dvol_percentile <= config.DVOL_PERCENTILE_MAX,
                 "premium_range": self.get_premium_range(),
                 "last_update": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_update_time))
             }

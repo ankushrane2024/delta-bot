@@ -15,9 +15,22 @@ class TradingFilters:
         self.last_news_fetch_time = 0.0
 
     def check_dvol_percentile_filter(self):
-        """DVOL Percentile must be between 20% and 80% (Section 2)."""
-        # TEMPORARILY DISABLED FOR TESTING (as requested)
-        return True, "DVOL Percentile Filter (Temporarily Disabled for Testing)"
+        """DVOL Percentile must be between config.DVOL_PERCENTILE_MIN and config.DVOL_PERCENTILE_MAX (Section 2)."""
+        import config
+        if not self.dvol_provider:
+            return True, "DVOL Provider not initialized"
+            
+        pct = self.dvol_provider.get_dvol_percentile()
+        in_bounds = (config.DVOL_PERCENTILE_MIN <= pct <= config.DVOL_PERCENTILE_MAX)
+        
+        if in_bounds:
+            return True, f"DVOL Percentile {pct:.1f}% is in the safe zone [{config.DVOL_PERCENTILE_MIN}-{config.DVOL_PERCENTILE_MAX}]"
+        
+        # If outside boundaries
+        if config.BOT_MODE == "PAPER":
+            return True, f"Bypassed (Reduced Size): DVOL Percentile {pct:.1f}% is outside bounds [{config.DVOL_PERCENTILE_MIN}-{config.DVOL_PERCENTILE_MAX}] but bypassed in PAPER mode"
+        else:
+            return False, f"Blocked: DVOL Percentile {pct:.1f}% is outside bounds [{config.DVOL_PERCENTILE_MIN}-{config.DVOL_PERCENTILE_MAX}]"
 
     def check_day_filter(self):
         """Allow trading on all 7 days."""
