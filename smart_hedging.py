@@ -97,6 +97,10 @@ class SmartHedgingManager:
         abs_delta = abs(net_delta_btc)
         exposure_btc = self._get_options_exposure_btc(positions)
         
+        # Convert absolute net delta in BTC terms back to raw option contract delta terms for comparison
+        leg_size = list(positions.values())[0]['size'] if positions else 1
+        raw_net_delta = abs_delta / (leg_size * 0.001) if leg_size > 0 else 0.0
+        
         # Decide threshold and action based on DVOL
         if dvol < 45.0:
             trigger_level = HEDGE_IV_THRESHOLDS['low']['delta_trigger'] # 0.20
@@ -111,17 +115,17 @@ class SmartHedgingManager:
             action = HEDGE_IV_THRESHOLDS['high']['action'] # partial
             tier = "High (>55%)"
 
-        app_logger.info(f"Hedge: DVOL Regime: {tier} | Trigger Level: {trigger_level:.2f} | Action: {action}")
+        app_logger.info(f"Hedge: DVOL Regime: {tier} | Trigger Level: {trigger_level:.2f} | Action: {action} | Raw Net Delta: {raw_net_delta:.4f}")
 
-        if abs_delta > trigger_level:
+        if raw_net_delta > trigger_level:
             if action == 'full':
-                app_logger.info(f"Hedge: Triggering FULL hedge since net delta {abs_delta:.4f} > {trigger_level:.2f}")
+                app_logger.info(f"Hedge: Triggering FULL hedge since raw net delta {raw_net_delta:.4f} > {trigger_level:.2f}")
                 self._execute_full_hedge(net_delta_btc, exposure_btc)
             elif action == 'partial':
-                app_logger.info(f"Hedge: Triggering PARTIAL hedge since net delta {abs_delta:.4f} > {trigger_level:.2f}")
+                app_logger.info(f"Hedge: Triggering PARTIAL hedge since raw net delta {raw_net_delta:.4f} > {trigger_level:.2f}")
                 self._execute_partial_hedge_sequence(net_delta_btc, exposure_btc, positions)
         else:
-            app_logger.info(f"Hedge: No post-entry hedge needed. Delta {abs_delta:.4f} <= {trigger_level:.2f}")
+            app_logger.info(f"Hedge: No post-entry hedge needed. Raw Net Delta {raw_net_delta:.4f} <= {trigger_level:.2f}")
 
     def _execute_full_hedge(self, net_delta_btc, exposure_btc):
         """Executes a 100% hedge of option delta exposure."""
@@ -201,7 +205,10 @@ class SmartHedgingManager:
             new_delta, _ = self._fetch_net_delta_and_gamma(positions)
             app_logger.info(f"Hedge: Rechecking partial hedge after 10s. New Delta BTC: {new_delta:.4f}")
             
-            if abs(new_delta) > 0.10:
+            leg_size = list(positions.values())[0]['size'] if positions else 1
+            raw_new_delta = abs(new_delta) / (leg_size * 0.001) if leg_size > 0 else 0.0
+            
+            if raw_new_delta > 0.10:
                 # Escalate to 80% (Section 3.3)
                 escalation_hedge_btc = abs(new_delta) * HEDGE_PARTIAL_ESCALATE_PCT
                 esc_direction = 'sell' if new_delta > 0 else 'buy'
@@ -227,7 +234,7 @@ class SmartHedgingManager:
                     app_logger.error("Hedge: Escalation order failed!")
                     notifier.notify_hedge_failed()
             else:
-                app_logger.info(f"Hedge: No escalation needed. Delta {abs(new_delta):.4f} <= 0.10")
+                app_logger.info(f"Hedge: No escalation needed. Raw Delta {raw_new_delta:.4f} <= 0.10")
 
         threading.Thread(target=recheck_escalation, daemon=True).start()
 
@@ -284,9 +291,13 @@ class SmartHedgingManager:
         abs_delta = abs(net_delta_btc)
         current_dvol = self.dvol.get_current_dvol()
         
+        # Convert absolute net delta in BTC terms back to raw option contract delta terms for comparison
+        leg_size = list(positions.values())[0]['size'] if positions else 1
+        raw_net_delta = abs_delta / (leg_size * 0.001) if leg_size > 0 else 0.0
+        
         # Hysteresis check: If delta is neutral (< 0.05) and hedge is active, keep active hedge intact (no whipsawing)
-        if self.hedge_active and abs_delta < 0.05:
-            app_logger.info(f"Hedge: Option delta is neutral ({abs_delta:.4f} < 0.05). Keeping existing hedge intact to avoid whipsawing.")
+        if self.hedge_active and raw_net_delta < 0.05:
+            app_logger.info(f"Hedge: Option delta is neutral ({raw_net_delta:.4f} < 0.05). Keeping existing hedge intact to avoid whipsawing.")
             return
             
         # Re-balancing check: If delta exceeds 0.15 in opposite direction while hedge is active, adjust it.
@@ -298,8 +309,8 @@ class SmartHedgingManager:
             expected_hedge_sign = -1.0 if net_delta_btc > 0 else 1.0
             actual_hedge_sign = 1.0 if self.execution.hedge_size_btc > 0 else -1.0
             
-            if expected_hedge_sign != actual_hedge_sign and abs_delta > 0.15:
-                app_logger.info(f"Hedge: Delta reversed ({net_delta_btc:.4f}) while hedge active. Re-adjusting hedge position.")
+            if expected_hedge_sign != actual_hedge_sign and raw_net_delta > 0.15:
+                app_logger.info(f"Hedge: Delta reversed ({net_delta_btc:.4f}, raw: {raw_net_delta:.4f}) while hedge active. Re-adjusting hedge position.")
                 self.close_hedge()
                 self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
         else:
@@ -319,15 +330,4 @@ class SmartHedgingManager:
         self.hedge_order_id = "None"
         self.sl_tightened = False
         app_logger.info("Hedge: Smart hedge state reset successfully.")
-
-    def get_status(self):
-        """Returns the current hedging status dictionary for the web dashboard."""
-        return {
-            "hedge_active": self.hedge_active,
-            "hedge_type": self.hedge_type,
-            "hedge_percentage": round(self.hedge_percentage, 1),
-            "hedge_size_btc": round(self.hedge_size_btc, 6),
-            "hedge_order_id": self.hedge_order_id,
-            "sl_tightened": self.sl_tightened
-        }
 
