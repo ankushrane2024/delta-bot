@@ -779,6 +779,8 @@ class DeltaTradingEngine:
                 if self.daily_loss_pct >= DAILY_LOSS_REDUCE_THRESHOLD:
                     self.size_multiplier = min(1.0, self.size_multiplier)
 
+            dvol_status = self.dvol_provider.get_status() if getattr(self, 'dvol_provider', None) else {}
+            hedge_status = self.smart_hedging.get_status() if getattr(self, 'smart_hedging', None) else {}
             self.performance_tracker.log_trade(
                 entry_time=self.current_trade_info.get("entry_time", ""),
                 call_symbol=c_syms,
@@ -787,7 +789,12 @@ class DeltaTradingEngine:
                 pnl=profit,
                 exit_reason=reason,
                 current_equity=self.risk_manager.current_equity,
-                regime_filter_enabled=self.market_regime_filter_enabled
+                regime_filter_enabled=self.market_regime_filter_enabled,
+                current_iv=getattr(self, 'current_iv', 0.0),
+                dvol_status=dvol_status,
+                size_multiplier=getattr(self, 'size_multiplier', 1.0),
+                hedge_status=hedge_status,
+                adx=getattr(self, 'current_adx_value', 0.0)
             )
             self.current_trade_info = {"calls": [], "puts": []}
 
