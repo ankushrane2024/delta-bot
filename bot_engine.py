@@ -266,9 +266,19 @@ class DeltaTradingEngine:
         if self.execution.active_positions and self.total_entry_premium > 0:
             current_total_value = 0
             for sym, data in self.execution.active_positions.items():
+                price = None
                 ws_data = self.api_client.get_realtime_ticker(sym)
                 if ws_data and 'mark_price' in ws_data:
-                    current_total_value += float(ws_data['mark_price']) * data['size']
+                    price = float(ws_data['mark_price'])
+                else:
+                    res = self.api_client.get_tickers({'symbol': sym})
+                    if res and res.get('success') and res.get('result'):
+                        price = float(res['result'][0].get('mark_price', 0))
+                
+                if price is None or price <= 0:
+                    price = data.get('entry_price', 0)
+                    
+                current_total_value += price * data['size']
             
             if current_total_value > 0:
                 profit = self.total_entry_premium - current_total_value
@@ -798,6 +808,7 @@ class DeltaTradingEngine:
             hedge_status = self.smart_hedging.get_status() if getattr(self, 'smart_hedging', None) else {}
             self.performance_tracker.log_trade(
                 entry_time=self.current_trade_info.get("entry_time", ""),
+                exit_time=get_ist_now().strftime('%Y-%m-%dT%H:%M:%S'),
                 call_symbol=c_syms,
                 put_symbol=p_syms,
                 premium_collected=self.total_entry_premium,
