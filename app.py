@@ -19,7 +19,11 @@ def handle_exception(e):
 def keep_alive_pinger():
     time.sleep(60)
     import requests
-    url = os.environ.get('RENDER_EXTERNAL_URL', 'http://localhost:5000')
+    url = os.environ.get('RENDER_EXTERNAL_URL')
+    if (not url or url == 'http://localhost:5000') and os.environ.get('RENDER') == 'true':
+        url = 'https://delta-btc-options-bot.onrender.com'
+    if not url:
+        url = 'http://localhost:5000'
     while True:
         try:
             requests.get(f"{url}/health", timeout=15)

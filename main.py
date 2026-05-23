@@ -21,7 +21,11 @@ def keep_alive_pinger():
     endpoint every 4 minutes, the instance registers activity and stays awake 24/7.
     """
     time.sleep(60)
-    url = os.environ.get('RENDER_EXTERNAL_URL', 'http://localhost:5000')
+    url = os.environ.get('RENDER_EXTERNAL_URL')
+    if (not url or url == 'http://localhost:5000') and os.environ.get('RENDER') == 'true':
+        url = 'https://delta-btc-options-bot.onrender.com'
+    if not url:
+        url = 'http://localhost:5000'
     app_logger.info(f"Keep-alive pinger started. Target URL: {url}")
     while True:
         try:
