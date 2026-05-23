@@ -1,0 +1,71 @@
+{
+    "2026-05-19": {
+        "date": "2026-05-19",
+        "summary": {
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "net_pnl_usd": 0,
+            "net_pnl_inr": 0.0,
+            "max_drawdown": 0.0,
+            "market_regime": "Unknown",
+            "regime_filter_enabled": false
+        },
+        "trades": [],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 0,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 0.0,
+            "iv": 0,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-05-19.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-05-19.xlsx"
+    },
+    "2026-05-17": {
+        "date": "2026-05-17",
+        "summary": {
+            "total_trades": 2,
+            "win_rate": 50.0,
+            "net_pnl_usd": 10.5,
+            "net_pnl_inr": 871.5,
+            "max_drawdown": 1.2,
+            "market_regime": "Ranging",
+            "regime_filter_enabled": true
+        },
+        "trades": [
+            {
+                "entry_time": "2026-05-17T08:30:00",
+                "exit_time": "2026-05-17T11:15:00",
+                "call_strike": "BTC-18MAY26-68000-C",
+                "put_strike": "BTC-18MAY26-64000-P",
+                "entry_premium": 2.15,
+                "exit_reason": "Stop Loss Hit",
+                "pnl_usd": -5.2
+            },
+            {
+                "entry_time": "2026-05-17T14:30:00",
+                "exit_time": "2026-05-17T17:05:00",
+                "call_strike": "BTC-18MAY26-69000-C",
+                "put_strike": "BTC-18MAY26-63000-P",
+                "entry_premium": 1.85,
+                "exit_reason": "Profit Target Hit",
+                "pnl_usd": 15.7
+            }
+        ],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 1,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 18.5,
+            "iv": 0.452,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-05-17.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-05-17.xlsx"
+    }
+}

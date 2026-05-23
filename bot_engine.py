@@ -800,6 +800,13 @@ class DeltaTradingEngine:
                 adx=getattr(self, 'current_adx_value', 0.0)
             )
             self.current_trade_info = {"calls": [], "puts": []}
+            
+            # Automatically generate actual report for today immediately upon trade square-off/logging
+            try:
+                self.generate_actual_report()
+                app_logger.info("Engine: Successfully generated automatic daily report post-trade close.")
+            except Exception as rep_err:
+                app_logger.error(f"Engine: Automatic report post-close failed: {rep_err}")
 
     def _apply_dynamic_sizing(self, base_lots):
         """Calculates the dynamic size multiplier based on DVOL and money management (Section 4)."""
