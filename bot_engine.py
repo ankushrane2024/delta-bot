@@ -457,11 +457,15 @@ class DeltaTradingEngine:
         if date_str is None:
             date_str = get_ist_now().strftime('%Y-%m-%d')
             
-        app_logger.info(f"Engine: Generating Actual Report for {date_str}...")
+        current_mode = getattr(self.execution, 'mode', 'PAPER')
+        app_logger.info(f"Engine: Generating Actual Report for {date_str} (Mode: {current_mode})...")
         
         try:
-            # 1. Collect trades for the date
-            today_trades_raw = [t for t in self.performance_tracker.trades if t.get("date") == date_str]
+            # 1. Collect trades for the date, filtered by current execution mode
+            today_trades_raw = [
+                t for t in self.performance_tracker.trades 
+                if t.get("date") == date_str and t.get("mode", "PAPER") == current_mode
+            ]
             
             # Map to report generator format
             today_trades = []
@@ -473,7 +477,8 @@ class DeltaTradingEngine:
                     "put_strike": t.get("put_symbol", "N/A"),
                     "entry_premium": t.get("premium_collected", 0),
                     "exit_reason": t.get("exit_reason", ""),
-                    "pnl_usd": t.get("pnl", 0)
+                    "pnl_usd": t.get("pnl", 0),
+                    "mode": t.get("mode", "PAPER")
                 })
                 
             # 2. Calculate summary
@@ -496,6 +501,7 @@ class DeltaTradingEngine:
 
             data = {
                 "date": date_str,
+                "mode": current_mode,
                 "summary": {
                     "total_trades": total_trades,
                     "win_rate": win_rate,
@@ -803,7 +809,8 @@ class DeltaTradingEngine:
                 dvol_status=dvol_status,
                 size_multiplier=getattr(self, 'size_multiplier', 1.0),
                 hedge_status=hedge_status,
-                adx=getattr(self, 'current_adx_value', 0.0)
+                adx=getattr(self, 'current_adx_value', 0.0),
+                mode=getattr(self.execution, 'mode', 'PAPER')
             )
             self.current_trade_info = {"calls": [], "puts": []}
             

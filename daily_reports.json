@@ -2,43 +2,15 @@
     "2026-05-23": {
         "date": "2026-05-23",
         "summary": {
-            "total_trades": 3,
-            "win_rate": 100.0,
-            "net_pnl_usd": 28151.351024811018,
-            "net_pnl_inr": 2336562.1350593143,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "net_pnl_usd": 0.0,
+            "net_pnl_inr": 0.0,
             "max_drawdown": 0.0,
             "market_regime": "Unknown",
             "regime_filter_enabled": false
         },
-        "trades": [
-            {
-                "entry_time": "2026-05-23T12:27:37.371483+05:30",
-                "exit_time": "2026-05-23T12:27:53.158431+00:00",
-                "call_strike": "C-BTC-76200-240526",
-                "put_strike": "P-BTC-74600-240526",
-                "entry_premium": 13928.85199651422,
-                "exit_reason": "Emergency Manual Closed",
-                "pnl_usd": 145.97259351421962
-            },
-            {
-                "entry_time": "2026-05-23T12:29:11.958570+05:30",
-                "exit_time": "2026-05-23T12:29:13.711060+00:00",
-                "call_strike": "C-BTC-76200-240526",
-                "put_strike": "P-BTC-74600-240526",
-                "entry_premium": 14146.832176158643,
-                "exit_reason": "Profit Target Hit",
-                "pnl_usd": 13776.6285956712
-            },
-            {
-                "entry_time": "2026-05-23T12:38:16.820374+05:30",
-                "exit_time": "2026-05-23T12:38:19.722371+00:00",
-                "call_strike": "C-BTC-76200-240526",
-                "put_strike": "P-BTC-74600-240526",
-                "entry_premium": 14896.421207879273,
-                "exit_reason": "Profit Target Hit",
-                "pnl_usd": 14228.749835625598
-            }
-        ],
+        "trades": [],
         "risk": {
             "daily_loss_limit_hit": false,
             "sl_hits": 0,

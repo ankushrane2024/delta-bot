@@ -89,14 +89,15 @@ class PerformanceTracker:
             app_logger.error(f"Tracker: Failed to write to pro_trader_journal.md: {e}")
 
     def log_trade(self, entry_time, call_symbol, put_symbol, premium_collected, pnl, exit_reason, current_equity, 
-                  regime_filter_enabled=False, current_iv=0.0, dvol_status=None, size_multiplier=1.0, hedge_status=None, adx=0.0):
-        """Logs a completed trade with full details."""
+                  regime_filter_enabled=False, current_iv=0.0, dvol_status=None, size_multiplier=1.0, hedge_status=None, adx=0.0, mode='PAPER'):
+        """Logs a completed trade with full details including execution mode."""
         today = get_ist_date()
         dvol_status = dvol_status or {}
         hedge_status = hedge_status or {}
         
         trade_record = {
             "date": today,
+            "mode": mode,
             "entry_time": entry_time,
             "exit_time": (datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)).isoformat(),
             "call_symbol": call_symbol,
