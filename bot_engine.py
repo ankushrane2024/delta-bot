@@ -242,6 +242,9 @@ class DeltaTradingEngine:
         total_premium_for_this_entry = (call_entry + put_entry) * per_entry_size
         self.total_entry_premium += total_premium_for_this_entry
 
+        # Reset the watchdog timer on new trade entry so WebSocket has time to fetch the new symbols
+        self.api_client.last_price_update_time = time.time()
+
         # Notify
         notifier.notify_entry(call_opt['symbol'], put_opt['symbol'], per_entry_size, total_premium_for_this_entry)
 
@@ -568,8 +571,8 @@ class DeltaTradingEngine:
                     except Exception as time_err:
                         error_logger.error(f"Error checking time safeguard in monitor loop: {time_err}")
  
-                    # 30-Second Critical Data Failure Safeguard
-                    if time.time() - self.api_client.last_price_update_time > 30:
+                    # 30-Second Critical Data Failure Safeguard (Only in LIVE mode to prevent paper simulation skips)
+                    if self.execution.mode == 'LIVE' and time.time() - self.api_client.last_price_update_time > 30:
                         app_logger.critical("Engine: TOTAL DATA FAILURE > 30s. Triggering Emergency Auto Square-Off.")
                         notifier.notify_error("🚨 CRITICAL SAFEGUARD TRIGGERED 🚨\nTotal Data Failure (WS & HTTP) > 30s. Emergency Auto Square-Off executed to protect capital.")
                         self.execution.close_all(reason="Critical Data Failure (>30s)")

@@ -80,7 +80,7 @@ class PerformanceTracker:
         try:
             # Check if file exists, if not write header
             file_exists = os.path.exists(journal_file)
-            with open(journal_file, 'a') as f:
+            with open(journal_file, 'a', encoding='utf-8') as f:
                 if not file_exists:
                     f.write("# 📓 Pro Trader Research Journal & Diary\n")
                     f.write("This journal contains a deep-dive technical diary of every trade executed by the bot. It is automatically parsed by the AI quantitative advisor for strategy improvements and risk optimizations.\n\n---\n\n")

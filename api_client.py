@@ -193,6 +193,13 @@ class DeltaIndiaClient:
         if not symbol or not data:
             return
             
+        # Unpack list if returned from REST query
+        if isinstance(data, list):
+            if len(data) > 0:
+                data = data[0]
+            else:
+                return
+            
         # Parse Greeks if available from HTTP. Some endpoints nest it, some keep it flat.
         greeks = data.get('greeks', {})
         if not greeks and 'delta' in data:

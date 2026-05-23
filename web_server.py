@@ -171,12 +171,32 @@ def emergency_close():
     if not bot_engine:
         return jsonify({'error': 'Engine not initialized'}), 500
         
+    # Calculate closed P&L and log it to performance tracker and diary before wiping positions
+    if bot_engine.execution.active_positions and bot_engine.total_entry_premium > 0:
+        current_total_value = 0
+        for sym, data in bot_engine.execution.active_positions.items():
+            ws_data = bot_engine.api_client.get_realtime_ticker(sym)
+            if ws_data and 'mark_price' in ws_data:
+                current_total_value += float(ws_data['mark_price']) * data['size']
+        
+        # Fallback to entry prices if live ticker not received yet
+        if current_total_value == 0:
+            current_total_value = sum(data['entry_price'] * data['size'] for data in bot_engine.execution.active_positions.values())
+            
+        profit = bot_engine.total_entry_premium - current_total_value
+        bot_engine._log_and_reset_trade(profit, "Emergency Manual Closed")
+        from notifier import notifier
+        notifier.notify_full_exit("Emergency Manual Closed", profit)
+        
     bot_engine.execution.close_all(reason="Emergency Manual Square-Off")
+    bot_engine.smart_hedging.close_hedge()
+    bot_engine.reset_daily_state()
+    
     bot_engine.today_trade_status = "Emergency Manual Closed"
     bot_engine.today_skip_reason = "User Triggered Emergency"
     
-    from notifier import notify_error
-    notify_error("🚨 USER EMERGENCY 🚨\nAll positions squared off manually via Dashboard.")
+    from notifier import notifier
+    notifier.notify_error("🚨 USER EMERGENCY 🚨\nAll positions squared off manually via Dashboard.")
     
     return jsonify({'status': 'success'})
 
