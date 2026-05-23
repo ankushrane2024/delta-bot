@@ -551,8 +551,8 @@ class DeltaOptionsBot:
 
     # ── Loops ─────────────────────────────────────────────────────────────────
     def _scheduler_loop(self):
-        schedule.every().day.at(ENTRY_TIME_UTC).do(self.execute_strategy, mode='PAPER')
-        schedule.every().day.at(ENTRY_TIME_UTC).do(self.execute_strategy, mode='LIVE')
+        schedule.every().day.at("08:00", "Asia/Kolkata").do(self.execute_strategy, mode='PAPER')
+        schedule.every().day.at("08:00", "Asia/Kolkata").do(self.execute_strategy, mode='LIVE')
         while True:
             schedule.run_pending()
             time.sleep(1)

@@ -90,27 +90,21 @@ class DeltaTradingEngine:
         self.risk_manager.update_equity()
         self.daily_start_equity = self.risk_manager.current_equity
         
-        # Schedule entry/exit adjusted dynamically to the host system timezone (Section 5)
+        # Schedule entry/exit adjusted dynamically to the Asia/Kolkata timezone (Section 5)
         for t in ENTRY_TIMES:
-            adjusted_t = adjust_time_to_system_tz(t)
-            schedule.every().day.at(adjusted_t).do(self.run_entry_cycle)
-            app_logger.info(f"Engine: Scheduled daily morning entry {t} IST (system local: {adjusted_t})")
+            schedule.every().day.at(t, "Asia/Kolkata").do(self.run_entry_cycle)
+            app_logger.info(f"Engine: Scheduled daily morning entry {t} IST (Asia/Kolkata timezone)")
             
-        adjusted_exit = adjust_time_to_system_tz(EXIT_TIME_START)
-        schedule.every().day.at(adjusted_exit).do(self.run_exit_cycle)
-        app_logger.info(f"Engine: Scheduled daily EOD hard exit {EXIT_TIME_START} IST (system local: {adjusted_exit})")
+        schedule.every().day.at(EXIT_TIME_START, "Asia/Kolkata").do(self.run_exit_cycle)
+        app_logger.info(f"Engine: Scheduled daily EOD hard exit {EXIT_TIME_START} IST (Asia/Kolkata timezone)")
         
         # Schedule rule verification & reporting adjusted dynamically
-        adj_verify_morning = adjust_time_to_system_tz("09:30")
-        adj_verify_evening = adjust_time_to_system_tz("18:00")
-        adj_report = adjust_time_to_system_tz("17:30")
+        schedule.every().day.at("09:30", "Asia/Kolkata").do(self.run_rule_verification)
+        schedule.every().day.at("18:00", "Asia/Kolkata").do(self.run_rule_verification)
+        schedule.every().day.at("17:30", "Asia/Kolkata").do(self.send_daily_report)
         
-        schedule.every().day.at(adj_verify_morning).do(self.run_rule_verification)
-        schedule.every().day.at(adj_verify_evening).do(self.run_rule_verification)
-        schedule.every().day.at(adj_report).do(self.send_daily_report)
-        
-        app_logger.info(f"Engine: Scheduled verification at 09:30/18:00 IST (local: {adj_verify_morning}/{adj_verify_evening})")
-        app_logger.info(f"Engine: Scheduled daily report at 17:30 IST (local: {adj_report})")
+        app_logger.info("Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)")
+        app_logger.info("Engine: Scheduled daily report at 17:30 IST (Asia/Kolkata timezone)")
         
         # Run rule verification once on startup
         self.run_rule_verification()
