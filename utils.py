@@ -48,3 +48,28 @@ def should_check_hedge(last_hedge_check_time):
         return True
         
     return False
+
+def adjust_time_to_system_tz(time_str):
+    """
+    Converts an 'HH:MM' time string (assumed to be in IST timezone) 
+    to the system local time 'HH:MM' string for the scheduler.
+    """
+    import datetime
+    import pytz
+    
+    # 1. Parse HH:MM in IST today
+    ist_tz = pytz.timezone('Asia/Kolkata')
+    now_ist = datetime.datetime.now(ist_tz)
+    h, m = map(int, time_str.split(':'))
+    
+    # Construct datetime object in IST
+    ist_dt = now_ist.replace(hour=h, minute=m, second=0, microsecond=0)
+    
+    # 2. Convert to system local timezone
+    system_tz = datetime.datetime.now().astimezone().tzinfo
+    
+    # Convert IST time to system timezone
+    system_dt = ist_dt.astimezone(system_tz)
+    
+    return system_dt.strftime('%H:%M')
+

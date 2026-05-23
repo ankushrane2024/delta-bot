@@ -10,7 +10,7 @@ from config import (
     CONSECUTIVE_LOSS_COOLDOWN_TRADES, DAILY_LOSS_REDUCE_THRESHOLD, DAILY_LOSS_REDUCE_PCT,
     MAX_RISK_PER_TRADE_PCT, DAILY_LOSS_PAUSE_THRESHOLD
 )
-from utils import get_ist_now, get_next_expiry_date, should_check_hedge
+from utils import get_ist_now, get_next_expiry_date, should_check_hedge, adjust_time_to_system_tz
 from logger import app_logger, error_logger
 from notifier import notifier
 from api_client import DeltaIndiaClient
@@ -90,15 +90,27 @@ class DeltaTradingEngine:
         self.risk_manager.update_equity()
         self.daily_start_equity = self.risk_manager.current_equity
         
-        # Schedule entry/exit
+        # Schedule entry/exit adjusted dynamically to the host system timezone (Section 5)
         for t in ENTRY_TIMES:
-            schedule.every().day.at(t).do(self.run_entry_cycle)
-        schedule.every().day.at(EXIT_TIME_START).do(self.run_exit_cycle)
+            adjusted_t = adjust_time_to_system_tz(t)
+            schedule.every().day.at(adjusted_t).do(self.run_entry_cycle)
+            app_logger.info(f"Engine: Scheduled daily morning entry {t} IST (system local: {adjusted_t})")
+            
+        adjusted_exit = adjust_time_to_system_tz(EXIT_TIME_START)
+        schedule.every().day.at(adjusted_exit).do(self.run_exit_cycle)
+        app_logger.info(f"Engine: Scheduled daily EOD hard exit {EXIT_TIME_START} IST (system local: {adjusted_exit})")
         
-        # Schedule rule verification
-        schedule.every().day.at("09:30").do(self.run_rule_verification)
-        schedule.every().day.at("18:00").do(self.run_rule_verification)
-        schedule.every().day.at("17:30").do(self.send_daily_report)
+        # Schedule rule verification & reporting adjusted dynamically
+        adj_verify_morning = adjust_time_to_system_tz("09:30")
+        adj_verify_evening = adjust_time_to_system_tz("18:00")
+        adj_report = adjust_time_to_system_tz("17:30")
+        
+        schedule.every().day.at(adj_verify_morning).do(self.run_rule_verification)
+        schedule.every().day.at(adj_verify_evening).do(self.run_rule_verification)
+        schedule.every().day.at(adj_report).do(self.send_daily_report)
+        
+        app_logger.info(f"Engine: Scheduled verification at 09:30/18:00 IST (local: {adj_verify_morning}/{adj_verify_evening})")
+        app_logger.info(f"Engine: Scheduled daily report at 17:30 IST (local: {adj_report})")
         
         # Run rule verification once on startup
         self.run_rule_verification()
