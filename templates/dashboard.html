@@ -832,6 +832,14 @@
             </div>
         </div>
 
+        <!-- Pro-Trader Research Journal Panel -->
+        <div class="panel full-width">
+            <h2>📓 Pro-Trader Research Journal & Diary</h2>
+            <div class="log-terminal" id="journal-terminal" style="background: rgba(26, 26, 26, 0.45); max-height: 350px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.9rem; padding: 18px; border-radius: 8px; border: 1.5px solid rgba(255,255,255,0.06); color: #ececec; line-height: 1.5; font-weight: 500;">
+                Loading Pro-Trader Journal...
+            </div>
+        </div>
+
         <!-- Backtesting Dashboard Panel -->
         <div class="panel full-width">
             <h2>🧪 Advanced Backtesting Dashboard</h2>
@@ -1708,12 +1716,39 @@
             }
         }
 
+        async function updateJournal() {
+            try {
+                const response = await fetch('/api/journal');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        const journalTerm = document.getElementById('journal-terminal');
+                        // Simple helper to clean markdown symbols for a clean display
+                        let formattedContent = data.content;
+                        // Replace alerts markdown > [!NOTE] with clean visual icons
+                        formattedContent = formattedContent
+                            .replace(/> \[!NOTE\]\s*\n*>\s*\*\*Performance/g, '📓 [AI Quant Advisor Performance')
+                            .replace(/## (.*)/g, '■ $1')
+                            .replace(/### (.*)/g, '  • $1')
+                            .replace(/\*\*(.*?)\*\*/g, '$1')
+                            .replace(/`(.*?)`/g, '$1');
+                        
+                        journalTerm.textContent = formattedContent;
+                    }
+                }
+            } catch (err) {
+                console.error("Dashboard: Error fetching journal:", err);
+            }
+        }
+
         // Initialize
         fetchReports();
         fetchNews();
         setInterval(fetchNews, 6 * 60 * 60 * 1000);
         fetchTradeProbability();
         setInterval(fetchTradeProbability, 10 * 60 * 1000);
+        updateJournal();
+        setInterval(updateJournal, 20000);
 
         // ── Manual Lot Size Settings ───────────────────────────────────────────
         async function loadLotSize() {

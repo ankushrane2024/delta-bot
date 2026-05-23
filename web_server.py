@@ -500,6 +500,20 @@ def trade_probability():
         'calculated_at': now_ist.strftime('%H:%M IST')
     })
 
+@app.route('/api/journal')
+def get_journal():
+    import os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    journal_file = os.path.join(base_dir, "scratch", "pro_trader_journal.md")
+    if os.path.exists(journal_file):
+        try:
+            with open(journal_file, 'r') as f:
+                content = f.read()
+            return jsonify({'success': True, 'content': content})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+    return jsonify({'success': True, 'content': '📓 *No diary entries recorded yet. The first entry will appear automatically once a trade completes!*'})
+
 @app.route('/api/backtest', methods=['POST'])
 def run_backtest():
     """Runs the advanced strangle backtest and returns metrics and curve data."""
