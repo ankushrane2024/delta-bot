@@ -373,7 +373,8 @@ class DeltaTradingEngine:
             time.sleep(10)
 
             # ── Step 6: Simulated Exit with slippage ──
-            exit_slippage = self.calculate_paper_slippage(is_sl=False)
+            avg_exit = (call_entry + put_entry) / 2
+            exit_slippage = self.calculate_paper_slippage(is_sl=False, base_price=avg_exit)
             simulated_call_exit = call_entry + exit_slippage
             simulated_put_exit  = put_entry  + exit_slippage
             exit_premium_total  = (simulated_call_exit + simulated_put_exit) * lots
@@ -673,9 +674,10 @@ class DeltaTradingEngine:
                             # Apply slippage and execution delay in PAPER mode
                             if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
                                 is_sl = (action == "STOP_LOSS_ALL")
-                                slippage_per_lot = self.calculate_paper_slippage(is_sl)
                                 total_size = sum([d['size'] for d in self.execution.active_positions.values()])
                                 CONTRACT_VALUE = 0.001
+                                avg_price = current_option_value / (total_size * CONTRACT_VALUE) if total_size > 0 else None
+                                slippage_per_lot = self.calculate_paper_slippage(is_sl, base_price=avg_price)
                                 total_slippage = slippage_per_lot * total_size * CONTRACT_VALUE
                                 adjusted_profit = profit - total_slippage
                                 
@@ -1008,11 +1010,13 @@ class DeltaTradingEngine:
             
         return False
 
-    def calculate_paper_slippage(self, is_sl=False):
+    def calculate_paper_slippage(self, is_sl=False, base_price=None):
         """
         PAPER MODE ONLY: Calculates random slippage per lot based on volatility/regime/SL rules.
         """
         slippage = random.uniform(0.5, 2.5)
+        if base_price is not None and base_price > 0:
+            slippage = min(slippage, base_price * 0.05)
         
         iv = 0.0
         try:

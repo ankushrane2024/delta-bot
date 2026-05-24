@@ -29,9 +29,9 @@ class ExecutionHandler:
             entry_time_str = get_ist_now().isoformat()
             results = []
             for opt in [call_opt, put_opt]:
-                # Apply small entry slippage (0.3 to 1.2 points)
-                entry_slippage = random.uniform(0.3, 1.2)
+                # Apply small entry slippage (0.3 to 1.2 points), capped at 5% of premium
                 raw_mark = float(opt.get('mark_price', 0))
+                entry_slippage = min(random.uniform(0.3, 1.2), raw_mark * 0.05) if raw_mark > 0 else random.uniform(0.3, 1.2)
                 simulated_entry_price = raw_mark + entry_slippage
                 leg_type = 'call' if 'call' in opt.get('contract_type', '').lower() or 'C' in opt.get('symbol', '')[-3:] else 'put'
                 
