@@ -251,8 +251,8 @@ class ShortStrangleStrategy:
         # Log final selection with net delta
         final_net_delta = best_call['delta'] + best_put['delta']
         app_logger.info(
-            f"Strategy: Final selection — Call: {best_call['symbol']} (Δ={best_call['delta']:.4f}, P=${best_call['premium_inr']:.2f}), "
-            f"Put: {best_put['symbol']} (Δ={best_put['delta']:.4f}, P=${best_put['premium_inr']:.2f}), "
+            f"Strategy: Final selection — Call: {best_call['symbol']} (Delta={best_call['delta']:.4f}, P=${best_call['premium_inr']:.2f}), "
+            f"Put: {best_put['symbol']} (Delta={best_put['delta']:.4f}, P=${best_put['premium_inr']:.2f}), "
             f"Net Delta: {final_net_delta:.4f}"
         )
 

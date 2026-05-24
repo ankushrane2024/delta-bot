@@ -137,6 +137,11 @@ class DeltaTradingEngine:
 
     def run_entry_cycle(self, force=False):
         app_logger.info(f"Engine: Entry cycle triggered (force={force})")
+        
+        if self.execution.active_positions:
+            app_logger.warning("Engine: Trade already active. Cannot start a new entry cycle.")
+            return
+
         # 1. Maximum 1 trade per day safety check (no same-day re-entry or RECOST)
         if not force and self.trades_taken_today >= 1:
             app_logger.warning("Engine: Maximum 1 trade per day rule met. Skipping entry.")
@@ -247,7 +252,7 @@ class DeltaTradingEngine:
         # Delta Exchange BTC Options contract size is 0.001 BTC
         CONTRACT_VALUE = 0.001
         total_premium_for_this_entry = (call_entry + put_entry) * per_entry_size * CONTRACT_VALUE
-        self.total_entry_premium += total_premium_for_this_entry
+        self.total_entry_premium = total_premium_for_this_entry
 
         # Reset the watchdog timer on new trade entry so WebSocket has time to fetch the new symbols
         self.api_client.last_price_update_time = time.time()
@@ -859,6 +864,11 @@ class DeltaTradingEngine:
                 put_exit_price=put_exit_price
             )
             self.current_trade_info = {"calls": [], "puts": []}
+            self.total_entry_premium = 0
+            self.partial_profit_hit = False
+            self.trailing_sl_active = False
+            self.last_hedge_check_time = None
+            self.hedging_triggered_today = False
             
             # Automatically generate actual report for today immediately upon trade square-off/logging
             try:

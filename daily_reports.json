@@ -3,11 +3,11 @@
         "date": "2026-05-24",
         "mode": "PAPER",
         "summary": {
-            "total_trades": 3,
+            "total_trades": 4,
             "win_rate": 100.0,
-            "net_pnl_usd": 184.9133274463874,
-            "net_pnl_inr": 15347.806178050154,
-            "max_drawdown": 58.73,
+            "net_pnl_usd": 303.4301022337173,
+            "net_pnl_inr": 25184.698485398538,
+            "max_drawdown": 58.24,
             "market_regime": "Unknown",
             "regime_filter_enabled": false
         },
@@ -53,6 +53,20 @@
                 "exit_reason": "EOD Square-off",
                 "pnl_usd": 0.15853253509855136,
                 "mode": "PAPER"
+            },
+            {
+                "entry_time": "2026-05-24T14:03:28.523679+05:30",
+                "exit_time": "2026-05-24T14:03:32.948985+05:30",
+                "call_strike": "C-BTC-84000-260626",
+                "put_strike": "P-BTC-76000-290526",
+                "call_entry_price": 888.8215265768865,
+                "put_entry_price": 299.062693556413,
+                "call_exit_price": 888.8215265768865,
+                "put_exit_price": 299.062693556413,
+                "entry_premium": 118.78842201332995,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 118.51677478732995,
+                "mode": "PAPER"
             }
         ],
         "risk": {
@@ -62,7 +76,7 @@
         },
         "market": {
             "adx": 0.0,
-            "iv": 0.43131454308168315,
+            "iv": 0.4112325079030144,
             "news": "None"
         },
         "pdf_path": "/reports/Daily_Report_2026-05-24.pdf",
