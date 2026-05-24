@@ -7,7 +7,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -43,7 +42,7 @@
             display: grid;
             grid-template-columns: 1.05fr 1fr;
             gap: 24px;
-            align-items: stretch;
+            align-items: start;
         }
 
         header {
@@ -276,10 +275,6 @@
             0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
             50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.15); }
         }
-        @keyframes pulse-green {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
-            50% { box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.3); }
-        }
     </style>
 </head>
 <body>
@@ -299,7 +294,7 @@
 
     <div class="container">
         <!-- Left Column (Stacked) -->
-        <div style="display: flex; flex-direction: column; gap: 24px; height: 100%;">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
             <!-- Equity & Mode Panel -->
             <div class="panel">
                 <h2>Account Overview</h2>
@@ -322,22 +317,6 @@
                     <div>
                         <div class="stat-label">API Status</div>
                         <div id="api-status-badge" style="font-weight: 600; font-size: 1.1rem;">Unknown</div>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 20px; margin-top: 15px; flex-wrap: wrap; border-top: 1px solid var(--border-color); padding-top: 15px; align-items: center;">
-                    <div>
-                        <div class="stat-label">Consecutive Losses</div>
-                        <div id="consecutive-losses-val" style="font-weight: 600; color: var(--danger); font-size: 1.1rem;">0</div>
-                    </div>
-                    <div>
-                        <div class="stat-label">Sizing Cooldown</div>
-                        <div id="sizing-cooldown-val" style="font-weight: 600; color: var(--text-secondary); font-size: 1.1rem;">No Cooldown</div>
-                    </div>
-                    <div id="next-day-paused-container" style="display: none; margin-left: auto;">
-                        <span style="font-size: 0.85rem; padding: 6px 12px; border-radius: 12px; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); font-weight: 700; animation: pulse-red 2.5s infinite;">
-                            ⏸️ Tomorrow Paused
-                        </span>
                     </div>
                 </div>
                 
@@ -367,7 +346,7 @@
             </div>
 
             <!-- Manual Lot Size Settings Panel -->
-            <div class="panel" id="lot-size-panel" style="flex: 1; display: flex; flex-direction: column;">
+            <div class="panel" id="lot-size-panel">
                 <h2>⚙️ Manual Lot Size Settings</h2>
                 <div style="display:flex; flex-direction:column; gap:14px; margin-top:12px;">
 
@@ -438,7 +417,7 @@
         </div>
 
         <!-- Right Column (Stacked) -->
-        <div style="display: flex; flex-direction: column; gap: 24px; height: 100%;">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
             <!-- Risk Management & Settings Panel -->
             <div class="panel">
                 <h2>Risk Management</h2>
@@ -456,9 +435,9 @@
                 </div>
             </div>
 
-            <!-- IV & DVOL Status Panel -->
+            <!-- IV Status Panel -->
             <div class="panel" id="iv-panel">
-                <h2>📈 IV & DVOL Status</h2>
+                <h2>📈 IV Status</h2>
                 <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
                         <span class="stat-label">Current IV</span>
@@ -469,82 +448,17 @@
                         <span id="avg-iv-val" style="font-weight: 600; font-size: 1.0rem; color: var(--text-secondary);">0.00%</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span class="stat-label">IV Status</span>
+                        <span class="stat-label">Status</span>
                         <span id="iv-status-badge" style="font-weight: 700; font-size: 0.9rem; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-secondary);">Evaluating...</span>
-                    </div>
-
-                    <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 10px; display: flex; flex-direction: column; gap: 10px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="stat-label">BTC 30-Day DVOL</span>
-                            <span id="dvol-val" style="font-weight: 800; font-size: 1.1rem; color: #fff;">0.00%</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="stat-label">DVOL Percentile</span>
-                            <span id="dvol-percentile-val" style="font-weight: 800; font-size: 1.0rem; color: #38bdf8;">0.0%</span>
-                        </div>
-                        
-                        <div style="position: relative; height: 16px; background: rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; margin-top: 4px;">
-                            <!-- Safe Zone highlights (20% - 80%) -->
-                            <div style="position: absolute; left: 20%; width: 60%; height: 100%; background: rgba(16, 185, 129, 0.15); border-left: 1.5px dashed rgba(16, 185, 129, 0.4); border-right: 1.5px dashed rgba(16, 185, 129, 0.4);"></div>
-                            <div id="dvol-percentile-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); transition: width 0.5s ease-in-out;"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-secondary);">
-                            <span>0% (Low)</span>
-                            <span style="color: var(--success); font-weight: 600;">20% - 80% Safe Zone</span>
-                            <span>100% (High)</span>
-                        </div>
-
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); margin-top: 4px;">
-                            <span class="stat-label">Premium Range</span>
-                            <span id="premium-range-val" style="font-weight: bold; color: #a78bfa; font-size: 0.95rem;">-</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
-                            <span class="stat-label">Can Trade</span>
-                            <span id="dvol-can-trade-badge" style="font-weight: 700; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">Evaluating...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Smart Hedging Status Panel -->
-            <div class="panel" id="hedge-panel">
-                <h2>🛡️ Smart Hedging Status</h2>
-                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span class="stat-label">Hedge Status</span>
-                        <span id="hedge-active-badge" style="font-weight: 700; font-size: 0.9rem; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-secondary);">Evaluating...</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span class="stat-label">Hedge Type</span>
-                        <span id="hedge-type-val" style="font-weight: 600; font-size: 1.0rem; color: #fff;">-</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span class="stat-label">Hedge Size</span>
-                        <span id="hedge-size-val" style="font-weight: 800; font-size: 1.1rem; color: #38bdf8;">0.000000 BTC</span>
-                    </div>
-                    
-                    <div style="padding: 12px; background: rgba(255,255,255,0.02); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px;">
-                            <span>Hedge Percentage</span>
-                            <span id="hedge-percentage-val" style="font-weight: bold; color: #fff;">0%</span>
-                        </div>
-                        <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
-                            <div id="hedge-percentage-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); transition: width 0.5s ease-in-out;"></div>
-                        </div>
-                    </div>
-
-                    <div id="sl-tightened-badge" style="display: none; padding: 10px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; font-size: 0.85rem; color: var(--danger); text-align: center; font-weight: 700; animation: pulse-red 2s infinite;">
-                        ⚠️ Options SL Tightened to 105%
                     </div>
                 </div>
             </div>
 
             <!-- News & Events / Volatility Alerts Panel -->
-            <div class="panel" id="news-panel" style="flex: 1; display: flex; flex-direction: column;">
+            <div class="panel" id="news-panel" style="flex: 1;">
                 <style>
                     #news-panel .table-container {
-                        max-height: none;
-                        min-height: 450px;
+                        max-height: 320px;
                         overflow-y: auto;
                         flex: 1;
                     }
@@ -583,52 +497,6 @@
             </div>
         </div>
     </div>
-
-        <!-- Tomorrow's Trade Probability Panel -->
-        <div class="panel full-width">
-            <h2 style="margin: 0 0 20px 0;">🔮 Tomorrow's Trade Chance</h2>
-            <div style="display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
-                
-                <!-- Circular Gauge -->
-                <div style="position: relative; width: 120px; height: 120px;">
-                    <svg viewBox="0 0 36 36" style="width:100%; height:100%; transform: rotate(-90deg);">
-                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" />
-                        <path id="prob-gauge-path" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--success)" stroke-width="3" stroke-dasharray="0, 100" />
-                    </svg>
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-                        <div id="prob-percent" style="font-size: 1.8rem; font-weight: 800; color: #fff;">--%</div>
-                    </div>
-                </div>
-
-                <!-- Details & Factors -->
-                <div style="flex: 1; min-width: 250px;">
-                    <h3 id="prob-title" style="margin: 0 0 12px 0; color: var(--success); font-size: 1.2rem;">Calculating...</h3>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-                        <div class="prob-factor">
-                            <div class="prob-label">Schedule & News</div>
-                            <div id="prob-schedule" class="prob-value">--</div>
-                        </div>
-                        <div class="prob-factor">
-                            <div class="prob-label">IV Environment</div>
-                            <div id="prob-iv" class="prob-value">--</div>
-                        </div>
-                        <div class="prob-factor">
-                            <div class="prob-label">Market Regime (ADX)</div>
-                            <div id="prob-adx" class="prob-value">--</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <style>
-                .prob-factor { background: rgba(255,255,255,0.03); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
-                .prob-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-                .prob-value { font-size: 0.95rem; font-weight: 600; color: #fff; }
-                .prob-positive { color: #34d399; }
-                .prob-negative { color: #f87171; }
-                .prob-neutral { color: #fbbf24; }
-            </style>
-        </div>
 
         <!-- Performance Summary Panel -->
         <div class="panel full-width">
@@ -694,61 +562,22 @@
         </div>
 
         <!-- Active Positions Panel -->
-        <div class="panel full-width" id="positions-panel">
-            <style>
-                .pos-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-                .pos-summary-bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-                .pos-summary-chip { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 14px; font-size: 0.82rem; }
-                .pos-summary-chip span { font-weight: 800; font-size: 0.95rem; }
-                .pos-cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 16px; }
-                .pos-card { background: rgba(255,255,255,0.035); border: 1.5px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 18px 20px; transition: border-color 0.3s; }
-                .pos-card:hover { border-color: rgba(99,102,241,0.4); }
-                .pos-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
-                .pos-symbol { font-size: 0.85rem; font-weight: 700; color: #e2e8f0; letter-spacing: 0.3px; }
-                .pos-strike-label { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
-                .pos-status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.4px; white-space: nowrap; }
-                .status-running   { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
-                .status-partial   { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
-                .status-trailing  { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
-                .pos-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-                .pos-metric { background: rgba(255,255,255,0.025); border-radius: 8px; padding: 8px 10px; }
-                .pos-metric-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 3px; }
-                .pos-metric-value { font-size: 0.92rem; font-weight: 700; color: #e2e8f0; }
-                .pos-metric-sub   { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; }
-                .pos-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 14px 0; }
-                .pos-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.75rem; color: var(--text-secondary); }
-                .pos-footer-chip { display: flex; align-items: center; gap: 5px; }
-                .pos-call-label { color: #34d399; font-weight: 700; }
-                .pos-put-label  { color: #f87171; font-weight: 700; }
-                .pos-empty { text-align: center; padding: 40px 0; color: var(--text-secondary); }
-                .pos-empty-icon { font-size: 2.5rem; margin-bottom: 10px; opacity: 0.4; }
-                .pos-total-bar { display: flex; gap: 20px; flex-wrap: wrap; padding: 12px 16px; background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15); border-radius: 10px; margin-bottom: 18px; align-items: center; }
-                .pnl-pos { color: #34d399; }
-                .pnl-neg { color: #f87171; }
-            </style>
-
-            <div class="pos-header-row">
-                <h2 style="margin:0;">📊 Active Positions</h2>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <div id="pos-live-dot" style="width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399;animation:pulse-green 2s infinite;"></div>
-                    <span style="font-size:0.8rem;color:var(--text-secondary);">Live · updates every 4s</span>
-                </div>
-            </div>
-
-            <!-- Total P&L Summary Bar (hidden when no positions) -->
-            <div id="pos-total-bar" class="pos-total-bar" style="display:none;">
-                <div class="pos-summary-chip">Total Entry Premium <span id="pos-total-entry">—</span> USDT</div>
-                <div class="pos-summary-chip">Total P&L <span id="pos-total-pnl-usd">—</span> USDT &nbsp;|&nbsp; <span id="pos-total-pnl-inr">—</span> INR</div>
-                <div class="pos-summary-chip">⏱ Time to Square-off <span id="pos-time-remaining">—</span></div>
-            </div>
-
-            <!-- Cards container -->
-            <div id="positions-cards" class="pos-cards-grid">
-                <div class="pos-empty">
-                    <div class="pos-empty-icon">📭</div>
-                    <div style="font-weight:600;color:var(--text-secondary);">No Active Positions</div>
-                    <div style="font-size:0.8rem;margin-top:6px;opacity:0.6;">The bot has no open trades right now.</div>
-                </div>
+        <div class="panel full-width">
+            <h2>Active Positions</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Size</th>
+                            <th>Entry</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positions-body">
+                        <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No active positions</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -773,7 +602,6 @@
             </div>
         </div>
 
-        
         <!-- Skip & Schedule Info Panel -->
         <div class="panel full-width">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -830,71 +658,6 @@
                         <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Loading reports...</td></tr>
                     </tbody>
                 </table>
-            </div>
-        </div>
-
-        <!-- Backtesting Dashboard Panel -->
-        <div class="panel full-width">
-            <h2>🧪 Advanced Backtesting Dashboard</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; align-items: flex-end;">
-                <div>
-                    <label style="font-size: 0.82rem; color: var(--text-secondary); display: block; margin-bottom: 5px;">Starting Capital ($)</label>
-                    <input id="backtest-capital" type="number" value="50000" style="width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-weight: bold; outline: none; box-sizing: border-box;" />
-                </div>
-                <div>
-                    <label style="font-size: 0.82rem; color: var(--text-secondary); display: block; margin-bottom: 5px;">Start Date</label>
-                    <input id="backtest-start-date" type="date" style="width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-weight: bold; outline: none; box-sizing: border-box;" />
-                </div>
-                <div>
-                    <label style="font-size: 0.82rem; color: var(--text-secondary); display: block; margin-bottom: 5px;">End Date</label>
-                    <input id="backtest-end-date" type="date" style="width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-weight: bold; outline: none; box-sizing: border-box;" />
-                </div>
-                <div>
-                    <button id="btn-run-backtest" onclick="runBacktest()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #38bdf8, #818cf8); color: white; font-weight: 800; font-size: 0.95rem; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.25); text-shadow: 0 1px 2px rgba(0,0,0,0.3); transition: all 0.2s;">
-                        🏃 Run Backtest
-                    </button>
-                </div>
-            </div>
-
-            <!-- Loading overlay or spinner -->
-            <div id="backtest-loading" style="display: none; text-align: center; padding: 30px; font-weight: 600; color: #38bdf8;">
-                <div style="display: inline-block; width: 24px; height: 24px; border: 3px solid rgba(56, 189, 248, 0.3); border-radius: 50%; border-top-color: #38bdf8; animation: spin 1s ease-in-out infinite; margin-right: 10px; vertical-align: middle;"></div>
-                Running simulation and computing analytics...
-            </div>
-
-            <div id="backtest-results-container" style="display: none; flex-direction: column; gap: 20px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 20px;">
-                <!-- Summary Metrics Cards -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
-                    <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px 14px;">
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Win Rate</div>
-                        <div id="bt-winrate" style="font-size: 1.3rem; font-weight: 800; color: var(--success); margin-top: 4px;">--%</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px 14px;">
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Total Return</div>
-                        <div id="bt-return" style="font-size: 1.3rem; font-weight: 800; color: #fff; margin-top: 4px;">--</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px 14px;">
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Max Drawdown</div>
-                        <div id="bt-drawdown" style="font-size: 1.3rem; font-weight: 800; color: var(--danger); margin-top: 4px;">--%</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px 14px;">
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Profit Factor</div>
-                        <div id="bt-pf" style="font-size: 1.3rem; font-weight: 800; color: #fff; margin-top: 4px;">--</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px 14px;">
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Sharpe Ratio</div>
-                        <div id="bt-sharpe" style="font-size: 1.3rem; font-weight: 800; color: #fff; margin-top: 4px;">--</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px 14px;">
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Hedge Count</div>
-                        <div id="bt-hedges" style="font-size: 1.3rem; font-weight: 800; color: #a78bfa; margin-top: 4px;">--</div>
-                    </div>
-                </div>
-
-                <!-- Equity Curve Chart -->
-                <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; position: relative; height: 350px;">
-                    <canvas id="backtest-chart" style="width: 100%; height: 100%;"></canvas>
-                </div>
             </div>
         </div>
 
@@ -958,7 +721,7 @@
                 }
                 const lotMultVal = document.getElementById('lot-multiplier-val');
                 if (lotMultVal) {
-                    lotMultVal.textContent = `${(data.size_multiplier * 100).toFixed(0)}% of base (${data.size_multiplier.toFixed(2)}x)`;
+                    lotMultVal.textContent = `${(data.paper_lot_multiplier * 100).toFixed(0)}% of base`;
                 }
                 const apiStatusBadge = document.getElementById('api-status-badge');
                 if (apiStatusBadge) {
@@ -968,78 +731,6 @@
                     } else {
                         apiStatusBadge.textContent = '🔴 Disconnected';
                         apiStatusBadge.style.color = 'var(--danger)';
-                    }
-                }
-
-                // Update Advanced Rules and Dynamic Sizing stats
-                document.getElementById('consecutive-losses-val').textContent = data.consecutive_loss_count || 0;
-                const cooldownEl = document.getElementById('sizing-cooldown-val');
-                if (data.reduced_size_trades_remaining > 0) {
-                    cooldownEl.textContent = `${data.reduced_size_trades_remaining} trades remaining (-20%)`;
-                    cooldownEl.style.color = 'var(--warning)';
-                } else if (data.size_multiplier < 0.99 && data.size_multiplier > 0.69) {
-                    cooldownEl.textContent = 'Daily Loss Cooldown (-30%)';
-                    cooldownEl.style.color = 'var(--warning)';
-                } else {
-                    cooldownEl.textContent = 'No Cooldown';
-                    cooldownEl.style.color = 'var(--text-secondary)';
-                }
-                const pauseContainer = document.getElementById('next-day-paused-container');
-                if (pauseContainer) {
-                    pauseContainer.style.display = data.next_day_paused ? 'block' : 'none';
-                }
-
-                // Update IV & DVOL Panel
-                if (data.dvol_status) {
-                    document.getElementById('dvol-val').textContent = `${data.dvol_status.current_dvol.toFixed(2)}%`;
-                    document.getElementById('dvol-percentile-val').textContent = `${data.dvol_status.dvol_percentile.toFixed(1)}%`;
-                    document.getElementById('dvol-percentile-bar').style.width = `${data.dvol_status.dvol_percentile}%`;
-                    
-                    if (data.dvol_status.premium_range) {
-                        document.getElementById('premium-range-val').textContent = `$${data.dvol_status.premium_range[0]} - $${data.dvol_status.premium_range[1]}`;
-                    }
-                    
-                    const dvolBadge = document.getElementById('dvol-can-trade-badge');
-                    if (dvolBadge) {
-                        if (data.dvol_status.eligible_to_trade) {
-                            dvolBadge.textContent = '🟢 Safe to Trade';
-                            dvolBadge.style.color = 'var(--success)';
-                            dvolBadge.style.background = 'rgba(16, 185, 129, 0.1)';
-                            dvolBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
-                        } else {
-                            dvolBadge.textContent = '🔴 Skip (DVOL Extreme)';
-                            dvolBadge.style.color = 'var(--danger)';
-                            dvolBadge.style.background = 'rgba(239, 68, 68, 0.1)';
-                            dvolBadge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
-                        }
-                    }
-                }
-
-                // Update Smart Hedging Panel
-                if (data.hedge_status) {
-                    const hBadge = document.getElementById('hedge-active-badge');
-                    if (hBadge) {
-                        if (data.hedge_status.hedge_active) {
-                            hBadge.textContent = '🛡️ ACTIVE';
-                            hBadge.style.color = 'var(--success)';
-                            hBadge.style.background = 'rgba(16, 185, 129, 0.1)';
-                            hBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
-                        } else {
-                            hBadge.textContent = '⚪ INACTIVE';
-                            hBadge.style.color = 'var(--text-secondary)';
-                            hBadge.style.background = 'rgba(255, 255, 255, 0.05)';
-                            hBadge.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                        }
-                    }
-                    
-                    document.getElementById('hedge-type-val').textContent = (data.hedge_status.hedge_type || 'none').toUpperCase();
-                    document.getElementById('hedge-size-val').textContent = `${(data.hedge_status.hedge_size_btc || 0).toFixed(6)} BTC`;
-                    document.getElementById('hedge-percentage-val').textContent = `${(data.hedge_status.hedge_percentage || 0).toFixed(0)}%`;
-                    document.getElementById('hedge-percentage-bar').style.width = `${data.hedge_status.hedge_percentage || 0}%`;
-                    
-                    const slTight = document.getElementById('sl-tightened-badge');
-                    if (slTight) {
-                        slTight.style.display = data.hedge_status.sl_tightened ? 'block' : 'none';
                     }
                 }
 
@@ -1121,129 +812,22 @@
                     }
                 }
 
-                // ── Update Active Positions ──────────────────────────────────────────
-                const posCards  = document.getElementById('positions-cards');
-                const totalBar  = document.getElementById('pos-total-bar');
-                
-                if (data.positions && data.positions.length > 0) {
-                    totalBar.style.display = 'flex';
-                    
-                    // Update summary bar
-                    const totalPnlUsd = data.total_pnl_usd || 0;
-                    const totalPnlInr = data.total_pnl_inr || 0;
-                    document.getElementById('pos-total-entry').textContent = (data.total_entry_premium || 0).toFixed(2);
-                    
-                    const pnlUsdEl = document.getElementById('pos-total-pnl-usd');
-                    pnlUsdEl.textContent = (totalPnlUsd >= 0 ? '+' : '') + totalPnlUsd.toFixed(2);
-                    pnlUsdEl.className = totalPnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg';
-                    
-                    const pnlInrEl = document.getElementById('pos-total-pnl-inr');
-                    pnlInrEl.textContent = (totalPnlInr >= 0 ? '+' : '') + totalPnlInr.toFixed(0);
-                    pnlInrEl.className = totalPnlInr >= 0 ? 'pnl-pos' : 'pnl-neg';
-                    
-                    const mins = data.positions[0]?.mins_to_squareoff ?? 0;
-                    const hh = Math.floor(mins / 60);
-                    const mm = mins % 60;
-                    document.getElementById('pos-time-remaining').textContent = mins > 0 ? `${hh}h ${mm}m` : 'Market Closed';
-
-                    // Build one card per leg
-                    posCards.innerHTML = data.positions.map(pos => {
-                        const isCall = pos.leg_type === 'call';
-                        const legLabel = isCall
-                            ? '<span class="pos-call-label">📈 CALL</span>'
-                            : '<span class="pos-put-label">📉 PUT</span>';
-                        
-                        const pnlClass  = pos.leg_pnl_usd >= 0 ? 'pnl-pos' : 'pnl-neg';
-                        const pnlSign   = pos.leg_pnl_usd >= 0 ? '+' : '';
-                        const pnlInrSign = pos.leg_pnl_inr >= 0 ? '+' : '';
-
-                        let statusClass = 'status-running';
-                        let statusIcon  = '🟢 Running';
-                        if (pos.trade_status === 'Trailing SL Active') { statusClass = 'status-trailing'; statusIcon = '🔴 Trailing SL'; }
-                        else if (pos.trade_status === 'Partial Profit Booked') { statusClass = 'status-partial'; statusIcon = '🟡 Partial Profit'; }
-
-                        // Entry time formatting
-                        let entryTimeDisplay = '—';
-                        if (pos.entry_time) {
-                            try {
-                                const d = new Date(pos.entry_time);
-                                entryTimeDisplay = d.toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true});
-                            } catch(e) { entryTimeDisplay = pos.entry_time.slice(11, 16); }
-                        }
-
-                        const minsLeft = pos.mins_to_squareoff || 0;
-                        const hh2 = Math.floor(minsLeft / 60), mm2 = minsLeft % 60;
-                        const timeLeft = minsLeft > 0 ? `${hh2}h ${mm2}m` : '—';
-
-                        // Premium change %
-                        const premChangePct = pos.entry_price > 0
-                            ? (((pos.current_price - pos.entry_price) / pos.entry_price) * 100).toFixed(1)
-                            : '0.0';
-                        const premChangeSign = parseFloat(premChangePct) >= 0 ? '+' : '';
-
-                        return `
-                        <div class="pos-card">
-                            <div class="pos-card-header">
-                                <div>
-                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                                        ${legLabel}
-                                        <span style="font-size:0.7rem;color:var(--text-secondary);background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:4px;">${pos.side}</span>
-                                    </div>
-                                    <div class="pos-symbol">${pos.symbol}</div>
-                                    ${pos.strike ? `<div class="pos-strike-label">Strike: $${parseFloat(pos.strike).toLocaleString()}</div>` : ''}
-                                </div>
-                                <div class="pos-status-badge ${statusClass}">${statusIcon}</div>
-                            </div>
-
-                            <div class="pos-metrics">
-                                <div class="pos-metric">
-                                    <div class="pos-metric-label">Entry Premium</div>
-                                    <div class="pos-metric-value">${pos.entry_price.toFixed(2)}</div>
-                                    <div class="pos-metric-sub">USDT / lot</div>
-                                </div>
-                                <div class="pos-metric">
-                                    <div class="pos-metric-label">Current Premium</div>
-                                    <div class="pos-metric-value" style="color:${parseFloat(premChangePct)<0?'#34d399':'#f87171'}">${pos.current_price.toFixed(2)}</div>
-                                    <div class="pos-metric-sub">${premChangeSign}${premChangePct}% from entry</div>
-                                </div>
-                                <div class="pos-metric">
-                                    <div class="pos-metric-label">Leg P&amp;L</div>
-                                    <div class="pos-metric-value ${pnlClass}">${pnlSign}${pos.leg_pnl_usd.toFixed(2)} $</div>
-                                    <div class="pos-metric-sub">${pnlInrSign}₹${pos.leg_pnl_inr.toFixed(0)}</div>
-                                </div>
-                                <div class="pos-metric">
-                                    <div class="pos-metric-label">Lot Size</div>
-                                    <div class="pos-metric-value">${pos.size}</div>
-                                    <div class="pos-metric-sub">contracts</div>
-                                </div>
-                                <div class="pos-metric">
-                                    <div class="pos-metric-label">Delta / Gamma</div>
-                                    <div class="pos-metric-value">${pos.delta.toFixed(3)}</div>
-                                    <div class="pos-metric-sub">γ ${pos.gamma.toFixed(4)}</div>
-                                </div>
-                                <div class="pos-metric">
-                                    <div class="pos-metric-label">Live IV</div>
-                                    <div class="pos-metric-value">${pos.current_iv_pct.toFixed(2)}%</div>
-                                    <div class="pos-metric-sub">Implied Volatility</div>
-                                </div>
-                            </div>
-
-                            <div class="pos-divider"></div>
-                            <div class="pos-footer">
-                                <div class="pos-footer-chip">🕐 Entry: <strong>${entryTimeDisplay} IST</strong></div>
-                                <div class="pos-footer-chip">⏱ SqOff in: <strong>${timeLeft}</strong></div>
-                            </div>
-                        </div>`;
-                    }).join('');
-
+                // Update Positions
+                const tbody = document.getElementById('positions-body');
+                if(data.positions && data.positions.length > 0) {
+                    tbody.innerHTML = '';
+                    data.positions.forEach(pos => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td style="font-weight: 600;">${pos.symbol}</td>
+                                <td style="color: ${pos.side === 'SELL' ? 'var(--danger)' : 'var(--success)'};">${pos.side}</td>
+                                <td>${pos.size}</td>
+                                <td>$${pos.entry_price}</td>
+                            </tr>
+                        `;
+                    });
                 } else {
-                    totalBar.style.display = 'none';
-                    posCards.innerHTML = `
-                        <div class="pos-empty">
-                            <div class="pos-empty-icon">📭</div>
-                            <div style="font-weight:600;color:var(--text-secondary);">No Active Positions</div>
-                            <div style="font-size:0.8rem;margin-top:6px;opacity:0.6;">The bot has no open trades right now.</div>
-                        </div>`;
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No active positions</td></tr>`;
                 }
 
                 // Update Rule Compliance
@@ -1328,7 +912,6 @@
                     }
                 }
 
-                
                 // Update Skip & Schedule Info
                 if(data.schedule_info) {
                     const statusBadge = document.getElementById('today-status-badge');
@@ -1365,7 +948,7 @@
                     if (data.schedule_info.upcoming_schedule && data.schedule_info.upcoming_schedule.length > 0) {
                         schedBody.innerHTML = '';
                         data.schedule_info.upcoming_schedule.forEach((day, index) => {
-                            if ((index === 1 || index === 2) && day.skip && !showWarning) {
+                            if ((index === 1 || index === 2) && day.skip) {
                                 showWarning = true;
                                 warningText = `⚠️ EARLY WARNING: Trading will be skipped on ${day.day} (${day.reason})`;
                             }
@@ -1550,7 +1133,7 @@
         }
 
         // Poll every 2 seconds
-        setInterval(fetchStatus, 4000);
+        setInterval(fetchStatus, 2000);
         fetchStatus();
 
         // --- News & Events ---
@@ -1597,50 +1180,6 @@
                 console.error('News fetch failed', e);
             }
         }
-
-        async function fetchTradeProbability() {
-            try {
-                const res = await fetch('/api/trade_probability');
-                if(!res.ok) return;
-                const data = await res.json();
-                
-                const prob = data.probability;
-                let titleColor = 'var(--success)';
-                if (data.verdict_level === 'medium') titleColor = 'var(--warning)';
-                if (data.verdict_level === 'low' || data.verdict_level === 'none') titleColor = 'var(--danger)';
-                
-                document.getElementById('prob-title').textContent = data.verdict;
-                document.getElementById('prob-title').style.color = titleColor;
-                document.getElementById('prob-percent').textContent = prob + '%';
-                
-                const gaugePath = document.getElementById('prob-gauge-path');
-                if (gaugePath) {
-                    gaugePath.setAttribute('stroke-dasharray', prob + ', 100');
-                    gaugePath.setAttribute('stroke', titleColor);
-                }
-                
-                // Set Factors
-                const fSched = data.factors.find(f => f.name === 'Schedule') || {};
-                const fNews = data.factors.find(f => f.name.includes('News')) || {};
-                let schedHtml = '<span class="prob-positive">Clear</span>';
-                if(fSched.status === 'bad') schedHtml = `<span class="prob-negative">${fSched.label}</span>`;
-                if(fNews.status === 'bad') schedHtml += ` <br><span class="prob-negative">${fNews.label}</span>`;
-                else if(fNews.status === 'neutral') schedHtml += ` <br><span class="prob-neutral">${fNews.label}</span>`;
-                document.getElementById('prob-schedule').innerHTML = schedHtml;
-                
-                const fIv = data.factors.find(f => f.name.includes('IV')) || {};
-                let ivClass = fIv.status === 'good' ? 'prob-positive' : (fIv.status === 'bad' ? 'prob-negative' : 'prob-neutral');
-                document.getElementById('prob-iv').innerHTML = `<span class="${ivClass}">${fIv.label}</span>`;
-                
-                const fAdx = data.factors.find(f => f.name.includes('ADX')) || {};
-                let adxClass = fAdx.status === 'good' ? 'prob-positive' : (fAdx.status === 'bad' ? 'prob-negative' : 'prob-neutral');
-                document.getElementById('prob-adx').innerHTML = `<span class="${adxClass}">${fAdx.label}</span>`;
-                
-            } catch(e) {
-                console.error('Failed to fetch trade probability', e);
-            }
-        }
-
 
         // --- Daily Reports ---
         async function fetchReports() {
@@ -1703,8 +1242,6 @@
         fetchReports();
         fetchNews();
         setInterval(fetchNews, 6 * 60 * 60 * 1000);
-        fetchTradeProbability();
-        setInterval(fetchTradeProbability, 10 * 60 * 1000);
 
         // ── Manual Lot Size Settings ───────────────────────────────────────────
         async function loadLotSize() {
@@ -1763,153 +1300,6 @@
 
         // Load lot size on page load
         loadLotSize();
-
-        // ── Advanced Backtester Integration ─────────────────────────────────────
-        let backtestChart = null;
-
-        function initBacktestDates() {
-            const endInput = document.getElementById('backtest-end-date');
-            const startInput = document.getElementById('backtest-start-date');
-            if (endInput && startInput) {
-                const today = new Date();
-                const yyyy = today.getFullYear();
-                let mm = today.getMonth() + 1; // Months start at 0!
-                let dd = today.getDate();
-                if (dd < 10) dd = '0' + dd;
-                if (mm < 10) mm = '0' + mm;
-                const todayStr = yyyy + '-' + mm + '-' + dd;
-                endInput.value = todayStr;
-
-                // 90 days ago
-                const ago90 = new Date();
-                ago90.setDate(today.getDate() - 90);
-                const yyyy2 = ago90.getFullYear();
-                let mm2 = ago90.getMonth() + 1;
-                let dd2 = ago90.getDate();
-                if (dd2 < 10) dd2 = '0' + dd2;
-                if (mm2 < 10) mm2 = '0' + mm2;
-                const agoStr = yyyy2 + '-' + mm2 + '-' + dd2;
-                startInput.value = agoStr;
-            }
-        }
-
-        async function runBacktest() {
-            const btn = document.getElementById('btn-run-backtest');
-            const loading = document.getElementById('backtest-loading');
-            const resultsContainer = document.getElementById('backtest-results-container');
-            const capInput = document.getElementById('backtest-capital');
-            const startInput = document.getElementById('backtest-start-date');
-            const endInput = document.getElementById('backtest-end-date');
-
-            const capital = parseFloat(capInput.value) || 50000.0;
-            const startDate = startInput.value;
-            const endDate = endInput.value;
-
-            btn.disabled = true;
-            const originalText = btn.textContent;
-            btn.textContent = '⏳ Running...';
-            loading.style.display = 'block';
-            resultsContainer.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/backtest', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        starting_capital: capital,
-                        start_date: startDate,
-                        end_date: endDate
-                    })
-                });
-
-                const data = await response.json();
-                if (!data.success) {
-                    alert('❌ Backtest failed: ' + data.error);
-                    return;
-                }
-
-                // Render metrics
-                const metrics = data.metrics;
-                document.getElementById('bt-winrate').textContent = `${metrics.win_rate.toFixed(1)}%`;
-                
-                const totalReturn = metrics.total_pnl_usd || 0.0;
-                const returnEl = document.getElementById('bt-return');
-                returnEl.textContent = `${totalReturn >= 0 ? '+' : ''}$${totalReturn.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                returnEl.style.color = totalReturn >= 0 ? 'var(--success)' : 'var(--danger)';
-
-                document.getElementById('bt-drawdown').textContent = `${(metrics.max_drawdown || 0.0).toFixed(1)}%`;
-                document.getElementById('bt-pf').textContent = (metrics.profit_factor || 0.0).toFixed(2);
-                document.getElementById('bt-sharpe').textContent = (metrics.sharpe_ratio || 0.0).toFixed(2);
-                document.getElementById('bt-hedges').textContent = metrics.hedge_trades || 0;
-
-                resultsContainer.style.display = 'flex';
-
-                // Render Chart
-                const curve = data.equity_curve || [];
-                const labels = curve.map(c => c.date);
-                const points = curve.map(c => c.equity);
-
-                if (backtestChart) {
-                    backtestChart.destroy();
-                }
-
-                const ctx = document.getElementById('backtest-chart').getContext('2d');
-                backtestChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Equity Curve (USDT)',
-                            data: points,
-                            borderColor: '#38bdf8',
-                            backgroundColor: 'rgba(56, 189, 248, 0.05)',
-                            borderWidth: 2.5,
-                            fill: true,
-                            tension: 0.15,
-                            pointRadius: curve.length > 100 ? 0 : 2,
-                            pointHoverRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                                titleColor: '#94a3b8',
-                                bodyColor: '#fff',
-                                borderColor: 'rgba(255, 255, 255, 0.1)',
-                                borderWidth: 1
-                            }
-                        },
-                        scales: {
-                            x: {
-                                grid: { color: 'rgba(255, 255, 255, 0.02)' },
-                                ticks: { color: '#94a3b8', maxTicksLimit: 12 }
-                            },
-                            y: {
-                                grid: { color: 'rgba(255, 255, 255, 0.04)' },
-                                ticks: { color: '#94a3b8' }
-                            }
-                        }
-                    }
-                });
-
-            } catch (err) {
-                console.error(err);
-                alert('❌ Connection error: could not run backtest');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = originalText;
-                loading.style.display = 'none';
-            }
-        }
-
-        // Initialize backtester date fields
-        initBacktestDates();
     </script>
 </body>
 </html>

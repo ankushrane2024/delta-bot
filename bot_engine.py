@@ -244,8 +244,9 @@ class DeltaTradingEngine:
         # Fetch the exact entry prices that were simulated in active_positions (includes slippage)
         call_entry = self.execution.active_positions.get(call_opt['symbol'], {}).get('entry_price', call_opt['mark_price'])
         put_entry  = self.execution.active_positions.get(put_opt['symbol'], {}).get('entry_price', put_opt['mark_price'])
-
-        total_premium_for_this_entry = (call_entry + put_entry) * per_entry_size
+        # Delta Exchange BTC Options contract size is 0.001 BTC
+        CONTRACT_VALUE = 0.001
+        total_premium_for_this_entry = (call_entry + put_entry) * per_entry_size * CONTRACT_VALUE
         self.total_entry_premium += total_premium_for_this_entry
 
         # Reset the watchdog timer on new trade entry so WebSocket has time to fetch the new symbols
@@ -278,7 +279,8 @@ class DeltaTradingEngine:
                 if price is None or price <= 0:
                     price = data.get('entry_price', 0)
                     
-                current_total_value += price * data['size']
+                CONTRACT_VALUE = 0.001
+                current_total_value += price * data['size'] * CONTRACT_VALUE
             
             if current_total_value > 0:
                 profit = self.total_entry_premium - current_total_value
@@ -620,7 +622,8 @@ class DeltaTradingEngine:
                         # Read directly from WebSocket memory cache
                         ws_data = self.api_client.get_realtime_ticker(sym)
                         if ws_data and 'mark_price' in ws_data:
-                            current_total_value += float(ws_data['mark_price']) * data['size']
+                            CONTRACT_VALUE = 0.001
+                            current_total_value += float(ws_data['mark_price']) * data['size'] * CONTRACT_VALUE
                             greeks = ws_data.get('greeks', {})
                             if greeks:
                                 # Short positions -> invert delta/gamma
@@ -663,7 +666,8 @@ class DeltaTradingEngine:
                                 is_sl = (action == "STOP_LOSS_ALL")
                                 slippage_per_lot = self.calculate_paper_slippage(is_sl)
                                 total_size = sum([d['size'] for d in self.execution.active_positions.values()])
-                                total_slippage = slippage_per_lot * total_size
+                                CONTRACT_VALUE = 0.001
+                                total_slippage = slippage_per_lot * total_size * CONTRACT_VALUE
                                 adjusted_profit = profit - total_slippage
                                 
                                 # Execution delay of 200-500 milliseconds
@@ -808,7 +812,6 @@ class DeltaTradingEngine:
             hedge_status = self.smart_hedging.get_status() if getattr(self, 'smart_hedging', None) else {}
             self.performance_tracker.log_trade(
                 entry_time=self.current_trade_info.get("entry_time", ""),
-                exit_time=get_ist_now().strftime('%Y-%m-%dT%H:%M:%S'),
                 call_symbol=c_syms,
                 put_symbol=p_syms,
                 premium_collected=self.total_entry_premium,

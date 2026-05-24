@@ -95,11 +95,13 @@ class PerformanceTracker:
         dvol_status = dvol_status or {}
         hedge_status = hedge_status or {}
         
+        from utils import get_ist_now
+        
         trade_record = {
             "date": today,
             "mode": mode,
             "entry_time": entry_time,
-            "exit_time": (datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)).isoformat(),
+            "exit_time": get_ist_now().isoformat(),
             "call_symbol": call_symbol,
             "put_symbol": put_symbol,
             "premium_collected": premium_collected,
