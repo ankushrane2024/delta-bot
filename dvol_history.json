@@ -1,5 +1,5 @@
 {
-    "current_dvol": 36.44,
+    "current_dvol": 36.37,
     "dvol_history": [
         40.77,
         40.34,
@@ -30,8 +30,8 @@
         36.62,
         37.09,
         36.7,
-        36.44
+        36.37
     ],
     "dvol_percentile": 3.3333333333333335,
-    "last_update_time": 1779609632.2765837
+    "last_update_time": 1779610275.1556082
 }

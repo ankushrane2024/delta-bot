@@ -487,6 +487,10 @@ class DeltaTradingEngine:
                     "exit_time": t.get("exit_time", ""),
                     "call_strike": t.get("call_symbol", "N/A"),
                     "put_strike": t.get("put_symbol", "N/A"),
+                    "call_entry_price": t.get("call_entry_price", 0.0),
+                    "put_entry_price": t.get("put_entry_price", 0.0),
+                    "call_exit_price": t.get("call_exit_price", 0.0),
+                    "put_exit_price": t.get("put_exit_price", 0.0),
                     "entry_premium": t.get("premium_collected", 0),
                     "exit_reason": t.get("exit_reason", ""),
                     "pnl_usd": t.get("pnl", 0),
@@ -753,6 +757,30 @@ class DeltaTradingEngine:
             c_syms = ",".join(self.current_trade_info["calls"])
             p_syms = ",".join(self.current_trade_info["puts"])
             
+            # Capture entry and exit prices for reporting
+            call_entry_price = 0.0
+            put_entry_price = 0.0
+            call_exit_price = 0.0
+            put_exit_price = 0.0
+            
+            for sym in self.current_trade_info.get("calls", []):
+                data = self.execution.active_positions.get(sym, {})
+                call_entry_price += data.get('entry_price', 0.0)
+                ws_data = self.api_client.get_realtime_ticker(sym)
+                if ws_data and 'mark_price' in ws_data:
+                    call_exit_price += float(ws_data['mark_price'])
+                else:
+                    call_exit_price += data.get('entry_price', 0.0)
+
+            for sym in self.current_trade_info.get("puts", []):
+                data = self.execution.active_positions.get(sym, {})
+                put_entry_price += data.get('entry_price', 0.0)
+                ws_data = self.api_client.get_realtime_ticker(sym)
+                if ws_data and 'mark_price' in ws_data:
+                    put_exit_price += float(ws_data['mark_price'])
+                else:
+                    put_exit_price += data.get('entry_price', 0.0)
+            
             # Update simulated equity and lot multiplier in PAPER mode
             if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
                 self.risk_manager.current_equity += profit
@@ -824,7 +852,11 @@ class DeltaTradingEngine:
                 size_multiplier=getattr(self, 'size_multiplier', 1.0),
                 hedge_status=hedge_status,
                 adx=getattr(self, 'current_adx_value', 0.0),
-                mode=getattr(self.execution, 'mode', 'PAPER')
+                mode=getattr(self.execution, 'mode', 'PAPER'),
+                call_entry_price=call_entry_price,
+                put_entry_price=put_entry_price,
+                call_exit_price=call_exit_price,
+                put_exit_price=put_exit_price
             )
             self.current_trade_info = {"calls": [], "puts": []}
             

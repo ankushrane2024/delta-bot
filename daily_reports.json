@@ -3,10 +3,10 @@
         "date": "2026-05-24",
         "mode": "PAPER",
         "summary": {
-            "total_trades": 2,
+            "total_trades": 3,
             "win_rate": 100.0,
-            "net_pnl_usd": 184.75479491128885,
-            "net_pnl_inr": 15334.647977636974,
+            "net_pnl_usd": 184.9133274463874,
+            "net_pnl_inr": 15347.806178050154,
             "max_drawdown": 58.73,
             "market_regime": "Unknown",
             "regime_filter_enabled": false
@@ -17,6 +17,10 @@
                 "exit_time": "2026-05-24T13:23:20",
                 "call_strike": "C-BTC-77600-250526",
                 "put_strike": "P-BTC-75600-250526",
+                "call_entry_price": 0.0,
+                "put_entry_price": 0.0,
+                "call_exit_price": 0.0,
+                "put_exit_price": 0.0,
                 "entry_premium": 37070.90576769917,
                 "exit_reason": "EOD Square-off",
                 "pnl_usd": 184.63285569917207,
@@ -27,9 +31,27 @@
                 "exit_time": "2026-05-24T13:30:40.278676+05:30",
                 "call_strike": "C-BTC-77600-250526",
                 "put_strike": "P-BTC-75600-250526",
+                "call_entry_price": 0.0,
+                "put_entry_price": 0.0,
+                "call_exit_price": 0.0,
+                "put_exit_price": 0.0,
                 "entry_premium": 35.270256004116774,
                 "exit_reason": "EOD Square-off",
                 "pnl_usd": 0.1219392121167715,
+                "mode": "PAPER"
+            },
+            {
+                "entry_time": "2026-05-24T13:41:18.178736+05:30",
+                "exit_time": "2026-05-24T13:41:22.015811+05:30",
+                "call_strike": "C-BTC-77600-250526",
+                "put_strike": "P-BTC-75800-250526",
+                "call_entry_price": 194.10978294723654,
+                "put_entry_price": 199.94062895374898,
+                "call_exit_price": 192.87253053,
+                "put_exit_price": 199.59255602,
+                "entry_premium": 39.40504119009855,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 0.15853253509855136,
                 "mode": "PAPER"
             }
         ],
@@ -40,7 +62,7 @@
         },
         "market": {
             "adx": 0.0,
-            "iv": 0.43264154978960395,
+            "iv": 0.43131454308168315,
             "news": "None"
         },
         "pdf_path": "/reports/Daily_Report_2026-05-24.pdf",

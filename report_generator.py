@@ -89,12 +89,15 @@ def generate_pdf_report(data, filepath):
     if not trades:
         story.append(Paragraph("No trades executed today.", body_style))
     else:
-        trades_headers = ["Entry", "Exit", "Call Strike", "Put Strike", "Premium", "P&L", "Reason"]
+        trades_headers = ["Entry", "Exit", "Call Leg", "Put Leg", "Tot Prm", "P&L", "Reason"]
         trades_rows = [[Paragraph(h, body_bold) for h in trades_headers]]
         for t in trades:
-            # Shorten strikes for PDF fit
-            call_s = t['call_strike'].replace('BTC-', '')
-            put_s = t['put_strike'].replace('BTC-', '')
+            # Shorten strikes and add entry/exit prices for PDF fit
+            call_s = t['call_strike'].replace('C-BTC-', 'C-')
+            put_s = t['put_strike'].replace('P-BTC-', 'P-')
+            
+            call_text = f"{call_s}<br/>${t.get('call_entry_price', 0):.2f} → ${t.get('call_exit_price', 0):.2f}"
+            put_text = f"{put_s}<br/>${t.get('put_entry_price', 0):.2f} → ${t.get('put_exit_price', 0):.2f}"
             
             pnl_val = t['pnl_usd']
             pnl_color = '#10b981' if pnl_val >= 0 else '#ef4444'
@@ -103,13 +106,13 @@ def generate_pdf_report(data, filepath):
             trades_rows.append([
                 t['entry_time'].split('T')[-1][:8] if 'T' in t['entry_time'] else t['entry_time'],
                 t['exit_time'].split('T')[-1][:8] if 'T' in t['exit_time'] else t['exit_time'],
-                call_s,
-                put_s,
+                Paragraph(call_text, body_style),
+                Paragraph(put_text, body_style),
                 f"${t['entry_premium']:.4f}",
                 Paragraph(pnl_text, body_style),
                 t['exit_reason']
             ])
-        t_trades = Table(trades_rows, colWidths=[70, 70, 95, 95, 60, 60, 110])
+        t_trades = Table(trades_rows, colWidths=[60, 60, 105, 105, 55, 55, 90])
         t_trades.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f1f5f9')),
             ('ALIGN', (0,0), (-1,-1), 'LEFT'),
@@ -225,7 +228,7 @@ def generate_xlsx_report(data, filepath):
     ws.row_dimensions[row_idx].height = 22
     row_idx += 1
     
-    headers = ["Entry Time", "Exit Time", "Call Strike", "Put Strike", "Entry Premium", "P&L (USD)", "Exit Reason"]
+    headers = ["Entry Time", "Exit Time", "Call Strike", "Call Entry $", "Call Exit $", "Put Strike", "Put Entry $", "Put Exit $", "Total Premium", "P&L (USD)", "Exit Reason"]
     for col_idx, h in enumerate(headers, 1):
         cell = ws.cell(row=row_idx, column=col_idx, value=h)
         cell.font = header_font
@@ -237,7 +240,7 @@ def generate_xlsx_report(data, filepath):
     
     trades = data['trades']
     if not trades:
-        ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=7)
+        ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=11)
         ws.cell(row=row_idx, column=1, value="No trades executed today.").font = data_font
         ws.cell(row=row_idx, column=1).alignment = align_left
         ws.row_dimensions[row_idx].height = 18
@@ -248,7 +251,11 @@ def generate_xlsx_report(data, filepath):
                 t['entry_time'],
                 t['exit_time'],
                 t['call_strike'],
+                t.get('call_entry_price', 0.0),
+                t.get('call_exit_price', 0.0),
                 t['put_strike'],
+                t.get('put_entry_price', 0.0),
+                t.get('put_exit_price', 0.0),
                 t['entry_premium'],
                 t['pnl_usd'],
                 t['exit_reason']
@@ -260,10 +267,10 @@ def generate_xlsx_report(data, filepath):
                 cell.alignment = align_left
                 
                 # Format numbers
-                if col_idx == 5:
-                    cell.number_format = "$0.0000"
+                if col_idx in [4, 5, 7, 8, 9]:
+                    cell.number_format = "$0.00"
                     cell.alignment = align_right
-                elif col_idx == 6:
+                elif col_idx == 10:
                     cell.number_format = "$#,##0.00"
                     cell.alignment = align_right
                     if val >= 0:
