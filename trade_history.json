@@ -64,6 +64,24 @@
             "equity_after": 10118.51677478733,
             "regime_filter_enabled": false,
             "adx": 0.0
+        },
+        {
+            "date": "2026-05-25",
+            "mode": "PAPER",
+            "entry_time": "2026-05-25T22:29:03.703942+05:30",
+            "exit_time": "2026-05-25T22:29:08.244501+05:30",
+            "call_symbol": "C-BTC-78600-260526",
+            "put_symbol": "P-BTC-77000-260526",
+            "call_entry_price": 86.16159992864198,
+            "put_entry_price": 97.43516016358964,
+            "call_exit_price": 86.16159992864198,
+            "put_exit_price": 97.43516016358964,
+            "premium_collected": 18.359676009223165,
+            "pnl": 18.087813769223164,
+            "exit_reason": "EOD Square-off",
+            "equity_after": 10018.087813769223,
+            "regime_filter_enabled": false,
+            "adx": 0.0
         }
     ]
 }

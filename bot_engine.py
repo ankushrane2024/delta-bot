@@ -240,6 +240,7 @@ class DeltaTradingEngine:
 
         # Save trade details for tracking
         self.current_trade_info["entry_time"] = get_ist_now().isoformat()
+        self._trade_start_ts = time.time()
         self.current_trade_info["calls"].append(call_opt['symbol'])
         self.current_trade_info["puts"].append(put_opt['symbol'])
 
@@ -667,6 +668,17 @@ class DeltaTradingEngine:
                         
                         action = self.risk_manager.check_sl_tp(collected_premium, current_option_value, pnl_pct)
                         
+                        time_in_trade_seconds = time.time() - getattr(self, '_trade_start_ts', time.time())
+                        
+                        # Detailed debug logging required for profit verification
+                        app_logger.info(f"Engine [DEBUG] Profit Check: entry_total={collected_premium:.4f} | current_total={current_option_value:.4f} | pnl_pct={pnl_pct*100:.2f}% | target={config.EXIT_PROFIT_TARGET*100:.2f}% | time_in_trade={time_in_trade_seconds:.1f}s")
+                        
+                        # Prevent premature profit target execution (Race Condition / Price Stability Guard)
+                        if time_in_trade_seconds < getattr(config, 'MIN_HOLD_SECONDS', 30):
+                            if action in ["TAKE_PROFIT_ALL", "PARTIAL_PROFIT"]:
+                                app_logger.info(f"Engine [DEBUG] Suppressing {action} because time_in_trade ({time_in_trade_seconds:.1f}s) < {getattr(config, 'MIN_HOLD_SECONDS', 30)}s")
+                                action = None
+                        
                         if self.trailing_sl_active and pnl_pct <= 0.0:
                             action = "TRAILING_SL_EXIT"
                         
@@ -747,6 +759,7 @@ class DeltaTradingEngine:
         self.trailing_sl_active = False
         self.last_hedge_check_time = None
         self.hedging_triggered_today = False
+        self._trade_start_ts = None
         self.current_trade_info = {"calls": [], "puts": []}
         self.risk_manager.update_equity()
         self.daily_start_equity = self.risk_manager.current_equity
@@ -871,6 +884,7 @@ class DeltaTradingEngine:
             self.trailing_sl_active = False
             self.last_hedge_check_time = None
             self.hedging_triggered_today = False
+            self._trade_start_ts = None
             
             # Automatically generate actual report for today immediately upon trade square-off/logging
             try:
@@ -1016,7 +1030,7 @@ class DeltaTradingEngine:
         """
         slippage = random.uniform(0.5, 2.5)
         if base_price is not None and base_price > 0:
-            slippage = min(slippage, base_price * 0.05)
+            slippage = min(slippage, base_price * 0.01)
         
         iv = 0.0
         try:

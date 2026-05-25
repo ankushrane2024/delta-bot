@@ -73,6 +73,7 @@ PARTIAL_PROFIT_SIZE = 0.50     # Close 50% of position size on partial profit
 TRAILING_SL_TRIGGER = 0.40    # After 40% profit → activate trailing SL to breakeven
 TRAILING_SL_LEVEL = 0.0       # Trailing SL level: breakeven (0% profit)
 EXIT_PROFIT_TARGET = 0.70     # 70% total profit → full exit
+MIN_HOLD_SECONDS = 30         # Minimum seconds to hold before any profit target exit is allowed
 
 # --- Hedging Parameters ---
 # When net Delta or Gamma exceed these thresholds, the bot hedges using BTC futures.
