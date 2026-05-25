@@ -668,7 +668,9 @@ class DeltaTradingEngine:
                         
                         action = self.risk_manager.check_sl_tp(collected_premium, current_option_value, pnl_pct)
                         
-                        time_in_trade_seconds = time.time() - getattr(self, '_trade_start_ts', time.time())
+                        # Safely compute time in trade (fallback to time.time() if None to yield 0s)
+                        start_ts = getattr(self, '_trade_start_ts', None) or time.time()
+                        time_in_trade_seconds = time.time() - start_ts
                         
                         # Detailed debug logging required for profit verification
                         app_logger.info(f"Engine [DEBUG] Profit Check: entry_total={collected_premium:.4f} | current_total={current_option_value:.4f} | pnl_pct={pnl_pct*100:.2f}% | target={config.EXIT_PROFIT_TARGET*100:.2f}% | time_in_trade={time_in_trade_seconds:.1f}s")
