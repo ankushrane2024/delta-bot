@@ -672,11 +672,15 @@ class DeltaTradingEngine:
                         
                         # Detailed debug logging required for profit verification
                         app_logger.info(f"Engine [DEBUG] Profit Check: entry_total={collected_premium:.4f} | current_total={current_option_value:.4f} | pnl_pct={pnl_pct*100:.2f}% | target={config.EXIT_PROFIT_TARGET*100:.2f}% | time_in_trade={time_in_trade_seconds:.1f}s")
-                        
                         # Prevent premature profit target execution (Race Condition / Price Stability Guard)
                         if time_in_trade_seconds < getattr(config, 'MIN_HOLD_SECONDS', 30):
                             if action in ["TAKE_PROFIT_ALL", "PARTIAL_PROFIT"]:
                                 app_logger.info(f"Engine [DEBUG] Suppressing {action} because time_in_trade ({time_in_trade_seconds:.1f}s) < {getattr(config, 'MIN_HOLD_SECONDS', 30)}s")
+                                action = None
+                            
+                            # Hard-suppress ALL exits (including Stop Loss) for the first 15 seconds to survive initial spread crossing
+                            if action is not None and time_in_trade_seconds < 15:
+                                app_logger.warning(f"Engine [DEBUG] Hard-Suppressing {action} because time_in_trade ({time_in_trade_seconds:.1f}s) < 15s (spread stabilization)")
                                 action = None
                         
                         if self.trailing_sl_active and pnl_pct <= 0.0:
