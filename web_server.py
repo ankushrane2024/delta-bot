@@ -58,10 +58,65 @@ def get_status():
     
     current_iv_pct = getattr(bot_engine, 'current_iv', 0.0)  # already in % scale
     
-    # Fetch current BTC price to calculate Capital Used
-    btc_ws = bot_engine.api_client.get_realtime_ticker("BTCUSD")
-    current_btc_price = float(btc_ws['mark_price']) if btc_ws and 'mark_price' in btc_ws else 70000.0
-    
+    # ── Get Current BTC Price for Capital Used calculation (5-Tier Fallback) ──
+    btc_price = 0.0
+    try:
+        btc_ws = bot_engine.api_client.get_realtime_ticker("BTCUSD")
+        if btc_ws and 'mark_price' in btc_ws:
+            btc_price = float(btc_ws['mark_price'])
+    except Exception as btc_err:
+        app_logger.debug(f"Web status: Failed to get BTC price from WS cache: {btc_err}")
+        
+    if not btc_price or btc_price <= 0:
+        # Fallback 1: check spot/mark price from option symbols' greeks or spot_price
+        for sym in bot_engine.execution.active_positions.keys():
+            try:
+                ws_data = bot_engine.api_client.get_realtime_ticker(sym)
+                if ws_data:
+                    spot = float(ws_data.get('spot_price') or ws_data.get('greeks', {}).get('spot') or 0)
+                    if spot > 0:
+                        btc_price = spot
+                        break
+            except Exception:
+                pass
+                
+    if not btc_price or btc_price <= 0:
+        # Fallback 2: fetch from API tickers
+        try:
+            res_btc = bot_engine.api_client.get_tickers({'symbol': 'BTCUSD'})
+            if res_btc.get('success') and res_btc.get('result'):
+                for ticker in res_btc['result']:
+                    if ticker.get('symbol') == 'BTCUSD':
+                        btc_price = float(ticker.get('mark_price') or ticker.get('close') or ticker.get('last_price') or 0)
+                        break
+        except Exception as btc_err:
+            app_logger.debug(f"Web status: Failed to get BTC price from REST fallback: {btc_err}")
+            
+    if not btc_price or btc_price <= 0:
+        # Fallback 3: check if bot_engine has cached btc price in btc_price_history
+        if getattr(bot_engine, 'btc_price_history', None) and len(bot_engine.btc_price_history) > 0:
+            btc_price = bot_engine.btc_price_history[-1][1]
+            
+    if not btc_price or btc_price <= 0:
+        # Fallback 4: Binance public API
+        try:
+            import urllib.request
+            import json
+            req = urllib.request.Request(
+                'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
+            with urllib.request.urlopen(req, timeout=3) as response:
+                data = json.loads(response.read().decode())
+                if 'price' in data:
+                    btc_price = float(data['price'])
+        except Exception:
+            pass
+            
+    # Absolute fallback (e.g. 70000) so we never crash/divide by zero
+    if not btc_price or btc_price <= 0:
+        btc_price = 70000.0
+
     for sym, data in bot_engine.execution.active_positions.items():
         entry_price = data.get('entry_price', 0)
         size = data.get('size', 0)
@@ -112,6 +167,7 @@ def get_status():
                             f"Status: Rejected bad live price {candidate_price:.4f} for {sym}. "
                             f"Falling back to entry_price={entry_price:.4f}"
                         )
+                
         except Exception as ex:
             app_logger.debug(f"Status: Price fetch error for {sym}: {ex}")
         
@@ -122,10 +178,12 @@ def get_status():
         leg_pnl_usd = (entry_price - current_price) * btc_quantity
         leg_pnl_inr = leg_pnl_usd * 84.0  # approx INR conversion
         
-        # P&L Percentage based on Capital Used (Nominal Value)
-        # Capital Used = Lot Size * 0.001 * BTC Price
-        leg_capital_used = size * LOT_TO_BTC * current_btc_price
-        leg_pnl_pct = (leg_pnl_usd / leg_capital_used * 100) if leg_capital_used > 0 else 0.0
+        # P&L Percentage (1 lot = 0.001 BTC)
+        leg_entry_premium_total = entry_price * btc_quantity
+        leg_pnl_pct_premium = (leg_pnl_usd / leg_entry_premium_total * 100) if leg_entry_premium_total > 0 else 0.0
+        
+        leg_capital_used = size * LOT_TO_BTC * btc_price
+        leg_pnl_pct_capital = (leg_pnl_usd / leg_capital_used * 100) if leg_capital_used > 0 else 0.0
         
         # Trade status label
         if trailing_sl_active:
@@ -148,7 +206,10 @@ def get_status():
             'current_price': round(current_price, 4),
             'leg_pnl_usd': round(leg_pnl_usd, 2),
             'leg_pnl_inr': round(leg_pnl_inr, 2),
-            'leg_pnl_pct': round(leg_pnl_pct, 2),
+            'leg_pnl_pct_premium': round(leg_pnl_pct_premium, 2),
+            'leg_pnl_pct_capital': round(leg_pnl_pct_capital, 2),
+            'leg_entry_premium_total': round(leg_entry_premium_total, 4),
+            'leg_capital_used': round(leg_capital_used, 2),
             'delta': round(delta_val, 4),
             'gamma': round(gamma_val, 5),
             'entry_time': entry_time_str,
@@ -157,14 +218,13 @@ def get_status():
             'trade_status': trade_status,
         })
     
-    # Total P&L across all legs
+    # Total P&L and Capital Used across all legs
     total_pnl_usd = round(sum(pos['leg_pnl_usd'] for pos in positions), 2) if positions else 0.0
     total_pnl_inr = round(total_pnl_usd * 84.0, 2)
     
-    # Total Capital Used
-    total_lots = sum(pos['size'] for pos in positions)
-    total_capital_used = total_lots * LOT_TO_BTC * current_btc_price
-    total_pnl_pct = (total_pnl_usd / total_capital_used * 100) if total_capital_used > 0 else 0.0
+    total_pnl_pct_premium = (total_pnl_usd / total_entry_premium * 100) if total_entry_premium > 0 else 0.0
+    total_capital_used = round(sum(pos['leg_capital_used'] for pos in positions), 2) if positions else 0.0
+    total_pnl_pct_capital = (total_pnl_usd / total_capital_used * 100) if total_capital_used > 0 else 0.0
     
     dvol_status = bot_engine.dvol_provider.get_status() if getattr(bot_engine, 'dvol_provider', None) else {}
     hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
@@ -176,9 +236,13 @@ def get_status():
         'daily_loss_hits': bot_engine.daily_loss_hits,
         'positions': positions,
         'total_entry_premium': round(total_entry_premium, 4),
+        'total_capital_used': total_capital_used,
+        'btc_price': round(btc_price, 2),
         'total_pnl_usd': total_pnl_usd,
         'total_pnl_inr': total_pnl_inr,
-        'total_pnl_pct': round(total_pnl_pct, 2),
+        'total_pnl_pct_premium': round(total_pnl_pct_premium, 2),
+        'total_pnl_pct_capital': round(total_pnl_pct_capital, 2),
+        'total_pnl_pct': round(total_pnl_pct_capital, 2),
         'logs': logs,
         'performance': bot_engine.performance_tracker.get_metrics(bot_engine.risk_manager.current_equity),
         'rule_report': bot_engine.latest_rule_report,

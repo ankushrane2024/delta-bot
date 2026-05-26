@@ -709,7 +709,7 @@
                 .status-running   { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
                 .status-partial   { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
                 .status-trailing  { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
-                .pos-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+                .pos-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
                 .pos-metric { background: rgba(255,255,255,0.025); border-radius: 8px; padding: 8px 10px; }
                 .pos-metric-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 3px; }
                 .pos-metric-value { font-size: 0.92rem; font-weight: 700; color: #e2e8f0; }
@@ -736,6 +736,7 @@
 
             <!-- Total P&L Summary Bar (hidden when no positions) -->
             <div id="pos-total-bar" class="pos-total-bar" style="display:none;">
+                <div class="pos-summary-chip" style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.18);">Capital Used <span id="pos-total-capital" style="color:#34d399; font-weight:800;">—</span> USDT <span style="font-size: 0.78rem; opacity: 0.85; font-weight: normal; margin-left: 2px;">(at $<span id="pos-btc-price" style="font-size:0.78rem; font-weight:normal;">—</span> BTC)</span></div>
                 <div class="pos-summary-chip">Total Entry Premium <span id="pos-total-entry">—</span> USDT</div>
                 <div class="pos-summary-chip">Total P&L <span id="pos-total-pnl-usd">—</span> USDT &nbsp;|&nbsp; <span id="pos-total-pnl-inr">—</span> INR</div>
                 <div class="pos-summary-chip">⏱ Time to Square-off <span id="pos-time-remaining">—</span></div>
@@ -1219,13 +1220,23 @@
                     const totalPnlInr = smoothedTotalPnlInr;
 
                     // Update summary bar
-                    document.getElementById('pos-total-entry').textContent = (data.total_entry_premium || 0).toFixed(4);
+                    const totalEntryPremium = data.total_entry_premium || 0;
+                    document.getElementById('pos-total-entry').textContent = totalEntryPremium.toFixed(4);
                     
-                    const totalPnlPct = data.total_pnl_pct || 0;
-                    const pnlPctSign = totalPnlPct >= 0 ? '+' : '';
+                    // Display Capital Used and reference BTC price
+                    const totalCapitalUsed = data.total_capital_used || 0;
+                    document.getElementById('pos-total-capital').textContent = totalCapitalUsed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    document.getElementById('pos-btc-price').textContent = (data.btc_price || 70000).toLocaleString(undefined, {maximumFractionDigits: 0});
+                    
+                    // Recalculate percentages based on smoothed P&L and actual denominators
+                    const totalPnlPctPrem = totalEntryPremium > 0 ? (totalPnlUsd / totalEntryPremium * 100) : 0.0;
+                    const totalPnlPctCap = totalCapitalUsed > 0 ? (totalPnlUsd / totalCapitalUsed * 100) : 0.0;
+                    
+                    const pnlPctSignPrem = totalPnlPctPrem >= 0 ? '+' : '';
+                    const pnlPctSignCap = totalPnlPctCap >= 0 ? '+' : '';
                     
                     const pnlUsdEl = document.getElementById('pos-total-pnl-usd');
-                    pnlUsdEl.innerHTML = `<span>${totalPnlUsd >= 0 ? '+' : ''}${totalPnlUsd.toFixed(4)} USDT</span> <span style="font-size: 0.85em; opacity: 0.9;">(${pnlPctSign}${totalPnlPct.toFixed(2)}%)</span>`;
+                    pnlUsdEl.innerHTML = `<span>${totalPnlUsd >= 0 ? '+' : ''}${totalPnlUsd.toFixed(4)} USDT</span> <span style="font-size: 0.82em; opacity: 0.95;">(${pnlPctSignPrem}${totalPnlPctPrem.toFixed(2)}% Prem &nbsp;|&nbsp; ${pnlPctSignCap}${totalPnlPctCap.toFixed(2)}% Cap)</span>`;
                     pnlUsdEl.className = totalPnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg';
                     
                     const pnlInrEl = document.getElementById('pos-total-pnl-inr');
@@ -1273,6 +1284,16 @@
                             : '0.0';
                         const premChangeSign = parseFloat(premChangePct) >= 0 ? '+' : '';
 
+                        // Calculate accurate leg capital used and smoothed leg P&L percentages
+                        const legCapitalUsed = pos.leg_capital_used || 0;
+                        const legEntryPremium = pos.leg_entry_premium_total || 0;
+                        
+                        const legPnlPctPremium = legEntryPremium > 0 ? (pos.leg_pnl_usd / legEntryPremium * 100) : 0.0;
+                        const legPnlPctCapital = legCapitalUsed > 0 ? (pos.leg_pnl_usd / legCapitalUsed * 100) : 0.0;
+                        
+                        const legPnlPctPremiumStr = (legPnlPctPremium >= 0 ? '+' : '') + legPnlPctPremium.toFixed(2);
+                        const legPnlPctCapitalStr = (legPnlPctCapital >= 0 ? '+' : '') + legPnlPctCapital.toFixed(2);
+
                         return `
                         <div class="pos-card">
                             <div class="pos-card-header">
@@ -1300,8 +1321,13 @@
                                 </div>
                                 <div class="pos-metric">
                                     <div class="pos-metric-label">Leg P&amp;L</div>
-                                    <div class="pos-metric-value ${pnlClass}">${pnlSign}${pos.leg_pnl_usd.toFixed(2)} $ <span style="font-size: 0.75em; font-weight: normal; opacity: 0.85;">(${pnlSign}${pos.leg_pnl_pct || 0}%)</span></div>
+                                    <div class="pos-metric-value ${pnlClass}">${pnlSign}${pos.leg_pnl_usd.toFixed(2)} $ <span style="font-size: 0.70em; font-weight: normal; opacity: 0.85;">(${legPnlPctPremiumStr}% Prem &nbsp;|&nbsp; ${legPnlPctCapitalStr}% Cap)</span></div>
                                     <div class="pos-metric-sub">${pnlInrSign}₹${pos.leg_pnl_inr.toFixed(0)}</div>
+                                </div>
+                                <div class="pos-metric" style="background: rgba(16,185,129,0.04); border: 1px solid rgba(16,185,129,0.08);">
+                                    <div class="pos-metric-label" style="color: #34d399;">Capital Used</div>
+                                    <div class="pos-metric-value" style="color: #34d399; font-weight: 800;">$${legCapitalUsed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                    <div class="pos-metric-sub">at $${(data.btc_price || 70000).toLocaleString(undefined, {maximumFractionDigits: 0})} BTC</div>
                                 </div>
                                 <div class="pos-metric">
                                     <div class="pos-metric-label">Lot Size</div>

@@ -121,10 +121,8 @@ class DeltaIndiaClient:
     # --- Real-Time WebSocket ---
     def start_ws(self, symbols=None):
         if not symbols:
-            # By default subscribe to BTC options and perps if possible, 
-            # or just all tickers if delta allows. Delta 'all' is usually not supported.
-            # We will subscribe to symbols dynamically or just listen to what's active.
-            symbols = []
+            # By default subscribe to BTCUSD index / perpetual ticker for live capital/PnL % calculations
+            symbols = ["BTCUSD"]
 
         def on_message(ws, message):
             try:
