@@ -636,18 +636,61 @@ class DeltaTradingEngine:
                     all_prices_available = True
                     
                     for sym, data in self.execution.active_positions.items():
+                        entry_price = data.get('entry_price', 0)
+                        current_price = entry_price  # default fallback
+                        price_is_valid = False
+                        
                         # Read directly from WebSocket memory cache
                         ws_data = self.api_client.get_realtime_ticker(sym)
                         if ws_data and 'mark_price' in ws_data:
-                            # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
-                            current_total_value += float(ws_data['mark_price']) * data['size'] * LOT_TO_BTC
-                            greeks = ws_data.get('greeks', {})
-                            if greeks:
-                                # Short positions -> invert delta/gamma
-                                net_delta -= float(greeks.get('delta', 0)) * data['size']
-                                total_gamma -= float(greeks.get('gamma', 0)) * data['size']
-                        else:
-                            all_prices_available = False
+                            candidate_price = float(ws_data['mark_price'])
+                            
+                            # Price Sanity Guard: reject suspicious moves (>99% or negative/zero)
+                            price_is_valid = (
+                                candidate_price > 0.01 and
+                                entry_price > 0 and
+                                abs(candidate_price - entry_price) / entry_price < 0.99
+                            )
+                            
+                            if price_is_valid:
+                                current_price = candidate_price
+                                data['last_good_price'] = candidate_price
+                                
+                                greeks = ws_data.get('greeks') or {}
+                                if 'delta' in greeks:
+                                    d = float(greeks.get('delta', 0))
+                                    g = float(greeks.get('gamma', 0))
+                                    # Short positions -> invert delta/gamma
+                                    net_delta -= d * data['size']
+                                    total_gamma -= g * data['size']
+                                    # Cache greeks
+                                    data['last_known_delta'] = d
+                                    data['last_known_gamma'] = g
+                                else:
+                                    # Fallback to cached greeks if raw greeks are missing in this tick
+                                    last_d = data.get('last_known_delta')
+                                    last_g = data.get('last_known_gamma', 0)
+                                    if last_d is not None:
+                                        net_delta -= last_d * data['size']
+                                        total_gamma -= last_g * data['size']
+                                        
+                        if not price_is_valid:
+                            # Try last good price, otherwise absolute fallback to entry_price
+                            lgp = data.get('last_good_price')
+                            if lgp and lgp > 0.01:
+                                current_price = lgp
+                            else:
+                                current_price = entry_price
+                            
+                            # Fallback to cached greeks
+                            last_d = data.get('last_known_delta')
+                            last_g = data.get('last_known_gamma', 0)
+                            if last_d is not None:
+                                net_delta -= last_d * data['size']
+                                total_gamma -= last_g * data['size']
+                                
+                        # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
+                        current_total_value += current_price * data['size'] * LOT_TO_BTC
                             
                     if all_prices_available and self.total_entry_premium > 0:
                         # PnL Check
