@@ -58,6 +58,10 @@ def get_status():
     
     current_iv_pct = getattr(bot_engine, 'current_iv', 0.0)  # already in % scale
     
+    # Fetch current BTC price to calculate Capital Used
+    btc_ws = bot_engine.api_client.get_realtime_ticker("BTCUSD")
+    current_btc_price = float(btc_ws['mark_price']) if btc_ws and 'mark_price' in btc_ws else 70000.0
+    
     for sym, data in bot_engine.execution.active_positions.items():
         entry_price = data.get('entry_price', 0)
         size = data.get('size', 0)
@@ -118,9 +122,10 @@ def get_status():
         leg_pnl_usd = (entry_price - current_price) * btc_quantity
         leg_pnl_inr = leg_pnl_usd * 84.0  # approx INR conversion
         
-        # P&L Percentage
-        leg_entry_premium_total = entry_price * btc_quantity
-        leg_pnl_pct = (leg_pnl_usd / leg_entry_premium_total * 100) if leg_entry_premium_total > 0 else 0.0
+        # P&L Percentage based on Capital Used (Nominal Value)
+        # Capital Used = Lot Size * 0.001 * BTC Price
+        leg_capital_used = size * LOT_TO_BTC * current_btc_price
+        leg_pnl_pct = (leg_pnl_usd / leg_capital_used * 100) if leg_capital_used > 0 else 0.0
         
         # Trade status label
         if trailing_sl_active:
@@ -155,7 +160,11 @@ def get_status():
     # Total P&L across all legs
     total_pnl_usd = round(sum(pos['leg_pnl_usd'] for pos in positions), 2) if positions else 0.0
     total_pnl_inr = round(total_pnl_usd * 84.0, 2)
-    total_pnl_pct = (total_pnl_usd / total_entry_premium * 100) if total_entry_premium > 0 else 0.0
+    
+    # Total Capital Used
+    total_lots = sum(pos['size'] for pos in positions)
+    total_capital_used = total_lots * LOT_TO_BTC * current_btc_price
+    total_pnl_pct = (total_pnl_usd / total_capital_used * 100) if total_capital_used > 0 else 0.0
     
     dvol_status = bot_engine.dvol_provider.get_status() if getattr(bot_engine, 'dvol_provider', None) else {}
     hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
