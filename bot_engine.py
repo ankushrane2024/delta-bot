@@ -2,13 +2,14 @@ import time
 import schedule
 import threading
 import random
+import config
 from config import (
     BOT_MODE, ENTRY_TIMES, EXIT_TIME_START, MAX_DAILY_LOSS_PCT,
     HEDGE_DELTA_THRESHOLD, HEDGE_GAMMA_THRESHOLD, STARTING_CAPITAL, MANUAL_TOTAL_LOTS,
     MAX_CONSECUTIVE_LOSSES_DAY, DAILY_LOSS_LIMIT_PCT, SL_PERCENT, HEDGE_RECHECK_INTERVAL,
     DVOL_MID_SIZE_BOOST, CONSECUTIVE_LOSS_REDUCE_PCT, CONSECUTIVE_LOSS_THRESHOLD,
     CONSECUTIVE_LOSS_COOLDOWN_TRADES, DAILY_LOSS_REDUCE_THRESHOLD, DAILY_LOSS_REDUCE_PCT,
-    MAX_RISK_PER_TRADE_PCT, DAILY_LOSS_PAUSE_THRESHOLD
+    MAX_RISK_PER_TRADE_PCT, DAILY_LOSS_PAUSE_THRESHOLD, LOT_TO_BTC
 )
 from utils import get_ist_now, get_next_expiry_date, should_check_hedge, adjust_time_to_system_tz
 from logger import app_logger, error_logger
@@ -250,9 +251,10 @@ class DeltaTradingEngine:
         # Fetch the exact entry prices that were simulated in active_positions (includes slippage)
         call_entry = self.execution.active_positions.get(call_opt['symbol'], {}).get('entry_price', call_opt['mark_price'])
         put_entry  = self.execution.active_positions.get(put_opt['symbol'], {}).get('entry_price', put_opt['mark_price'])
-        # Delta Exchange BTC Options contract size is 0.001 BTC
-        CONTRACT_VALUE = 0.001
-        total_premium_for_this_entry = (call_entry + put_entry) * per_entry_size * CONTRACT_VALUE
+        # P&L Formula: Total_PnL = (Entry_Premium - Current_Premium) * Lots * LOT_TO_BTC
+        # LOT_TO_BTC = 0.001 BTC per lot (Delta Exchange BTC Options contract size)
+        btc_quantity = per_entry_size * LOT_TO_BTC
+        total_premium_for_this_entry = (call_entry + put_entry) * btc_quantity
         self.total_entry_premium = total_premium_for_this_entry
 
         # Reset the watchdog timer on new trade entry so WebSocket has time to fetch the new symbols
@@ -285,8 +287,8 @@ class DeltaTradingEngine:
                 if price is None or price <= 0:
                     price = data.get('entry_price', 0)
                     
-                CONTRACT_VALUE = 0.001
-                current_total_value += price * data['size'] * CONTRACT_VALUE
+                # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
+                current_total_value += price * data['size'] * LOT_TO_BTC
             
             if current_total_value > 0:
                 profit = self.total_entry_premium - current_total_value
@@ -346,7 +348,10 @@ class DeltaTradingEngine:
             entry_slippage = random.uniform(0.3, 1.2)   # small entry slippage
             simulated_call_entry = call_entry + entry_slippage
             simulated_put_entry  = put_entry  + entry_slippage
-            entry_premium_total  = (simulated_call_entry + simulated_put_entry) * lots   # 1 lot
+            # P&L Formula: PnL = (Entry_Premium - Exit_Premium) * Lots * LOT_TO_BTC
+            # where LOT_TO_BTC = 0.001 BTC per lot (Delta Exchange BTC options contract)
+            btc_quantity = lots * LOT_TO_BTC
+            entry_premium_total  = (simulated_call_entry + simulated_put_entry) * btc_quantity
 
             app_logger.info(
                 f"Engine [TEST]: PAPER Entry simulated. "
@@ -378,7 +383,8 @@ class DeltaTradingEngine:
             exit_slippage = self.calculate_paper_slippage(is_sl=False, base_price=avg_exit)
             simulated_call_exit = call_entry + exit_slippage
             simulated_put_exit  = put_entry  + exit_slippage
-            exit_premium_total  = (simulated_call_exit + simulated_put_exit) * lots
+            # Apply same BTC_Quantity conversion for exit premium
+            exit_premium_total  = (simulated_call_exit + simulated_put_exit) * btc_quantity
 
             simulated_pnl = entry_premium_total - exit_premium_total
             pnl_inr       = simulated_pnl * 83.0   # USD → INR approx
@@ -633,8 +639,8 @@ class DeltaTradingEngine:
                         # Read directly from WebSocket memory cache
                         ws_data = self.api_client.get_realtime_ticker(sym)
                         if ws_data and 'mark_price' in ws_data:
-                            CONTRACT_VALUE = 0.001
-                            current_total_value += float(ws_data['mark_price']) * data['size'] * CONTRACT_VALUE
+                            # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
+                            current_total_value += float(ws_data['mark_price']) * data['size'] * LOT_TO_BTC
                             greeks = ws_data.get('greeks', {})
                             if greeks:
                                 # Short positions -> invert delta/gamma
@@ -693,10 +699,9 @@ class DeltaTradingEngine:
                             if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
                                 is_sl = (action == "STOP_LOSS_ALL")
                                 total_size = sum([d['size'] for d in self.execution.active_positions.values()])
-                                CONTRACT_VALUE = 0.001
-                                avg_price = current_option_value / (total_size * CONTRACT_VALUE) if total_size > 0 else None
+                                avg_price = current_option_value / (total_size * LOT_TO_BTC) if total_size > 0 else None
                                 slippage_per_lot = self.calculate_paper_slippage(is_sl, base_price=avg_price)
-                                total_slippage = slippage_per_lot * total_size * CONTRACT_VALUE
+                                total_slippage = slippage_per_lot * total_size * LOT_TO_BTC
                                 adjusted_profit = profit - total_slippage
                                 
                                 # Execution delay of 200-500 milliseconds
@@ -739,14 +744,32 @@ class DeltaTradingEngine:
                             self.trailing_sl_active = True
                             notifier.notify_trailing_sl()
  
-                    # Smart Hedge Management — Step 4 (NEW, every 30s)
-                    if not self.last_hedge_check_time or (time.time() - self.last_hedge_check_time >= HEDGE_RECHECK_INTERVAL):
+                    # ── Smart Hedge Management ──────────────────────────────────────
+                    # CRITICAL FIX: Hedge check runs INDEPENDENTLY of all_prices_available.
+                    # Even if WebSocket prices are partially missing, we still attempt to hedge
+                    # based on whatever delta/loss data we DO have.
+                    #
+                    # Dynamic interval: 10s when losing >10% or after 3PM, 30s otherwise.
+                    # This ensures we catch sudden BTC spikes (like the 3PM move) quickly.
+                    _now_ist_h = get_ist_now().hour
+                    _pnl_pct_local = pnl_pct if ('pnl_pct' in locals() and pnl_pct is not None) else 0.0
+                    _is_volatile = (_now_ist_h >= 15) or (_pnl_pct_local < -0.10)
+                    _hedge_interval = 10 if _is_volatile else HEDGE_RECHECK_INTERVAL  # 10s volatile / 30s normal
+
+                    if not self.last_hedge_check_time or (time.time() - self.last_hedge_check_time >= _hedge_interval):
                         self.last_hedge_check_time = time.time()
-                        unrealized_loss_pct = -pnl_pct if ('pnl_pct' in locals() and pnl_pct is not None) else 0.0
+                        # unrealized_loss_pct is positive when losing
+                        unrealized_loss_pct = max(0.0, -_pnl_pct_local)
+                        app_logger.info(
+                            f"Hedge: Running manage_hedge | interval={_hedge_interval}s | "
+                            f"unrealized_loss={unrealized_loss_pct*100:.2f}% | "
+                            f"volatile={'YES' if _is_volatile else 'NO'}"
+                        )
                         self.smart_hedging.manage_hedge(
                             self.execution.active_positions, unrealized_loss_pct
                         )
                         self.hedging_triggered_today = self.smart_hedging.hedge_active
+                    # ────────────────────────────────────────────────────────────────
 
                 else:
                     time.sleep(1) # Sleep slightly longer if no positions

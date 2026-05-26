@@ -58,17 +58,61 @@ class SmartHedgingManager:
         Calculates absolute net delta and total gamma of options positions in BTC.
         Option delta is unscaled in API (from -1 to +1).
         So BTC Delta exposure = Option Delta * Size * 0.001.
+
+        CRITICAL FIX: When WebSocket greeks are missing (e.g. right after a
+        sudden price move), falls back to the last_known_delta stored in the
+        position data. This prevents hedge from silently skipping due to 0.000
+        delta during volatile moments.
         """
         net_delta_btc = 0.0
         total_gamma_btc = 0.0
+        greeks_available = False
         
         for sym, data in positions.items():
             ws_data = self.api_client.get_realtime_ticker(sym)
-            if ws_data and 'greeks' in ws_data:
+            if ws_data:
                 greeks = ws_data.get('greeks') or {}
-                # Options are SHORT in a Short Strangle Strategy -> we are SHORT the greeks
-                net_delta_btc -= float(greeks.get('delta', 0) or 0) * data['size'] * 0.001
-                total_gamma_btc -= float(greeks.get('gamma', 0) or 0) * data['size'] * 0.001
+                delta_raw = greeks.get('delta')
+                gamma_raw = greeks.get('gamma')
+                
+                if delta_raw is not None:
+                    d = float(delta_raw or 0)
+                    g = float(gamma_raw or 0)
+                    # Options are SHORT -> invert greeks
+                    net_delta_btc -= d * data['size'] * 0.001
+                    total_gamma_btc -= g * data['size'] * 0.001
+                    # Cache last known good delta per leg
+                    if abs(d) > 0.001:  # only cache non-zero values
+                        data['last_known_delta'] = d
+                        data['last_known_gamma'] = g
+                    greeks_available = True
+                else:
+                    # No greeks in this tick — use last known delta if available
+                    last_d = data.get('last_known_delta')
+                    last_g = data.get('last_known_gamma', 0)
+                    if last_d is not None:
+                        app_logger.warning(
+                            f"Hedge: No greeks in WS tick for {sym} — "
+                            f"using last_known_delta={last_d:.4f} as fallback"
+                        )
+                        net_delta_btc -= last_d * data['size'] * 0.001
+                        total_gamma_btc -= last_g * data['size'] * 0.001
+                        greeks_available = True
+            else:
+                # No WS data at all — try last known delta
+                last_d = data.get('last_known_delta')
+                last_g = data.get('last_known_gamma', 0)
+                if last_d is not None:
+                    app_logger.warning(
+                        f"Hedge: No WS data for {sym} — "
+                        f"using last_known_delta={last_d:.4f} as fallback"
+                    )
+                    net_delta_btc -= last_d * data['size'] * 0.001
+                    total_gamma_btc -= last_g * data['size'] * 0.001
+                    greeks_available = True
+                    
+        if not greeks_available:
+            app_logger.warning("Hedge: No delta/gamma data available from WS or cache for any leg.")
                 
         return net_delta_btc, total_gamma_btc
 
@@ -240,7 +284,8 @@ class SmartHedgingManager:
 
     def manage_hedge(self, positions, unrealized_loss_pct):
         """
-        Step 4: Continuous hedge management. Called every 30 seconds from monitor_loop.
+        Step 4: Continuous hedge management. Called from monitor_loop.
+        Interval is dynamic: 10s after 3PM or when losing >10%, 30s otherwise.
         """
         self.last_check_time = time.time()
         if not positions:
@@ -249,6 +294,46 @@ class SmartHedgingManager:
                 app_logger.info("Hedge: Option positions cleared. Closing futures hedge...")
                 self.close_hedge()
             return
+
+        # 4.0: Loss-based emergency hedge trigger (CRITICAL FIX)
+        # If position is losing > 30% of entry premium AND no hedge is active,
+        # trigger a full emergency hedge IMMEDIATELY regardless of delta value.
+        # This catches sudden BTC moves where greeks haven't updated yet.
+        if not self.hedge_active and unrealized_loss_pct >= 0.30:
+            app_logger.warning(
+                f"Hedge: EMERGENCY loss-based trigger — unrealized_loss={unrealized_loss_pct:.1%} "
+                f">= 30% and no hedge active. Triggering emergency full hedge NOW."
+            )
+            net_delta_btc, _ = self._fetch_net_delta_and_gamma(positions)
+            exposure_btc = self._get_options_exposure_btc(positions)
+            # If delta data is unavailable, use full exposure as hedge size
+            hedge_size = abs(net_delta_btc) if abs(net_delta_btc) > 0.0001 else exposure_btc * 0.5
+            direction = 'sell' if net_delta_btc >= 0 else 'buy'
+            app_logger.info(
+                f"Hedge [EMERGENCY]: Hedging {hedge_size:.4f} BTC in direction {direction} "
+                f"(net_delta={net_delta_btc:.4f}, exposure={exposure_btc:.4f})"
+            )
+            result = self.execution.place_hedge_order(hedge_size, direction)
+            if result and result['success']:
+                self.hedge_active = True
+                self.hedge_type = "emergency_loss_trigger"
+                self.hedge_size_btc = hedge_size
+                self.hedge_percentage = 100.0
+                self.hedge_order_id = result['order_id']
+                if not self.sl_tightened:
+                    from config import HEDGE_EMERGENCY_SL_TIGHTEN
+                    self.risk_manager.tighten_stop_loss(HEDGE_EMERGENCY_SL_TIGHTEN)
+                    self.sl_tightened = True
+                notifier.notify_hedge_escalated(
+                    timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
+                    from_pct=0.0,
+                    to_pct=100.0,
+                    loss_pct=unrealized_loss_pct * 100
+                )
+            else:
+                app_logger.error("Hedge [EMERGENCY]: Emergency loss-trigger hedge failed!")
+                notifier.notify_hedge_failed()
+            return  # Don't continue to regular checks after emergency hedge
 
         # 4.1: Unrealized Loss > 60% check (Emergency Escalation & SL tightening)
         if unrealized_loss_pct >= HEDGE_EMERGENCY_LOSS_PCT and self.hedge_percentage < 100.0:
@@ -304,8 +389,6 @@ class SmartHedgingManager:
         # Or if no hedge is active, but net delta exceeds threshold, trigger entry hedge.
         if self.hedge_active:
             # Check if active hedge matches the current delta direction.
-            # If current delta is positive, we need a SHORT hedge (negative size).
-            # If current delta is negative, we need a LONG hedge (positive size).
             expected_hedge_sign = -1.0 if net_delta_btc > 0 else 1.0
             actual_hedge_sign = 1.0 if self.execution.hedge_size_btc > 0 else -1.0
             
@@ -314,7 +397,11 @@ class SmartHedgingManager:
                 self.close_hedge()
                 self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
         else:
-            # No hedge active, check standard triggers
+            # No hedge active — check standard delta triggers
+            app_logger.info(
+                f"Hedge: Standard delta check — raw_net_delta={raw_net_delta:.4f} | "
+                f"dvol={current_dvol:.1f}% | hedge_active={self.hedge_active}"
+            )
             self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
 
     def close_hedge(self):

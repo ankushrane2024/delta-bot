@@ -127,11 +127,28 @@ class DeltaIndiaClient:
             symbols = []
 
         def on_message(ws, message):
-            data = json.loads(message)
-            if data.get('type') == 'v2/ticker':
-                symbol = data.get('symbol')
-                self.ticker_data[symbol] = data
-                self.last_price_update_time = time.time()
+            try:
+                data = json.loads(message)
+                if data.get('type') == 'v2/ticker':
+                    symbol = data.get('symbol')
+                    # Guard: only cache if symbol is valid and mark_price is a real positive number
+                    if not symbol:
+                        return
+                    mark_price = data.get('mark_price')
+                    try:
+                        mp_float = float(mark_price) if mark_price is not None else 0.0
+                    except (ValueError, TypeError):
+                        mp_float = 0.0
+                    # Reject zero, negative, or suspiciously tiny prices (<0.01 USDT for BTC options)
+                    if mp_float <= 0.01:
+                        app_logger.debug(f"WS: Rejected bad mark_price={mark_price} for {symbol}")
+                        return
+                    # Ensure mark_price is stored as float for consistent downstream math
+                    data['mark_price'] = mp_float
+                    self.ticker_data[symbol] = data
+                    self.last_price_update_time = time.time()
+            except Exception as e:
+                error_logger.warning(f"WS on_message parse error: {e}")
         
         def on_error(ws, error):
             error_logger.error(f"WS Error: {error}")
@@ -185,8 +202,19 @@ class DeltaIndiaClient:
             app_logger.info(f"WS: Subscribed to {symbols}")
             
     def get_realtime_ticker(self, symbol):
-        """Zero-latency read from memory cache."""
-        return self.ticker_data.get(symbol)
+        """Zero-latency read from memory cache. Returns None if data is missing or invalid."""
+        cached = self.ticker_data.get(symbol)
+        if not cached:
+            return None
+        # Safety check: reject cached entry if mark_price is 0, missing, or invalid
+        mark_price = cached.get('mark_price')
+        try:
+            mp_float = float(mark_price) if mark_price is not None else 0.0
+        except (ValueError, TypeError):
+            mp_float = 0.0
+        if mp_float <= 0.01:
+            return None   # Treat as unavailable so callers use entry_price fallback
+        return cached
 
     def update_ticker_from_http(self, symbol, data):
         """Safely updates the ticker_data cache with HTTP fallback data."""
@@ -209,10 +237,23 @@ class DeltaIndiaClient:
                 'theta': data.get('theta', 0),
                 'vega': data.get('vega', 0)
             }
+        
+        # Resolve mark_price — never store zero/missing as a valid price
+        raw_price = data.get('mark_price') or data.get('close')
+        try:
+            mark_price_float = float(raw_price) if raw_price is not None else 0.0
+        except (ValueError, TypeError):
+            mark_price_float = 0.0
+        
+        # Only update cache if the new price is a valid positive number (> 0.01 USDT)
+        # This prevents HTTP fallback from overwriting good WS data with a zero/stale price
+        if mark_price_float <= 0.01:
+            app_logger.warning(f"API: HTTP fallback returned invalid mark_price={raw_price} for {symbol} — keeping old cache")
+            return
             
         formatted_data = {
             'symbol': symbol,
-            'mark_price': data.get('mark_price') or data.get('close') or 0,
+            'mark_price': mark_price_float,
             'greeks': greeks
         }
         

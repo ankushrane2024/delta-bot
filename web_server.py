@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request
 from logger import app_logger
+from config import LOT_TO_BTC
 import os
 
 app = Flask(__name__, template_folder='templates')
@@ -65,22 +66,61 @@ def get_status():
         strike = data.get('strike', 0)
         
         # Live price from WebSocket / HTTP cache
-        current_price = entry_price  # fallback
+        current_price = entry_price  # fallback to entry_price if no live data
         delta_val = 0.0
         gamma_val = 0.0
         try:
             ws_data = bot_engine.api_client.get_realtime_ticker(sym)
             if ws_data and 'mark_price' in ws_data:
-                current_price = float(ws_data['mark_price'])
-                greeks = ws_data.get('greeks') or {}
-                delta_val = float(greeks.get('delta', 0))
-                gamma_val = float(greeks.get('gamma', 0))
-        except Exception:
-            pass
+                candidate_price = float(ws_data['mark_price'])
+                
+                # ── Price Sanity Guard ──────────────────────────────────────────
+                # Reject any live price that is unrealistically far from entry.
+                # A BTC option premium cannot move >95% in one monitor cycle.
+                # This is the root cause of "1.31 USDT" appearing when WS sends
+                # stale/garbage data after reconnect.
+                # Also reject if price is zero or negative (invalid API response).
+                price_is_valid = (
+                    candidate_price > 0.01 and               # must be positive
+                    entry_price > 0 and                       # need entry to compare
+                    abs(candidate_price - entry_price) / entry_price < 0.99  # max 99% move
+                )
+                
+                if price_is_valid:
+                    current_price = candidate_price
+                    # Update last-known-good price in the position store
+                    data['last_good_price'] = candidate_price
+                    greeks = ws_data.get('greeks') or {}
+                    delta_val = float(greeks.get('delta', 0))
+                    gamma_val = float(greeks.get('gamma', 0))
+                else:
+                    # Use last known-good price if available, otherwise entry price
+                    lgp = data.get('last_good_price')
+                    if lgp and lgp > 0.01:
+                        current_price = lgp
+                        app_logger.debug(
+                            f"Status: Rejected bad live price {candidate_price:.4f} for {sym} "
+                            f"(entry={entry_price:.4f}). Using last_good_price={lgp:.4f}"
+                        )
+                    else:
+                        current_price = entry_price  # absolute fallback
+                        app_logger.debug(
+                            f"Status: Rejected bad live price {candidate_price:.4f} for {sym}. "
+                            f"Falling back to entry_price={entry_price:.4f}"
+                        )
+        except Exception as ex:
+            app_logger.debug(f"Status: Price fetch error for {sym}: {ex}")
         
         # P&L for this leg (short position: profit = entry - current)
-        leg_pnl_usd = (entry_price - current_price) * size
+        # Formula: PnL = (Entry_Premium - Current_Premium) * BTC_Quantity
+        # where BTC_Quantity = Number_of_Lots * LOT_TO_BTC (0.001 BTC per lot)
+        btc_quantity = size * LOT_TO_BTC
+        leg_pnl_usd = (entry_price - current_price) * btc_quantity
         leg_pnl_inr = leg_pnl_usd * 84.0  # approx INR conversion
+        
+        # P&L Percentage
+        leg_entry_premium_total = entry_price * btc_quantity
+        leg_pnl_pct = (leg_pnl_usd / leg_entry_premium_total * 100) if leg_entry_premium_total > 0 else 0.0
         
         # Trade status label
         if trailing_sl_active:
@@ -99,9 +139,11 @@ def get_status():
             'side': data.get('side', 'SELL'),
             'size': size,
             'entry_price': round(entry_price, 4),
+
             'current_price': round(current_price, 4),
             'leg_pnl_usd': round(leg_pnl_usd, 2),
             'leg_pnl_inr': round(leg_pnl_inr, 2),
+            'leg_pnl_pct': round(leg_pnl_pct, 2),
             'delta': round(delta_val, 4),
             'gamma': round(gamma_val, 5),
             'entry_time': entry_time_str,
@@ -113,6 +155,7 @@ def get_status():
     # Total P&L across all legs
     total_pnl_usd = round(sum(pos['leg_pnl_usd'] for pos in positions), 2) if positions else 0.0
     total_pnl_inr = round(total_pnl_usd * 84.0, 2)
+    total_pnl_pct = (total_pnl_usd / total_entry_premium * 100) if total_entry_premium > 0 else 0.0
     
     dvol_status = bot_engine.dvol_provider.get_status() if getattr(bot_engine, 'dvol_provider', None) else {}
     hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
@@ -126,6 +169,7 @@ def get_status():
         'total_entry_premium': round(total_entry_premium, 4),
         'total_pnl_usd': total_pnl_usd,
         'total_pnl_inr': total_pnl_inr,
+        'total_pnl_pct': round(total_pnl_pct, 2),
         'logs': logs,
         'performance': bot_engine.performance_tracker.get_metrics(bot_engine.risk_manager.current_equity),
         'rule_report': bot_engine.latest_rule_report,
@@ -177,11 +221,16 @@ def emergency_close():
         for sym, data in bot_engine.execution.active_positions.items():
             ws_data = bot_engine.api_client.get_realtime_ticker(sym)
             if ws_data and 'mark_price' in ws_data:
-                current_total_value += float(ws_data['mark_price']) * data['size']
+                # BTC_Quantity = Lots * LOT_TO_BTC (0.001 per lot)
+                btc_qty = data['size'] * LOT_TO_BTC
+                current_total_value += float(ws_data['mark_price']) * btc_qty
         
         # Fallback to entry prices if live ticker not received yet
         if current_total_value == 0:
-            current_total_value = sum(data['entry_price'] * data['size'] for data in bot_engine.execution.active_positions.values())
+            current_total_value = sum(
+                data['entry_price'] * data['size'] * LOT_TO_BTC
+                for data in bot_engine.execution.active_positions.values()
+            )
             
         profit = bot_engine.total_entry_premium - current_total_value
         bot_engine._log_and_reset_trade(profit, "Emergency Manual Closed")

@@ -908,6 +908,69 @@
     <script>
         console.log("Dashboard: Script Initializing...");
 
+        // ── P&L Smoothing Cache ──────────────────────────────────────────────
+        // Prevents wild jumps when switching screens or tab-switching.
+        // Uses Exponential Moving Average (EMA) with alpha=0.25 for smooth updates.
+        // Caches the last known good values; only updates when new data is valid.
+        const PNL_EMA_ALPHA = 0.25;   // Smoothing factor (lower = smoother but slower)
+        const pnlCache = {
+            totalPnlUsd: null,
+            totalPnlInr: null,
+            legs: {}           // sym -> { currentPrice, legPnlUsd, legPnlInr }
+        };
+
+        function smoothValue(cached, newVal) {
+            // If no cached value yet, accept immediately (first render)
+            if (cached === null || cached === undefined) return newVal;
+            // EMA smoothing: new = alpha * newVal + (1 - alpha) * cached
+            return PNL_EMA_ALPHA * newVal + (1 - PNL_EMA_ALPHA) * cached;
+        }
+
+        function applyPnlSmoothing(positions, totalPnlUsd, totalPnlInr) {
+            // Smooth total P&L
+            pnlCache.totalPnlUsd = smoothValue(pnlCache.totalPnlUsd, totalPnlUsd);
+            pnlCache.totalPnlInr = smoothValue(pnlCache.totalPnlInr, totalPnlInr);
+
+            // Smooth per-leg prices and P&L
+            const smoothedPositions = positions.map(pos => {
+                const sym = pos.symbol;
+                if (!pnlCache.legs[sym]) {
+                    pnlCache.legs[sym] = {
+                        currentPrice: pos.current_price,
+                        legPnlUsd:    pos.leg_pnl_usd,
+                        legPnlInr:    pos.leg_pnl_inr
+                    };
+                } else {
+                    pnlCache.legs[sym].currentPrice = smoothValue(pnlCache.legs[sym].currentPrice, pos.current_price);
+                    pnlCache.legs[sym].legPnlUsd    = smoothValue(pnlCache.legs[sym].legPnlUsd,    pos.leg_pnl_usd);
+                    pnlCache.legs[sym].legPnlInr    = smoothValue(pnlCache.legs[sym].legPnlInr,    pos.leg_pnl_inr);
+                }
+                return {
+                    ...pos,
+                    current_price: pnlCache.legs[sym].currentPrice,
+                    leg_pnl_usd:   pnlCache.legs[sym].legPnlUsd,
+                    leg_pnl_inr:   pnlCache.legs[sym].legPnlInr
+                };
+            });
+
+            // Prune symbols no longer in positions
+            const activeSyms = new Set(positions.map(p => p.symbol));
+            Object.keys(pnlCache.legs).forEach(sym => {
+                if (!activeSyms.has(sym)) delete pnlCache.legs[sym];
+            });
+            if (!positions.length) {
+                pnlCache.totalPnlUsd = null;
+                pnlCache.totalPnlInr = null;
+            }
+
+            return {
+                smoothedPositions,
+                smoothedTotalPnlUsd: pnlCache.totalPnlUsd,
+                smoothedTotalPnlInr: pnlCache.totalPnlInr
+            };
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         // Command API
         async function sendCommand(action) {
             try {
@@ -923,6 +986,7 @@
             try {
                 const res = await fetch('/api/status');
                 const data = await res.json();
+
 
                 // Update Badge
                 const badge = document.getElementById('status-badge');
@@ -1145,17 +1209,27 @@
                 if (data.positions && data.positions.length > 0) {
                     totalBar.style.display = 'flex';
                     
+                    // ── Apply EMA smoothing to prevent wild jumps on tab switch / refresh ──
+                    // Formula: PnL = (Entry_Premium - Current_Premium) * Lots * 0.001 BTC
+                    const rawTotalPnlUsd = data.total_pnl_usd || 0;
+                    const rawTotalPnlInr = data.total_pnl_inr || 0;
+                    const { smoothedPositions, smoothedTotalPnlUsd, smoothedTotalPnlInr } =
+                        applyPnlSmoothing(data.positions, rawTotalPnlUsd, rawTotalPnlInr);
+                    const totalPnlUsd = smoothedTotalPnlUsd;
+                    const totalPnlInr = smoothedTotalPnlInr;
+
                     // Update summary bar
-                    const totalPnlUsd = data.total_pnl_usd || 0;
-                    const totalPnlInr = data.total_pnl_inr || 0;
-                    document.getElementById('pos-total-entry').textContent = (data.total_entry_premium || 0).toFixed(2);
+                    document.getElementById('pos-total-entry').textContent = (data.total_entry_premium || 0).toFixed(4);
+                    
+                    const totalPnlPct = data.total_pnl_pct || 0;
+                    const pnlPctSign = totalPnlPct >= 0 ? '+' : '';
                     
                     const pnlUsdEl = document.getElementById('pos-total-pnl-usd');
-                    pnlUsdEl.textContent = (totalPnlUsd >= 0 ? '+' : '') + totalPnlUsd.toFixed(2);
+                    pnlUsdEl.innerHTML = `<span>${totalPnlUsd >= 0 ? '+' : ''}${totalPnlUsd.toFixed(4)} USDT</span> <span style="font-size: 0.85em; opacity: 0.9;">(${pnlPctSign}${totalPnlPct.toFixed(2)}%)</span>`;
                     pnlUsdEl.className = totalPnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg';
                     
                     const pnlInrEl = document.getElementById('pos-total-pnl-inr');
-                    pnlInrEl.textContent = (totalPnlInr >= 0 ? '+' : '') + totalPnlInr.toFixed(0);
+                    pnlInrEl.textContent = (totalPnlInr >= 0 ? '+' : '') + totalPnlInr.toFixed(2);
                     pnlInrEl.className = totalPnlInr >= 0 ? 'pnl-pos' : 'pnl-neg';
                     
                     const mins = data.positions[0]?.mins_to_squareoff ?? 0;
@@ -1163,8 +1237,9 @@
                     const mm = mins % 60;
                     document.getElementById('pos-time-remaining').textContent = mins > 0 ? `${hh}h ${mm}m` : 'Market Closed';
 
-                    // Build one card per leg
-                    posCards.innerHTML = data.positions.map(pos => {
+                    // Build one card per leg (using smoothed positions)
+                    posCards.innerHTML = smoothedPositions.map(pos => {
+
                         const isCall = pos.leg_type === 'call';
                         const legLabel = isCall
                             ? '<span class="pos-call-label">📈 CALL</span>'
@@ -1225,7 +1300,7 @@
                                 </div>
                                 <div class="pos-metric">
                                     <div class="pos-metric-label">Leg P&amp;L</div>
-                                    <div class="pos-metric-value ${pnlClass}">${pnlSign}${pos.leg_pnl_usd.toFixed(2)} $</div>
+                                    <div class="pos-metric-value ${pnlClass}">${pnlSign}${pos.leg_pnl_usd.toFixed(2)} $ <span style="font-size: 0.75em; font-weight: normal; opacity: 0.85;">(${pnlSign}${pos.leg_pnl_pct || 0}%)</span></div>
                                     <div class="pos-metric-sub">${pnlInrSign}₹${pos.leg_pnl_inr.toFixed(0)}</div>
                                 </div>
                                 <div class="pos-metric">

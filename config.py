@@ -35,6 +35,12 @@ MAX_DAILY_LOSS_PCT = 0.03
 # Example: 200 = 100 lots per leg (call side + put side).
 MANUAL_TOTAL_LOTS = int(os.getenv("MANUAL_TOTAL_LOTS", 200))
 
+# --- Contract Size (Delta Exchange BTC Options) ---
+# Each BTC options contract on Delta Exchange represents 0.001 BTC.
+# P&L Formula: Total_PnL = (Entry_Premium - Current_Premium) * Lots * LOT_TO_BTC
+# Example: 105 lots * 0.001 = 0.105 BTC exposure per leg
+LOT_TO_BTC = 0.001  # 1 lot = 0.001 BTC (Delta Exchange BTC Options contract size)
+
 # --- Entry/Exit Times (IST) ---
 ENTRY_TIMES = ["08:30", "09:00", "09:30"]
 EXIT_PREPARE_TIME = "16:55"   # Start preparing forced exit at 16:55 IST

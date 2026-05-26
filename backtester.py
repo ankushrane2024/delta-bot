@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from logger import app_logger
 import config
+from config import LOT_TO_BTC
 
 # ─── BLACK-SCHOLES FUNCTIONS ──────────────────────────────────────────────────
 
@@ -321,14 +322,18 @@ class AdvancedBacktester:
             
             # Estimate risk = Entry premium * SL_PERCENT (150% SL means max loss is 1.5x entry)
             # Max Risk Per Trade limit = 1.5% of current equity
+            # P&L Formula: Total_PnL = pnl_pct * entry_premium * BTC_Quantity
+            # BTC_Quantity = adjusted_lots * LOT_TO_BTC (0.001 BTC per lot on Delta Exchange)
+            btc_quantity = adjusted_lots * LOT_TO_BTC
             max_risk_amount = self.capital * 0.015
-            estimated_risk = entry_premium_total * 1.50 * (adjusted_lots / 100.0) # Deribit/Delta 1 lot = 0.01 BTC option
+            estimated_risk = entry_premium_total * 1.50 * btc_quantity
             
             if estimated_risk > max_risk_amount:
                 # Scale down lots to keep risk within 1.5% limit
-                adjusted_lots = int((max_risk_amount / (entry_premium_total * 1.50)) * 100.0)
+                adjusted_lots = int(max_risk_amount / (entry_premium_total * 1.50 * LOT_TO_BTC))
                 adjusted_lots = max(1, adjusted_lots)
-                estimated_risk = entry_premium_total * 1.50 * (adjusted_lots / 100.0)
+                btc_quantity = adjusted_lots * LOT_TO_BTC
+                estimated_risk = entry_premium_total * 1.50 * btc_quantity
 
             # --- SIMULATE OPTIONS P&L PATH ---
             call_sigma = (dvol * 1.95) / 100.0
@@ -426,8 +431,9 @@ class AdvancedBacktester:
                     final_pnl_pct = closing_pnl_pct
 
             # Calculate P&L USD
-            # Deribit multiplier is 0.01 BTC per option contract (so lots / 100.0)
-            pnl_usd = final_pnl_pct * entry_premium_total * (adjusted_lots / 100.0)
+            # Formula: PnL = pnl_pct * entry_premium * BTC_Quantity
+            # BTC_Quantity = adjusted_lots * LOT_TO_BTC (0.001 BTC per lot on Delta Exchange)
+            pnl_usd = final_pnl_pct * entry_premium_total * btc_quantity
 
             # Cap loss at the max risk amount
             if pnl_usd < 0:
