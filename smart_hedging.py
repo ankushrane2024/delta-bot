@@ -446,14 +446,11 @@ class SmartHedgingManager:
                 self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
         else:
             # No hedge active — check standard delta triggers
-            if unrealized_loss_pct > 0.0:
-                app_logger.info(
-                    f"Hedge: Standard delta check — raw_net_delta={raw_net_delta:.4f} | "
-                    f"dvol={current_dvol:.1f}% | hedge_active={self.hedge_active}"
-                )
-                self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
-            else:
-                app_logger.info(f"Hedge: Trade is profitable/flat (loss={unrealized_loss_pct:.1%}). Skipping hedge despite delta={raw_net_delta:.4f}.")
+            app_logger.info(
+                f"Hedge: Standard delta check — raw_net_delta={raw_net_delta:.4f} | "
+                f"dvol={current_dvol:.1f}% | hedge_active={self.hedge_active} | loss={unrealized_loss_pct:.1%}"
+            )
+            self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
 
     def close_hedge(self):
         """Step 4: Close all active hedges and reset states."""
