@@ -597,6 +597,11 @@
                         <span id="hedge-size-val" style="font-weight: 800; font-size: 1.1rem; color: #38bdf8;">0.000000 BTC</span>
                     </div>
                     
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span class="stat-label">Live Hedge P&L</span>
+                        <span id="hedge-pnl-val" style="font-weight: 800; font-size: 1.1rem; color: var(--text-secondary);">$0.00</span>
+                    </div>
+                    
                     <div style="padding: 12px; background: rgba(255,255,255,0.02); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
                         <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px;">
                             <span>Hedge Percentage</span>
@@ -1212,6 +1217,12 @@
                     
                     document.getElementById('hedge-type-val').textContent = (data.hedge_status.hedge_type || 'none').toUpperCase();
                     document.getElementById('hedge-size-val').textContent = `${(data.hedge_status.hedge_size_btc || 0).toFixed(6)} BTC`;
+                    
+                    const hedgePnl = data.hedge_status.hedge_pnl_usd || 0;
+                    const pnlSpan = document.getElementById('hedge-pnl-val');
+                    pnlSpan.textContent = `${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}`;
+                    pnlSpan.style.color = hedgePnl > 0 ? 'var(--success)' : (hedgePnl < 0 ? 'var(--danger)' : 'var(--text-secondary)');
+                    
                     document.getElementById('hedge-percentage-val').textContent = `${(data.hedge_status.hedge_percentage || 0).toFixed(0)}%`;
                     document.getElementById('hedge-percentage-bar').style.width = `${data.hedge_status.hedge_percentage || 0}%`;
                     

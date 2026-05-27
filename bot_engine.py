@@ -813,6 +813,7 @@ class DeltaTradingEngine:
                     # This ensures we catch sudden BTC spikes (like the 3PM move) quickly.
                     _now_ist_h = get_ist_now().hour
                     _pnl_pct_local = pnl_pct if ('pnl_pct' in locals() and pnl_pct is not None) else 0.0
+                    _profit_usd_local = profit if ('profit' in locals() and profit is not None) else 0.0
                     _is_volatile = (_now_ist_h >= 15) or (_pnl_pct_local < -0.10)
                     _hedge_interval = 10 if _is_volatile else HEDGE_RECHECK_INTERVAL  # 10s volatile / 30s normal
 
@@ -823,10 +824,11 @@ class DeltaTradingEngine:
                         app_logger.info(
                             f"Hedge: Running manage_hedge | interval={_hedge_interval}s | "
                             f"unrealized_loss={unrealized_loss_pct*100:.2f}% | "
+                            f"loss_usd={-_profit_usd_local:.2f} | "
                             f"volatile={'YES' if _is_volatile else 'NO'}"
                         )
                         self.smart_hedging.manage_hedge(
-                            self.execution.active_positions, unrealized_loss_pct
+                            self.execution.active_positions, unrealized_loss_pct, _profit_usd_local
                         )
                         self.hedging_triggered_today = self.smart_hedging.hedge_active
                     # ────────────────────────────────────────────────────────────────

@@ -163,7 +163,7 @@ class SmartHedgingManager:
         
         self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
 
-    def _execute_hedge_decision(self, net_delta_btc, dvol, positions):
+    def _execute_hedge_decision(self, net_delta_btc, dvol, positions, profit_usd=0.0):
         """
         Step 2 & 3: Check current BTC DVOL to decide hedge size and execute it.
         """
@@ -193,23 +193,29 @@ class SmartHedgingManager:
         if raw_net_delta > trigger_level:
             if action == 'full':
                 app_logger.info(f"Hedge: Triggering FULL hedge since raw net delta {raw_net_delta:.4f} > {trigger_level:.2f}")
-                self._execute_full_hedge(net_delta_btc, exposure_btc)
+                self._execute_full_hedge(net_delta_btc, exposure_btc, profit_usd)
             elif action == 'partial':
                 app_logger.info(f"Hedge: Triggering PARTIAL hedge since raw net delta {raw_net_delta:.4f} > {trigger_level:.2f}")
-                self._execute_partial_hedge_sequence(net_delta_btc, exposure_btc, positions)
+                self._execute_partial_hedge_sequence(net_delta_btc, exposure_btc, positions, profit_usd)
         else:
             app_logger.info(f"Hedge: No post-entry hedge needed. Raw Net Delta {raw_net_delta:.4f} <= {trigger_level:.2f}")
 
-    def _execute_full_hedge(self, net_delta_btc, exposure_btc):
-        """Executes a 100% hedge of option delta exposure."""
-        # Hedge size matches option delta exposure in BTC
-        required_hedge_btc = abs(net_delta_btc)
-        direction = 'buy' if net_delta_btc > 0 else 'sell' # If delta is positive (long options delta), we need to SHORT futures?
-        # Wait, if net delta is positive (e.g. Call side is tested, we are long delta), we need to SHORT futures to neutralize.
-        # Let's check execution.py:
-        # "If target_delta is positive, we are long delta -> Need to SHORT futures.
-        #  If target_delta is negative, we are short delta -> Need to LONG futures."
-        # Correct! direction = 'sell' if net_delta_btc > 0 else 'buy'.
+    def _execute_full_hedge(self, net_delta_btc, exposure_btc, profit_usd=0.0):
+        """Executes a 100% hedge of option delta exposure or dynamic loss recovery."""
+        abs_delta = abs(net_delta_btc)
+        required_hedge_btc = abs_delta
+        
+        # Dynamic Recovery Logic: Target recovering loss within a $300 BTC move
+        if profit_usd < 0:
+            loss_usd = -profit_usd
+            recovery_size = loss_usd / 300.0
+            # Cap at 100% of notional exposure to prevent over-leveraging
+            recovery_size = min(recovery_size, exposure_btc)
+            # Ensure we at least cover the delta risk
+            required_hedge_btc = max(abs_delta, recovery_size)
+            if recovery_size > abs_delta:
+                app_logger.info(f"Hedge [RECOVERY]: Upping hedge size to {required_hedge_btc:.4f} BTC to recover ${loss_usd:.2f} loss in $300 move.")
+        
         direction = 'sell' if net_delta_btc > 0 else 'buy'
         
         app_logger.info(f"Hedge: Placing FULL hedge order of size {required_hedge_btc:.4f} BTC in direction: {direction}")
@@ -236,13 +242,21 @@ class SmartHedgingManager:
             app_logger.error("Hedge: FULL hedge placement failed!")
             notifier.notify_hedge_failed()
 
-    def _execute_partial_hedge_sequence(self, net_delta_btc, exposure_btc, positions):
+    def _execute_partial_hedge_sequence(self, net_delta_btc, exposure_btc, positions, profit_usd=0.0):
         """
         Executes a partial hedge sequence:
         Starts at 50%, waits 10s, rechecks, and escalates to 80-100% if delta > 0.10.
         """
+        abs_delta = abs(net_delta_btc)
+        required_full_hedge = abs_delta
+        
+        if profit_usd < 0:
+            loss_usd = -profit_usd
+            recovery_size = min(loss_usd / 300.0, exposure_btc)
+            required_full_hedge = max(abs_delta, recovery_size)
+        
         # Step 1: Initial 50% partial hedge
-        initial_hedge_btc = abs(net_delta_btc) * HEDGE_PARTIAL_INITIAL_PCT # 50% of delta
+        initial_hedge_btc = required_full_hedge * HEDGE_PARTIAL_INITIAL_PCT
         direction = 'sell' if net_delta_btc > 0 else 'buy'
         
         app_logger.info(f"Hedge: Placing PARTIAL hedge (50%) of size {initial_hedge_btc:.4f} BTC in direction: {direction}")
@@ -283,10 +297,20 @@ class SmartHedgingManager:
             
             if raw_new_delta > 0.10:
                 # Escalate to 80% (Section 3.3)
-                escalation_hedge_btc = abs(new_delta) * HEDGE_PARTIAL_ESCALATE_PCT
+                abs_new_delta = abs(new_delta)
+                required_full_esc = abs_new_delta
+                
+                # Fetch live pnl for escalation calc if possible (fallback to old profit_usd if not)
+                # Since we don't recalculate profit_usd here, we use the original required_full_hedge logic based on the new delta
+                if profit_usd < 0:
+                    loss_usd = -profit_usd
+                    recovery_size = min(loss_usd / 300.0, exposure_btc)
+                    required_full_esc = max(abs_new_delta, recovery_size)
+
+                escalation_hedge_btc = required_full_esc * HEDGE_PARTIAL_ESCALATE_PCT
                 esc_direction = 'sell' if new_delta > 0 else 'buy'
                 
-                app_logger.info(f"Hedge: ESCALATING partial hedge to 80% of current exposure ({escalation_hedge_btc:.4f} BTC)")
+                app_logger.info(f"Hedge: ESCALATING partial hedge to 80% ({escalation_hedge_btc:.4f} BTC)")
                 esc_result = self.execution.place_hedge_order(escalation_hedge_btc, esc_direction)
                 
                 if esc_result and esc_result['success']:
@@ -311,7 +335,7 @@ class SmartHedgingManager:
 
         threading.Thread(target=recheck_escalation, daemon=True).start()
 
-    def manage_hedge(self, positions, unrealized_loss_pct):
+    def manage_hedge(self, positions, unrealized_loss_pct, profit_usd=0.0):
         """
         Step 4: Continuous hedge management. Called from monitor_loop.
         Interval is dynamic: 10s after 3PM or when losing >10%, 30s otherwise.
@@ -450,7 +474,7 @@ class SmartHedgingManager:
                 f"Hedge: Standard delta check — raw_net_delta={raw_net_delta:.4f} | "
                 f"dvol={current_dvol:.1f}% | hedge_active={self.hedge_active} | loss={unrealized_loss_pct:.1%}"
             )
-            self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
+            self._execute_hedge_decision(net_delta_btc, current_dvol, positions, profit_usd)
 
     def close_hedge(self):
         """Step 4: Close all active hedges and reset states."""
