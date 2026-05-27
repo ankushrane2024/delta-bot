@@ -107,6 +107,11 @@ def generate_pdf_report(data, filepath):
             if hedge_pnl != 0.0:
                 h_color = '#10b981' if hedge_pnl >= 0 else '#ef4444'
                 pnl_text += f"<br/><font size='8'>Hedge: <font color='{h_color}'>${hedge_pnl:.2f}</font></font>"
+                
+            max_pnl = t.get('max_pnl_pct', 0.0) * 100
+            min_pnl = t.get('min_pnl_pct', 0.0) * 100
+            if max_pnl != -99900.0 and min_pnl != 99900.0:
+                pnl_text += f"<br/><font size='7' color='#64748b'>Peak: +{max_pnl:.1f}%<br/>Trough: {min_pnl:.1f}%</font>"
             
             trades_rows.append([
                 t['entry_time'].split('T')[-1][:8] if 'T' in t['entry_time'] else t['entry_time'],
@@ -233,7 +238,7 @@ def generate_xlsx_report(data, filepath):
     ws.row_dimensions[row_idx].height = 22
     row_idx += 1
     
-    headers = ["Entry Time", "Exit Time", "Call Strike", "Call Entry $", "Call Exit $", "Put Strike", "Put Entry $", "Put Exit $", "Total Premium", "P&L (USD)", "Hedge PnL ($)", "Exit Reason"]
+    headers = ["Entry Time", "Exit Time", "Call Strike", "Call Entry $", "Call Exit $", "Put Strike", "Put Entry $", "Put Exit $", "Total Premium", "P&L (USD)", "Hedge PnL ($)", "Max Peak %", "Max Trough %", "Exit Reason"]
     for col_idx, h in enumerate(headers, 1):
         cell = ws.cell(row=row_idx, column=col_idx, value=h)
         cell.font = header_font
@@ -264,6 +269,8 @@ def generate_xlsx_report(data, filepath):
                 t['entry_premium'],
                 t['pnl_usd'],
                 t.get('hedge_pnl', 0.0),
+                t.get('max_pnl_pct', 0.0) * 100 if t.get('max_pnl_pct', 0.0) != -999.0 else 0.0,
+                t.get('min_pnl_pct', 0.0) * 100 if t.get('min_pnl_pct', 0.0) != 999.0 else 0.0,
                 t['exit_reason']
             ]
             for col_idx, val in enumerate(row_data, 1):
@@ -281,6 +288,12 @@ def generate_xlsx_report(data, filepath):
                     cell.alignment = align_right
                     if cell.value is not None and isinstance(cell.value, (int, float)):
                         cell.font = Font(name=font_family, size=10, bold=True, color="10b981" if cell.value >= 0 else "ef4444")
+                elif col_idx in [12, 13]:
+                    cell.number_format = "0.00%"
+                    cell.alignment = align_right
+                    if cell.value is not None and isinstance(cell.value, (int, float)):
+                        cell.value = cell.value / 100.0  # Excel percentage format multiplies by 100
+                        cell.font = Font(name=font_family, size=9, color="10b981" if cell.value >= 0 else "ef4444")
             ws.row_dimensions[row_idx].height = 18
             row_idx += 1
             

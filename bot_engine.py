@@ -244,6 +244,10 @@ class DeltaTradingEngine:
         self._trade_start_ts = time.time()
         self.current_trade_info["calls"].append(call_opt['symbol'])
         self.current_trade_info["puts"].append(put_opt['symbol'])
+        self.current_trade_info["max_pnl_pct"] = -999.0
+        self.current_trade_info["min_pnl_pct"] = 999.0
+        self.current_trade_info["max_pnl_time"] = ""
+        self.current_trade_info["min_pnl_time"] = ""
 
         # Sub to WebSocket for these new symbols if not already
         self.api_client.subscribe_ws([call_opt['symbol'], put_opt['symbol']])
@@ -727,6 +731,15 @@ class DeltaTradingEngine:
                         # Detailed debug logging required for profit verification
                         hedge_log = f" | Hedge PnL: +${self.smart_hedging.get_live_hedge_pnl():.2f}" if self.smart_hedging.hedge_active else ""
                         app_logger.info(f"Engine [DEBUG] Profit Check: entry_total={collected_premium:.4f} | current_total={current_option_value:.4f} | pnl_pct={pnl_pct*100:.2f}% | target={config.EXIT_PROFIT_TARGET*100:.2f}% | time_in_trade={time_in_trade_seconds:.1f}s{hedge_log}")
+                        
+                        # Update Max/Min Excursion Tracking
+                        if pnl_pct > self.current_trade_info.get("max_pnl_pct", -999.0):
+                            self.current_trade_info["max_pnl_pct"] = pnl_pct
+                            self.current_trade_info["max_pnl_time"] = get_ist_now().isoformat()
+                        if pnl_pct < self.current_trade_info.get("min_pnl_pct", 999.0):
+                            self.current_trade_info["min_pnl_pct"] = pnl_pct
+                            self.current_trade_info["min_pnl_time"] = get_ist_now().isoformat()
+                            
                         if self.trailing_sl_active and pnl_pct <= 0.0:
                             action = "TRAILING_SL_EXIT"
                             
@@ -951,12 +964,17 @@ class DeltaTradingEngine:
                 dvol_status=dvol_status,
                 size_multiplier=getattr(self, 'size_multiplier', 1.0),
                 hedge_status=hedge_status,
-                adx=getattr(self, 'current_adx_value', 0.0),
+                adx=self.market_regime.get_adx(),
                 mode=getattr(self.execution, 'mode', 'PAPER'),
                 call_entry_price=call_entry_price,
                 put_entry_price=put_entry_price,
                 call_exit_price=call_exit_price,
-                put_exit_price=put_exit_price
+                put_exit_price=put_exit_price,
+                hedge_pnl=hedge_pnl,
+                max_pnl_pct=self.current_trade_info.get("max_pnl_pct", 0.0),
+                min_pnl_pct=self.current_trade_info.get("min_pnl_pct", 0.0),
+                max_pnl_time=self.current_trade_info.get("max_pnl_time", ""),
+                min_pnl_time=self.current_trade_info.get("min_pnl_time", "")
             )
             self.current_trade_info = {"calls": [], "puts": []}
             self.total_entry_premium = 0
