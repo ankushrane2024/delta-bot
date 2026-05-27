@@ -33,7 +33,7 @@ MAX_DAILY_LOSS_PCT = 0.03
 # which writes to lot_size.json. On bot startup, lot_size.json is checked first.
 # If lot_size.json is absent, this value is used as the default.
 # Example: 200 = 100 lots per leg (call side + put side).
-MANUAL_TOTAL_LOTS = int(os.getenv("MANUAL_TOTAL_LOTS", 200))
+MANUAL_TOTAL_LOTS = int(os.getenv("MANUAL_TOTAL_LOTS", 1000))
 
 # --- Contract Size (Delta Exchange BTC Options) ---
 # Each BTC options contract on Delta Exchange represents 0.001 BTC.
