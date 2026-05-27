@@ -280,9 +280,12 @@ class DeltaTradingEngine:
                 if ws_data and 'mark_price' in ws_data:
                     price = float(ws_data['mark_price'])
                 else:
-                    res = self.api_client.get_tickers({'symbol': sym})
+                    res = self.api_client.get_tickers()
                     if res and res.get('success') and res.get('result'):
-                        price = float(res['result'][0].get('mark_price', 0))
+                        for item in res['result']:
+                            if item.get('symbol') == sym:
+                                price = float(item.get('mark_price', 0))
+                                break
                 
                 if price is None or price <= 0:
                     price = data.get('entry_price', 0)
@@ -623,11 +626,11 @@ class DeltaTradingEngine:
  
                     # HTTP Polling Fallback Every 2 seconds
                     if time.time() - last_http_poll_time >= 2:
-                        for sym in self.execution.active_positions.keys():
-                            res = self.api_client.get_tickers({'symbol': sym})
-                            if res and res.get('success'):
-                                data = res.get('result')
-                                self.api_client.update_ticker_from_http(sym, data)
+                        res = self.api_client.get_tickers()
+                        if res and res.get('success') and res.get('result'):
+                            data_list = res.get('result')
+                            for sym in self.execution.active_positions.keys():
+                                self.api_client.update_ticker_from_http(sym, data_list)
                         last_http_poll_time = time.time()
  
                     current_total_value = 0
@@ -722,7 +725,8 @@ class DeltaTradingEngine:
                         time_in_trade_seconds = time.time() - start_ts
                         
                         # Detailed debug logging required for profit verification
-                        app_logger.info(f"Engine [DEBUG] Profit Check: entry_total={collected_premium:.4f} | current_total={current_option_value:.4f} | pnl_pct={pnl_pct*100:.2f}% | target={config.EXIT_PROFIT_TARGET*100:.2f}% | time_in_trade={time_in_trade_seconds:.1f}s")
+                        hedge_log = f" | Hedge PnL: +${self.smart_hedging.get_live_hedge_pnl():.2f}" if self.smart_hedging.hedge_active else ""
+                        app_logger.info(f"Engine [DEBUG] Profit Check: entry_total={collected_premium:.4f} | current_total={current_option_value:.4f} | pnl_pct={pnl_pct*100:.2f}% | target={config.EXIT_PROFIT_TARGET*100:.2f}% | time_in_trade={time_in_trade_seconds:.1f}s{hedge_log}")
                         if self.trailing_sl_active and pnl_pct <= 0.0:
                             action = "TRAILING_SL_EXIT"
                             
@@ -829,6 +833,7 @@ class DeltaTradingEngine:
         self.total_entry_premium = 0
         self.partial_profit_hit = False
         self.trailing_sl_active = False
+        self.smart_hedging.hedge_stopped_out = False
         self.last_hedge_check_time = None
         self.hedging_triggered_today = False
         self._trade_start_ts = None
@@ -873,25 +878,28 @@ class DeltaTradingEngine:
                 else:
                     put_exit_price += data.get('entry_price', 0.0)
             
+            # Calculate realized Hedge PnL if hedge is active before we close it
+            hedge_pnl = self.smart_hedging.get_live_hedge_pnl() if self.smart_hedging.hedge_active else 0.0
+            
             # Update simulated equity and lot multiplier in PAPER mode
             if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
-                self.risk_manager.current_equity += profit
+                self.risk_manager.current_equity += profit + hedge_pnl
                 
                 # Check if it is a winning trade or losing trade
-                if profit > 0:
+                if (profit + hedge_pnl) > 0:
                     # Win: Increase by +5%, cap at 1.30 (130%)
                     self.paper_lot_multiplier = min(1.30, self.paper_lot_multiplier + 0.05)
                     self.consecutive_losses = 0
-                    app_logger.info(f"Engine [PAPER]: Winning trade (+${profit:.2f}). New Lot Multiplier: {self.paper_lot_multiplier*100:.1f}%. Consecutive Losses reset to 0.")
+                    app_logger.info(f"Engine [PAPER]: Winning trade (+${profit+hedge_pnl:.2f}). New Lot Multiplier: {self.paper_lot_multiplier*100:.1f}%. Consecutive Losses reset to 0.")
                 else:
                     # Loss
                     self.consecutive_losses += 1
                     if self.consecutive_losses == 1:
                         self.paper_lot_multiplier = max(0.10, self.paper_lot_multiplier - 0.10)
-                        app_logger.info(f"Engine [PAPER]: Losing trade (-${abs(profit):.2f}). 1st loss. New Lot Multiplier: {self.paper_lot_multiplier*100:.1f}%.")
+                        app_logger.info(f"Engine [PAPER]: Losing trade (-${abs(profit+hedge_pnl):.2f}). 1st loss. New Lot Multiplier: {self.paper_lot_multiplier*100:.1f}%.")
                     elif self.consecutive_losses == 2:
                         self.paper_lot_multiplier = max(0.10, self.paper_lot_multiplier - 0.20)
-                        app_logger.info(f"Engine [PAPER]: Losing trade (-${abs(profit):.2f}). 2nd consecutive loss. New Lot Multiplier: {self.paper_lot_multiplier*100:.1f}%.")
+                        app_logger.info(f"Engine [PAPER]: Losing trade (-${abs(profit+hedge_pnl):.2f}). 2nd consecutive loss. New Lot Multiplier: {self.paper_lot_multiplier*100:.1f}%.")
                     elif self.consecutive_losses >= 3:
                         self.paper_trading_paused = True
                         app_logger.warning(f"Engine [PAPER]: 3 consecutive losses! Pausing paper trading for the rest of the day. Lot Multiplier remains: {self.paper_lot_multiplier*100:.1f}%.")

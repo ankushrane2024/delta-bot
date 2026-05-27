@@ -205,3 +205,26 @@
 
 ---
 
+## 📝 Trade Diary - Date: 2026-05-25 (🟢 WIN)
+- **Entry Time (IST)**: `2026-05-25T22:56:15.395202+05:30`
+- **Exit Time (IST)**: `2026-05-25T22:56:16.318519+05:30`
+- **Symbols**: Call: `C-BTC-78400-260526` | Put: `P-BTC-76800-260526`
+- **Size Multiplier**: `1.00x` | **Total Premium Collected**: `$18.60`
+- **Net P&L**: `$9.82` | **Exit Reason**: `EOD Square-off`
+- **Account Equity After**: `$10009.82`
+
+### 📊 Volatility & Market Environment
+- **DVOL Index**: `34.54%` (Percentile: `3.3%`)
+- **Current IV**: `0.0%`
+- **Market Regime**: `Ranging` (ADX: `0.0`)
+
+### 🛡️ Smart Hedging Telemetry
+- **Hedging Triggered**: `False` (Type: `None`)
+- **Futures Hedge Size**: `0.0 BTC` | **Tightened SL**: `False`
+
+### 🧠 Pro-Trader Post-Mortem Notes
+> [!NOTE]
+> **Performance Analysis**: This trade ended in a **EOD Square-off** with a net P&L of **$9.82**. DVOL was at **34.54%** which directed our premium targets. Smart hedging status was **inactive**. This journal entry was captured automatically for subsequent quantitative analysis and optimization.
+
+---
+

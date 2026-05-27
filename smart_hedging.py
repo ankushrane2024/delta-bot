@@ -10,7 +10,8 @@ from config import (
     HEDGE_PARTIAL_WAIT,
     HEDGE_EMERGENCY_LOSS_PCT,
     HEDGE_EMERGENCY_SL_TIGHTEN,
-    HEDGE_SYMBOL
+    HEDGE_SYMBOL,
+    HEDGE_MAX_LOSS_PER_LOT
 )
 from logger import app_logger
 from notifier import notifier
@@ -34,6 +35,7 @@ class SmartHedgingManager:
         self.hedge_order_id = "None"
         self.last_check_time = 0.0
         self.sl_tightened = False
+        self.hedge_stopped_out = False
 
     def get_status(self):
         """Returns the current hedging status dictionary for the web dashboard."""
@@ -44,8 +46,35 @@ class SmartHedgingManager:
             "hedge_percentage": round(self.hedge_percentage, 1),
             "hedge_order_id": self.hedge_order_id or self.execution.hedge_order_id or "None",
             "sl_tightened": self.sl_tightened,
-            "last_check_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_check_time)) if self.last_check_time > 0 else "N/A"
+            "last_check_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_check_time)) if self.last_check_time > 0 else "N/A",
+            "hedge_pnl_usd": round(self.get_live_hedge_pnl(), 2)
         }
+
+    def get_live_hedge_pnl(self):
+        """Calculates the live PnL of the current hedge."""
+        if not self.hedge_active or abs(self.execution.hedge_size_btc) < 0.0001:
+            return 0.0
+            
+        res_ticker = self.api_client.get_tickers()
+        mark_price = 0.0
+        if res_ticker and res_ticker.get('success') and res_ticker.get('result'):
+            for item in res_ticker['result']:
+                if item.get('symbol') == HEDGE_SYMBOL:
+                    mark_price = float(item.get('mark_price', 0))
+                    break
+                    
+        if mark_price <= 0:
+            return 0.0
+            
+        entry = self.execution.hedge_entry_price
+        if entry <= 0:
+            return 0.0
+            
+        size = abs(self.execution.hedge_size_btc)
+        if self.execution.hedge_size_btc > 0: # Long hedge
+            return (mark_price - entry) * size
+        else: # Short hedge
+            return (entry - mark_price) * size
 
     def _get_options_exposure_btc(self, positions):
         """Calculates total option contract size in BTC terms."""
@@ -294,6 +323,25 @@ class SmartHedgingManager:
                 app_logger.info("Hedge: Option positions cleared. Closing futures hedge...")
                 self.close_hedge()
             return
+            
+        if self.hedge_stopped_out:
+            return
+            
+        # 3.9: Hedge Stop-Loss Check
+        if self.hedge_active:
+            hedge_pnl = self.get_live_hedge_pnl()
+            
+            # Calculate dynamic stop loss based on option exposure (lots)
+            exposure_btc = self._get_options_exposure_btc(positions)
+            total_lots = exposure_btc * 1000
+            dynamic_max_loss = HEDGE_MAX_LOSS_PER_LOT * total_lots
+            
+            if hedge_pnl < -dynamic_max_loss:
+                app_logger.warning(f"Hedge: STOP LOSS HIT! Hedge PnL is {hedge_pnl:.2f} (<-{dynamic_max_loss:.2f}). Closing hedge and disabling for this trade.")
+                self.close_hedge()
+                self.hedge_stopped_out = True
+                notifier.notify_error(f"⚠️ Hedge Stop-Loss Hit!\nLoss: ${hedge_pnl:.2f}\nHedge is now disabled for the remainder of this trade.")
+                return
 
         # 4.0: Loss-based emergency hedge trigger (CRITICAL FIX)
         # If position is losing > 30% of entry premium AND no hedge is active,
@@ -398,11 +446,14 @@ class SmartHedgingManager:
                 self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
         else:
             # No hedge active — check standard delta triggers
-            app_logger.info(
-                f"Hedge: Standard delta check — raw_net_delta={raw_net_delta:.4f} | "
-                f"dvol={current_dvol:.1f}% | hedge_active={self.hedge_active}"
-            )
-            self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
+            if unrealized_loss_pct > 0.0:
+                app_logger.info(
+                    f"Hedge: Standard delta check — raw_net_delta={raw_net_delta:.4f} | "
+                    f"dvol={current_dvol:.1f}% | hedge_active={self.hedge_active}"
+                )
+                self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
+            else:
+                app_logger.info(f"Hedge: Trade is profitable/flat (loss={unrealized_loss_pct:.1%}). Skipping hedge despite delta={raw_net_delta:.4f}.")
 
     def close_hedge(self):
         """Step 4: Close all active hedges and reset states."""

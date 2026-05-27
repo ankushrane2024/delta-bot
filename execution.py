@@ -10,6 +10,7 @@ class ExecutionHandler:
         self.hedge_position = 0 # Net BTC futures size
         self.hedge_size_btc = 0.0  # Actual BTC size of current hedge
         self.hedge_order_id = None  # Last hedge order ID
+        self.hedge_entry_price = 0.0
 
     def execute_strangle(self, call_opt, put_opt, size):
         """Places the short strangle orders."""
@@ -170,19 +171,28 @@ class ExecutionHandler:
         
         for attempt in range(1, HEDGE_RETRY_COUNT + 2):  # Initial + retries
             try:
+                # Resolve product ID and mark price for both LIVE and PAPER
+                res_ticker = self.api_client.get_tickers({'symbol': HEDGE_SYMBOL})
+                # Check for array response and filter symbol
+                if res_ticker and res_ticker.get('success') and res_ticker.get('result'):
+                    data_list = res_ticker.get('result')
+                    for item in data_list:
+                        if item.get('symbol') == HEDGE_SYMBOL:
+                            res_ticker['result'] = [item]
+                            break
+                            
+                if not (res_ticker.get('success') and res_ticker.get('result')):
+                    app_logger.error(f"Hedge: Could not find {HEDGE_SYMBOL} product ID (attempt {attempt})")
+                    if attempt <= HEDGE_RETRY_COUNT:
+                        import time
+                        time.sleep(HEDGE_RETRY_DELAY)
+                        continue
+                    return None
+                
+                prod_id = res_ticker['result'][0]['product_id']
+                mark_price = float(res_ticker['result'][0].get('mark_price', 0))
+                
                 if self.mode == 'LIVE':
-                    # Resolve product ID
-                    res_ticker = self.api_client.get_tickers({'symbol': HEDGE_SYMBOL})
-                    if not (res_ticker.get('success') and res_ticker.get('result')):
-                        app_logger.error(f"Hedge: Could not find {HEDGE_SYMBOL} product ID (attempt {attempt})")
-                        if attempt <= HEDGE_RETRY_COUNT:
-                            import time
-                            time.sleep(HEDGE_RETRY_DELAY)
-                            continue
-                        return None
-                    
-                    prod_id = res_ticker['result'][0]['product_id']
-                    mark_price = float(res_ticker['result'][0].get('mark_price', 0))
                     
                     if use_limit and mark_price > 0:
                         # Place limit order within 0.1% of mark price
@@ -205,6 +215,7 @@ class ExecutionHandler:
                         fill_price = float(res.get('result', {}).get('average_fill_price', mark_price))
                         self.hedge_size_btc += size_btc if direction == 'buy' else -size_btc
                         self.hedge_order_id = order_id
+                        self.hedge_entry_price = fill_price
                         app_logger.info(f"Hedge: Order filled. ID: {order_id}, Size: {contract_size}, Price: {fill_price}")
                         return {'success': True, 'order_id': order_id, 'fill_price': fill_price}
                     else:
@@ -216,8 +227,9 @@ class ExecutionHandler:
                     self.hedge_size_btc += size_btc if direction == 'buy' else -size_btc
                     self.hedge_order_id = order_id
                     self.hedge_position += size_btc if direction == 'buy' else -size_btc
-                    app_logger.info(f"Hedge [PAPER]: Simulated {direction} {contract_size} contracts. ID: {order_id}")
-                    return {'success': True, 'order_id': order_id, 'fill_price': 0}
+                    self.hedge_entry_price = mark_price
+                    app_logger.info(f"Hedge [PAPER]: Simulated {direction} {contract_size} contracts at {mark_price}. ID: {order_id}")
+                    return {'success': True, 'order_id': order_id, 'fill_price': mark_price}
                     
             except Exception as e:
                 app_logger.error(f"Hedge: Exception on attempt {attempt}: {e}")
@@ -245,6 +257,7 @@ class ExecutionHandler:
             self.hedge_size_btc = 0.0
             self.hedge_position = 0
             self.hedge_order_id = None
+            self.hedge_entry_price = 0.0
             app_logger.info("Hedge: All hedge positions closed")
         else:
             app_logger.error("Hedge: Failed to close hedge positions")

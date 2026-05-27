@@ -109,6 +109,7 @@ HEDGE_EMERGENCY_LOSS_PCT = 0.60       # 60% unrealized loss → force full hedge
 HEDGE_RETRY_COUNT = 2                 # Number of retries on hedge order failure
 HEDGE_RETRY_DELAY = 5                 # Seconds between retries
 HEDGE_LIMIT_ORDER_SPREAD = 0.001      # 0.1% from mark price for limit orders in volatile markets
+HEDGE_MAX_LOSS_PER_LOT = 2.50         # Maximum allowed loss in USD per option lot before auto-closing the hedge
 
 # --- Dynamic Position Sizing (Section 4) ---
 DVOL_MID_SIZE_BOOST = 0.20            # 20% lot increase when DVOL is 40–55%

@@ -219,11 +219,14 @@ class DeltaIndiaClient:
         if not symbol or not data:
             return
             
-        # Unpack list if returned from REST query
         if isinstance(data, list):
-            if len(data) > 0:
-                data = data[0]
-            else:
+            found = False
+            for item in data:
+                if item.get('symbol') == symbol:
+                    data = item
+                    found = True
+                    break
+            if not found:
                 return
             
         # Parse Greeks if available from HTTP. Some endpoints nest it, some keep it flat.

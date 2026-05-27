@@ -103,6 +103,11 @@ def generate_pdf_report(data, filepath):
             pnl_color = '#10b981' if pnl_val >= 0 else '#ef4444'
             pnl_text = f"<font color='{pnl_color}'>${pnl_val:.2f}</font>"
             
+            hedge_pnl = t.get('hedge_pnl', 0.0)
+            if hedge_pnl != 0.0:
+                h_color = '#10b981' if hedge_pnl >= 0 else '#ef4444'
+                pnl_text += f"<br/><font size='8'>Hedge: <font color='{h_color}'>${hedge_pnl:.2f}</font></font>"
+            
             trades_rows.append([
                 t['entry_time'].split('T')[-1][:8] if 'T' in t['entry_time'] else t['entry_time'],
                 t['exit_time'].split('T')[-1][:8] if 'T' in t['exit_time'] else t['exit_time'],
@@ -228,7 +233,7 @@ def generate_xlsx_report(data, filepath):
     ws.row_dimensions[row_idx].height = 22
     row_idx += 1
     
-    headers = ["Entry Time", "Exit Time", "Call Strike", "Call Entry $", "Call Exit $", "Put Strike", "Put Entry $", "Put Exit $", "Total Premium", "P&L (USD)", "Exit Reason"]
+    headers = ["Entry Time", "Exit Time", "Call Strike", "Call Entry $", "Call Exit $", "Put Strike", "Put Entry $", "Put Exit $", "Total Premium", "P&L (USD)", "Hedge PnL ($)", "Exit Reason"]
     for col_idx, h in enumerate(headers, 1):
         cell = ws.cell(row=row_idx, column=col_idx, value=h)
         cell.font = header_font
@@ -258,6 +263,7 @@ def generate_xlsx_report(data, filepath):
                 t.get('put_exit_price', 0.0),
                 t['entry_premium'],
                 t['pnl_usd'],
+                t.get('hedge_pnl', 0.0),
                 t['exit_reason']
             ]
             for col_idx, val in enumerate(row_data, 1):
@@ -270,13 +276,11 @@ def generate_xlsx_report(data, filepath):
                 if col_idx in [4, 5, 7, 8, 9]:
                     cell.number_format = "$0.00"
                     cell.alignment = align_right
-                elif col_idx == 10:
+                elif col_idx in [10, 11]:
                     cell.number_format = "$#,##0.00"
                     cell.alignment = align_right
-                    if val >= 0:
-                        cell.font = Font(name=font_family, size=10, color="10B981")
-                    else:
-                        cell.font = Font(name=font_family, size=10, color="EF4444")
+                    if cell.value is not None and isinstance(cell.value, (int, float)):
+                        cell.font = Font(name=font_family, size=10, bold=True, color="10b981" if cell.value >= 0 else "ef4444")
             ws.row_dimensions[row_idx].height = 18
             row_idx += 1
             
