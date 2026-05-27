@@ -101,28 +101,9 @@ class TradingFilters:
             app_logger.warning(f"Filters: Failed to fetch ForexFactory calendar: {e}")
 
     def check_news_filter(self):
-        """Skip major news days using cached calendar API."""
-        try:
-            self._update_news_cache()
-            events = self.cached_news
-            if not events:
-                app_logger.warning("Filter: News cache is empty. Proceeding with caution.")
-                return True
-                
-            today_str = get_ist_now().strftime('%Y-%m-%d')
-            for event in events:
-                # Check if event is High impact, for USD (which drives BTC), and occurs today
-                if event.get('impact') == 'High' and event.get('country') == 'USD':
-                    event_date = event.get('date', '')[:10]
-                    if event_date == today_str:
-                        app_logger.info(f"Filter: Skipping trade due to HIGH impact USD news today: {event.get('title')}")
-                        return False
-            
-            app_logger.info("Filter: News check passed. No High impact USD news today.")
-            return True
-        except Exception as e:
-            app_logger.warning(f"Filter: News check error, proceeding anyway. {e}")
-            return True
+        """Skip major news days using cached calendar API. TEMPORARILY DISABLED."""
+        app_logger.info("Filter: News check TEMPORARILY DISABLED FOR TESTING. Allowing trade.")
+        return True
 
     def all_passed(self):
         return (self.check_day_filter() and 
