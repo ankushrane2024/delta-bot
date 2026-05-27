@@ -280,6 +280,70 @@
             0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
             50% { box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.3); }
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        /* ── Tab Navigation ─────────────────────────────── */
+        .tab-nav {
+            max-width: 1100px;
+            width: 100%;
+            display: flex;
+            gap: 4px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 6px;
+            position: sticky;
+            top: 16px;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 10px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            white-space: nowrap;
+        }
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(99,102,241,0.15));
+            color: #00d4ff;
+            border-bottom: 2px solid #00d4ff;
+            box-shadow: 0 0 12px rgba(0,212,255,0.15);
+        }
+        .tab-pane {
+            display: none;
+            max-width: 1100px;
+            width: 100%;
+            flex-direction: column;
+            gap: 24px;
+            animation: fadeIn 0.25s ease;
+        }
+        .tab-pane.active { display: flex; }
+        .tab-live-dot {
+            display: inline-block;
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: #34d399;
+            box-shadow: 0 0 6px #34d399;
+            animation: pulse-green 2s infinite;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -297,6 +361,16 @@
         <div id="status-badge" class="status-badge">🟢 CONNECTING...</div>
     </header>
 
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+        <button class="tab-btn active" id="tab-btn-live"      onclick="switchTab('live')"><span class="tab-live-dot"></span>Live Trade</button>
+        <button class="tab-btn"        id="tab-btn-analytics"  onclick="switchTab('analytics')">&#128202; Analytics</button>
+        <button class="tab-btn"        id="tab-btn-market"     onclick="switchTab('market')">&#128225; Market</button>
+        <button class="tab-btn"        id="tab-btn-config"     onclick="switchTab('config')">&#9881;&#65039; Config</button>
+    </nav>
+
+    <!-- TAB 1: LIVE TRADE -->
+    <div class="tab-pane active" id="tab-live">
     <div class="container">
         <!-- Left Column (Stacked) -->
         <div style="display: flex; flex-direction: column; gap: 24px; height: 100%;">
@@ -583,6 +657,10 @@
             </div>
         </div>
     </div>
+    </div><!-- /tab-live -->
+
+    <!-- TAB 2: ANALYTICS -->
+    <div class="tab-pane" id="tab-analytics">
 
         <!-- Tomorrow's Trade Probability Panel -->
         <div class="panel full-width">
@@ -693,6 +771,15 @@
             </div>
         </div>
 
+    </div><!-- /tab-analytics -->
+
+    <!-- POSITIONS (pinned back in Live tab) -->
+    <div class="tab-pane" id="tab-live-positions" style="display:none;">
+    </div>
+
+    <!-- TAB 2b: Positions always visible under Live -->
+    <!-- We embed positions directly -->
+    <div id="positions-outer" style="max-width:1100px;width:100%;">
         <!-- Active Positions Panel -->
         <div class="panel full-width" id="positions-panel">
             <style>
@@ -751,7 +838,10 @@
                 </div>
             </div>
         </div>
+    </div><!-- /positions-outer -->
 
+    <!-- TAB 3: CONFIG -->
+    <div class="tab-pane" id="tab-config">
         <!-- Rule Compliance Panel -->
         <div class="panel full-width">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -802,6 +892,10 @@
             </div>
         </div>
 
+    </div><!-- /tab-market -->
+
+    <!-- TAB 3b: CONFIG remainder -->
+    <div class="tab-pane" id="tab-config-b">
         <!-- Live Terminal Panel -->
         <div class="panel full-width">
             <h2>Live System Logs</h2>
@@ -1910,6 +2004,33 @@
 
         // Initialize backtester date fields
         initBacktestDates();
+
+        function switchTab(name) {
+            // Hide all panes
+            document.querySelectorAll('.tab-pane').forEach(p => { p.classList.remove('active'); });
+            // Update buttons
+            document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); });
+
+            if (name === 'live') {
+                document.getElementById('tab-live').classList.add('active');
+                document.getElementById('positions-outer').style.display = 'block';
+                document.getElementById('tab-btn-live').classList.add('active');
+            } else if (name === 'analytics') {
+                document.getElementById('tab-analytics').classList.add('active');
+                document.getElementById('positions-outer').style.display = 'none';
+                document.getElementById('tab-btn-analytics').classList.add('active');
+            } else if (name === 'market') {
+                document.getElementById('tab-market').classList.add('active');
+                document.getElementById('positions-outer').style.display = 'none';
+                document.getElementById('tab-btn-market').classList.add('active');
+            } else if (name === 'config') {
+                document.getElementById('tab-config').classList.add('active');
+                document.getElementById('tab-config-b').classList.add('active');
+                document.getElementById('positions-outer').style.display = 'none';
+                document.getElementById('tab-btn-config').classList.add('active');
+            }
+        }
     </script>
+    </div><!-- /tab-config-b -->
 </body>
 </html>
