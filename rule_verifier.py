@@ -24,20 +24,20 @@ def verify_all_rules():
         {
             "id": 4,
             "name": "Stop Loss & Target",
-            "expected": "150% SL, 70% Full Target",
-            "check": config.SL_PERCENT == 1.50 and config.EXIT_PROFIT_TARGET == 0.70
+            "expected": "150% SL, 30% Full Target",
+            "check": config.SL_PERCENT == 1.50 and config.EXIT_PROFIT_TARGET == 0.30
         },
         {
             "id": 5,
             "name": "Partial Profit",
-            "expected": "50% Size at 50% Profit",
-            "check": config.PARTIAL_PROFIT_TRIGGER == 0.50 and config.PARTIAL_PROFIT_SIZE == 0.50
+            "expected": "50% Size at 20% Profit",
+            "check": config.PARTIAL_PROFIT_TRIGGER == 0.20 and config.PARTIAL_PROFIT_SIZE == 0.50
         },
         {
             "id": 6,
             "name": "Trailing Stop Loss",
-            "expected": "Breakeven after 40% Profit",
-            "check": config.TRAILING_SL_TRIGGER == 0.40 and config.TRAILING_SL_LEVEL == 0.0
+            "expected": "Breakeven after 15% Profit",
+            "check": config.TRAILING_SL_TRIGGER == 0.15 and config.TRAILING_SL_LEVEL == 0.0
         },
         {
             "id": 7,

@@ -141,15 +141,16 @@ class TradingFilters:
             # 1. Weekend Check - Disabled (Trade 7 days a week)
             
             # 2. News Check
-            if not skip and news_events:
-                for event in news_events:
-                    if event.get('impact') == 'High' and event.get('country') == 'USD':
-                        event_date = event.get('date', '')[:10]
-                        if event_date == target_date_str:
-                            skip = True
-                            reason = f"High Impact News"
-                            skip_type = 'severe'
-                            break
+            # TEMPORARILY DISABLED FOR TESTING
+            # if not skip and news_events:
+            #     for event in news_events:
+            #         if event.get('impact') == 'High' and event.get('country') == 'USD':
+            #             event_date = event.get('date', '')[:10]
+            #             if event_date == target_date_str:
+            #                 skip = True
+            #                 reason = f"High Impact News"
+            #                 skip_type = 'severe'
+            #                 break
             
             schedule.append({
                 'date': target_date.strftime('%b %d'),
