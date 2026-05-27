@@ -74,11 +74,11 @@ DVOL_PREMIUM_RANGES = {
 
 # --- Stop Loss & Profit Booking (Section 6) ---
 SL_PERCENT = 1.50              # 150% of collected premium → triggers full exit
-PARTIAL_PROFIT_TRIGGER = 0.50  # 50% profit reached → trigger partial close
+PARTIAL_PROFIT_TRIGGER = 0.20  # 20% profit reached -> trigger partial close
 PARTIAL_PROFIT_SIZE = 0.50     # Close 50% of position size on partial profit
-TRAILING_SL_TRIGGER = 0.40    # After 40% profit → activate trailing SL to breakeven
+TRAILING_SL_TRIGGER = 0.15    # After 15% profit -> activate trailing SL to breakeven
 TRAILING_SL_LEVEL = 0.0       # Trailing SL level: breakeven (0% profit)
-EXIT_PROFIT_TARGET = 0.70     # 70% total profit → full exit
+EXIT_PROFIT_TARGET = 0.30     # 30% total profit -> full exit
 MIN_HOLD_SECONDS = 30         # Minimum seconds to hold before any profit target exit is allowed
 
 # --- Hedging Parameters ---
