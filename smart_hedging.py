@@ -467,7 +467,7 @@ class SmartHedgingManager:
             if expected_hedge_sign != actual_hedge_sign and raw_net_delta > 0.15:
                 app_logger.info(f"Hedge: Delta reversed ({net_delta_btc:.4f}, raw: {raw_net_delta:.4f}) while hedge active. Re-adjusting hedge position.")
                 self.close_hedge()
-                self._execute_hedge_decision(net_delta_btc, current_dvol, positions)
+                self._execute_hedge_decision(net_delta_btc, current_dvol, positions, profit_usd)
         else:
             # No hedge active — check standard delta triggers
             app_logger.info(
