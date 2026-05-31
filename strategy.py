@@ -148,9 +148,14 @@ class ShortStrangleStrategy:
         valid_pairs = []
         if check_premium:
             for c in eligible_calls:
+                # STRICT REQUIREMENT: Both legs must have premium >= 100 USD
+                if c['premium_inr'] < 100:
+                    continue
                 if not (premium_min <= c['premium_inr'] <= premium_max):
                     continue
                 for p in eligible_puts:
+                    if p['premium_inr'] < 100:
+                        continue
                     if not (premium_min <= p['premium_inr'] <= premium_max):
                         continue
                     # Put premium must be <= PUT_SKEW_CAP * Call premium (Section 1)

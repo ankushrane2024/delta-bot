@@ -201,9 +201,11 @@ class SmartHedgingManager:
             app_logger.info(f"Hedge: No post-entry hedge needed. Raw Net Delta {raw_net_delta:.4f} <= {trigger_level:.2f}")
 
     def _execute_full_hedge(self, net_delta_btc, exposure_btc, profit_usd=0.0):
-        """Executes a 100% hedge of option delta exposure or dynamic loss recovery."""
+        """Executes a 2.0x Over-Hedge of option delta exposure or dynamic loss recovery."""
         abs_delta = abs(net_delta_btc)
-        required_hedge_btc = abs_delta
+        
+        # User requested 2.0x Over-Hedge by default
+        required_hedge_btc = abs_delta * 2.0
         
         # Dynamic Recovery Logic: Target recovering loss within a $300 BTC move
         if profit_usd < 0:
@@ -211,9 +213,9 @@ class SmartHedgingManager:
             recovery_size = loss_usd / 300.0
             # Cap at 100% of notional exposure to prevent over-leveraging
             recovery_size = min(recovery_size, exposure_btc)
-            # Ensure we at least cover the delta risk
-            required_hedge_btc = max(abs_delta, recovery_size)
-            if recovery_size > abs_delta:
+            # Ensure we at least cover the 2.0x over-hedge delta risk
+            required_hedge_btc = max(required_hedge_btc, recovery_size)
+            if recovery_size > abs_delta * 2.0:
                 app_logger.info(f"Hedge [RECOVERY]: Upping hedge size to {required_hedge_btc:.4f} BTC to recover ${loss_usd:.2f} loss in $300 move.")
         
         direction = 'sell' if net_delta_btc > 0 else 'buy'
@@ -407,22 +409,25 @@ class SmartHedgingManager:
                 notifier.notify_hedge_failed()
             return  # Don't continue to regular checks after emergency hedge
 
-        # 4.1: Unrealized Loss > 60% check (Emergency Escalation & SL tightening)
-        if unrealized_loss_pct >= HEDGE_EMERGENCY_LOSS_PCT and self.hedge_percentage < 100.0:
-            app_logger.warning(f"Hedge: Critical unrealized loss detected ({unrealized_loss_pct:.1%}). Escalating to FULL hedge immediately.")
+        # 4.1: Unrealized Loss > 25% check (Emergency Escalation & SL tightening)
+        if unrealized_loss_pct >= HEDGE_EMERGENCY_LOSS_PCT:
+            app_logger.warning(f"Hedge: Critical unrealized loss detected ({unrealized_loss_pct:.1%}). Escalating to 2.5x FULL hedge immediately.")
             
             # Tighten option SL via Risk Manager
             if not self.sl_tightened:
                 self.risk_manager.tighten_stop_loss(HEDGE_EMERGENCY_SL_TIGHTEN)
                 self.sl_tightened = True
                 
-            # Escalate hedge
+            # Escalate hedge to 2.5x Delta
             net_delta_btc, _ = self._fetch_net_delta_and_gamma(positions)
             exposure_btc = self._get_options_exposure_btc(positions)
             direction = 'sell' if net_delta_btc > 0 else 'buy'
             
-            # Calculate remaining hedge size to reach 100% full hedge
-            remaining_hedge = abs(net_delta_btc) - abs(self.execution.hedge_size_btc)
+            # Calculate remaining hedge size to reach 2.5x full hedge
+            target_emergency_size = abs(net_delta_btc) * 2.5
+            target_emergency_size = min(target_emergency_size, exposure_btc) # Cap at exposure
+            
+            remaining_hedge = target_emergency_size - abs(self.execution.hedge_size_btc)
             if remaining_hedge > 0.0001:
                 app_logger.info(f"Hedge: Placing emergency escalation order of size {remaining_hedge:.4f} BTC")
                 result = self.execution.place_hedge_order(remaining_hedge, direction)
@@ -430,7 +435,7 @@ class SmartHedgingManager:
                     self.hedge_active = True
                     self.hedge_type = "emergency_full"
                     self.hedge_percentage = 100.0
-                    self.hedge_size_btc = abs(net_delta_btc)
+                    self.hedge_size_btc = target_emergency_size
                     self.hedge_order_id = result['order_id']
                     
                     notifier.notify_hedge_escalated(
@@ -468,6 +473,35 @@ class SmartHedgingManager:
                 app_logger.info(f"Hedge: Delta reversed ({net_delta_btc:.4f}, raw: {raw_net_delta:.4f}) while hedge active. Re-adjusting hedge position.")
                 self.close_hedge()
                 self._execute_hedge_decision(net_delta_btc, current_dvol, positions, profit_usd)
+            else:
+                # CONTINUOUS DYNAMIC SCALING (New Safety Rule)
+                # If hedge is in the correct direction, check if the required recovery size has outgrown the current active size.
+                if profit_usd < 0:
+                    loss_usd = -profit_usd
+                    exposure_btc = self._get_options_exposure_btc(positions)
+                    recovery_size = min(loss_usd / 300.0, exposure_btc)
+                    required_hedge_btc = max(abs_delta * 2.0, recovery_size)
+                    
+                    # If required hedge is at least 0.01 BTC larger than current, scale it up!
+                    current_hedge_abs = abs(self.execution.hedge_size_btc)
+                    if required_hedge_btc > current_hedge_abs + 0.01:
+                        remaining_hedge = required_hedge_btc - current_hedge_abs
+                        direction = 'sell' if net_delta_btc > 0 else 'buy'
+                        app_logger.info(f"Hedge [DYNAMIC SCALE]: Loss grew to ${loss_usd:.2f}. Scaling hedge up by {remaining_hedge:.4f} BTC to total {required_hedge_btc:.4f} BTC.")
+                        
+                        result = self.execution.place_hedge_order(remaining_hedge, direction)
+                        if result and result['success']:
+                            self.hedge_size_btc = required_hedge_btc
+                            # Notify update
+                            notifier.notify_hedge_executed(
+                                timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
+                                net_delta=net_delta_btc,
+                                iv=current_dvol,
+                                order_type='market',
+                                side=direction,
+                                size_btc=remaining_hedge,
+                                order_id=result['order_id']
+                            )
         else:
             # No hedge active — check standard delta triggers
             app_logger.info(

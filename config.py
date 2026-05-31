@@ -54,17 +54,17 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # --- Strategy Parameters ---
-# Target delta for strike selection (approximate 0.22 delta OTM strikes).
-DELTA_TARGET = 0.22
+# Target delta for strike selection
+DELTA_TARGET = 0.15
 DELTA_TOLERANCE = 0.03
 
 # --- DVOL-Based Strike Selection (Section 1) ---
 # Minimum number of strikes OTM from ATM for both call and put legs.
-MIN_OTM_STRIKES = 4
+MIN_OTM_STRIKES = 5
 # Put premium must not exceed this multiple of call premium.
-PUT_SKEW_CAP = 1.35
+PUT_SKEW_CAP = 1.30
 # Maximum allowed absolute net delta at entry. Triggers 1-strike OTM shift if exceeded.
-NET_DELTA_ENTRY_LIMIT = 0.15
+NET_DELTA_ENTRY_LIMIT = 0.10
 # DVOL-based premium target ranges: {tier: {threshold, min_premium, max_premium}}
 DVOL_PREMIUM_RANGES = {
     "low":  {"threshold": 40,  "min": 140, "max": 300},   # DVOL < 40%
@@ -73,7 +73,7 @@ DVOL_PREMIUM_RANGES = {
 }
 
 # --- Stop Loss & Profit Booking (Section 6) ---
-SL_PERCENT = 1.50              # 150% of collected premium → triggers full exit
+SL_PERCENT = 1.30              # 130% of collected premium → triggers full exit (tighter)
 PARTIAL_PROFIT_TRIGGER = 0.20  # 20% profit reached -> trigger partial close
 PARTIAL_PROFIT_SIZE = 0.50     # Close 50% of position size on partial profit
 TRAILING_SL_TRIGGER = 0.15    # After 15% profit -> activate trailing SL to breakeven
@@ -86,7 +86,7 @@ MIN_HOLD_SECONDS = 30         # Minimum seconds to hold before any profit target
 HEDGE_SYMBOL = "BTCUSD"           # BTC Perpetual futures contract symbol
 HEDGE_DELTA_THRESHOLD = 0.20      # Net delta above 0.20 triggers hedging
 HEDGE_GAMMA_THRESHOLD = 0.02      # Net gamma above 0.02 triggers hedging
-HEDGE_MONITOR_INTERVAL = 30       # Smart hedge monitoring interval in seconds
+HEDGE_MONITOR_INTERVAL = 15       # Smart hedge monitoring interval in seconds (Tighter)
 HEDGE_RETRY_COUNT = 3             # Number of retries for hedge order placement
 HEDGE_RETRY_DELAY = 2             # Seconds between hedge order retries
 HEDGE_LIMIT_ORDER_SPREAD = 0.001  # 0.1% spread for limit hedge orders
@@ -94,18 +94,18 @@ HEDGE_EMERGENCY_SL_TIGHTEN = 1.05 # Tighten SL to 105% during emergency hedge
 
 # --- Smart Hedging Pipeline (Section 3) ---
 HEDGE_WAIT_AFTER_ENTRY = 5        # Seconds to wait after order fill before first hedge check
-HEDGE_RECHECK_INTERVAL = 30       # Seconds between continuous hedge management checks
+HEDGE_RECHECK_INTERVAL = 15       # Seconds between continuous hedge management checks
 # IV-based hedging decision thresholds (Step 2)
 HEDGE_IV_THRESHOLDS = {
-    "low":  {"iv_max": 45, "delta_trigger": 0.20, "action": "full"},
-    "mid":  {"iv_min": 45, "iv_max": 55, "delta_trigger": 0.17, "action": "full"},
-    "high": {"iv_min": 55, "delta_trigger": 0.12, "action": "partial"},
+    "low":  {"iv_max": 45, "delta_trigger": 0.15, "action": "full"},
+    "mid":  {"iv_min": 45, "iv_max": 55, "delta_trigger": 0.12, "action": "full"},
+    "high": {"iv_min": 55, "delta_trigger": 0.08, "action": "partial"},
 }
 HEDGE_PARTIAL_INITIAL_PCT = 0.50      # Start partial hedge at 50% of required size
 HEDGE_PARTIAL_ESCALATE_PCT = 0.80     # Escalate partial hedge to 80–100%
 HEDGE_PARTIAL_ESCALATE_DELTA = 0.10   # Re-check threshold after partial hedge
 HEDGE_PARTIAL_WAIT = 10               # Seconds to wait between partial hedge steps
-HEDGE_EMERGENCY_LOSS_PCT = 0.60       # 60% unrealized loss → force full hedge
+HEDGE_EMERGENCY_LOSS_PCT = 0.25       # 25% unrealized loss → force 2.5x Over-Hedge
 HEDGE_RETRY_COUNT = 2                 # Number of retries on hedge order failure
 HEDGE_RETRY_DELAY = 5                 # Seconds between retries
 HEDGE_LIMIT_ORDER_SPREAD = 0.001      # 0.1% from mark price for limit orders in volatile markets
@@ -120,8 +120,8 @@ DAILY_LOSS_REDUCE_THRESHOLD = 0.02    # 2% daily loss triggers 30% lot reduction
 DAILY_LOSS_REDUCE_PCT = 0.30          # Reduction percentage on 2% daily loss
 
 # --- Money Management & Capital Protection (Section 5) ---
-MAX_RISK_PER_TRADE_PCT = 0.015        # 1.5% of equity max risk per trade
-DAILY_LOSS_LIMIT_PCT = 0.03           # 3% daily loss → immediate square off + stop
+MAX_RISK_PER_TRADE_PCT = 0.010        # 1.0% of equity max risk per trade
+DAILY_LOSS_LIMIT_PCT = 0.02           # 2% daily loss → immediate square off + stop
 MAX_CONSECUTIVE_LOSSES_DAY = 3        # 3 consecutive losses in a day → stop trading
 DAILY_LOSS_PAUSE_THRESHOLD = 0.025    # 2.5% loss → pause next trading day
 # Never increase position size after a big loss day (enforced in bot_engine.py)

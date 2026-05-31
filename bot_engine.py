@@ -708,16 +708,27 @@ class DeltaTradingEngine:
                         profit = collected_premium - current_option_value
                         pnl_pct = profit / collected_premium
                         
-                        # Continuous Daily Loss Limit Check (-3% at any time)
+                        # Emergency Trade Loss Limit (-45% on the active trade)
+                        if pnl_pct <= -0.45:
+                            app_logger.critical(f"Engine: EMERGENCY 45% LOSS LIMIT HIT on active trade! Loss: {pnl_pct*100:.2f}%. Triggering immediate full square-off.")
+                            notifier.notify_error(f"🚨 EMERGENCY 45% LOSS LIMIT HIT 🚨\nTrade loss reached {pnl_pct*100:.2f}%. Triggering immediate full square-off of all legs and hedges.")
+                            self.execution.close_all(reason="Emergency 45% Trade Loss Hit")
+                            self.today_trade_status = "Emergency Auto Closed"
+                            self.today_skip_reason = "Emergency 45% Trade Loss Hit"
+                            self.daily_loss_hits += 2 # Block future trades for the day
+                            self.reset_daily_state()
+                            continue
+                            
+                        # Continuous Daily Loss Limit Check (2% at any time)
                         if self.daily_start_equity > 0:
                             floating_equity = self.risk_manager.current_equity + profit
                             loss_pct = (self.daily_start_equity - floating_equity) / self.daily_start_equity
-                            if loss_pct >= 0.03:
-                                app_logger.critical(f"Engine: Daily -3% loss limit hit on floating equity! Floating loss: {loss_pct*100:.2f}%. Triggering immediate emergency full square-off.")
-                                notifier.notify_error(f"🚨 DAILY LOSS LIMIT HIT (-3%) 🚨\nFloating equity loss reached {loss_pct*100:.2f}%. Triggering immediate full square-off.")
-                                self.execution.close_all(reason="Daily Loss Limit Hit (-3%)")
+                            if loss_pct >= 0.02:
+                                app_logger.critical(f"Engine: Daily -2% loss limit hit on floating equity! Floating loss: {loss_pct*100:.2f}%. Triggering immediate emergency full square-off.")
+                                notifier.notify_error(f"🚨 DAILY LOSS LIMIT HIT (-2%) 🚨\nFloating equity loss reached {loss_pct*100:.2f}%. Triggering immediate full square-off.")
+                                self.execution.close_all(reason="Daily Loss Limit Hit (-2%)")
                                 self.today_trade_status = "Emergency Auto Closed"
-                                self.today_skip_reason = "Daily Loss Limit Hit (-3%)"
+                                self.today_skip_reason = "Daily Loss Limit Hit (-2%)"
                                 self.daily_loss_hits += 2 # Block future trades for the day
                                 self.reset_daily_state()
                                 continue
