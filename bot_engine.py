@@ -206,14 +206,8 @@ class DeltaTradingEngine:
         expiry = get_next_expiry_date()
         call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, dvol_provider=self.dvol_provider)
         
-        # Robust multi-stage fallback search for strikes when forced
-        if force and (not call_opt or not put_opt):
-            app_logger.info("Engine [FORCE]: Retrying without premium filter...")
-            call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, dvol_provider=None, check_premium=False)
-        if force and (not call_opt or not put_opt):
-            app_logger.info("Engine [FORCE]: Retrying on any available expiry...")
-            call_opt, put_opt = self.strategy.find_strikes(expiry_date=None, dvol_provider=None, check_premium=False)
-
+        # User requested: "If no suitable strikes found → Skip the trade (do not force entry)"
+        # Removed all fallback mechanisms that bypass premium filters.
         if not call_opt or not put_opt:
             app_logger.error("Engine: Could not find suitable strikes.")
             self.today_trade_status = "Trade Skipped"
@@ -324,14 +318,8 @@ class DeltaTradingEngine:
 
             call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, check_premium=True)
 
-            if not call_opt or not put_opt:
-                app_logger.info("Engine [TEST]: Retrying without premium filter...")
-                call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, check_premium=False)
-
-            if not call_opt or not put_opt:
-                app_logger.info("Engine [TEST]: Retrying on any available expiry...")
-                call_opt, put_opt = self.strategy.find_strikes(expiry_date=None, check_premium=False)
-
+            # User requested: "If no suitable strikes found → Skip the trade (do not force entry)"
+            # Removed all fallback mechanisms that bypass premium filters for tests.
             if not call_opt or not put_opt:
                 return False, "Could not find any suitable strikes even after bypassing all filters."
 
