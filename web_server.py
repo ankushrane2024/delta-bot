@@ -655,6 +655,23 @@ def get_journal():
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)})
     return jsonify({'success': True, 'content': '📓 *No diary entries recorded yet. The first entry will appear automatically once a trade completes!*'})
+@app.route('/history')
+def history_page():
+    return render_template('history.html')
+
+@app.route('/api/history')
+def get_trade_history():
+    import os, json
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    history_file = os.path.join(base_dir, 'trade_history.json')
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return jsonify(data)
+        except Exception as e:
+            app_logger.error(f"Failed to read trade_history.json: {e}")
+    return jsonify({"max_equity": 0.0, "trades": []})
 
 @app.route('/api/backtest', methods=['POST'])
 def run_backtest():
