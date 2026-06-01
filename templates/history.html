@@ -150,8 +150,8 @@
                 
                 container.innerHTML = sortedTrades.map(trade => {
                     const pnlClass = trade.pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
-                    const maxPnl = (trade.max_pnl_pct * 100).toFixed(2);
-                    const minPnl = (trade.min_pnl_pct * 100).toFixed(2);
+                    const maxPnl = ((trade.max_pnl_pct || 0) * 100).toFixed(2);
+                    const minPnl = ((trade.min_pnl_pct || 0) * 100).toFixed(2);
                     
                     const maxPnlTimeStr = trade.max_pnl_time ? new Date(trade.max_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';
                     const minPnlTimeStr = trade.min_pnl_time ? new Date(trade.min_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';
