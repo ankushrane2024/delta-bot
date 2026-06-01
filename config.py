@@ -42,7 +42,7 @@ MANUAL_TOTAL_LOTS = int(os.getenv("MANUAL_TOTAL_LOTS", 1000))
 LOT_TO_BTC = 0.001  # 1 lot = 0.001 BTC (Delta Exchange BTC Options contract size)
 
 # --- Entry/Exit Times (IST) ---
-ENTRY_TIMES = ["08:30", "09:00", "09:30"]
+ENTRY_TIMES = ["09:00", "09:30"]
 EXIT_PREPARE_TIME = "16:55"   # Start preparing forced exit at 16:55 IST
 EXIT_TIME_HARD = "17:00"      # Hard square off at 17:00 IST
 EXIT_TIME_START = "17:00"     # Kept for backward compatibility
