@@ -485,7 +485,8 @@ def _read_lot_size_file():
             return int(data.get('total_lots', cfg_lots))
         return int(cfg_lots)
     except Exception:
-        return 200  # hard fallback
+        from config import MANUAL_TOTAL_LOTS as cfg_lots
+        return int(cfg_lots)  # Always use config default, never hardcoded 200
 
 @app.route('/api/get_lot_size', methods=['GET'])
 def get_lot_size():
