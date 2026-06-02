@@ -270,7 +270,7 @@ class DeltaTradingEngine:
         app_logger.info("Engine: Exit cycle triggered (Fixed Time Square-off)")
         
         # Calculate PnL for logging before closing
-        if self.execution.active_positions and self.total_entry_premium > 0:
+        if self.execution.active_positions:
             current_total_value = 0
             for sym, data in self.execution.active_positions.items():
                 price = None
@@ -291,10 +291,11 @@ class DeltaTradingEngine:
                 # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
                 current_total_value += price * data['size'] * LOT_TO_BTC
             
-            if current_total_value > 0:
-                profit = self.total_entry_premium - current_total_value
-                self._log_and_reset_trade(profit, "EOD Square-off")
-                notifier.notify_full_exit("End of Day Square-off", profit)
+            # Always log the trade, even if total_entry_premium was somehow reset to 0
+            entry_prem = self.total_entry_premium if self.total_entry_premium > 0 else current_total_value
+            profit = entry_prem - current_total_value
+            self._log_and_reset_trade(profit, "EOD Square-off")
+            notifier.notify_full_exit("End of Day Square-off", profit)
                 
         self.execution.close_all(reason="End of Day Square-off")
         self.smart_hedging.close_hedge()
@@ -468,6 +469,7 @@ class DeltaTradingEngine:
             notifier.notify_compliance_report(overall.get('win_rate', 0), overall.get('pnl', 0), overall.get('current_drawdown', 0))
         else:
             app_logger.error(f"Engine: Scheduled report failed: {msg}")
+            notifier.notify_error(f"⚠️ Daily Report Generation FAILED\nReason: {msg}\nPlease check logs.")
 
     def generate_actual_report(self, date_str=None):
         """Builds the report data, generates PDF/Excel, and saves metadata."""
@@ -965,7 +967,7 @@ class DeltaTradingEngine:
                 dvol_status=dvol_status,
                 size_multiplier=getattr(self, 'size_multiplier', 1.0),
                 hedge_status=hedge_status,
-                adx=self.market_regime.get_adx(),
+                adx=getattr(self, 'current_adx_value', 0.0),
                 mode=getattr(self.execution, 'mode', 'PAPER'),
                 call_entry_price=call_entry_price,
                 put_entry_price=put_entry_price,
