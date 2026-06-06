@@ -421,7 +421,8 @@ def get_news():
             raw_date = e.get('date', '')
             try:
                 dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
-                if dt < now_utc or dt > week_end:
+                # Show events from the last 3 days up to the next 7 days
+                if dt < now_utc - timedelta(days=3) or dt > week_end:
                     continue
                 date_str = dt.strftime('%b %d  %H:%M UTC')
             except Exception:
