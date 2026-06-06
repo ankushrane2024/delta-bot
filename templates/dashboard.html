@@ -9,24 +9,36 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* ========================================================
+           GLOBAL EMBOSSED THEME - DELTA OPTIONS ENGINE
+           ======================================================== */
         :root {
-            --bg-color: #0b0f19;
-            --panel-bg: rgba(20, 25, 40, 0.7);
-            --border-color: rgba(255, 255, 255, 0.1);
-            --accent-glow: rgba(0, 212, 255, 0.2);
-            --text-primary: #ffffff;
+            --bg-color: #0a0f1c; /* Deep futuristic space blue/black */
+            --panel-bg: rgba(16, 20, 30, 0.65); /* Glassmorphism base */
+            --border-color: rgba(255, 255, 255, 0.04);
+            
+            --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
+            
+            /* Accents */
+            --emerald: #10b981;
+            --rose: #f43f5e;
+            --cyan: #06b6d4;
+            --violet: #8b5cf6;
+            
+            /* Neumorphic / Embossed Depth Variables */
+            --btn-bg: #131824;
+            --btn-border: rgba(255, 255, 255, 0.08);
+            --emboss-inner: inset 0 1px 1px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+            --emboss-drop: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
         }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
             background-image: 
-                radial-gradient(circle at 15% 50%, rgba(30, 58, 138, 0.15), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(0, 212, 255, 0.1), transparent 25%);
+                radial-gradient(circle at 15% 0%, rgba(6, 182, 212, 0.08), transparent 40%),
+                radial-gradient(circle at 85% 100%, rgba(139, 92, 246, 0.08), transparent 40%);
             color: var(--text-primary);
             margin: 0;
             padding: 40px 20px;
@@ -37,22 +49,13 @@
             gap: 24px;
         }
 
-        .container {
-            max-width: 1100px;
-            width: 100%;
-            display: grid;
-            grid-template-columns: 1.05fr 1fr;
-            gap: 24px;
-            align-items: stretch;
-        }
-
         header {
             max-width: 1100px;
             width: 100%;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 40px;
+            margin-bottom: 20px;
         }
 
         h1 {
@@ -65,52 +68,9 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .status-badge {
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        .status-badge.offline {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.1);
-        }
-
-        .panel {
-            background: var(--panel-bg);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid var(--border-color);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .panel:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .full-width {
-            width: 100%;
-            max-width: 1100px;
-            box-sizing: border-box;
-        }
-
         h2 {
             font-size: 1.1rem;
-            font-weight: 600;
+            font-weight: 700;
             margin-top: 0;
             margin-bottom: 20px;
             color: var(--text-secondary);
@@ -119,84 +79,217 @@
             gap: 8px;
         }
 
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin: 10px 0;
-            text-shadow: 0 0 20px var(--accent-glow);
+        /* ----- GLASSMORPHISM CARDS ----- */
+        .glass-panel {
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .glass-panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.08);
         }
 
-        .stat-label {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-
-        .controls {
+        /* ----- TAB NAVIGATION ----- */
+        .tab-nav {
             display: flex;
             gap: 12px;
-            margin-top: 20px;
-        }
-
-        button {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-family: 'Inter', sans-serif;
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-start {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-start:hover {
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-            transform: scale(1.02);
-        }
-
-        .btn-stop {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-stop:hover {
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-            transform: scale(1.02);
-        }
-
-        .btn-test {
-            background: rgba(56, 189, 248, 0.1);
-            color: #38bdf8;
-            border: 1px solid rgba(56, 189, 248, 0.2);
-            margin-top: 10px;
-            display: none; /* Hidden by default, shown in PAPER mode */
-        }
-        
-        .btn-test:hover {
-            background: rgba(56, 189, 248, 0.2);
-            border-color: rgba(56, 189, 248, 0.4);
-        }
-
-        .table-container {
+            margin-bottom: 30px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.03);
+            max-width: 1100px;
             width: 100%;
+            box-sizing: border-box;
             overflow-x: auto;
         }
-
-        table {
+        .tab-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        .tab-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .tab-btn.active {
+            background: var(--btn-bg);
+            color: #fff;
+            box-shadow: var(--emboss-drop), var(--emboss-inner);
+            border: 1px solid var(--border-color);
+        }
+        .tab-pane {
+            display: none;
+            animation: fadeIn 0.3s ease;
             width: 100%;
-            border-collapse: collapse;
-            text-align: left;
+            max-width: 1100px;
+            box-sizing: border-box;
+        }
+        .tab-pane.active {
+            display: block;
+        }
+        #tab-live.active { display: flex !important; }
+
+        /* ----- EMBOSSED PREMIUM BUTTONS ----- */
+        .btn-embossed {
+            padding: 14px 24px;
+            border: 1px solid var(--btn-border);
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--btn-bg);
+            color: var(--text-primary);
+            box-shadow: var(--emboss-drop), var(--emboss-inner);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-embossed:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.15);
+        }
+        
+        .btn-embossed:active {
+            transform: translateY(1px);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.5), inset 0 2px 6px rgba(0,0,0,0.8);
+            border-color: rgba(0,0,0,0.5);
         }
 
+        /* Specific Button Accents */
+        .btn-green {
+            color: var(--emerald);
+            border-color: rgba(16, 185, 129, 0.2);
+            box-shadow: var(--emboss-drop), var(--emboss-inner), 0 0 10px rgba(16, 185, 129, 0.05);
+        }
+        .btn-green:hover {
+            border-color: rgba(16, 185, 129, 0.4);
+            box-shadow: var(--emboss-drop), var(--emboss-inner), 0 5px 15px rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+
+        .btn-red {
+            color: var(--rose);
+            border-color: rgba(244, 63, 94, 0.2);
+            box-shadow: var(--emboss-drop), var(--emboss-inner), 0 0 10px rgba(244, 63, 94, 0.05);
+        }
+        .btn-red:hover {
+            border-color: rgba(244, 63, 94, 0.4);
+            box-shadow: var(--emboss-drop), var(--emboss-inner), 0 5px 15px rgba(244, 63, 94, 0.2);
+            color: #fb7185;
+        }
+
+        .btn-cyan {
+            color: var(--cyan);
+            border-color: rgba(6, 182, 212, 0.2);
+            box-shadow: var(--emboss-drop), var(--emboss-inner), 0 0 10px rgba(6, 182, 212, 0.05);
+        }
+        .btn-cyan:hover {
+            border-color: rgba(6, 182, 212, 0.4);
+            box-shadow: var(--emboss-drop), var(--emboss-inner), 0 5px 15px rgba(6, 182, 212, 0.2);
+            color: #22d3ee;
+        }
+
+        .btn-violet {
+            color: var(--violet);
+            border-color: rgba(139, 92, 246, 0.2);
+            box-shadow: var(--emboss-drop), var(--emboss-inner), 0 0 10px rgba(139, 92, 246, 0.05);
+        }
+        .btn-violet:hover {
+            border-color: rgba(139, 92, 246, 0.4);
+            box-shadow: var(--emboss-drop), var(--emboss-inner), 0 5px 15px rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+        }
+
+        /* EXTREME EMERGENCY BUTTON */
+        .btn-emergency-pulse {
+            background: linear-gradient(180deg, #be123c, #881337);
+            color: #fff;
+            border: 1px solid #fda4af;
+            box-shadow: 0 4px 15px rgba(190, 18, 60, 0.4), inset 0 2px 2px rgba(255, 255, 255, 0.2), inset 0 -2px 4px rgba(0,0,0,0.5);
+            animation: pulse-red-alert 2s infinite;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 1.05rem;
+        }
+        .btn-emergency-pulse:hover {
+            background: linear-gradient(180deg, #e11d48, #9f1239);
+            transform: translateY(-2px);
+            animation: none;
+            box-shadow: 0 8px 25px rgba(225, 29, 72, 0.6), inset 0 2px 2px rgba(255, 255, 255, 0.3);
+        }
+        .btn-emergency-pulse:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.5), inset 0 3px 8px rgba(0,0,0,0.8);
+        }
+
+        /* ----- TYPOGRAPHY & STATS ----- */
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 8px 0;
+        }
+        .pnl-pos { color: var(--emerald); text-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+        .pnl-neg { color: var(--rose); text-shadow: 0 0 15px rgba(244, 63, 94, 0.2); }
+        
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--emerald);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+        }
+        .status-badge.offline {
+            background: rgba(244, 63, 94, 0.1);
+            color: var(--rose);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.1);
+        }
+
+        /* TABLES */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            text-align: left;
+        }
         th {
-            padding: 12px 8px;
+            padding: 14px 12px;
             border-bottom: 1px solid var(--border-color);
             color: var(--text-secondary);
             font-weight: 600;
@@ -204,433 +297,126 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
         td {
-            padding: 16px 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 16px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
             font-size: 0.95rem;
+            background: rgba(255,255,255,0.01);
+        }
+        tr:hover td {
+            background: rgba(255,255,255,0.03);
         }
 
-        .log-terminal {
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 8px;
-            padding: 16px;
-            height: 250px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.85rem;
-            color: #a7f3d0;
+        /* INPUTS */
+        .input-modern {
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border-color);
-        }
-
-        .log-line {
-            margin-bottom: 6px;
-            line-height: 1.4;
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-
-        @media (max-width: 768px) {
-            .container { grid-template-columns: 1fr; }
-        }
-        
-        /* Toggle Switch CSS */
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute; cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #334155; transition: .4s; border-radius: 26px;
-        }
-        .slider:before {
-            position: absolute; content: "";
-            height: 20px; width: 20px; left: 3px; bottom: 3px;
-            background-color: white; transition: .4s; border-radius: 50%;
-        }
-        input:checked + .slider { background-color: var(--success); }
-        input:checked + .slider:before { transform: translateX(24px); }
-        
-        /* Emergency Button */
-        .btn-emergency {
-            width: 100%; padding: 13px; margin-top: 12px;
-            background: rgba(239, 68, 68, 0.12);
-            border: 1.5px solid var(--danger);
-            color: var(--danger);
-            border-radius: 8px;
-            font-weight: 800; font-size: 1rem;
-            cursor: pointer; transition: all 0.2s;
-            letter-spacing: 0.5px;
-            animation: pulse-red 2.5s ease-in-out infinite;
-        }
-        .btn-emergency:hover {
-            background: var(--danger);
-            color: #fff;
-            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
-            animation: none;
-            transform: scale(1.02);
-        }
-        @keyframes pulse-red {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-            50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.15); }
-        }
-        @keyframes pulse-green {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
-            50% { box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.3); }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        /* ── Tab Navigation ─────────────────────────────── */
-        .tab-nav {
-            max-width: 1100px;
-            width: 100%;
-            display: flex;
-            gap: 4px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px;
-            padding: 6px;
-            position: sticky;
-            top: 16px;
-            z-index: 100;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 10px 16px;
-            border: none;
             border-radius: 10px;
-            background: transparent;
-            color: var(--text-secondary);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            white-space: nowrap;
-        }
-        .tab-btn:hover {
-            background: rgba(255,255,255,0.06);
             color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.2s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
         }
-        .tab-btn.active {
-            background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(99,102,241,0.15));
-            color: #00d4ff;
-            border-bottom: 2px solid #00d4ff;
-            box-shadow: 0 0 12px rgba(0,212,255,0.15);
-        }
-        .tab-pane {
-            display: none;
-            max-width: 1100px;
-            width: 100%;
-            flex-direction: column;
-            gap: 24px;
-            animation: fadeIn 0.25s ease;
-        }
-        .tab-pane.active { display: flex; }
-        .tab-live-dot {
-            display: inline-block;
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            background: #34d399;
-            box-shadow: 0 0 6px #34d399;
-            animation: pulse-green 2s infinite;
-            margin-right: 5px;
-            vertical-align: middle;
-        }
-    
-        /* NEW GLASSMORPHISM & GRID CSS */
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.6);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .glass-panel:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-            border-color: rgba(255, 255, 255, 0.12);
-        }
+        .input-modern:focus { border-color: var(--violet); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 0 10px rgba(139, 92, 246, 0.2); }
+
+        /* HERO BAR */
         .summary-bar-hero {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9));
+            background: var(--panel-bg);
             border-radius: 16px;
-            padding: 20px 30px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            padding: 24px 30px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.02);
             flex-wrap: wrap;
             gap: 20px;
         }
-        .hero-item {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .hero-label {
-            font-size: 0.85rem;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-        .hero-val {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: #f8fafc;
-        }
-        .hero-divider {
-            width: 1px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.1);
-        }
-        .mode-val-color { color: #38bdf8 !important; }
-        .loss-val-color { color: #f87171 !important; }
-        .size-val-color { color: #fbbf24 !important; }
+        .hero-item { display: flex; flex-direction: column; gap: 6px; }
+        .hero-label { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .hero-val { font-size: 1.8rem; font-weight: 800; color: #f8fafc; }
         
+        .mode-val-color { color: var(--cyan) !important; text-shadow: 0 0 10px rgba(6, 182, 212, 0.2); }
+        .loss-val-color { color: var(--rose) !important; text-shadow: 0 0 10px rgba(244, 63, 94, 0.2); }
+        .size-val-color { color: #fbbf24 !important; text-shadow: 0 0 10px rgba(251, 191, 36, 0.2); }
+
+        /* LIVE TRADE COMPONENTS */
         .stat-box-modern {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 16px;
             display: flex;
             flex-direction: column;
             gap: 8px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);
         }
         .stat-row-modern {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--border-color);
             border-radius: 10px;
-        }
-        .badge-modern {
-            font-weight: 700;
-            font-size: 0.85rem;
-            padding: 4px 10px;
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.1);
         }
         .progress-box-modern {
             padding: 16px;
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(0, 0, 0, 0.15);
             border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
         }
         .progress-bar-bg {
             height: 8px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.4);
             border-radius: 4px;
             overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
         }
         .progress-bar-fill {
             height: 100%;
-            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            background: linear-gradient(90deg, var(--cyan), var(--violet));
             transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
         }
-        
-        .btn-modern {
-            padding: 14px 20px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-align: center;
-            letter-spacing: 0.5px;
-        }
-        .btn-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .btn-green:hover { background: rgba(16, 185, 129, 0.25); }
-        .btn-red { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .btn-red:hover { background: rgba(239, 68, 68, 0.25); }
-        .btn-alert { background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
-        .btn-alert:hover { transform: scale(1.02); }
-        .btn-purple { background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(126, 34, 206, 0.2)); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
-        .btn-purple:hover { background: rgba(168, 85, 247, 0.3); }
-        .btn-purple-solid { background: linear-gradient(135deg, #a855f7, #7e22ce); color: #fff; }
-        .btn-ghost { background: rgba(255, 255, 255, 0.05); color: #94a3b8; border: 1px dashed rgba(255, 255, 255, 0.2); }
-        .btn-ghost:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
-        
-        .input-modern {
-            padding: 10px 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            color: #fff;
-            font-size: 1rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .input-modern:focus { border-color: #a855f7; }
-        
-        /* Re-styled Position Cards */
         .pos-card-modern {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
             border-radius: 16px;
             padding: 20px;
             transition: transform 0.2s, border-color 0.2s;
             display: flex;
             flex-direction: column;
             gap: 16px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);
         }
         .pos-card-modern:hover {
-            border-color: rgba(168, 85, 247, 0.4);
+            border-color: rgba(139, 92, 246, 0.4);
             transform: translateY(-2px);
-        }
-        .leg-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 12px;
-            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
-        }
-        .leg-title {
-            font-size: 1.2rem;
-            font-weight: 800;
-        }
-        .leg-pnl {
-            font-size: 1.2rem;
-            font-weight: 800;
-            padding: 4px 12px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-        }
-        .leg-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            font-size: 0.9rem;
-        }
-        .leg-stat {
-            display: flex;
-            justify-content: space-between;
-            color: #94a3b8;
-        }
-        .leg-stat span:last-child {
-            color: #f8fafc;
-            font-weight: 600;
-        }
-
-    </style>
-    <style>
-        /* NEUMORPHIC & GRADIENT THEME (Matching User Reference) */
-        :root {
-            --theme-grad: linear-gradient(90deg, #385dfc, #8a48ff, #df37ff);
-            --theme-grad-hover: linear-gradient(90deg, #4c6efd, #9b5cff, #e652ff);
-            --neu-dark: #232429;
-            --neu-shadow:  5px 5px 10px rgba(0,0,0,0.5), -5px -5px 10px rgba(255,255,255,0.05);
-            --neu-inner: inset 5px 5px 10px rgba(0,0,0,0.5), inset -5px -5px 10px rgba(255,255,255,0.05);
-        }
-
-        .btn-modern {
-            padding: 16px 20px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            text-align: center;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3), inset 0 2px 10px rgba(0,0,0,0.2);
         }
         
-        .btn-modern:hover {
-            transform: translateY(-2px);
-        }
-        .btn-modern:active {
-            transform: translateY(1px);
-        }
-
-        /* 1. Filled Gradient Button (Like the "No" button or selected bars in image) */
-        .btn-theme-filled { 
-            background: var(--theme-grad);
-            color: #fff;
-            box-shadow: 0 8px 20px rgba(138, 72, 255, 0.3);
-        }
-        .btn-theme-filled:hover {
-            background: var(--theme-grad-hover);
-            box-shadow: 0 10px 25px rgba(138, 72, 255, 0.4);
-            filter: brightness(1.1);
-        }
-
-        /* 2. Neumorphic Outlined Button (Like the "Yes" button in image) */
-        .btn-theme-outline {
-            background: var(--neu-dark);
-            color: #fff;
-            box-shadow: var(--neu-shadow);
-            border: 1px solid rgba(255,255,255,0.05);
-            position: relative;
-            z-index: 1;
-            overflow: hidden;
-        }
-        .btn-theme-outline::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
+        /* TERMINALS */
+        .log-terminal {
+            background: rgba(0, 0, 0, 0.4);
             border-radius: 12px;
-            padding: 2px;
-            background: var(--theme-grad);
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            z-index: -1;
-            opacity: 0.7;
-            transition: opacity 0.3s ease;
-        }
-        .btn-theme-outline:hover::before {
-            opacity: 1;
-        }
-        .btn-theme-outline:hover {
-            box-shadow: 0 8px 20px rgba(138, 72, 255, 0.2);
+            padding: 16px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #a7f3d0;
+            border: 1px solid var(--border-color);
+            box-shadow: inset 0 4px 15px rgba(0,0,0,0.5);
         }
 
-        /* 3. Neumorphic Red/Alert Button (For Stop/Emergency) */
-        .btn-neu-red {
-            background: var(--neu-dark);
-            color: #ff4d4d;
-            box-shadow: var(--neu-shadow);
-            border: 1px solid rgba(255, 77, 77, 0.2);
-        }
-        .btn-neu-red:hover {
-            box-shadow: 0 8px 20px rgba(255, 77, 77, 0.2);
-            color: #ff6666;
-            border-color: rgba(255, 77, 77, 0.4);
-        }
-        
-        /* 4. Solid Red Gradient for Emergency */
-        .btn-red-filled {
-            background: linear-gradient(90deg, #ff3b3b, #cc0000);
-            color: #fff;
-            box-shadow: 0 8px 20px rgba(204, 0, 0, 0.3);
-        }
-        .btn-red-filled:hover {
-            filter: brightness(1.2);
-            box-shadow: 0 10px 25px rgba(204, 0, 0, 0.4);
-        }
-
-        @keyframes pulse-red-subtle {
-            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-red-alert {
+            0% { box-shadow: 0 4px 15px rgba(190, 18, 60, 0.4), inset 0 2px 2px rgba(255, 255, 255, 0.2), inset 0 -2px 4px rgba(0,0,0,0.5); }
+            50% { box-shadow: 0 4px 30px rgba(244, 63, 94, 0.8), inset 0 2px 2px rgba(255, 255, 255, 0.3), inset 0 -2px 4px rgba(0,0,0,0.5); }
+            100% { box-shadow: 0 4px 15px rgba(190, 18, 60, 0.4), inset 0 2px 2px rgba(255, 255, 255, 0.2), inset 0 -2px 4px rgba(0,0,0,0.5); }
         }
     </style>
 </head>
@@ -813,19 +599,19 @@
             <h2>⚙️ Manual Controls</h2>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 20px;">
-                <button class="btn-modern btn-theme-filled" onclick="sendCommand('start')">
+                <button class="btn-embossed btn-green" onclick="sendCommand('start')">
                     <span style="font-size:1.2rem;">▶</span> START BOT
                 </button>
-                <button class="btn-modern btn-neu-red" onclick="sendCommand('stop')">
+                <button class="btn-embossed btn-red" onclick="sendCommand('stop')">
                     <span style="font-size:1.2rem;">⏹</span> STOP BOT
                 </button>
-                <button class="btn-modern btn-red-filled" onclick="emergencyClose()">
+                <button class="btn-embossed btn-emergency-pulse" onclick="emergencyClose()">
                     <span style="font-size:1.2rem;">🚨</span> EMERGENCY SQUARE OFF
                 </button>
-                <button id="btn-manual-order" class="btn-modern btn-theme-outline" onclick="runManualOrder()">
+                <button id="btn-manual-order" class="btn-embossed btn-violet" onclick="runManualOrder()">
                     <span style="font-size:1.2rem;">⚡</span> FORCE STRANGLE ENTRY
                 </button>
-                <button id="btn-test-order" class="btn-modern btn-theme-outline" onclick="runTestOrder()">
+                <button id="btn-test-order" class="btn-embossed btn-cyan" onclick="runTestOrder()">
                     <span style="font-size:1.2rem;">🧪</span> TEST ORDER (1 Lot)
                 </button>
             </div>
@@ -838,7 +624,7 @@
                     </div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                         <input id="lotSizeInput" type="number" min="1" max="10000" placeholder="e.g. 200" class="input-modern" style="width: 140px;" />
-                        <button id="saveLotSizeBtn" onclick="saveLotSize()" class="btn-modern btn-purple-solid" style="padding: 10px 24px;">Save Override</button>
+                        <button id="saveLotSizeBtn" onclick="saveLotSize()" class="btn-embossed btn-violet" style="padding: 10px 24px;">Save Override</button>
                     </div>
                 </div>
             </div>
@@ -862,7 +648,7 @@
     <div class="tab-pane" id="tab-analytics">
 
         <!-- Tomorrow's Trade Probability Panel -->
-        <div class="panel full-width">
+        <div class="glass-panel">
             <h2 style="margin: 0 0 20px 0;">🔮 Tomorrow's Trade Chance</h2>
             <div style="display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
                 
@@ -1092,7 +878,7 @@
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px; margin-bottom: 24px;">
 <!-- Risk Management & Settings Panel -->
-            <div class="panel">
+            <div class="glass-panel">
                 <h2>Risk Management</h2>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
                     <div>
@@ -1109,7 +895,7 @@
             </div>
 
             <!-- IV & DVOL Status Panel -->
-            <div class="panel" id="iv-panel">
+            <div class="glass-panel" id="iv-panel">
                 <h2>📈 IV & DVOL Status</h2>
                 <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
@@ -1160,7 +946,7 @@
 
                     </div>
 <!-- Performance Summary Panel -->
-        <div class="panel full-width">
+        <div class="glass-panel">
             <h2>Performance Summary</h2>
             <!-- Horizontal compact stat row: Today | Overall -->
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -1224,7 +1010,7 @@
 
 
             <!-- News & Events / Volatility Alerts Panel -->
-            <div class="panel" id="news-panel" style="flex: 1; display: flex; flex-direction: column;">
+            <div class="glass-panel" id="news-panel" style="flex: 1; display: flex; flex-direction: column;">
                 <style>
                     #news-panel .table-container {
                         max-height: 320px;
@@ -1456,7 +1242,7 @@
     <!-- TAB 3: CONFIG -->
     <div class="tab-pane" id="tab-config">
         <!-- Rule Compliance Panel -->
-        <div class="panel full-width">
+        <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin: 0;">Rule Compliance Check</h2>
                 <div id="compliance-badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; border: 1px solid rgba(16, 185, 129, 0.2);">100% Compliant</div>
@@ -1478,7 +1264,7 @@
 
         
         <!-- Skip & Schedule Info Panel -->
-        <div class="panel full-width">
+        <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin: 0;">Skip & Schedule Info</h2>
                 <div id="today-status-badge" style="padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9rem;">Evaluating...</div>
@@ -1510,7 +1296,7 @@
     <!-- TAB 3b: CONFIG remainder -->
     <div class="tab-pane" id="tab-config-b">
         <!-- Live Terminal Panel -->
-        <div class="panel full-width">
+        <div class="glass-panel">
             <h2>Live System Logs</h2>
             <div class="log-terminal" id="log-terminal">
                 <div class="log-line">Initializing connection to engine...</div>
@@ -1518,10 +1304,10 @@
         </div>
 
         <!-- Daily Reports Panel -->
-        <div class="panel full-width">
+        <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin: 0;">Daily Trading Reports</h2>
-                <button onclick="generateReportNow(event)" style="padding: 6px 16px; font-size: 0.85rem; width: auto; flex: none; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); color: #fff;">Generate Report Now</button>
+                <button class="btn-embossed btn-cyan" onclick="generateReportNow(event)" style="padding: 10px 16px;">Generate Report Now</button>
             </div>
             <div class="table-container" style="max-height: 300px; overflow-y: auto;">
                 <table>
@@ -1541,7 +1327,7 @@
         </div>
 
         <!-- Pro-Trader Research Journal Panel -->
-        <div class="panel full-width">
+        <div class="glass-panel">
             <h2>📓 Pro-Trader Research Journal & Diary</h2>
             <div class="log-terminal" id="journal-terminal" style="background: rgba(26, 26, 26, 0.45); max-height: 350px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.9rem; padding: 18px; border-radius: 8px; border: 1.5px solid rgba(255,255,255,0.06); color: #ececec; line-height: 1.5; font-weight: 500;">
                 Loading Pro-Trader Journal...
@@ -1549,7 +1335,7 @@
         </div>
 
         <!-- Backtesting Dashboard Panel -->
-        <div class="panel full-width">
+        <div class="glass-panel">
             <h2>🧪 Advanced Backtesting Dashboard</h2>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; align-items: flex-end;">
                 <div>
@@ -1565,7 +1351,7 @@
                     <input id="backtest-end-date" type="date" style="width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-weight: bold; outline: none; box-sizing: border-box;" />
                 </div>
                 <div>
-                    <button id="btn-run-backtest" onclick="runBacktest()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #38bdf8, #818cf8); color: white; font-weight: 800; font-size: 0.95rem; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.25); text-shadow: 0 1px 2px rgba(0,0,0,0.3); transition: all 0.2s;">
+                    <button id="btn-run-backtest" class="btn-embossed btn-violet" onclick="runBacktest()" style="width: 100%;">
                         🏃 Run Backtest
                     </button>
                 </div>
