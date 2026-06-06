@@ -528,11 +528,20 @@
 
     </style>
     <style>
+        /* NEUMORPHIC & GRADIENT THEME (Matching User Reference) */
+        :root {
+            --theme-grad: linear-gradient(90deg, #385dfc, #8a48ff, #df37ff);
+            --theme-grad-hover: linear-gradient(90deg, #4c6efd, #9b5cff, #e652ff);
+            --neu-dark: #232429;
+            --neu-shadow:  5px 5px 10px rgba(0,0,0,0.5), -5px -5px 10px rgba(255,255,255,0.05);
+            --neu-inner: inset 5px 5px 10px rgba(0,0,0,0.5), inset -5px -5px 10px rgba(255,255,255,0.05);
+        }
+
         .btn-modern {
             padding: 16px 20px;
             border: none;
             border-radius: 12px;
-            font-weight: 800;
+            font-weight: 700;
             font-size: 0.95rem;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -542,47 +551,82 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+        
         .btn-modern:hover {
-            transform: translateY(-3px) scale(1.02);
-            filter: brightness(1.15);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            transform: translateY(-2px);
         }
         .btn-modern:active {
-            transform: translateY(1px) scale(0.98);
+            transform: translateY(1px);
         }
-        .btn-green-premium { 
-            background: linear-gradient(135deg, #10b981, #059669); 
-            color: #fff; 
-            border: 1px solid rgba(16, 185, 129, 0.4); 
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+
+        /* 1. Filled Gradient Button (Like the "No" button or selected bars in image) */
+        .btn-theme-filled { 
+            background: var(--theme-grad);
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(138, 72, 255, 0.3);
         }
-        .btn-red-premium { 
-            background: linear-gradient(135deg, #f97316, #ef4444); 
-            color: #fff; 
-            border: 1px solid rgba(239, 68, 68, 0.4); 
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+        .btn-theme-filled:hover {
+            background: var(--theme-grad-hover);
+            box-shadow: 0 10px 25px rgba(138, 72, 255, 0.4);
+            filter: brightness(1.1);
         }
-        .btn-alert-premium { 
-            background: linear-gradient(135deg, #dc2626, #991b1b); 
-            color: #fff; 
-            border: 1px solid #f87171;
-            box-shadow: 0 0 20px rgba(220, 38, 38, 0.4); 
-            animation: pulse-red-subtle 2s infinite;
+
+        /* 2. Neumorphic Outlined Button (Like the "Yes" button in image) */
+        .btn-theme-outline {
+            background: var(--neu-dark);
+            color: #fff;
+            box-shadow: var(--neu-shadow);
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
         }
-        .btn-purple-premium { 
-            background: linear-gradient(135deg, #8b5cf6, #3b82f6); 
-            color: #fff; 
-            border: 1px solid rgba(139, 92, 246, 0.4); 
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+        .btn-theme-outline::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 12px;
+            padding: 2px;
+            background: var(--theme-grad);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            z-index: -1;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
         }
-        .btn-blue-premium { 
-            background: linear-gradient(135deg, #3b82f6, #1e40af); 
-            color: #fff; 
-            border: 1px solid rgba(59, 130, 246, 0.4); 
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+        .btn-theme-outline:hover::before {
+            opacity: 1;
         }
+        .btn-theme-outline:hover {
+            box-shadow: 0 8px 20px rgba(138, 72, 255, 0.2);
+        }
+
+        /* 3. Neumorphic Red/Alert Button (For Stop/Emergency) */
+        .btn-neu-red {
+            background: var(--neu-dark);
+            color: #ff4d4d;
+            box-shadow: var(--neu-shadow);
+            border: 1px solid rgba(255, 77, 77, 0.2);
+        }
+        .btn-neu-red:hover {
+            box-shadow: 0 8px 20px rgba(255, 77, 77, 0.2);
+            color: #ff6666;
+            border-color: rgba(255, 77, 77, 0.4);
+        }
+        
+        /* 4. Solid Red Gradient for Emergency */
+        .btn-red-filled {
+            background: linear-gradient(90deg, #ff3b3b, #cc0000);
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(204, 0, 0, 0.3);
+        }
+        .btn-red-filled:hover {
+            filter: brightness(1.2);
+            box-shadow: 0 10px 25px rgba(204, 0, 0, 0.4);
+        }
+
         @keyframes pulse-red-subtle {
             0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
             70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
@@ -769,19 +813,19 @@
             <h2>⚙️ Manual Controls</h2>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 20px;">
-                <button class="btn-modern btn-green-premium" onclick="sendCommand('start')">
+                <button class="btn-modern btn-theme-filled" onclick="sendCommand('start')">
                     <span style="font-size:1.2rem;">▶</span> START BOT
                 </button>
-                <button class="btn-modern btn-red-premium" onclick="sendCommand('stop')">
+                <button class="btn-modern btn-neu-red" onclick="sendCommand('stop')">
                     <span style="font-size:1.2rem;">⏹</span> STOP BOT
                 </button>
-                <button class="btn-modern btn-alert-premium" onclick="emergencyClose()">
+                <button class="btn-modern btn-red-filled" onclick="emergencyClose()">
                     <span style="font-size:1.2rem;">🚨</span> EMERGENCY SQUARE OFF
                 </button>
-                <button id="btn-manual-order" class="btn-modern btn-purple-premium" onclick="runManualOrder()">
+                <button id="btn-manual-order" class="btn-modern btn-theme-outline" onclick="runManualOrder()">
                     <span style="font-size:1.2rem;">⚡</span> FORCE STRANGLE ENTRY
                 </button>
-                <button id="btn-test-order" class="btn-modern btn-blue-premium" onclick="runTestOrder()">
+                <button id="btn-test-order" class="btn-modern btn-theme-outline" onclick="runTestOrder()">
                     <span style="font-size:1.2rem;">🧪</span> TEST ORDER (1 Lot)
                 </button>
             </div>
