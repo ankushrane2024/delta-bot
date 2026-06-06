@@ -250,6 +250,7 @@ def get_status():
         'regime_filter_enabled': bot_engine.market_regime_filter_enabled,
         'current_market_regime': bot_engine.current_market_regime,
         'current_adx_value': bot_engine.current_adx_value,
+        'adx_history': getattr(bot_engine, 'adx_history', []),
         'paper_lot_multiplier': getattr(bot_engine, 'paper_lot_multiplier', 1.0),
         'api_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False,
         'current_iv': getattr(bot_engine, 'current_iv', 0.0),

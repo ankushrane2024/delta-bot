@@ -61,6 +61,7 @@ class DeltaTradingEngine:
         self.market_regime_filter_enabled = False
         self.current_market_regime = "Unknown"
         self.current_adx_value = 0.0
+        self.adx_history = []
         self.hedging_triggered_today = False
         
         # PAPER mode enhancements
@@ -193,9 +194,10 @@ class DeltaTradingEngine:
                 self.today_skip_reason = reason
                 return
             # Market Regime Filter
-            regime, adx = self.filters.get_market_regime()
+            regime, adx, history = self.filters.get_market_regime()
             self.current_market_regime = regime
             self.current_adx_value = adx
+            self.adx_history = history
             if self.market_regime_filter_enabled:
                 if regime == "Trending":
                     app_logger.info(f"Engine: Market Regime Filter active. Skipping trade due to Trending market (ADX: {adx:.2f}).")

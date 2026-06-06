@@ -180,26 +180,26 @@ class TradingFilters:
         return schedule
 
     def get_market_regime(self):
-        """Calculates 14-period ADX on 4H BTC perp candles using pure pandas/numpy.
-        Returns (regime, adx_value). No external TA libraries needed."""
+        """Calculates 14-period ADX on 1H BTC perp candles using pure pandas/numpy.
+        Returns (regime, adx_value, adx_history). No external TA libraries needed."""
         import pandas as pd
         import numpy as np
         
         try:
-            # Fetch 7 days of 4H candles to ensure enough data for a stable 14-period ADX
+            # Fetch 4 days of 1H candles to ensure enough data for a stable 14-period ADX
             end_time = int(time.time())
-            start_time = end_time - (7 * 24 * 3600)
+            start_time = end_time - (4 * 24 * 3600)
             
-            res = self.api_client.get_candles("BTCUSD", "4h", start=start_time, end=end_time)
+            res = self.api_client.get_candles("BTCUSD", "1h", start=start_time, end=end_time)
             
             if not (res and res.get('success')):
                 app_logger.warning("Filter: Failed to fetch candles for ADX.")
-                return "Unknown", 0.0
+                return "Unknown", 0.0, []
                 
             candles = res.get('result', [])
             if not candles or len(candles) < 28:  # need ~2x period for stable Wilder's smoothing
                 app_logger.warning(f"Filter: Not enough candle data ({len(candles) if candles else 0} bars) to calculate ADX.")
-                return "Unknown", 0.0
+                return "Unknown", 0.0, []
                 
             df = pd.DataFrame(candles)
             df['high']  = df['high'].astype(float)
@@ -260,12 +260,26 @@ class TradingFilters:
             
             adx_series = wilders(dx.dropna().reset_index(drop=True), period)
             
-            current_adx = float(adx_series.dropna().iloc[-1])
+            adx_history = adx_series.dropna().tail(6).tolist()
+            if len(adx_history) < 2:
+                return "Unknown", 0.0, []
+
+            current_adx = float(adx_history[-1])
+            prev_adx = float(adx_history[-2])
             
-            regime = "Trending" if current_adx > 25 else "Ranging"
+            is_rising = current_adx > prev_adx
+            is_falling = current_adx < prev_adx
+
+            if current_adx > 25 and is_rising:
+                regime = "Trending"
+            elif current_adx < 22 and is_falling:
+                regime = "Sideways"
+            else:
+                regime = "Transition"
+
             app_logger.info(f"Filter: Market Regime is {regime} (ADX: {current_adx:.2f})")
-            return regime, round(current_adx, 2)
+            return regime, round(current_adx, 2), [round(float(x), 2) for x in adx_history]
             
         except Exception as e:
             app_logger.error(f"Filter: Error calculating ADX: {e}")
-            return "Unknown", 0.0
+            return "Unknown", 0.0, []
