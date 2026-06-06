@@ -513,73 +513,6 @@
 
         <!-- Right Column (Stacked) -->
         <div style="display: flex; flex-direction: column; gap: 24px; height: 100%;">
-            <!-- Risk Management & Settings Panel -->
-            <div class="panel">
-                <h2>Risk Management</h2>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                    <div>
-                        <div style="font-weight: 600; color: #fff; margin-bottom: 5px;">Market Regime Filter (ADX)</div>
-                        <div style="font-size: 0.85rem; color: var(--text-secondary);">Skips trades when market is Trending (ADX > 25)</div>
-                    </div>
-                    <!-- Clear pill toggle: green = ON, dark = OFF -->
-                    <button id="regime-pill"
-                        onclick="toggleRegimeFilter()"
-                        style="min-width: 72px; padding: 7px 16px; border-radius: 20px; border: 1.5px solid #334155; background: #334155; color: #94a3b8; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.25s; letter-spacing: 0.5px;">
-                        OFF
-                    </button>
-                </div>
-            </div>
-
-            <!-- IV & DVOL Status Panel -->
-            <div class="panel" id="iv-panel">
-                <h2>📈 IV & DVOL Status</h2>
-                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span class="stat-label">Current IV</span>
-                        <span id="current-iv-val" style="font-weight: 800; font-size: 1.1rem; color: #fff;">0.00%</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span class="stat-label">5-Day Average IV</span>
-                        <span id="avg-iv-val" style="font-weight: 600; font-size: 1.0rem; color: var(--text-secondary);">0.00%</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span class="stat-label">IV Status</span>
-                        <span id="iv-status-badge" style="font-weight: 700; font-size: 0.9rem; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-secondary);">Evaluating...</span>
-                    </div>
-
-                    <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 10px; display: flex; flex-direction: column; gap: 10px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="stat-label">BTC 30-Day DVOL</span>
-                            <span id="dvol-val" style="font-weight: 800; font-size: 1.1rem; color: #fff;">0.00%</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="stat-label">DVOL Percentile</span>
-                            <span id="dvol-percentile-val" style="font-weight: 800; font-size: 1.0rem; color: #38bdf8;">0.0%</span>
-                        </div>
-                        
-                        <div style="position: relative; height: 16px; background: rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; margin-top: 4px;">
-                            <!-- Safe Zone highlights (20% - 80%) -->
-                            <div style="position: absolute; left: 20%; width: 60%; height: 100%; background: rgba(16, 185, 129, 0.15); border-left: 1.5px dashed rgba(16, 185, 129, 0.4); border-right: 1.5px dashed rgba(16, 185, 129, 0.4);"></div>
-                            <div id="dvol-percentile-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); transition: width 0.5s ease-in-out;"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-secondary);">
-                            <span>0% (Low)</span>
-                            <span style="color: var(--success); font-weight: 600;">20% - 80% Safe Zone</span>
-                            <span>100% (High)</span>
-                        </div>
-
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); margin-top: 4px;">
-                            <span class="stat-label">Premium Range</span>
-                            <span id="premium-range-val" style="font-weight: bold; color: #a78bfa; font-size: 0.95rem;">-</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
-                            <span class="stat-label">Can Trade</span>
-                            <span id="dvol-can-trade-badge" style="font-weight: 700; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">Evaluating...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Smart Hedging Status Panel -->
             <div class="panel" id="hedge-panel">
                 <h2>🛡️ Smart Hedging Status</h2>
@@ -671,7 +604,77 @@
             </style>
         </div>
 
-        <!-- Performance Summary Panel -->
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px; margin-bottom: 24px;">
+<!-- Risk Management & Settings Panel -->
+            <div class="panel">
+                <h2>Risk Management</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div>
+                        <div style="font-weight: 600; color: #fff; margin-bottom: 5px;">Market Regime Filter (ADX)</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">Skips trades when market is Trending (ADX > 25)</div>
+                    </div>
+                    <!-- Clear pill toggle: green = ON, dark = OFF -->
+                    <button id="regime-pill"
+                        onclick="toggleRegimeFilter()"
+                        style="min-width: 72px; padding: 7px 16px; border-radius: 20px; border: 1.5px solid #334155; background: #334155; color: #94a3b8; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.25s; letter-spacing: 0.5px;">
+                        OFF
+                    </button>
+                </div>
+            </div>
+
+            <!-- IV & DVOL Status Panel -->
+            <div class="panel" id="iv-panel">
+                <h2>📈 IV & DVOL Status</h2>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span class="stat-label">Current IV</span>
+                        <span id="current-iv-val" style="font-weight: 800; font-size: 1.1rem; color: #fff;">0.00%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span class="stat-label">5-Day Average IV</span>
+                        <span id="avg-iv-val" style="font-weight: 600; font-size: 1.0rem; color: var(--text-secondary);">0.00%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span class="stat-label">IV Status</span>
+                        <span id="iv-status-badge" style="font-weight: 700; font-size: 0.9rem; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text-secondary);">Evaluating...</span>
+                    </div>
+
+                    <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 5px; padding-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="stat-label">BTC 30-Day DVOL</span>
+                            <span id="dvol-val" style="font-weight: 800; font-size: 1.1rem; color: #fff;">0.00%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="stat-label">DVOL Percentile</span>
+                            <span id="dvol-percentile-val" style="font-weight: 800; font-size: 1.0rem; color: #38bdf8;">0.0%</span>
+                        </div>
+                        
+                        <div style="position: relative; height: 16px; background: rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; margin-top: 4px;">
+                            <!-- Safe Zone highlights (20% - 80%) -->
+                            <div style="position: absolute; left: 20%; width: 60%; height: 100%; background: rgba(16, 185, 129, 0.15); border-left: 1.5px dashed rgba(16, 185, 129, 0.4); border-right: 1.5px dashed rgba(16, 185, 129, 0.4);"></div>
+                            <div id="dvol-percentile-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); transition: width 0.5s ease-in-out;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-secondary);">
+                            <span>0% (Low)</span>
+                            <span style="color: var(--success); font-weight: 600;">20% - 80% Safe Zone</span>
+                            <span>100% (High)</span>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); margin-top: 4px;">
+                            <span class="stat-label">Premium Range</span>
+                            <span id="premium-range-val" style="font-weight: bold; color: #a78bfa; font-size: 0.95rem;">-</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="stat-label">Can Trade</span>
+                            <span id="dvol-can-trade-badge" style="font-weight: 700; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">Evaluating...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                    </div>
+<!-- Performance Summary Panel -->
         <div class="panel full-width">
             <h2>Performance Summary</h2>
             <!-- Horizontal compact stat row: Today | Overall -->
