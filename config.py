@@ -105,10 +105,7 @@ HEDGE_PARTIAL_INITIAL_PCT = 0.50      # Start partial hedge at 50% of required s
 HEDGE_PARTIAL_ESCALATE_PCT = 0.80     # Escalate partial hedge to 80–100%
 HEDGE_PARTIAL_ESCALATE_DELTA = 0.10   # Re-check threshold after partial hedge
 HEDGE_PARTIAL_WAIT = 10               # Seconds to wait between partial hedge steps
-HEDGE_EMERGENCY_LOSS_PCT = 0.25       # 25% unrealized loss → force 2.5x Over-Hedge
-HEDGE_RETRY_COUNT = 2                 # Number of retries on hedge order failure
-HEDGE_RETRY_DELAY = 5                 # Seconds between retries
-HEDGE_LIMIT_ORDER_SPREAD = 0.001      # 0.1% from mark price for limit orders in volatile markets
+HEDGE_EMERGENCY_LOSS_PCT = 0.25       # 25% unrealized loss → force emergency hedge
 HEDGE_MAX_LOSS_PER_LOT = 2.50         # Maximum allowed loss in USD per option lot before auto-closing the hedge
 
 # --- Dynamic Position Sizing (Section 4) ---

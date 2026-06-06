@@ -6,14 +6,14 @@ def verify_all_rules():
         {
             "id": 1,
             "name": "Entry Times",
-            "expected": "8:30, 9:00, 9:30 AM IST",
-            "check": config.ENTRY_TIMES == ["08:30", "09:00", "09:30"]
+            "expected": "9:00, 9:30 AM IST",
+            "check": config.ENTRY_TIMES == ["09:00", "09:30"]
         },
         {
             "id": 2,
-            "name": "Strike Selection (IV-Based + 4 OTM)",
-            "expected": "DVOL-based premium ranges, Min 4 strikes OTM, Put <= 1.35xCall, Net Delta <= 0.15",
-            "check": config.MIN_OTM_STRIKES == 4 and config.PUT_SKEW_CAP == 1.35 and config.NET_DELTA_ENTRY_LIMIT == 0.15
+            "name": "Strike Selection (IV-Based + 5 OTM)",
+            "expected": "DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10",
+            "check": config.MIN_OTM_STRIKES == 5 and config.PUT_SKEW_CAP == 1.30 and config.NET_DELTA_ENTRY_LIMIT == 0.10
         },
         {
             "id": 3,
@@ -24,8 +24,8 @@ def verify_all_rules():
         {
             "id": 4,
             "name": "Stop Loss & Target",
-            "expected": "150% SL, 30% Full Target",
-            "check": config.SL_PERCENT == 1.50 and config.EXIT_PROFIT_TARGET == 0.30
+            "expected": "130% SL, 30% Full Target",
+            "check": config.SL_PERCENT == 1.30 and config.EXIT_PROFIT_TARGET == 0.30
         },
         {
             "id": 5,
@@ -48,11 +48,11 @@ def verify_all_rules():
         {
             "id": 8,
             "name": "Smart Hedging",
-            "expected": "IV-based thresholds: <45% delta>0.20, 45-55% delta>0.17, >55% delta>0.12",
+            "expected": "IV-based thresholds: <45% delta>0.15, 45-55% delta>0.12, >55% delta>0.08",
             "check": (hasattr(config, 'HEDGE_IV_THRESHOLDS') and
-                      config.HEDGE_IV_THRESHOLDS['low']['delta_trigger'] == 0.20 and
-                      config.HEDGE_IV_THRESHOLDS['mid']['delta_trigger'] == 0.17 and
-                      config.HEDGE_IV_THRESHOLDS['high']['delta_trigger'] == 0.12)
+                      config.HEDGE_IV_THRESHOLDS['low']['delta_trigger'] == 0.15 and
+                      config.HEDGE_IV_THRESHOLDS['mid']['delta_trigger'] == 0.12 and
+                      config.HEDGE_IV_THRESHOLDS['high']['delta_trigger'] == 0.08)
         },
         {
             "id": 9,
@@ -65,9 +65,9 @@ def verify_all_rules():
         {
             "id": 10,
             "name": "Money Management",
-            "expected": "1.5% risk/trade, 3% daily limit, 3 consecutive losses stop, 2.5% pause next day",
-            "check": (config.MAX_RISK_PER_TRADE_PCT == 0.015 and
-                      config.DAILY_LOSS_LIMIT_PCT == 0.03 and
+            "expected": "1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day",
+            "check": (config.MAX_RISK_PER_TRADE_PCT == 0.010 and
+                      config.DAILY_LOSS_LIMIT_PCT == 0.02 and
                       config.MAX_CONSECUTIVE_LOSSES_DAY == 3 and
                       config.DAILY_LOSS_PAUSE_THRESHOLD == 0.025)
         },

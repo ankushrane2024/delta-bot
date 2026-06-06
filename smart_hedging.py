@@ -277,21 +277,21 @@ class SmartHedgingManager:
                     self.hedge_active = True
                     self.hedge_type = "oneshot_1to1"
                     self.hedge_size_btc = hedge_size if direction == 'buy' else -hedge_size
-                self.hedge_percentage = 100.0
-                self.hedge_order_id = result['order_id']
-                if not self.sl_tightened:
-                    from config import HEDGE_EMERGENCY_SL_TIGHTEN
-                    self.risk_manager.tighten_stop_loss(HEDGE_EMERGENCY_SL_TIGHTEN)
-                    self.sl_tightened = True
-                notifier.notify_hedge_escalated(
-                    timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
-                    from_pct=0.0,
-                    to_pct=100.0,
-                    loss_pct=unrealized_loss_pct * 100
-                )
-            else:
-                app_logger.error("Hedge [EMERGENCY]: Emergency loss-trigger hedge failed!")
-                notifier.notify_hedge_failed()
+                    self.hedge_percentage = 100.0
+                    self.hedge_order_id = result['order_id']
+                    if not self.sl_tightened:
+                        from config import HEDGE_EMERGENCY_SL_TIGHTEN
+                        self.risk_manager.tighten_stop_loss(HEDGE_EMERGENCY_SL_TIGHTEN)
+                        self.sl_tightened = True
+                    notifier.notify_hedge_escalated(
+                        timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
+                        from_pct=0.0,
+                        to_pct=100.0,
+                        loss_pct=unrealized_loss_pct * 100
+                    )
+                else:
+                    app_logger.error("Hedge [EMERGENCY]: Emergency loss-trigger hedge failed!")
+                    notifier.notify_hedge_failed()
             return  # Don't continue to regular checks after emergency hedge
 
         # 4.1: Unrealized Loss > 25% check (Tighten SL)
@@ -349,10 +349,9 @@ class SmartHedgingManager:
                             # Notify update
                             notifier.notify_hedge_executed(
                                 timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
-                                net_delta=net_delta_btc,
                                 iv=current_dvol,
-                                order_type='market',
-                                side=direction,
+                                net_delta=net_delta_btc,
+                                hedge_type="DYNAMIC SCALE",
                                 size_btc=remaining_hedge,
                                 order_id=result['order_id']
                             )

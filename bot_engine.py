@@ -630,7 +630,6 @@ class DeltaTradingEngine:
                     current_total_value = 0
                     net_delta = 0
                     total_gamma = 0
-                    all_prices_available = True
                     
                     for sym, data in self.execution.active_positions.items():
                         entry_price = data.get('entry_price', 0)
@@ -689,7 +688,10 @@ class DeltaTradingEngine:
                         # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
                         current_total_value += current_price * data['size'] * LOT_TO_BTC
                             
-                    if all_prices_available and self.total_entry_premium > 0:
+                    profit = 0.0
+                    pnl_pct = 0.0
+                    
+                    if self.total_entry_premium > 0:
                         # PnL Check
                         collected_premium = self.total_entry_premium
                         current_option_value = current_total_value
@@ -703,10 +705,10 @@ class DeltaTradingEngine:
                             app_logger.critical(f"Engine: EMERGENCY 45% LOSS LIMIT HIT on active trade! Loss: {pnl_pct*100:.2f}%. Triggering immediate full square-off.")
                             notifier.notify_error(f"🚨 EMERGENCY 45% LOSS LIMIT HIT 🚨\nTrade loss reached {pnl_pct*100:.2f}%. Triggering immediate full square-off of all legs and hedges.")
                             self.execution.close_all(reason="Emergency 45% Trade Loss Hit")
+                            self.reset_daily_state()
                             self.today_trade_status = "Emergency Auto Closed"
                             self.today_skip_reason = "Emergency 45% Trade Loss Hit"
                             self.daily_loss_hits += 2 # Block future trades for the day
-                            self.reset_daily_state()
                             continue
                             
                         # Continuous Daily Loss Limit Check (2% at any time)
@@ -717,10 +719,10 @@ class DeltaTradingEngine:
                                 app_logger.critical(f"Engine: Daily -2% loss limit hit on floating equity! Floating loss: {loss_pct*100:.2f}%. Triggering immediate emergency full square-off.")
                                 notifier.notify_error(f"🚨 DAILY LOSS LIMIT HIT (-2%) 🚨\nFloating equity loss reached {loss_pct*100:.2f}%. Triggering immediate full square-off.")
                                 self.execution.close_all(reason="Daily Loss Limit Hit (-2%)")
-                                self.today_trade_status = "Emergency Auto Closed"
-                                self.today_skip_reason = "Daily Loss Limit Hit (-2%)"
-                                self.daily_loss_hits += 2 # Block future trades for the day
                                 self.reset_daily_state()
+                                self.today_trade_status = "Emergency Auto Closed"
+                                self.today_skip_reason = "Daily 2% Floating Loss Hit"
+                                self.daily_loss_hits += 2 # Block future trades for the day
                                 continue
                         
                         action = self.risk_manager.check_sl_tp(collected_premium, current_option_value, pnl_pct)
@@ -779,7 +781,6 @@ class DeltaTradingEngine:
                             app_logger.warning("Engine: Combined 150% Stop Loss Hit!")
                             self._log_and_reset_trade(profit, "Stop Loss Hit")
                             self.execution.close_all(reason="Stop Loss Hit")
-                            self.daily_loss_hits += 1
                             notifier.notify_stop_loss(profit, False) # RECOST is completely disabled
                         
                         elif action == "TAKE_PROFIT_ALL":
@@ -813,23 +814,21 @@ class DeltaTradingEngine:
                     # Dynamic interval: 10s when losing >10% or after 3PM, 30s otherwise.
                     # This ensures we catch sudden BTC spikes (like the 3PM move) quickly.
                     _now_ist_h = get_ist_now().hour
-                    _pnl_pct_local = pnl_pct if ('pnl_pct' in locals() and pnl_pct is not None) else 0.0
-                    _profit_usd_local = profit if ('profit' in locals() and profit is not None) else 0.0
-                    _is_volatile = (_now_ist_h >= 15) or (_pnl_pct_local < -0.10)
+                    _is_volatile = (_now_ist_h >= 15) or (pnl_pct < -0.10)
                     _hedge_interval = 10 if _is_volatile else HEDGE_RECHECK_INTERVAL  # 10s volatile / 30s normal
 
                     if not self.last_hedge_check_time or (time.time() - self.last_hedge_check_time >= _hedge_interval):
                         self.last_hedge_check_time = time.time()
                         # unrealized_loss_pct is positive when losing
-                        unrealized_loss_pct = max(0.0, -_pnl_pct_local)
+                        unrealized_loss_pct = max(0.0, -pnl_pct)
                         app_logger.info(
                             f"Hedge: Running manage_hedge | interval={_hedge_interval}s | "
                             f"unrealized_loss={unrealized_loss_pct*100:.2f}% | "
-                            f"loss_usd={-_profit_usd_local:.2f} | "
+                            f"loss_usd={-profit:.2f} | "
                             f"volatile={'YES' if _is_volatile else 'NO'}"
                         )
                         self.smart_hedging.manage_hedge(
-                            self.execution.active_positions, unrealized_loss_pct, _profit_usd_local
+                            self.execution.active_positions, unrealized_loss_pct, profit
                         )
                         self.hedging_triggered_today = self.smart_hedging.hedge_active
                     # ────────────────────────────────────────────────────────────────

@@ -30,7 +30,7 @@ class ShortStrangleStrategy:
             'underlying_asset_symbol': 'BTC'
         })
         
-        if not res.get('success'):
+        if not res or not res.get('success'):
             app_logger.error("Strategy: Failed to fetch option chain")
             return None, None
             
