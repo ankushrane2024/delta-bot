@@ -365,7 +365,6 @@
     <nav class="tab-nav">
         <button class="tab-btn active" id="tab-btn-live"      onclick="switchTab('live')"><span class="tab-live-dot"></span>Live Trade</button>
         <button class="tab-btn"        id="tab-btn-analytics" onclick="switchTab('analytics')">&#128202; Analytics</button>
-        <button class="tab-btn"        id="tab-btn-market"    onclick="switchTab('market')">&#128225; Market</button>
         <button class="tab-btn"        id="tab-btn-history"   onclick="window.location.href='/history'">📓 Trade History</button>
         <button class="tab-btn"        id="tab-btn-config"    onclick="switchTab('config')">&#9881;&#65039; Config</button>
     </nav>
@@ -2178,10 +2177,6 @@
                 document.getElementById('tab-analytics').classList.add('active');
                 document.getElementById('positions-outer').style.display = 'none';
                 document.getElementById('tab-btn-analytics').classList.add('active');
-            } else if (name === 'market') {
-                document.getElementById('tab-market').classList.add('active');
-                document.getElementById('positions-outer').style.display = 'none';
-                document.getElementById('tab-btn-market').classList.add('active');
             } else if (name === 'config') {
                 document.getElementById('tab-config').classList.add('active');
                 document.getElementById('tab-config-b').classList.add('active');
