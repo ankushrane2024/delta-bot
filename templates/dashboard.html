@@ -2192,22 +2192,41 @@
         }
 
         async function emergencyClose() {
-            if (confirm("🚨 ARE YOU SURE YOU WANT TO EMERGENCY CLOSE ALL POSITIONS? 🚨\n\nThis will execute MARKET orders to square off your ENTIRE portfolio immediately.\n\nThis action CANNOT be undone.")) {
+            if (confirm("⚠️ ARE YOU SURE YOU WANT TO EMERGENCY CLOSE ALL POSITIONS? ⚠️\n\nThis will execute MARKET orders to square off your ENTIRE portfolio immediately.\n\nThis action CANNOT be undone.")) {
                 try {
-                    const btn = document.querySelector('.btn-emergency');
+                    const btn = document.querySelector('.btn-emergency-pulse');
                     if (btn) {
-                        btn.textContent = '⏳ Closing...';
+                        btn.innerHTML = '⏳ Closing...';
                         btn.disabled = true;
                     }
                     const res = await fetch('/api/emergency_close', { method: 'POST' });
                     if(res.ok) {
                         if (btn) {
-                            btn.textContent = '✅ All Closed';
-                            setTimeout(() => { btn.textContent = '🚨 EMERGENCY SQUARE OFF ALL 🚨'; btn.disabled = false; }, 3000);
+                            btn.innerHTML = '✅ All Closed';
+                            setTimeout(() => { 
+                                btn.innerHTML = '<span style="font-size:1.2rem;">🚨</span> EMERGENCY SQUARE OFF'; 
+                                btn.disabled = false; 
+                            }, 3000);
                         }
+                        alert("Emergency Square Off Successful! All positions closed.");
                         fetchStatus();
+                    } else {
+                        const errData = await res.json();
+                        alert("Failed to emergency close: " + (errData.error || "Unknown error"));
+                        if (btn) {
+                            btn.innerHTML = '<span style="font-size:1.2rem;">🚨</span> EMERGENCY SQUARE OFF';
+                            btn.disabled = false;
+                        }
                     }
-                } catch(e) { console.error("Emergency fail", e); }
+                } catch(e) { 
+                    console.error("Emergency fail", e); 
+                    alert("Network error: Could not reach server for emergency close.");
+                    const btn = document.querySelector('.btn-emergency-pulse');
+                    if (btn) {
+                        btn.innerHTML = '<span style="font-size:1.2rem;">🚨</span> EMERGENCY SQUARE OFF';
+                        btn.disabled = false;
+                    }
+                }
             }
         }
 
