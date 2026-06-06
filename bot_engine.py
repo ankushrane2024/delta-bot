@@ -859,6 +859,7 @@ class DeltaTradingEngine:
         self.today_trade_status = "Pending"
         self.today_skip_reason = None
         self.trades_taken_today = 0
+        self.next_day_paused = False  # CRITICAL FIX: Must reset so bot can trade the next day
         
         # Reset PAPER-specific state at EOD
         self.consecutive_losses = 0

@@ -153,11 +153,11 @@ class DVOLProvider:
         """Returns target premium range (min, max) based on current DVOL."""
         dvol = self.get_current_dvol()
         if dvol < 40.0:
-            return (140.0, 300.0)
+            return (50.0, 250.0)   # Low vol: options are cheap, accept lower premiums
         elif 40.0 <= dvol <= 55.0:
-            return (120.0, 260.0)
+            return (80.0, 300.0)   # Medium vol: moderate premiums
         else:
-            return (110.0, 240.0)
+            return (100.0, 400.0)  # High vol: premiums are rich
 
     def should_trade(self) -> Tuple[bool, str]:
         """Check if percentile is between config.DVOL_PERCENTILE_MIN and config.DVOL_PERCENTILE_MAX to trade."""
