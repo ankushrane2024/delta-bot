@@ -527,6 +527,68 @@
         }
 
     </style>
+    <style>
+        .btn-modern {
+            padding: 16px 20px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-modern:hover {
+            transform: translateY(-3px) scale(1.02);
+            filter: brightness(1.15);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        .btn-modern:active {
+            transform: translateY(1px) scale(0.98);
+        }
+        .btn-green-premium { 
+            background: linear-gradient(135deg, #10b981, #059669); 
+            color: #fff; 
+            border: 1px solid rgba(16, 185, 129, 0.4); 
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+        }
+        .btn-red-premium { 
+            background: linear-gradient(135deg, #f97316, #ef4444); 
+            color: #fff; 
+            border: 1px solid rgba(239, 68, 68, 0.4); 
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+        }
+        .btn-alert-premium { 
+            background: linear-gradient(135deg, #dc2626, #991b1b); 
+            color: #fff; 
+            border: 1px solid #f87171;
+            box-shadow: 0 0 20px rgba(220, 38, 38, 0.4); 
+            animation: pulse-red-subtle 2s infinite;
+        }
+        .btn-purple-premium { 
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6); 
+            color: #fff; 
+            border: 1px solid rgba(139, 92, 246, 0.4); 
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+        }
+        .btn-blue-premium { 
+            background: linear-gradient(135deg, #3b82f6, #1e40af); 
+            color: #fff; 
+            border: 1px solid rgba(59, 130, 246, 0.4); 
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+        }
+        @keyframes pulse-red-subtle {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+    </style>
 </head>
 <body>
 
@@ -703,12 +765,22 @@
         <div class="glass-panel" style="border: 1px solid rgba(168, 85, 247, 0.2); background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(168, 85, 247, 0.05) 100%);">
             <h2>⚙️ Manual Controls</h2>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 20px;">
-                <button class="btn-modern btn-green" onclick="sendCommand('start')">▶ START BOT</button>
-                <button class="btn-modern btn-red" onclick="sendCommand('stop')">⏹ STOP BOT</button>
-                <button class="btn-modern btn-alert" onclick="emergencyClose()">🚨 EMERGENCY SQUARE OFF</button>
-                <button id="btn-manual-order" class="btn-modern btn-purple" onclick="runManualOrder()">⚡ FORCE STRANGLE ENTRY</button>
-                <button id="btn-test-order" class="btn-modern btn-ghost" onclick="runTestOrder()">🧪 TEST ORDER (1 Lot)</button>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 20px;">
+                <button class="btn-modern btn-green-premium" onclick="sendCommand('start')">
+                    <span style="font-size:1.2rem;">▶</span> START BOT
+                </button>
+                <button class="btn-modern btn-red-premium" onclick="sendCommand('stop')">
+                    <span style="font-size:1.2rem;">⏹</span> STOP BOT
+                </button>
+                <button class="btn-modern btn-alert-premium" onclick="emergencyClose()">
+                    <span style="font-size:1.2rem;">🚨</span> EMERGENCY SQUARE OFF
+                </button>
+                <button id="btn-manual-order" class="btn-modern btn-purple-premium" onclick="runManualOrder()">
+                    <span style="font-size:1.2rem;">⚡</span> FORCE STRANGLE ENTRY
+                </button>
+                <button id="btn-test-order" class="btn-modern btn-blue-premium" onclick="runTestOrder()">
+                    <span style="font-size:1.2rem;">🧪</span> TEST ORDER (1 Lot)
+                </button>
             </div>
 
             <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.05);">
