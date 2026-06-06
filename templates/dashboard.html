@@ -600,6 +600,7 @@
             <!-- Section 1: Live Trade Overview -->
             <div class="glass-panel">
                 <h2>📊 Live Trade Overview</h2>
+                <span id="pos-btc-price" style="display:none;"></span>
                 <div id="pos-total-bar" style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px; display: none;">
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -2657,7 +2658,6 @@
 
             if (name === 'live') {
                 document.getElementById('tab-live').classList.add('active');
-                document.getElementById('positions-outer').style.display = 'block';
                 document.getElementById('tab-btn-live').classList.add('active');
             } else if (name === 'analytics') {
                 document.getElementById('tab-analytics').classList.add('active');
@@ -2665,7 +2665,6 @@
             } else if (name === 'config') {
                 document.getElementById('tab-config').classList.add('active');
                 document.getElementById('tab-config-b').classList.add('active');
-                document.getElementById('positions-outer').style.display = 'none';
                 document.getElementById('tab-btn-config').classList.add('active');
             }
         }
