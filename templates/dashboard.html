@@ -573,22 +573,22 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                         <div class="stat-box-modern">
                             <span class="stat-label">Total P&L (USD)</span>
-                            <span id="pos-total-pnl-usd" class="stat-val pnl-pos" style="font-size:1.6rem;">$0.00</span>
+                            <div id="pos-total-pnl-usd" class="stat-val pnl-pos">0.00 USDT</div>
                         </div>
                         <div class="stat-box-modern">
                             <span class="stat-label">Total P&L (INR)</span>
-                            <span id="pos-total-pnl-inr" class="stat-val pnl-pos" style="font-size:1.6rem;">₹0</span>
+                            <div id="pos-total-pnl-inr" class="stat-val pnl-pos" style="font-size:1.5rem; padding-top: 4px;">₹0.00</div>
                         </div>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                         <div class="stat-box-modern">
                             <span class="stat-label">Capital Used</span>
-                            <span class="stat-val" style="font-size:1.2rem;">$<span id="pos-total-capital">0.00</span></span>
+                            <span class="stat-val" style="font-size:1.4rem;">$<span id="pos-total-capital">0.00</span></span>
                         </div>
                         <div class="stat-box-modern">
                             <span class="stat-label">Total Premium Collected</span>
-                            <span class="stat-val" style="font-size:1.2rem;">$<span id="pos-total-entry">0.00</span></span>
+                            <span class="stat-val" style="font-size:1.4rem;">$<span id="pos-total-entry">0.00</span></span>
                         </div>
                     </div>
 
@@ -1808,11 +1808,14 @@
                     const pnlPctSignCap = totalPnlPctCap >= 0 ? '+' : '';
                     
                     const pnlUsdEl = document.getElementById('pos-total-pnl-usd');
-                    pnlUsdEl.innerHTML = `<span>${totalPnlUsd >= 0 ? '+' : ''}${totalPnlUsd.toFixed(4)} USDT</span> <span style="font-size: 0.82em; opacity: 0.95;">(${pnlPctSignPrem}${totalPnlPctPrem.toFixed(2)}% Prem &nbsp;|&nbsp; ${pnlPctSignCap}${totalPnlPctCap.toFixed(2)}% Cap)</span>`;
+                    pnlUsdEl.innerHTML = `<div style="display: flex; flex-direction: column; gap: 2px; padding-top: 4px;">
+                        <span style="font-size: 1.6rem; font-weight: 800; line-height: 1;">${totalPnlUsd >= 0 ? '+' : ''}${totalPnlUsd.toFixed(4)} USDT</span>
+                        <span style="font-size: 0.8rem; font-weight: 500; opacity: 0.8; letter-spacing: 0.2px; color: var(--text-secondary);">(${pnlPctSignPrem}${totalPnlPctPrem.toFixed(2)}% Prem &nbsp;|&nbsp; ${pnlPctSignCap}${totalPnlPctCap.toFixed(2)}% Cap)</span>
+                    </div>`;
                     pnlUsdEl.className = totalPnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg';
                     
                     const pnlInrEl = document.getElementById('pos-total-pnl-inr');
-                    pnlInrEl.textContent = (totalPnlInr >= 0 ? '+' : '') + totalPnlInr.toFixed(2);
+                    pnlInrEl.textContent = '₹' + (totalPnlInr >= 0 ? '+' : '') + totalPnlInr.toFixed(2);
                     pnlInrEl.className = totalPnlInr >= 0 ? 'pnl-pos' : 'pnl-neg';
                     
                     const mins = data.positions[0]?.mins_to_squareoff ?? 0;
