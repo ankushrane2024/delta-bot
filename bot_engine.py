@@ -572,6 +572,7 @@ class DeltaTradingEngine:
         """Zero-latency real-time monitoring of PnL, SL/TP, and Hedging using WebSocket (with HTTP fallback)."""
         last_heartbeat = time.time()
         last_http_poll_time = 0
+        last_regime_update = 0
         
         while self.is_running:
             try:
@@ -579,6 +580,18 @@ class DeltaTradingEngine:
                 if time.time() - last_heartbeat >= 300:
                     app_logger.info("Engine Heartbeat: Monitor loop is active and running 24/7.")
                     last_heartbeat = time.time()
+                    
+                # 60 second Market Regime live update
+                if time.time() - last_regime_update >= 60:
+                    try:
+                        regime, adx, history = self.filters.get_market_regime()
+                        self.current_market_regime = regime
+                        self.current_adx_value = adx
+                        self.adx_history = history
+                    except Exception as e:
+                        error_logger.error(f"Engine: Error updating Market Regime: {e}")
+                    last_regime_update = time.time()
+
                 
                 # Maintain BTC Price History for 5-minute slippage checks (600s history)
                 try:
