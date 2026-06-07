@@ -311,57 +311,43 @@ class SmartHedgingManager:
         leg_size = list(positions.values())[0]['size'] if positions else 1
         raw_net_delta = abs_delta / (leg_size * 0.001) if leg_size > 0 else 0.0
         
-        # Hysteresis check: If delta is neutral (< 0.05) and hedge is active, keep active hedge intact (no whipsawing)
-        if self.hedge_active and raw_net_delta < 0.05:
-            app_logger.info(f"Hedge: Option delta is neutral ({raw_net_delta:.4f} < 0.05). Keeping existing hedge intact to avoid whipsawing.")
-            return
-            
-        # Re-balancing check: If delta exceeds 0.15 in opposite direction while hedge is active, adjust it.
-        # Or if no hedge is active, but net delta exceeds threshold, trigger entry hedge.
-        if self.hedge_active:
-            # Check if active hedge matches the current delta direction.
-            expected_hedge_sign = -1.0 if net_delta_btc > 0 else 1.0
-            actual_hedge_sign = 1.0 if self.execution.hedge_size_btc > 0 else -1.0
-            
-            if expected_hedge_sign != actual_hedge_sign and raw_net_delta > 0.15:
-                app_logger.info(f"Hedge: Delta reversed ({net_delta_btc:.4f}, raw: {raw_net_delta:.4f}) while hedge active. Re-adjusting hedge position.")
-                self.close_hedge()
-                self._execute_hedge_decision(net_delta_btc, current_dvol, positions, profit_usd)
-            else:
-                # CONTINUOUS DYNAMIC SCALING (New Safety Rule)
-                # If hedge is in the correct direction, check if the required recovery size has outgrown the current active size.
-                if profit_usd < 0:
-                    loss_usd = -profit_usd
-                    exposure_btc = self._get_options_exposure_btc(positions)
-                    recovery_size = min(loss_usd / 300.0, exposure_btc)
-                    required_hedge_btc = max(abs_delta * 2.0, recovery_size)
-                    
-                    # If required hedge is at least 0.01 BTC larger than current, scale it up!
-                    current_hedge_abs = abs(self.execution.hedge_size_btc)
-                    if required_hedge_btc > current_hedge_abs + 0.01:
-                        remaining_hedge = required_hedge_btc - current_hedge_abs
-                        direction = 'sell' if net_delta_btc > 0 else 'buy'
-                        app_logger.info(f"Hedge [DYNAMIC SCALE]: Loss grew to ${loss_usd:.2f}. Scaling hedge up by {remaining_hedge:.4f} BTC to total {required_hedge_btc:.4f} BTC.")
-                        
-                        result = self.execution.place_hedge_order(remaining_hedge, direction)
-                        if result and result['success']:
-                            self.hedge_size_btc = required_hedge_btc
-                            # Notify update
-                            notifier.notify_hedge_executed(
-                                timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
-                                iv=current_dvol,
-                                net_delta=net_delta_btc,
-                                hedge_type="DYNAMIC SCALE",
-                                size_btc=remaining_hedge,
-                                order_id=result['order_id']
-                            )
-        else:
+        if not self.hedge_active:
             # No hedge active — check standard delta triggers
             app_logger.info(
                 f"Hedge: Standard delta check — raw_net_delta={raw_net_delta:.4f} | "
                 f"dvol={current_dvol:.1f}% | hedge_active={self.hedge_active} | loss={unrealized_loss_pct:.1%}"
             )
             self._execute_hedge_decision(net_delta_btc, current_dvol, positions, profit_usd)
+        else:
+            # Hedge is active. We must dynamically rebalance to remain delta-neutral.
+            target_hedge = -net_delta_btc
+            current_hedge = self.execution.hedge_size_btc
+            hedge_diff = target_hedge - current_hedge
+            
+            # UNWIND CHECK: If delta drops back to neutral, the market mean-reverted. We MUST close the hedge.
+            if raw_net_delta < 0.05:
+                app_logger.info(f"Hedge: Option delta has neutralized (raw={raw_net_delta:.4f} < 0.05). Unwinding hedge to capture reversion profit and restore naked strangle.")
+                self.close_hedge()
+                return
+
+            # REBALANCE CHECK: If the required hedge drifts from our current hedge by > 0.02 BTC, adjust it.
+            if abs(hedge_diff) >= 0.02:
+                direction = 'buy' if hedge_diff > 0 else 'sell'
+                app_logger.info(f"Hedge [REBALANCE]: Portfolio delta drifted. Adjusting hedge by {abs(hedge_diff):.4f} BTC ({direction}) to restore 1-to-1 neutrality.")
+                
+                result = self.execution.place_hedge_order(abs(hedge_diff), direction)
+                if result and result['success']:
+                    self.hedge_size_btc = target_hedge
+                    self.hedge_type = "dynamic_rebalance"
+                    # Notify update
+                    notifier.notify_hedge_executed(
+                        timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
+                        iv=current_dvol,
+                        net_delta=net_delta_btc,
+                        hedge_type="REBALANCE 1.0x",
+                        size_btc=abs(hedge_diff),
+                        order_id=result['order_id']
+                    )
 
     def close_hedge(self):
         """Step 4: Close all active hedges and reset states."""
