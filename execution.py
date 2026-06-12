@@ -213,9 +213,12 @@ class ExecutionHandler:
                     if res.get('success'):
                         order_id = res.get('result', {}).get('id', 'N/A')
                         fill_price = float(res.get('result', {}).get('average_fill_price', mark_price))
-                        self.hedge_size_btc += size_btc if direction == 'buy' else -size_btc
+                        signed_change = size_btc if direction == 'buy' else -size_btc
+                        self.hedge_size_btc += signed_change
                         self.hedge_order_id = order_id
-                        self.hedge_entry_price = fill_price
+                        # FIX: DO NOT overwrite entry price — SmartHedgingManager tracks weighted avg
+                        if self.hedge_entry_price <= 0:
+                            self.hedge_entry_price = fill_price  # First fill only
                         app_logger.info(f"Hedge: Order filled. ID: {order_id}, Size: {contract_size}, Price: {fill_price}")
                         return {'success': True, 'order_id': order_id, 'fill_price': fill_price}
                     else:
@@ -224,10 +227,13 @@ class ExecutionHandler:
                     # PAPER mode simulation
                     import random
                     order_id = f"PAPER-HEDGE-{random.randint(10000, 99999)}"
-                    self.hedge_size_btc += size_btc if direction == 'buy' else -size_btc
+                    signed_change = size_btc if direction == 'buy' else -size_btc
+                    self.hedge_size_btc += signed_change
                     self.hedge_order_id = order_id
-                    self.hedge_position += size_btc if direction == 'buy' else -size_btc
-                    self.hedge_entry_price = mark_price
+                    self.hedge_position += signed_change
+                    # FIX: Only set entry_price on first fill; subsequent fills tracked by SmartHedgingManager
+                    if self.hedge_entry_price <= 0:
+                        self.hedge_entry_price = mark_price
                     app_logger.info(f"Hedge [PAPER]: Simulated {direction} {contract_size} contracts at {mark_price}. ID: {order_id}")
                     return {'success': True, 'order_id': order_id, 'fill_price': mark_price}
                     

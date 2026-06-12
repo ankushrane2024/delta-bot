@@ -263,8 +263,10 @@ class DeltaTradingEngine:
         # Notify
         notifier.notify_entry(call_opt['symbol'], put_opt['symbol'], per_entry_size, total_premium_for_this_entry)
 
-        # Smart Hedging Pipeline — Step 1 (NEW)
-        threading.Thread(target=self.smart_hedging.run_post_entry_hedge, 
+        # Smart Hedging Pipeline — Step 1
+        # Cache entry premiums immediately for premium-direction fallback
+        self.smart_hedging.set_entry_premiums(self.execution.active_positions)
+        threading.Thread(target=self.smart_hedging.run_post_entry_hedge,
                          args=(self.execution.active_positions,), daemon=True).start()
 
 
