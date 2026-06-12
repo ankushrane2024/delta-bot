@@ -55,13 +55,9 @@ class DeltaTradingEngine:
         self.next_day_paused = False
         self.daily_loss_pct = 0.0
 
-        self.today_trade_status = "Trade Skipped"
-        self.today_skip_reason = "System Initialization / UI Test"
-        self.skip_history = [{
-            "time": "Just now",
-            "reason": "Test Skip Event (To show UI card)",
-            "status": "Trade Skipped"
-        }]  # Pre-fill one skip so UI is visible immediately
+        self.today_trade_status = "Pending"
+        self.today_skip_reason = None
+        self.skip_history = []  # List of {time, reason, status} for last 10 skips
         
         self.market_regime_filter_enabled = False
         self.current_market_regime = "Unknown"
