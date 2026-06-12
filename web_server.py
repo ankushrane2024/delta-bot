@@ -664,6 +664,13 @@ def history_page():
 
 @app.route('/api/history')
 def get_trade_history():
+    import db_manager
+    if db_manager.is_connected():
+        data = db_manager.load_all_data()
+        if data and "trades" in data:
+            return jsonify(data)
+            
+    # Fallback to local JSON if cloud fails
     import os, json
     base_dir = os.path.dirname(os.path.abspath(__file__))
     history_file = os.path.join(base_dir, 'trade_history.json')
