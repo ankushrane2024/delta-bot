@@ -15,11 +15,8 @@ class PerformanceTracker:
 
     Storage strategy (dual-layer — never lose data):
     ─────────────────────────────────────────────────
-    PRIMARY:   MongoDB Atlas (cloud) — survives Render restarts forever
-    FALLBACK:  Local trade_history.json — used when MongoDB not configured
-
-    On startup: if MongoDB is available, migrates existing local JSON to cloud,
-    then always reads/writes from cloud going forward.
+    PRIMARY:   Cloud DB (JSONBlob via db_manager) — survives Render restarts forever
+    FALLBACK:  Local trade_history.json — used as backup/offline cache
     """
 
     def __init__(self, filename="trade_history.json"):
@@ -27,25 +24,29 @@ class PerformanceTracker:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self.filepath = os.path.join(base_dir, filename)
 
-        # Try to migrate existing local trades to MongoDB (one-time, safe)
-        if db_manager.is_connected():
-            app_logger.info("Tracker: MongoDB available. Migrating local JSON history to cloud...")
-            db_manager.sync_local_json_to_mongodb(self.filepath)
-
         # Load current state
         self._reload()
 
     def _reload(self):
-        """Load history from MongoDB (primary) or local JSON (fallback)."""
+        """Load history from Cloud DB (primary) or local JSON (fallback)."""
         if db_manager.is_connected():
-            self.trades = db_manager.load_all_trades()
-            self.max_equity = db_manager.get_max_equity()
-            # Also keep local JSON in sync as a backup copy
-            self._write_local_backup()
-        else:
-            data = self._load_local()
-            self.max_equity = data.get("max_equity", 0.0)
-            self.trades = data.get("trades", [])
+            cloud_data = db_manager.load_all_data()
+            if cloud_data and "trades" in cloud_data:
+                self.max_equity = cloud_data.get("max_equity", 0.0)
+                self.trades = cloud_data.get("trades", [])
+                # Also keep local JSON in sync as a backup copy
+                self._write_local_backup()
+                return
+
+        # Fallback to local
+        data = self._load_local()
+        self.max_equity = data.get("max_equity", 0.0)
+        self.trades = data.get("trades", [])
+        
+        # If we loaded from local but cloud is connected, sync up to cloud
+        if db_manager.is_connected() and len(self.trades) > 0:
+            app_logger.info("Tracker: Syncing local JSON up to Cloud DB...")
+            db_manager.save_all_data({"max_equity": self.max_equity, "trades": self.trades})
 
     def _load_local(self) -> dict:
         """Load from local JSON file."""
@@ -69,21 +70,23 @@ class PerformanceTracker:
             app_logger.warning(f"Tracker: Could not write local backup: {e}")
 
     def _save(self):
-        """Save to local JSON (always kept as backup)."""
-        try:
-            with open(self.filepath, 'w') as f:
-                json.dump({
-                    "max_equity": self.max_equity,
-                    "trades": self.trades
-                }, f, indent=4, default=str)
-        except Exception as e:
-            app_logger.error(f"Tracker: Could not save local history. {e}")
+        """Save to both Cloud (primary) and local JSON (backup)."""
+        data = {
+            "max_equity": self.max_equity,
+            "trades": self.trades
+        }
+        
+        # Save to local backup always
+        self._write_local_backup()
+        
+        # Sync to cloud
+        if db_manager.is_connected():
+            db_manager.save_all_data(data)
 
     def update_high_water_mark(self, current_equity):
         """Updates the peak equity to calculate accurate Max Drawdown."""
         if current_equity > self.max_equity:
             self.max_equity = current_equity
-            db_manager.save_max_equity(current_equity)
             self._save()
 
     def log_pro_trader_journal(self, trade_record, current_iv, dvol_status, size_multiplier, hedge_status):
@@ -128,7 +131,7 @@ class PerformanceTracker:
                   adx=0.0, mode='PAPER', call_entry_price=0.0, put_entry_price=0.0, call_exit_price=0.0, put_exit_price=0.0,
                   hedge_pnl=0.0, max_pnl_pct=0.0, min_pnl_pct=0.0, max_pnl_time="", min_pnl_time=""):
         """
-        Logs a completed trade to BOTH MongoDB (permanent) and local JSON (backup).
+        Logs a completed trade to BOTH Cloud DB (permanent) and local JSON (backup).
         """
         today = get_ist_date()
         dvol_status = dvol_status or {}
@@ -160,18 +163,17 @@ class PerformanceTracker:
             "adx": adx
         }
 
-        # 1. Save to MongoDB (permanent, survives restarts)
-        mongo_ok = db_manager.save_trade(trade_record)
-
-        # 2. Always also update local list and JSON (backup)
+        # Update local state
         self.trades.append(trade_record)
-        self.update_high_water_mark(current_equity)
+        if current_equity > self.max_equity:
+            self.max_equity = current_equity
+            
+        # Save to Cloud + Local Backup
         self._save()
 
-        storage = "MongoDB + Local JSON" if mongo_ok else "Local JSON only (MongoDB unavailable)"
         app_logger.info(
-            f"Tracker: Trade logged [{storage}] -> {exit_reason} | PnL: ${pnl:.2f} | "
-            f"Filter: {'ON' if regime_filter_enabled else 'OFF'}"
+            f"Tracker: Trade logged [{ 'Cloud DB + Local JSON' if db_manager.is_connected() else 'Local JSON only' }] -> "
+            f"{exit_reason} | PnL: ${pnl:.2f}"
         )
 
         # Write pro-trader journal
