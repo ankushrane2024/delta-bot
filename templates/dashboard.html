@@ -490,6 +490,14 @@
             50% { box-shadow: 0 4px 30px rgba(244, 63, 94, 0.8), inset 0 2px 2px rgba(255, 255, 255, 0.3), inset 0 -2px 4px rgba(0,0,0,0.5); }
             100% { box-shadow: 0 4px 15px rgba(190, 18, 60, 0.4), inset 0 2px 2px rgba(255, 255, 255, 0.2), inset 0 -2px 4px rgba(0,0,0,0.5); }
         }
+        @keyframes pulse-orange {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.08); }
+        }
+        @keyframes slide-down-in {
+            from { opacity: 0; transform: translateY(-12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -558,6 +566,89 @@
         <div id="next-day-paused-container" style="display: none;">
             <div style="padding: 14px 20px; border-radius: 12px; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); font-weight: 700; text-align: center; font-size: 1.1rem; animation: pulse-red 2.5s infinite;">
                 ⏸️ Trading Paused for Tomorrow (Daily Loss Limit Hit)
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TRADE SKIP ALERT CARD — shows EXACT reason trade was missed
+             Hidden when no skip. Pulses orange when trade was skipped.
+        ════════════════════════════════════════════════════════════════ -->
+        <div id="trade-skip-alert-card" style="display:none;">
+            <div style="
+                background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(239,68,68,0.08) 100%);
+                border: 1.5px solid rgba(245,158,11,0.45);
+                border-radius: 16px;
+                padding: 0;
+                overflow: hidden;
+                box-shadow: 0 0 32px rgba(245,158,11,0.15), 0 4px 24px rgba(0,0,0,0.3);
+            ">
+                <!-- Header -->
+                <div style="
+                    display: flex; align-items: center; gap: 14px;
+                    padding: 16px 22px;
+                    background: rgba(245,158,11,0.10);
+                    border-bottom: 1px solid rgba(245,158,11,0.2);
+                ">
+                    <span style="font-size: 1.6rem; animation: pulse-orange 1.8s infinite;">⚠️</span>
+                    <div style="flex:1;">
+                        <div style="font-weight: 800; font-size: 1.0rem; color: #f59e0b; letter-spacing: 0.04em; text-transform: uppercase;">
+                            Trade Was Skipped
+                        </div>
+                        <div style="font-size: 0.78rem; color: rgba(245,158,11,0.7); margin-top: 2px;">
+                            Bot did not enter a position — exact reason below
+                        </div>
+                    </div>
+                    <div id="skip-timestamp" style="
+                        font-size: 0.72rem; color: rgba(255,255,255,0.4);
+                        text-align: right; min-width: 100px;
+                    "></div>
+                </div>
+
+                <!-- Main Reason Box -->
+                <div style="padding: 18px 22px;">
+                    <div style="
+                        background: rgba(245,158,11,0.08);
+                        border: 1px solid rgba(245,158,11,0.25);
+                        border-radius: 10px;
+                        padding: 14px 18px;
+                        display: flex; align-items: flex-start; gap: 12px;
+                    ">
+                        <span style="font-size: 1.3rem; margin-top: 2px;">🔍</span>
+                        <div>
+                            <div style="font-size: 0.72rem; color: rgba(255,255,255,0.45); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">
+                                Exact Skip Reason
+                            </div>
+                            <div id="skip-reason-text" style="
+                                font-size: 1.05rem; font-weight: 700;
+                                color: #fbbf24;
+                                line-height: 1.5;
+                            ">—</div>
+                        </div>
+                    </div>
+
+                    <!-- What To Do hint -->
+                    <div id="skip-hint-box" style="
+                        margin-top: 12px;
+                        background: rgba(255,255,255,0.03);
+                        border: 1px solid rgba(255,255,255,0.06);
+                        border-radius: 8px;
+                        padding: 10px 14px;
+                        font-size: 0.78rem;
+                        color: rgba(255,255,255,0.45);
+                        display: flex; align-items: center; gap: 8px;
+                    ">
+                        <span>💡</span>
+                        <span id="skip-hint-text">This trade slot was passed.</span>
+                    </div>
+                </div>
+
+                <!-- Skip History Section -->
+                <div id="skip-history-section" style="border-top: 1px solid rgba(245,158,11,0.15); padding: 14px 22px 18px;">
+                    <div style="font-size: 0.72rem; color: rgba(255,255,255,0.4); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;">
+                        📋 Recent Skip History
+                    </div>
+                    <div id="skip-history-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                </div>
             </div>
         </div>
 
@@ -2144,6 +2235,62 @@
                         statusBadge.style.background = "rgba(255, 255, 255, 0.05)";
                         statusBadge.style.border = "1px solid rgba(255, 255, 255, 0.1)";
                     }
+
+                    // ── TRADE SKIP ALERT CARD ──────────────────────────────────────
+                    (function() {
+                        const skipAlertCard = document.getElementById('trade-skip-alert-card');
+                        if (!skipAlertCard) return;
+                        const skipReasonEl = document.getElementById('skip-reason-text');
+                        const skipHintEl   = document.getElementById('skip-hint-text');
+                        const skipTsEl     = document.getElementById('skip-timestamp');
+                        const skipHistEl   = document.getElementById('skip-history-list');
+                        const skipHistSec  = document.getElementById('skip-history-section');
+
+                        if (status === 'Trade Skipped' && reason) {
+                            skipAlertCard.style.display = 'block';
+                            skipAlertCard.style.animation = 'slide-down-in 0.4s ease';
+                            skipReasonEl.textContent = reason;
+
+                            const hist = data.schedule_info.skip_history || [];
+                            skipTsEl.textContent = hist.length > 0 ? hist[0].time : '';
+
+                            const hintMap = [
+                                ['Maximum 1 trade',     'Next entry window will be tomorrow at 09:00 AM IST.'],
+                                ['Next day pause',      'Trading resumes once the daily P&L is above -2.5%.'],
+                                ['consecutive losses',  'Bot will resume trading after tonight\'s daily reset.'],
+                                ['API connection',      'Check your internet connection and API key in the Config tab.'],
+                                ['Daily Loss Limit',    'The -3% daily loss limit was hit. Trading resumes tomorrow.'],
+                                ['No suitable strikes', 'DVOL premium targets not matched. Strikes retry at next slot.'],
+                                ['risk per trade',      'Position size too large for equity. Reduce lot size in Config.'],
+                                ['Trending',            'ADX > 25 means trending market. Bot waits for sideways.'],
+                                ['DVOL',                'Volatility index out of safe range. Waiting for DVOL to normalize.'],
+                                ['Weekend',             'Markets closed. Trading resumes Monday 09:00 AM IST.'],
+                            ];
+                            let hint = 'Trade skipped by risk management. Next slot will be checked automatically.';
+                            for (const [key, val] of hintMap) {
+                                if (reason.includes(key)) { hint = val; break; }
+                            }
+                            skipHintEl.textContent = hint;
+
+                            if (hist.length > 0) {
+                                skipHistEl.innerHTML = hist.map((e, i) => `
+                                    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;
+                                        background:${i===0?'rgba(245,158,11,0.10)':'rgba(255,255,255,0.02)'};
+                                        border:1px solid ${i===0?'rgba(245,158,11,0.22)':'rgba(255,255,255,0.05)'};
+                                        border-radius:7px;font-size:0.78rem;">
+                                        <span>${i===0?'🔴':'🟡'}</span>
+                                        <span style="color:rgba(255,255,255,0.5);min-width:145px;flex-shrink:0;">${e.time}</span>
+                                        <span style="color:${i===0?'#fbbf24':'rgba(255,255,255,0.6)'};font-weight:${i===0?700:400};">${e.reason}</span>
+                                    </div>`).join('');
+                                skipHistSec.style.display = 'block';
+                            } else {
+                                skipHistSec.style.display = 'none';
+                            }
+                        } else {
+                            skipAlertCard.style.display = 'none';
+                        }
+                    })();
+                    // ──────────────────────────────────────────────────────────────
 
                     const schedBody = document.getElementById('schedule-body');
                     let showWarning = false;

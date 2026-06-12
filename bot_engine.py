@@ -57,6 +57,7 @@ class DeltaTradingEngine:
 
         self.today_trade_status = "Pending"
         self.today_skip_reason = None
+        self.skip_history = []  # List of {time, reason, status} for last 10 skips
         
         self.market_regime_filter_enabled = False
         self.current_market_regime = "Unknown"
@@ -149,6 +150,7 @@ class DeltaTradingEngine:
             app_logger.warning("Engine: Maximum 1 trade per day rule met. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Maximum 1 trade per day limit met"
+            self._record_skip("Maximum 1 trade per day limit met")
             return
             
         # Guard 3: Next day pause check (NEW — Section 5)
@@ -156,6 +158,7 @@ class DeltaTradingEngine:
             app_logger.warning("Engine: Paused today due to yesterday's >2.5% loss pause trigger")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Next day pause active (yesterday loss > 2.5%)"
+            self._record_skip("Next day pause active (yesterday loss > 2.5%)")
             return
             
         # Guard 4: Daily consecutive loss stop (NEW — Section 5)
@@ -163,6 +166,7 @@ class DeltaTradingEngine:
             app_logger.warning("Engine: Max consecutive losses hit today. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Max daily consecutive losses reached"
+            self._record_skip("Max daily consecutive losses reached")
             return
 
         # Verify and Auto-Reconnect API in PAPER mode
@@ -174,6 +178,7 @@ class DeltaTradingEngine:
                 notifier.notify_error("🚨 API connection failed - Trade skipped")
                 self.today_trade_status = "Trade Skipped"
                 self.today_skip_reason = "API connection failed - Trade skipped"
+                self._record_skip("API connection failed — check internet/API key")
                 return
         # 2. Daily Loss Limit Check
         self.risk_manager.update_equity()
@@ -184,6 +189,7 @@ class DeltaTradingEngine:
                 app_logger.warning("Engine: Daily -3% account loss limit hit. Stopping trading for the day.")
                 self.today_trade_status = "Trade Skipped"
                 self.today_skip_reason = "Daily Loss Limit Hit (-3%)"
+                self._record_skip("Daily Loss Limit Hit (-3%) — trading stopped for today")
                 return
         # 3. Filters
         if not force:
@@ -192,6 +198,7 @@ class DeltaTradingEngine:
                 app_logger.info(f"Engine: Filters not passed: {reason}. Skipping entry.")
                 self.today_trade_status = "Trade Skipped"
                 self.today_skip_reason = reason
+                self._record_skip(reason)
                 return
             # Market Regime Filter
             regime, adx, history = self.filters.get_market_regime()
@@ -203,6 +210,7 @@ class DeltaTradingEngine:
                     app_logger.info(f"Engine: Market Regime Filter active. Skipping trade due to Trending market (ADX: {adx:.2f}).")
                     self.today_trade_status = "Trade Skipped"
                     self.today_skip_reason = f"Market Trending (ADX {adx:.2f} > 25)"
+                    self._record_skip(f"Market Regime = TRENDING (ADX {adx:.2f} > 25) — Sideways market required")
                     return
         # Find Strikes with DVOL Integration (MODIFIED)
         expiry = get_next_expiry_date()
@@ -214,6 +222,7 @@ class DeltaTradingEngine:
             app_logger.error("Engine: Could not find suitable strikes.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "No suitable strikes found"
+            self._record_skip("No suitable strikes found matching DVOL premium targets")
             return
             
         # 4. Dynamic Position Sizing (NEW — Section 4)
@@ -225,6 +234,7 @@ class DeltaTradingEngine:
             app_logger.warning("Engine: Max risk check failed. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Max 1.5% risk per trade exceeded"
+            self._record_skip("Max risk per trade (1.5% of equity) exceeded — position size too large")
             return
             
         per_entry_size = max(1, int(adjusted_lots / 2))
@@ -1092,10 +1102,22 @@ class DeltaTradingEngine:
         app_logger.info("Engine: Risk check passed.")
         return True
 
+    def _record_skip(self, reason, status="Trade Skipped"):
+        """Records a skip event to the history list (max 10 entries)."""
+        from utils import get_ist_now
+        entry = {
+            "time": get_ist_now().strftime("%d %b %Y %I:%M %p IST"),
+            "reason": reason,
+            "status": status
+        }
+        self.skip_history.insert(0, entry)
+        self.skip_history = self.skip_history[:10]  # Keep last 10 only
+
     def get_schedule_info(self):
         return {
             "today_status": self.today_trade_status,
             "today_reason": self.today_skip_reason,
+            "skip_history": self.skip_history,
             "upcoming_schedule": self.filters.get_schedule(days=7)
         }
 
