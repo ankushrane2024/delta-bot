@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime, timezone, timedelta
 from logger import app_logger
+import db_manager
 
 # IST helper
 def get_ist_date():
@@ -9,48 +10,92 @@ def get_ist_date():
     return (datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)).strftime('%Y-%m-%d')
 
 class PerformanceTracker:
+    """
+    Permanent trade history tracker.
+
+    Storage strategy (dual-layer — never lose data):
+    ─────────────────────────────────────────────────
+    PRIMARY:   MongoDB Atlas (cloud) — survives Render restarts forever
+    FALLBACK:  Local trade_history.json — used when MongoDB not configured
+
+    On startup: if MongoDB is available, migrates existing local JSON to cloud,
+    then always reads/writes from cloud going forward.
+    """
+
     def __init__(self, filename="trade_history.json"):
         self.filename = filename
-        self.history = self._load_history()
-        self.max_equity = self.history.get("max_equity", 0.0)
-        self.trades = self.history.get("trades", [])
-        
-    def _load_history(self):
-        if os.path.exists(self.filename):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.filepath = os.path.join(base_dir, filename)
+
+        # Try to migrate existing local trades to MongoDB (one-time, safe)
+        if db_manager.is_connected():
+            app_logger.info("Tracker: MongoDB available. Migrating local JSON history to cloud...")
+            db_manager.sync_local_json_to_mongodb(self.filepath)
+
+        # Load current state
+        self._reload()
+
+    def _reload(self):
+        """Load history from MongoDB (primary) or local JSON (fallback)."""
+        if db_manager.is_connected():
+            self.trades = db_manager.load_all_trades()
+            self.max_equity = db_manager.get_max_equity()
+            # Also keep local JSON in sync as a backup copy
+            self._write_local_backup()
+        else:
+            data = self._load_local()
+            self.max_equity = data.get("max_equity", 0.0)
+            self.trades = data.get("trades", [])
+
+    def _load_local(self) -> dict:
+        """Load from local JSON file."""
+        if os.path.exists(self.filepath):
             try:
-                with open(self.filename, 'r') as f:
+                with open(self.filepath, 'r') as f:
                     return json.load(f)
             except Exception as e:
-                app_logger.error(f"Tracker: Could not load history. {e}")
+                app_logger.error(f"Tracker: Could not load local history. {e}")
         return {"max_equity": 0.0, "trades": []}
 
-    def _save_history(self):
+    def _write_local_backup(self):
+        """Write a local JSON backup of the current trade history."""
         try:
-            with open(self.filename, 'w') as f:
+            with open(self.filepath, 'w') as f:
                 json.dump({
                     "max_equity": self.max_equity,
                     "trades": self.trades
-                }, f, indent=4)
+                }, f, indent=4, default=str)
         except Exception as e:
-            app_logger.error(f"Tracker: Could not save history. {e}")
+            app_logger.warning(f"Tracker: Could not write local backup: {e}")
+
+    def _save(self):
+        """Save to local JSON (always kept as backup)."""
+        try:
+            with open(self.filepath, 'w') as f:
+                json.dump({
+                    "max_equity": self.max_equity,
+                    "trades": self.trades
+                }, f, indent=4, default=str)
+        except Exception as e:
+            app_logger.error(f"Tracker: Could not save local history. {e}")
 
     def update_high_water_mark(self, current_equity):
         """Updates the peak equity to calculate accurate Max Drawdown."""
         if current_equity > self.max_equity:
             self.max_equity = current_equity
-            self._save_history()
+            db_manager.save_max_equity(current_equity)
+            self._save()
 
     def log_pro_trader_journal(self, trade_record, current_iv, dvol_status, size_multiplier, hedge_status):
         """Appends a highly detailed pro-trader markdown diary entry for deep-dive analysis."""
         base_dir = os.path.dirname(os.path.abspath(__file__))
         journal_file = os.path.join(base_dir, "scratch", "pro_trader_journal.md")
         os.makedirs(os.path.dirname(journal_file), exist_ok=True)
-        
-        # Format the diary entry
-        pnl_status = "🟢 WIN" if trade_record['pnl'] > 0 else "🔴 LOSS" if trade_record['pnl'] < 0 else "⚪ FLAT"
-        
+
+        pnl_status = "WIN" if trade_record['pnl'] > 0 else "LOSS" if trade_record['pnl'] < 0 else "FLAT"
+
         entry_text = (
-            f"## 📝 Trade Diary - Date: {trade_record['date']} ({pnl_status})\n"
+            f"## Trade Diary - Date: {trade_record['date']} ({pnl_status})\n"
             f"- **Entry Time (IST)**: `{trade_record['entry_time']}`\n"
             f"- **Exit Time (IST)**: `{trade_record['exit_time']}`\n"
             f"- **Symbols**: Call: `{trade_record['call_symbol']}` | Put: `{trade_record['put_symbol']}`\n"
@@ -58,47 +103,39 @@ class PerformanceTracker:
             f"- **Net P&L**: `${trade_record['pnl']:.2f}` | **Exit Reason**: `{trade_record['exit_reason']}`\n"
             f"- **Account Equity After**: `${trade_record['equity_after']:.2f}`\n"
             f"\n"
-            f"### 📊 Volatility & Market Environment\n"
+            f"### Volatility & Market Environment\n"
             f"- **DVOL Index**: `{dvol_status.get('current_dvol', 'N/A')}%` (Percentile: `{dvol_status.get('dvol_percentile', 'N/A')}%`)\n"
             f"- **Current IV**: `{current_iv:.1f}%`\n"
             f"- **Market Regime**: `{'Trending' if trade_record['regime_filter_enabled'] else 'Ranging'}` (ADX: `{trade_record.get('adx', 'N/A')}`)\n"
             f"\n"
-            f"### 🛡️ Smart Hedging Telemetry\n"
+            f"### Smart Hedging Telemetry\n"
             f"- **Hedging Triggered**: `{hedge_status.get('hedge_active', False)}` (Type: `{hedge_status.get('hedge_type', 'None')}`)\n"
             f"- **Futures Hedge Size**: `{hedge_status.get('hedge_size_btc', 0.0)} BTC` | **Tightened SL**: `{hedge_status.get('sl_tightened', False)}`\n"
-            f"\n"
-            f"### 🧠 Pro-Trader Post-Mortem Notes\n"
-            f"> [!NOTE]\n"
-            f"> **Performance Analysis**: This trade ended in a **{trade_record['exit_reason']}** with a net P&L of **${trade_record['pnl']:.2f}**. "
-            f"DVOL was at **{dvol_status.get('current_dvol', 'N/A')}%** which directed our premium targets. "
-            f"Smart hedging status was **{'active' if hedge_status.get('hedge_active', False) else 'inactive'}**. "
-            f"This journal entry was captured automatically for subsequent quantitative analysis and optimization.\n"
-            f"\n"
-            f"---\n\n"
+            f"\n---\n\n"
         )
-        
+
         try:
-            # Check if file exists, if not write header
             file_exists = os.path.exists(journal_file)
             with open(journal_file, 'a', encoding='utf-8') as f:
                 if not file_exists:
-                    f.write("# 📓 Pro Trader Research Journal & Diary\n")
-                    f.write("This journal contains a deep-dive technical diary of every trade executed by the bot. It is automatically parsed by the AI quantitative advisor for strategy improvements and risk optimizations.\n\n---\n\n")
+                    f.write("# Pro Trader Research Journal\n\n---\n\n")
                 f.write(entry_text)
         except Exception as e:
             app_logger.error(f"Tracker: Failed to write to pro_trader_journal.md: {e}")
 
-    def log_trade(self, entry_time, call_symbol, put_symbol, premium_collected, pnl, exit_reason, current_equity, 
-                  regime_filter_enabled=False, current_iv=0.0, dvol_status=None, size_multiplier=1.0, hedge_status=None, 
+    def log_trade(self, entry_time, call_symbol, put_symbol, premium_collected, pnl, exit_reason, current_equity,
+                  regime_filter_enabled=False, current_iv=0.0, dvol_status=None, size_multiplier=1.0, hedge_status=None,
                   adx=0.0, mode='PAPER', call_entry_price=0.0, put_entry_price=0.0, call_exit_price=0.0, put_exit_price=0.0,
                   hedge_pnl=0.0, max_pnl_pct=0.0, min_pnl_pct=0.0, max_pnl_time="", min_pnl_time=""):
-        """Logs a completed trade with full details including execution mode."""
+        """
+        Logs a completed trade to BOTH MongoDB (permanent) and local JSON (backup).
+        """
         today = get_ist_date()
         dvol_status = dvol_status or {}
         hedge_status = hedge_status or {}
-        
+
         from utils import get_ist_now
-        
+
         trade_record = {
             "date": today,
             "mode": mode,
@@ -122,27 +159,34 @@ class PerformanceTracker:
             "regime_filter_enabled": regime_filter_enabled,
             "adx": adx
         }
-        
+
+        # 1. Save to MongoDB (permanent, survives restarts)
+        mongo_ok = db_manager.save_trade(trade_record)
+
+        # 2. Always also update local list and JSON (backup)
         self.trades.append(trade_record)
         self.update_high_water_mark(current_equity)
-        self._save_history()
-        app_logger.info(f"Tracker: Logged trade -> {exit_reason} | PnL: ${pnl:.2f} | Filter: {'ON' if regime_filter_enabled else 'OFF'}")
-        
-        # Write to the pro-trader markdown diary for automated AI review
+        self._save()
+
+        storage = "MongoDB + Local JSON" if mongo_ok else "Local JSON only (MongoDB unavailable)"
+        app_logger.info(
+            f"Tracker: Trade logged [{storage}] -> {exit_reason} | PnL: ${pnl:.2f} | "
+            f"Filter: {'ON' if regime_filter_enabled else 'OFF'}"
+        )
+
+        # Write pro-trader journal
         self.log_pro_trader_journal(trade_record, current_iv, dvol_status, size_multiplier, hedge_status)
 
     def get_metrics(self, current_equity):
         """Calculates advanced performance metrics, splitting Today vs Overall."""
         today = get_ist_date()
-        
-        # Drawdown logic
+
         self.update_high_water_mark(current_equity)
         current_drawdown_pct = 0.0
         if self.max_equity > 0:
             current_drawdown_pct = ((self.max_equity - current_equity) / self.max_equity) * 100.0
 
-        # Max drawdown historical check
-        # We need to simulate peak-to-trough from all equity_after points
+        # Max drawdown historical
         peak = 0.0
         max_drawdown_pct = 0.0
         for t in self.trades:
@@ -153,34 +197,29 @@ class PerformanceTracker:
                 dd = ((peak - eq) / peak) * 100.0
                 if dd > max_drawdown_pct:
                     max_drawdown_pct = dd
-                    
-        # Include current drawdown in max drawdown check
+
         if current_drawdown_pct > max_drawdown_pct:
             max_drawdown_pct = current_drawdown_pct
 
-        # Today metrics
         today_trades = [t for t in self.trades if t.get("date") == today]
         today_total = len(today_trades)
         today_wins = len([t for t in today_trades if t.get("pnl", 0) > 0])
         today_pnl = sum([t.get("pnl", 0) for t in today_trades])
         today_win_rate = (today_wins / today_total * 100) if today_total > 0 else 0.0
 
-        # Overall metrics
         overall_total = len(self.trades)
         overall_wins = len([t for t in self.trades if t.get("pnl", 0) > 0])
         overall_pnl = sum([t.get("pnl", 0) for t in self.trades])
         overall_win_rate = (overall_wins / overall_total * 100) if overall_total > 0 else 0.0
 
-        # Comparison tracking
         trades_filter_off = [t for t in self.trades if not t.get("regime_filter_enabled", False)]
         trades_filter_on = [t for t in self.trades if t.get("regime_filter_enabled", False)]
-        
+
         def calc_stats(trade_list):
             total = len(trade_list)
             wins = len([t for t in trade_list if t.get("pnl", 0) > 0])
             pnl = sum([t.get("pnl", 0) for t in trade_list])
             win_rate = (wins / total * 100) if total > 0 else 0.0
-            # Calculate simple max drawdown for the subset
             peak = 0.0
             max_dd = 0.0
             for t in trade_list:
@@ -195,7 +234,7 @@ class PerformanceTracker:
                 "pnl": round(pnl, 2),
                 "max_drawdown": round(max_dd, 2)
             }
-            
+
         stats_off = calc_stats(trades_filter_off)
         stats_on = calc_stats(trades_filter_on)
 
