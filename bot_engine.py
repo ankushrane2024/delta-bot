@@ -250,8 +250,8 @@ class DeltaTradingEngine:
         self._trade_start_ts = time.time()
         self.current_trade_info["calls"].append(call_opt['symbol'])
         self.current_trade_info["puts"].append(put_opt['symbol'])
-        self.current_trade_info["max_pnl_pct"] = -999.0
-        self.current_trade_info["min_pnl_pct"] = 999.0
+        self.current_trade_info["max_pnl_pct"] = 0.0
+        self.current_trade_info["min_pnl_pct"] = 0.0
         self.current_trade_info["max_pnl_time"] = ""
         self.current_trade_info["min_pnl_time"] = ""
 
