@@ -47,6 +47,13 @@ def main():
         engine_thread = threading.Thread(target=run_bot_engine, args=(engine,), daemon=True)
         engine_thread.start()
         
+        # 3.5 Start Two-Way Telegram Mobile Command Listener
+        try:
+            from telegram_bot import start_interactive_bot
+            start_interactive_bot(engine)
+        except Exception as tg_err:
+            app_logger.error(f"Failed to start telegram listener: {tg_err}")
+        
         # 4. Start keep-alive pinger in a background thread
         pinger_thread = threading.Thread(target=keep_alive_pinger, daemon=True)
         pinger_thread.start()

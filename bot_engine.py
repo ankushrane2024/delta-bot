@@ -53,6 +53,7 @@ class DeltaTradingEngine:
         self.reduced_size_trades_remaining = 0
         self.size_multiplier = 1.0
         self.next_day_paused = False
+        self.manual_pause = False  # Telegram manual pause
         self.daily_loss_pct = 0.0
 
         self.today_trade_status = "Pending"
@@ -143,6 +144,12 @@ class DeltaTradingEngine:
         
         if self.execution.active_positions:
             app_logger.warning("Engine: Trade already active. Cannot start a new entry cycle.")
+            return
+        if not force and self.manual_pause:
+            app_logger.warning("Engine: Trading manually paused via Telegram. Skipping entry.")
+            self.today_trade_status = "Trade Skipped"
+            self.today_skip_reason = "Trading manually paused via Telegram"
+            self._record_skip("Trading manually paused via Telegram")
             return
 
         # 1. Maximum 1 trade per day safety check (no same-day re-entry or RECOST)
