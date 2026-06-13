@@ -685,14 +685,35 @@ def get_trade_history():
 
 @app.route('/api/pnl_chart')
 def get_pnl_chart():
-    """Returns live P&L chart data for the current active trade."""
+    """Returns live P&L chart data for the current active trade.
+    Internally stores tick-by-tick data. Serves max 300 evenly-spaced
+    points to the chart so the full start-to-now picture is always shown.
+    """
     if not bot_engine:
         return jsonify({"points": [], "active": False})
+
     chart_data = getattr(bot_engine, 'pnl_chart_data', [])
     has_trade = bool(bot_engine.execution.active_positions)
+
+    if not has_trade or len(chart_data) == 0:
+        return jsonify({"active": False, "points": []})
+
+    # Smart downsample: always show max 300 evenly-spaced points
+    # so chart renders the FULL start-to-now range regardless of tick count
+    MAX_POINTS = 300
+    total = len(chart_data)
+    if total <= MAX_POINTS:
+        display_data = chart_data
+    else:
+        # Pick evenly-spaced indices from 0 to total-1 (always include first and last)
+        step = (total - 1) / (MAX_POINTS - 1)
+        indices = [round(i * step) for i in range(MAX_POINTS)]
+        display_data = [chart_data[i] for i in indices]
+
     return jsonify({
-        "active": has_trade,
-        "points": chart_data
+        "active": True,
+        "points": display_data,
+        "total_ticks": total
     })
 
 @app.route('/api/backtest', methods=['POST'])
