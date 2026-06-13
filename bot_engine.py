@@ -59,6 +59,7 @@ class DeltaTradingEngine:
         self.today_trade_status = "Pending"
         self.today_skip_reason = None
         self.skip_history = []  # List of {time, reason, status} for last 10 skips
+        self.pnl_chart_data = []  # Live P&L chart snapshots: [{t, pnl, hedge_pnl}]
         
         self.market_regime_filter_enabled = False
         self.current_market_regime = "Unknown"
@@ -776,7 +777,18 @@ class DeltaTradingEngine:
                         if pnl_pct < self.current_trade_info.get("min_pnl_pct", 999.0):
                             self.current_trade_info["min_pnl_pct"] = pnl_pct
                             self.current_trade_info["min_pnl_time"] = get_ist_now().isoformat()
-                            
+
+                        # ── Live P&L Chart Snapshot (every tick, max 500 points) ──
+                        hedge_pnl_now = self.smart_hedging.get_live_hedge_pnl() if self.smart_hedging.hedge_active else 0.0
+                        self.pnl_chart_data.append({
+                            "t": get_ist_now().strftime("%H:%M:%S"),
+                            "pnl": round(profit, 4),
+                            "hedge": round(hedge_pnl_now, 4),
+                            "total": round(profit + hedge_pnl_now, 4)
+                        })
+                        if len(self.pnl_chart_data) > 500:
+                            self.pnl_chart_data.pop(0)  # Keep last 500 points
+
                         if self.trailing_sl_active and pnl_pct <= 0.0:
                             action = "TRAILING_SL_EXIT"
                             
@@ -1014,6 +1026,7 @@ class DeltaTradingEngine:
                 min_pnl_time=self.current_trade_info.get("min_pnl_time", "")
             )
             self.current_trade_info = {"calls": [], "puts": []}
+            self.pnl_chart_data = []  # Clear chart for next trade
             self.total_entry_premium = 0
             self.partial_profit_hit = False
             self.trailing_sl_active = False

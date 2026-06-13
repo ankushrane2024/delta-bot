@@ -683,6 +683,18 @@ def get_trade_history():
             app_logger.error(f"Failed to read trade_history.json: {e}")
     return jsonify({"max_equity": 0.0, "trades": []})
 
+@app.route('/api/pnl_chart')
+def get_pnl_chart():
+    """Returns live P&L chart data for the current active trade."""
+    if not bot_engine:
+        return jsonify({"points": [], "active": False})
+    chart_data = getattr(bot_engine, 'pnl_chart_data', [])
+    has_trade = bool(bot_engine.execution.active_positions)
+    return jsonify({
+        "active": has_trade,
+        "points": chart_data
+    })
+
 @app.route('/api/backtest', methods=['POST'])
 def run_backtest():
     """Runs the advanced strangle backtest and returns metrics and curve data."""

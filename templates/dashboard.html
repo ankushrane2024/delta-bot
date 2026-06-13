@@ -499,6 +499,7 @@
             to   { opacity: 1; transform: translateY(0); }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -729,6 +730,51 @@
 
 
 
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             LIVE P&L CHART — Full-width real-time profit/loss graph
+             Shows during active trade only. Hides when no trade active.
+        ════════════════════════════════════════════════════════════════ -->
+        <div id="live-pnl-chart-card" class="glass-panel" style="display:none; padding: 24px 28px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 18px;">
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <span style="font-size:1.5rem;">📈</span>
+                    <div>
+                        <div style="font-weight:800; font-size:1.1rem; color:#fff; letter-spacing:0.02em;">Live P&L Chart</div>
+                        <div style="font-size:0.75rem; color:rgba(255,255,255,0.4); margin-top:2px;">Real-time options P&L during active trade</div>
+                    </div>
+                </div>
+                <div style="display:flex; gap: 16px; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:rgba(255,255,255,0.5);">
+                        <div style="width:24px; height:3px; background: #10b981; border-radius:2px;"></div> Options P&L
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:rgba(255,255,255,0.5);">
+                        <div style="width:24px; height:3px; background: #38bdf8; border-radius:2px; border-top: 2px dashed #38bdf8; background:none;"></div> Total (with Hedge)
+                    </div>
+                </div>
+            </div>
+            <div style="position:relative; height: 260px;">
+                <canvas id="pnlChartCanvas"></canvas>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:12px; padding: 0 4px;">
+                <div style="font-size:0.75rem; color:rgba(255,255,255,0.4);" id="pnl-chart-start-label">Trade Start</div>
+                <div style="display:flex; gap:24px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:rgba(16,185,129,0.7); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">Peak Profit</div>
+                        <div id="pnl-chart-peak" style="font-size:1.0rem; font-weight:800; color:#10b981;">$0.00</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:rgba(239,68,68,0.7); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">Max Loss</div>
+                        <div id="pnl-chart-trough" style="font-size:1.0rem; font-weight:800; color:#ef4444;">$0.00</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:rgba(255,255,255,0.4); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">Data Points</div>
+                        <div id="pnl-chart-count" style="font-size:1.0rem; font-weight:800; color:#94a3b8;">0</div>
+                    </div>
+                </div>
+                <div style="font-size:0.75rem; color:rgba(255,255,255,0.4);" id="pnl-chart-end-label">Now</div>
+            </div>
         </div>
 
         <!-- Section 3: Active Positions -->
@@ -2505,6 +2551,150 @@
         // Poll every 2 seconds
         setInterval(fetchStatus, 4000);
         fetchStatus();
+
+        // ════════════════════════════════════════════════════
+        // LIVE P&L CHART — Chart.js with green/red zone fill
+        // ════════════════════════════════════════════════════
+        let pnlChart = null;
+
+        function initPnlChart() {
+            const ctx = document.getElementById('pnlChartCanvas').getContext('2d');
+
+            // Green gradient above 0
+            const greenGrad = ctx.createLinearGradient(0, 0, 0, 260);
+            greenGrad.addColorStop(0,   'rgba(16, 185, 129, 0.35)');
+            greenGrad.addColorStop(0.5, 'rgba(16, 185, 129, 0.10)');
+            greenGrad.addColorStop(1,   'rgba(16, 185, 129, 0.0)');
+
+            // Red gradient below 0
+            const redGrad = ctx.createLinearGradient(0, 0, 0, 260);
+            redGrad.addColorStop(0,   'rgba(239, 68, 68, 0.0)');
+            redGrad.addColorStop(0.5, 'rgba(239, 68, 68, 0.10)');
+            redGrad.addColorStop(1,   'rgba(239, 68, 68, 0.35)');
+
+            pnlChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Options P&L ($)',
+                            data: [],
+                            borderColor: '#10b981',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.35,
+                            fill: {
+                                target: { value: 0 },
+                                above: greenGrad,
+                                below: redGrad
+                            }
+                        },
+                        {
+                            label: 'Total P&L incl. Hedge ($)',
+                            data: [],
+                            borderColor: '#38bdf8',
+                            borderWidth: 1.5,
+                            borderDash: [5, 3],
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.35,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            titleColor: 'rgba(255,255,255,0.6)',
+                            bodyColor: '#fff',
+                            padding: 12,
+                            callbacks: {
+                                label: ctx => {
+                                    const val = ctx.raw;
+                                    const sign = val >= 0 ? '+' : '';
+                                    const color = val >= 0 ? '🟢' : '🔴';
+                                    return `${color} ${ctx.dataset.label}: ${sign}$${val.toFixed(4)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: {
+                                color: 'rgba(255,255,255,0.3)',
+                                font: { size: 10 },
+                                maxTicksLimit: 8,
+                                maxRotation: 0
+                            }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: {
+                                color: 'rgba(255,255,255,0.4)',
+                                font: { size: 10 },
+                                callback: v => (v >= 0 ? '+' : '') + '$' + v.toFixed(2)
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function fetchPnlChart() {
+            try {
+                const res = await fetch('/api/pnl_chart');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const card = document.getElementById('live-pnl-chart-card');
+
+                if (!data.active || data.points.length === 0) {
+                    card.style.display = 'none';
+                    return;
+                }
+
+                card.style.display = 'block';
+
+                if (!pnlChart) initPnlChart();
+
+                const pts = data.points;
+                const labels  = pts.map(p => p.t);
+                const optPnl  = pts.map(p => p.pnl);
+                const totPnl  = pts.map(p => p.total);
+
+                pnlChart.data.labels = labels;
+                pnlChart.data.datasets[0].data = optPnl;
+                pnlChart.data.datasets[1].data = totPnl;
+                pnlChart.update('none');
+
+                // Update summary stats
+                const peak   = Math.max(...optPnl);
+                const trough = Math.min(...optPnl);
+                document.getElementById('pnl-chart-peak').textContent    = (peak >= 0 ? '+' : '') + '$' + peak.toFixed(4);
+                document.getElementById('pnl-chart-trough').textContent  = (trough >= 0 ? '+' : '') + '$' + trough.toFixed(4);
+                document.getElementById('pnl-chart-count').textContent   = pts.length;
+                if (pts.length > 0) {
+                    document.getElementById('pnl-chart-start-label').textContent = pts[0].t;
+                }
+            } catch(e) {
+                // Fail silently — chart just stays hidden
+            }
+        }
+
+        // Poll chart every 3 seconds (slightly offset from status poll)
+        setInterval(fetchPnlChart, 3000);
+        fetchPnlChart();
 
         // --- News & Events ---
         async function fetchNews() {
