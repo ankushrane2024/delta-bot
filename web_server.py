@@ -690,26 +690,6 @@ def get_pnl_chart():
         return jsonify({"points": [], "active": False})
     chart_data = getattr(bot_engine, 'pnl_chart_data', [])
     has_trade = bool(bot_engine.execution.active_positions)
-
-    # UI DEMO MODE: Show sample chart even when no trade is active
-    # so the user can verify the design. Remove this block after testing.
-    if not has_trade or len(chart_data) == 0:
-        import math, random
-        random.seed(42)
-        demo = []
-        val = 0.0
-        times = ["09:00", "09:05", "09:10", "09:15", "09:20", "09:25",
-                 "09:30", "09:35", "09:40", "09:45", "09:50", "09:55",
-                 "10:00", "10:05", "10:10", "10:15", "10:20", "10:25",
-                 "10:30", "10:35", "10:40", "10:45", "10:50", "10:55",
-                 "11:00", "11:05", "11:10", "11:15", "11:20", "11:25"]
-        for i, t in enumerate(times):
-            val += random.uniform(-0.8, 1.0)
-            val = round(val, 4)
-            hedge = round(random.uniform(-0.3, 0.3), 4)
-            demo.append({"t": t, "pnl": val, "hedge": hedge, "total": round(val + hedge, 4)})
-        return jsonify({"active": True, "points": demo, "demo": True})
-
     return jsonify({
         "active": has_trade,
         "points": chart_data
