@@ -685,27 +685,36 @@ def get_trade_history():
 
 @app.route('/api/pnl_chart')
 def get_pnl_chart():
-    """Returns live P&L chart data for the current active trade.
-    Internally stores tick-by-tick data. Serves max 300 evenly-spaced
-    points to the chart so the full start-to-now picture is always shown.
-    """
+    """Returns live P&L chart data for the current active trade."""
     if not bot_engine:
         return jsonify({"points": [], "active": False})
 
     chart_data = getattr(bot_engine, 'pnl_chart_data', [])
     has_trade = bool(bot_engine.execution.active_positions)
 
+    # DEMO MODE — shows chart design when no real trade is active
     if not has_trade or len(chart_data) == 0:
-        return jsonify({"active": False, "points": []})
+        import random
+        from datetime import datetime, timezone, timedelta
+        random.seed(99)
+        demo = []
+        val = 0.0
+        # Start from ~2 hours ago so chart looks like a real trade in progress
+        base_time = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30) - timedelta(hours=2)
+        for i in range(60):
+            t = (base_time + timedelta(minutes=i * 2)).strftime("%H:%M:%S")
+            val += random.uniform(-0.6, 0.8)
+            val = round(val, 4)
+            hedge = round(random.uniform(-0.2, 0.2), 4)
+            demo.append({"t": t, "pnl": val, "hedge": hedge, "total": round(val + hedge, 4)})
+        return jsonify({"active": True, "points": demo, "demo": True})
 
     # Smart downsample: always show max 300 evenly-spaced points
-    # so chart renders the FULL start-to-now range regardless of tick count
     MAX_POINTS = 300
     total = len(chart_data)
     if total <= MAX_POINTS:
         display_data = chart_data
     else:
-        # Pick evenly-spaced indices from 0 to total-1 (always include first and last)
         step = (total - 1) / (MAX_POINTS - 1)
         indices = [round(i * step) for i in range(MAX_POINTS)]
         display_data = [chart_data[i] for i in indices]
