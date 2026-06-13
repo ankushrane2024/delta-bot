@@ -2639,7 +2639,12 @@
                             }
                         },
                         y: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            grid: { 
+                                color: ctx => ctx.tick.value === 0 ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255,255,255,0.05)',
+                                lineWidth: ctx => ctx.tick.value === 0 ? 2 : 1
+                            },
+                            suggestedMax: 1, // Ensure the axis goes at least slightly above 0
+                            suggestedMin: -1, // Ensure the axis goes at least slightly below 0
                             ticks: {
                                 color: 'rgba(255,255,255,0.4)',
                                 font: { size: 10 },
