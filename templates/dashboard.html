@@ -2683,14 +2683,17 @@
                 pnlChart.data.datasets[1].data = totPnl;
                 pnlChart.update('none');
 
-                // Update summary stats
+                // Update summary stats — use ALL data points for true peak/trough
                 const peak   = Math.max(...optPnl);
                 const trough = Math.min(...optPnl);
-                document.getElementById('pnl-chart-peak').textContent    = (peak >= 0 ? '+' : '') + '$' + peak.toFixed(4);
-                document.getElementById('pnl-chart-trough').textContent  = (trough >= 0 ? '+' : '') + '$' + trough.toFixed(4);
-                document.getElementById('pnl-chart-count').textContent   = pts.length;
+                document.getElementById('pnl-chart-peak').textContent   = (peak >= 0 ? '+' : '') + '$' + peak.toFixed(4);
+                document.getElementById('pnl-chart-trough').textContent = (trough >= 0 ? '+' : '') + '$' + trough.toFixed(4);
+                // Show trade duration in minutes instead of raw count
+                document.getElementById('pnl-chart-count').textContent  = pts.length + ' min';
+                // Always show trade start time on left, "Now" on right
                 if (pts.length > 0) {
-                    document.getElementById('pnl-chart-start-label').textContent = pts[0].t;
+                    document.getElementById('pnl-chart-start-label').textContent = '▶ ' + pts[0].t;
+                    document.getElementById('pnl-chart-end-label').textContent   = 'Now (' + pts[pts.length-1].t + ')';
                 }
             } catch(e) {
                 // Fail silently — chart just stays hidden

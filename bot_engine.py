@@ -778,16 +778,20 @@ class DeltaTradingEngine:
                             self.current_trade_info["min_pnl_pct"] = pnl_pct
                             self.current_trade_info["min_pnl_time"] = get_ist_now().isoformat()
 
-                        # ── Live P&L Chart Snapshot (every tick, max 5000 pts) ──
-                        hedge_pnl_now = self.smart_hedging.get_live_hedge_pnl() if self.smart_hedging.hedge_active else 0.0
-                        self.pnl_chart_data.append({
-                            "t": get_ist_now().strftime("%H:%M:%S"),
-                            "pnl": round(profit, 4),
-                            "hedge": round(hedge_pnl_now, 4),
-                            "total": round(profit + hedge_pnl_now, 4)
-                        })
-                        if len(self.pnl_chart_data) > 5000:
-                            self.pnl_chart_data.pop(0)  # ~4h at 3s ticks
+                        # ── Live P&L Chart Snapshot (1 point per 60s) ──
+                        # Stores 1 point per minute → max 480 pts for a full 9AM-5PM day.
+                        # NEVER deletes old data so 9AM entry is always visible on chart.
+                        _now_ts = time.time()
+                        _last_chart_ts = getattr(self, '_last_chart_snapshot_ts', 0)
+                        if _now_ts - _last_chart_ts >= 60 or len(self.pnl_chart_data) == 0:
+                            self._last_chart_snapshot_ts = _now_ts
+                            hedge_pnl_now = self.smart_hedging.get_live_hedge_pnl() if self.smart_hedging.hedge_active else 0.0
+                            self.pnl_chart_data.append({
+                                "t": get_ist_now().strftime("%H:%M"),
+                                "pnl": round(profit, 4),
+                                "hedge": round(hedge_pnl_now, 4),
+                                "total": round(profit + hedge_pnl_now, 4)
+                            })
 
                         if self.trailing_sl_active and pnl_pct <= 0.0:
                             action = "TRAILING_SL_EXIT"

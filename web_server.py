@@ -685,44 +685,24 @@ def get_trade_history():
 
 @app.route('/api/pnl_chart')
 def get_pnl_chart():
-    """Returns live P&L chart data for the current active trade."""
+    """Returns live P&L chart data for the current active trade.
+    Stores 1 point per minute so a full 9AM-5PM day = max ~480 pts.
+    All points are sent directly — no downsampling needed.
+    Old data is NEVER deleted, so full trade history is always visible.
+    """
     if not bot_engine:
         return jsonify({"points": [], "active": False})
 
     chart_data = getattr(bot_engine, 'pnl_chart_data', [])
     has_trade = bool(bot_engine.execution.active_positions)
 
-    # DEMO MODE — shows chart design when no real trade is active
     if not has_trade or len(chart_data) == 0:
-        import random
-        from datetime import datetime, timezone, timedelta
-        random.seed(99)
-        demo = []
-        val = 0.0
-        # Start from ~2 hours ago so chart looks like a real trade in progress
-        base_time = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30) - timedelta(hours=2)
-        for i in range(60):
-            t = (base_time + timedelta(minutes=i * 2)).strftime("%H:%M:%S")
-            val += random.uniform(-0.6, 0.8)
-            val = round(val, 4)
-            hedge = round(random.uniform(-0.2, 0.2), 4)
-            demo.append({"t": t, "pnl": val, "hedge": hedge, "total": round(val + hedge, 4)})
-        return jsonify({"active": True, "points": demo, "demo": True})
-
-    # Smart downsample: always show max 300 evenly-spaced points
-    MAX_POINTS = 300
-    total = len(chart_data)
-    if total <= MAX_POINTS:
-        display_data = chart_data
-    else:
-        step = (total - 1) / (MAX_POINTS - 1)
-        indices = [round(i * step) for i in range(MAX_POINTS)]
-        display_data = [chart_data[i] for i in indices]
+        return jsonify({"active": False, "points": []})
 
     return jsonify({
         "active": True,
-        "points": display_data,
-        "total_ticks": total
+        "points": chart_data,
+        "total_points": len(chart_data)
     })
 
 @app.route('/api/backtest', methods=['POST'])
