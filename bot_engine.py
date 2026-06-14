@@ -83,6 +83,9 @@ class DeltaTradingEngine:
         self.cached_option_chain = []
         self.last_cache_time = 0.0
         self.trades_taken_today = 0
+        
+        # Populate rule report immediately for the UI
+        self.run_rule_verification()
 
     def start(self):
         app_logger.info(f"Engine: Starting Delta BTC Options Bot in {BOT_MODE} mode with Capital: ${STARTING_CAPITAL}")
@@ -111,8 +114,7 @@ class DeltaTradingEngine:
         app_logger.info("Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)")
         app_logger.info("Engine: Scheduled daily report at 17:30 IST (Asia/Kolkata timezone)")
         
-        # Run rule verification once on startup
-        self.run_rule_verification()
+        # Run rule verification once on startup (Moved to __init__)
         
         # Monitor thread for 24/7 option chain fetching
         chain_thread = threading.Thread(target=self.option_chain_monitor_loop, daemon=True)
