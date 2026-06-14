@@ -121,7 +121,9 @@ class AdvancedBacktester:
         put_sigma = (dvol * 2.25) / 100.0
         
         r = 0.05  # 5% risk free rate
-        T_entry = 30.0 / (24.0 * 365.0)  # ~30 hours to expiry at entry
+        # Delta Exchange daily options expire at 12:00 UTC next day.
+        # Entry at 9:00 AM IST = 3:30 AM UTC → ~32.5h to next-day 12:00 UTC expiry
+        T_entry = 32.5 / (24.0 * 365.0)  # 32.5 hours to expiry at 9AM IST entry
         
         min_total_prem, max_total_prem = premium_range
         target_leg_prem = (min_total_prem + max_total_prem) / 4.0  # midpoint per leg
@@ -274,8 +276,10 @@ class AdvancedBacktester:
         self.daily_loss_today = 0.0
 
         r_free = 0.05
-        T_entry = 30.0 / (24.0 * 365.0)  # ~30 hours
-        T_exit = 22.0 / (24.0 * 365.0)   # ~22 hours (after 8 hours of hold)
+        # 9:00 AM IST entry → 32.5h to next-day 12:00 UTC expiry
+        # EOD exit at 5:00 PM IST = 11:30 AM UTC → ~24.5h remaining at exit
+        T_entry = 32.5 / (24.0 * 365.0)  # 32.5 hours at entry
+        T_exit  = 24.5 / (24.0 * 365.0)  # 24.5 hours at EOD exit (8h hold)
 
         for i, record in enumerate(backtest_records):
             current_date = record['date']
@@ -384,45 +388,49 @@ class AdvancedBacktester:
             if max_intraday_delta > trigger_delta:
                 hedge_triggered = True
 
-            # Determine P&L outcomes
-            # SL = 150% of premium
+            # ── EXIT LOGIC: Mirrors actual bot config exactly ─────────────────
+            # Uses config.SL_PERCENT, EXIT_PROFIT_TARGET, PARTIAL_PROFIT_TRIGGER
+            # so backtest always reflects the real strategy parameters.
             unrealized_loss_ratio = (peak_strangle_premium - entry_premium_total) / entry_premium_total
-            
-            if hedge_triggered and unrealized_loss_ratio >= 0.60:
-                # Tightened SL hit due to active hedging and loss reaching 60%
+
+            if hedge_triggered and unrealized_loss_ratio >= config.SL_PERCENT * 0.60:
+                # Hedge active + intraday loss reached 60% of SL level.
+                # Realistic hedge outcome: reduces loss to ~40% (not a magic 5%).
                 exit_reason = "TIGHTENED_SL_HEDGE"
-                final_pnl_pct = -0.05  # Book 5% loss instead of 150%
-            elif unrealized_loss_ratio >= 1.50:
-                # Default Stop Loss hit
+                final_pnl_pct = -0.40  # Realistic hedged loss (-40%)
+            elif unrealized_loss_ratio >= config.SL_PERCENT:
+                # Stop Loss hit at config.SL_PERCENT (currently 130%)
                 exit_reason = "STOP_LOSS"
-                final_pnl_pct = -1.50
-            
+                final_pnl_pct = -config.SL_PERCENT
+
             else:
-                # No standard stop loss hit. Evaluate profit targets.
+                # No SL hit. Evaluate profit targets matching actual bot config.
                 closing_pnl_pct = (entry_premium_total - close_strangle_premium) / entry_premium_total
 
-                # 70% Profit Target
-                if closing_pnl_pct >= 0.70:
+                # Full Exit Target (config.EXIT_PROFIT_TARGET = 30%)
+                if closing_pnl_pct >= config.EXIT_PROFIT_TARGET:
                     exit_reason = "FULL_TARGET"
-                    final_pnl_pct = 0.70
-                # 50% Partial Target (we book 50% at 50%, rest runs to EOD)
-                elif closing_pnl_pct >= 0.50:
+                    final_pnl_pct = config.EXIT_PROFIT_TARGET
+
+                # Partial Profit (config.PARTIAL_PROFIT_TRIGGER = 20%)
+                # 50% closed at trigger, remaining 50% runs to EOD close
+                elif closing_pnl_pct >= config.PARTIAL_PROFIT_TRIGGER:
                     exit_reason = "PARTIAL_TARGET"
-                    # Half booked at 50%, remaining half at close_strangle_premium
-                    final_pnl_pct = 0.50 * 0.50 + 0.50 * closing_pnl_pct
-                # Trailing SL: shift to breakeven after 40% profit
-                # Did we touch 40% profit at some point, and then drop to breakeven?
-                elif closing_pnl_pct < 0.0 and closing_pnl_pct > -0.40:
-                    # Check if intermediate price point touched 40% profit
-                    # Strangle min premium during day (at center btc_open with decay)
+                    partial_size = config.PARTIAL_PROFIT_SIZE  # 0.50
+                    final_pnl_pct = (partial_size * config.PARTIAL_PROFIT_TRIGGER +
+                                     (1 - partial_size) * closing_pnl_pct)
+
+                # Trailing SL: if price touched TRAILING_SL_TRIGGER (15%) during day
+                # then ended below breakeven, exit at breakeven (0%)
+                elif closing_pnl_pct < 0.0 and closing_pnl_pct > -config.SL_PERCENT:
                     c_decayed = black_scholes_call(btc_open, K_C, T_exit, r_free, call_sigma)
                     p_decayed = black_scholes_put(btc_open, K_P, T_exit, r_free, put_sigma)
                     min_strangle_prem = c_decayed + p_decayed
                     min_pnl_pct = (entry_premium_total - min_strangle_prem) / entry_premium_total
-                    
-                    if min_pnl_pct >= 0.40:
+
+                    if min_pnl_pct >= config.TRAILING_SL_TRIGGER:
                         exit_reason = "TRAILING_SL"
-                        final_pnl_pct = 0.0  # exited at breakeven
+                        final_pnl_pct = config.TRAILING_SL_LEVEL  # 0.0 = breakeven
                     else:
                         exit_reason = "EOD_EXIT"
                         final_pnl_pct = closing_pnl_pct

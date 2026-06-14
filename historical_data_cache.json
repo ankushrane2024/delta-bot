@@ -1,293 +1,5 @@
 [
     {
-        "date": "2024-09-28",
-        "btc_open": 65874.5,
-        "btc_high": 66005.0,
-        "btc_low": 65447.0,
-        "btc_close": 65490.5,
-        "dvol_open": 51.91,
-        "dvol_high": 52.67,
-        "dvol_low": 51.84,
-        "dvol_close": 52.6,
-        "dvol_percentile": 100.0
-    },
-    {
-        "date": "2024-09-29",
-        "btc_open": 65490.5,
-        "btc_high": 66105.0,
-        "btc_low": 64193.5,
-        "btc_close": 64579.5,
-        "dvol_open": 52.6,
-        "dvol_high": 54.16,
-        "dvol_low": 52.47,
-        "dvol_close": 54.02,
-        "dvol_percentile": 100.0
-    },
-    {
-        "date": "2024-09-30",
-        "btc_open": 64579.0,
-        "btc_high": 64587.0,
-        "btc_low": 62851.5,
-        "btc_close": 64031.0,
-        "dvol_open": 54.02,
-        "dvol_high": 55.56,
-        "dvol_low": 53.63,
-        "dvol_close": 54.21,
-        "dvol_percentile": 100.0
-    },
-    {
-        "date": "2024-10-01",
-        "btc_open": 64031.0,
-        "btc_high": 64102.5,
-        "btc_low": 60150.0,
-        "btc_close": 61721.5,
-        "dvol_open": 54.21,
-        "dvol_high": 57.23,
-        "dvol_low": 54.19,
-        "dvol_close": 56.64,
-        "dvol_percentile": 100.0
-    },
-    {
-        "date": "2024-10-02",
-        "btc_open": 61715.0,
-        "btc_high": 62414.0,
-        "btc_low": 59987.5,
-        "btc_close": 60910.0,
-        "dvol_open": 56.64,
-        "dvol_high": 57.34,
-        "dvol_low": 56.06,
-        "dvol_close": 56.35,
-        "dvol_percentile": 80.0
-    },
-    {
-        "date": "2024-10-03",
-        "btc_open": 60910.0,
-        "btc_high": 61494.0,
-        "btc_low": 59851.0,
-        "btc_close": 61423.5,
-        "dvol_open": 56.35,
-        "dvol_high": 57.78,
-        "dvol_low": 55.97,
-        "dvol_close": 57.45,
-        "dvol_percentile": 100.0
-    },
-    {
-        "date": "2024-10-04",
-        "btc_open": 61423.0,
-        "btc_high": 62491.5,
-        "btc_low": 60729.5,
-        "btc_close": 62100.5,
-        "dvol_open": 57.45,
-        "dvol_high": 57.98,
-        "dvol_low": 55.29,
-        "dvol_close": 55.53,
-        "dvol_percentile": 57.14
-    },
-    {
-        "date": "2024-10-05",
-        "btc_open": 62100.5,
-        "btc_high": 62391.5,
-        "btc_low": 61729.0,
-        "btc_close": 61964.5,
-        "dvol_open": 55.53,
-        "dvol_high": 56.11,
-        "dvol_low": 54.85,
-        "dvol_close": 55.41,
-        "dvol_percentile": 50.0
-    },
-    {
-        "date": "2024-10-06",
-        "btc_open": 61965.0,
-        "btc_high": 63979.0,
-        "btc_low": 61939.5,
-        "btc_close": 63555.5,
-        "dvol_open": 55.41,
-        "dvol_high": 57.84,
-        "dvol_low": 55.05,
-        "dvol_close": 57.17,
-        "dvol_percentile": 88.89
-    },
-    {
-        "date": "2024-10-07",
-        "btc_open": 63555.0,
-        "btc_high": 64476.0,
-        "btc_low": 62006.0,
-        "btc_close": 62300.0,
-        "dvol_open": 57.17,
-        "dvol_high": 57.45,
-        "dvol_low": 55.48,
-        "dvol_close": 56.6,
-        "dvol_percentile": 70.0
-    },
-    {
-        "date": "2024-10-08",
-        "btc_open": 62299.5,
-        "btc_high": 63210.5,
-        "btc_low": 61831.5,
-        "btc_close": 62259.0,
-        "dvol_open": 55.72,
-        "dvol_high": 56.01,
-        "dvol_low": 54.35,
-        "dvol_close": 55.63,
-        "dvol_percentile": 54.55
-    },
-    {
-        "date": "2024-10-09",
-        "btc_open": 62259.5,
-        "btc_high": 62383.0,
-        "btc_low": 60247.0,
-        "btc_close": 60844.5,
-        "dvol_open": 55.63,
-        "dvol_high": 56.85,
-        "dvol_low": 55.52,
-        "dvol_close": 56.11,
-        "dvol_percentile": 58.33
-    },
-    {
-        "date": "2024-10-10",
-        "btc_open": 60844.0,
-        "btc_high": 61288.5,
-        "btc_low": 58863.0,
-        "btc_close": 60618.5,
-        "dvol_open": 56.12,
-        "dvol_high": 56.64,
-        "dvol_low": 54.47,
-        "dvol_close": 54.97,
-        "dvol_percentile": 30.77
-    },
-    {
-        "date": "2024-10-11",
-        "btc_open": 60617.5,
-        "btc_high": 63434.5,
-        "btc_low": 60607.5,
-        "btc_close": 62770.5,
-        "dvol_open": 54.97,
-        "dvol_high": 57.63,
-        "dvol_low": 54.66,
-        "dvol_close": 57.51,
-        "dvol_percentile": 100.0
-    },
-    {
-        "date": "2024-10-12",
-        "btc_open": 62770.5,
-        "btc_high": 63486.0,
-        "btc_low": 62688.0,
-        "btc_close": 62843.5,
-        "dvol_open": 57.52,
-        "dvol_high": 57.52,
-        "dvol_low": 55.97,
-        "dvol_close": 56.84,
-        "dvol_percentile": 80.0
-    },
-    {
-        "date": "2024-10-13",
-        "btc_open": 62843.0,
-        "btc_high": 64666.0,
-        "btc_low": 62059.5,
-        "btc_close": 64605.5,
-        "dvol_open": 56.84,
-        "dvol_high": 58.1,
-        "dvol_low": 56.45,
-        "dvol_close": 57.14,
-        "dvol_percentile": 81.25
-    },
-    {
-        "date": "2024-10-14",
-        "btc_open": 64605.5,
-        "btc_high": 66539.0,
-        "btc_low": 64341.0,
-        "btc_close": 65646.5,
-        "dvol_open": 57.14,
-        "dvol_high": 59.53,
-        "dvol_low": 57.05,
-        "dvol_close": 57.85,
-        "dvol_percentile": 100.0
-    },
-    {
-        "date": "2024-10-15",
-        "btc_open": 65646.5,
-        "btc_high": 67960.5,
-        "btc_low": 64683.0,
-        "btc_close": 66972.5,
-        "dvol_open": 57.85,
-        "dvol_high": 59.48,
-        "dvol_low": 56.4,
-        "dvol_close": 58.15,
-        "dvol_percentile": 100.0
-    },
-    {
-        "date": "2024-10-16",
-        "btc_open": 66972.0,
-        "btc_high": 68444.5,
-        "btc_low": 66922.0,
-        "btc_close": 67285.5,
-        "dvol_open": 58.15,
-        "dvol_high": 60.16,
-        "dvol_low": 57.18,
-        "dvol_close": 57.44,
-        "dvol_percentile": 78.95
-    },
-    {
-        "date": "2024-10-17",
-        "btc_open": 67285.5,
-        "btc_high": 68360.0,
-        "btc_low": 66640.5,
-        "btc_close": 67978.5,
-        "dvol_open": 57.44,
-        "dvol_high": 58.17,
-        "dvol_low": 55.91,
-        "dvol_close": 56.4,
-        "dvol_percentile": 50.0
-    },
-    {
-        "date": "2024-10-18",
-        "btc_open": 67978.5,
-        "btc_high": 69030.0,
-        "btc_low": 67649.0,
-        "btc_close": 68349.0,
-        "dvol_open": 56.4,
-        "dvol_high": 56.53,
-        "dvol_low": 54.44,
-        "dvol_close": 55.18,
-        "dvol_percentile": 23.81
-    },
-    {
-        "date": "2024-10-19",
-        "btc_open": 68349.0,
-        "btc_high": 68465.5,
-        "btc_low": 68013.0,
-        "btc_close": 68386.5,
-        "dvol_open": 55.18,
-        "dvol_high": 55.34,
-        "dvol_low": 53.77,
-        "dvol_close": 54.7,
-        "dvol_percentile": 18.18
-    },
-    {
-        "date": "2024-10-20",
-        "btc_open": 68387.0,
-        "btc_high": 69549.0,
-        "btc_low": 68237.0,
-        "btc_close": 68508.5,
-        "dvol_open": 54.7,
-        "dvol_high": 57.3,
-        "dvol_low": 54.52,
-        "dvol_close": 56.66,
-        "dvol_percentile": 65.22
-    },
-    {
-        "date": "2024-10-21",
-        "btc_open": 68508.5,
-        "btc_high": 68653.5,
-        "btc_low": 66573.0,
-        "btc_close": 67378.0,
-        "dvol_open": 56.66,
-        "dvol_high": 57.2,
-        "dvol_low": 54.29,
-        "dvol_close": 55.69,
-        "dvol_percentile": 41.67
-    },
-    {
         "date": "2024-10-22",
         "btc_open": 67378.0,
         "btc_high": 67845.5,
@@ -297,7 +9,7 @@
         "dvol_high": 55.92,
         "dvol_low": 54.61,
         "dvol_close": 55.77,
-        "dvol_percentile": 44.0
+        "dvol_percentile": 100.0
     },
     {
         "date": "2024-10-23",
@@ -309,7 +21,7 @@
         "dvol_high": 56.55,
         "dvol_low": 54.53,
         "dvol_close": 56.29,
-        "dvol_percentile": 50.0
+        "dvol_percentile": 100.0
     },
     {
         "date": "2024-10-24",
@@ -321,7 +33,7 @@
         "dvol_high": 57.31,
         "dvol_low": 54.37,
         "dvol_close": 57.3,
-        "dvol_percentile": 81.48
+        "dvol_percentile": 100.0
     },
     {
         "date": "2024-10-25",
@@ -333,7 +45,7 @@
         "dvol_high": 58.09,
         "dvol_low": 54.62,
         "dvol_close": 58.08,
-        "dvol_percentile": 96.43
+        "dvol_percentile": 100.0
     },
     {
         "date": "2024-10-26",
@@ -345,7 +57,7 @@
         "dvol_high": 58.11,
         "dvol_low": 54.66,
         "dvol_close": 55.36,
-        "dvol_percentile": 24.14
+        "dvol_percentile": 20.0
     },
     {
         "date": "2024-10-27",
@@ -357,7 +69,7 @@
         "dvol_high": 57.32,
         "dvol_low": 55.16,
         "dvol_close": 57.18,
-        "dvol_percentile": 76.67
+        "dvol_percentile": 66.67
     },
     {
         "date": "2024-10-28",
@@ -369,7 +81,7 @@
         "dvol_high": 57.81,
         "dvol_low": 55.42,
         "dvol_close": 57.78,
-        "dvol_percentile": 90.0
+        "dvol_percentile": 85.71
     },
     {
         "date": "2024-10-29",
@@ -393,7 +105,7 @@
         "dvol_high": 59.24,
         "dvol_low": 57.48,
         "dvol_close": 59.11,
-        "dvol_percentile": 96.67
+        "dvol_percentile": 88.89
     },
     {
         "date": "2024-10-31",
@@ -405,7 +117,7 @@
         "dvol_high": 60.11,
         "dvol_low": 57.97,
         "dvol_close": 58.23,
-        "dvol_percentile": 93.33
+        "dvol_percentile": 80.0
     },
     {
         "date": "2024-11-01",
@@ -417,7 +129,7 @@
         "dvol_high": 59.95,
         "dvol_low": 57.92,
         "dvol_close": 59.77,
-        "dvol_percentile": 96.67
+        "dvol_percentile": 90.91
     },
     {
         "date": "2024-11-02",
@@ -465,7 +177,7 @@
         "dvol_high": 65.56,
         "dvol_low": 61.74,
         "dvol_close": 63.71,
-        "dvol_percentile": 96.67
+        "dvol_percentile": 93.33
     },
     {
         "date": "2024-11-06",
@@ -477,7 +189,7 @@
         "dvol_high": 63.95,
         "dvol_low": 54.52,
         "dvol_close": 55.97,
-        "dvol_percentile": 26.67
+        "dvol_percentile": 18.75
     },
     {
         "date": "2024-11-07",
@@ -489,7 +201,7 @@
         "dvol_high": 55.97,
         "dvol_low": 53.25,
         "dvol_close": 53.55,
-        "dvol_percentile": 3.33
+        "dvol_percentile": 5.88
     },
     {
         "date": "2024-11-08",
@@ -501,7 +213,7 @@
         "dvol_high": 53.89,
         "dvol_low": 49.53,
         "dvol_close": 49.85,
-        "dvol_percentile": 3.33
+        "dvol_percentile": 5.56
     },
     {
         "date": "2024-11-09",
@@ -513,7 +225,7 @@
         "dvol_high": 50.6,
         "dvol_low": 49.43,
         "dvol_close": 50.54,
-        "dvol_percentile": 6.67
+        "dvol_percentile": 10.53
     },
     {
         "date": "2024-11-10",
@@ -525,7 +237,7 @@
         "dvol_high": 53.97,
         "dvol_low": 50.25,
         "dvol_close": 53.28,
-        "dvol_percentile": 10.0
+        "dvol_percentile": 15.0
     },
     {
         "date": "2024-11-11",
@@ -537,7 +249,7 @@
         "dvol_high": 61.76,
         "dvol_low": 51.36,
         "dvol_close": 61.52,
-        "dvol_percentile": 90.0
+        "dvol_percentile": 85.71
     },
     {
         "date": "2024-11-12",
@@ -549,7 +261,7 @@
         "dvol_high": 62.28,
         "dvol_low": 57.65,
         "dvol_close": 57.69,
-        "dvol_percentile": 56.67
+        "dvol_percentile": 50.0
     },
     {
         "date": "2024-11-13",
@@ -561,7 +273,7 @@
         "dvol_high": 62.34,
         "dvol_low": 56.01,
         "dvol_close": 58.54,
-        "dvol_percentile": 73.33
+        "dvol_percentile": 65.22
     },
     {
         "date": "2024-11-14",
@@ -573,7 +285,7 @@
         "dvol_high": 61.79,
         "dvol_low": 57.03,
         "dvol_close": 59.46,
-        "dvol_percentile": 76.67
+        "dvol_percentile": 70.83
     },
     {
         "date": "2024-11-15",
@@ -585,7 +297,7 @@
         "dvol_high": 61.71,
         "dvol_low": 56.29,
         "dvol_close": 56.29,
-        "dvol_percentile": 40.0
+        "dvol_percentile": 36.0
     },
     {
         "date": "2024-11-16",
@@ -597,7 +309,7 @@
         "dvol_high": 58.23,
         "dvol_low": 56.05,
         "dvol_close": 56.84,
-        "dvol_percentile": 46.67
+        "dvol_percentile": 38.46
     },
     {
         "date": "2024-11-17",
@@ -609,7 +321,7 @@
         "dvol_high": 58.25,
         "dvol_low": 55.61,
         "dvol_close": 57.23,
-        "dvol_percentile": 50.0
+        "dvol_percentile": 44.44
     },
     {
         "date": "2024-11-18",
@@ -621,7 +333,7 @@
         "dvol_high": 59.76,
         "dvol_low": 57.13,
         "dvol_close": 58.3,
-        "dvol_percentile": 66.67
+        "dvol_percentile": 64.29
     },
     {
         "date": "2024-11-19",
@@ -633,7 +345,7 @@
         "dvol_high": 60.25,
         "dvol_low": 57.62,
         "dvol_close": 58.25,
-        "dvol_percentile": 63.33
+        "dvol_percentile": 62.07
     },
     {
         "date": "2024-11-20",
@@ -7204,11 +6916,299 @@
         "btc_open": 77830.5,
         "btc_high": 78141.0,
         "btc_low": 76670.5,
-        "btc_close": 77920.5,
+        "btc_close": 77334.0,
         "dvol_open": 38.47,
         "dvol_high": 38.5,
-        "dvol_low": 36.55,
-        "dvol_close": 36.63,
+        "dvol_low": 36.12,
+        "dvol_close": 36.62,
         "dvol_percentile": 3.33
+    },
+    {
+        "date": "2026-05-22",
+        "btc_open": 77334.0,
+        "btc_high": 77504.0,
+        "btc_low": 74187.0,
+        "btc_close": 74502.0,
+        "dvol_open": 36.62,
+        "dvol_high": 37.22,
+        "dvol_low": 35.44,
+        "dvol_close": 37.09,
+        "dvol_percentile": 6.67
+    },
+    {
+        "date": "2026-05-23",
+        "btc_open": 74502.0,
+        "btc_high": 77300.0,
+        "btc_low": 74245.5,
+        "btc_close": 76709.5,
+        "dvol_open": 37.09,
+        "dvol_high": 38.65,
+        "dvol_low": 36.59,
+        "dvol_close": 36.7,
+        "dvol_percentile": 6.67
+    },
+    {
+        "date": "2026-05-24",
+        "btc_open": 76709.5,
+        "btc_high": 77567.5,
+        "btc_low": 76014.0,
+        "btc_close": 77317.5,
+        "dvol_open": 36.7,
+        "dvol_high": 36.74,
+        "dvol_low": 35.6,
+        "dvol_close": 36.03,
+        "dvol_percentile": 3.33
+    },
+    {
+        "date": "2026-05-25",
+        "btc_open": 77318.0,
+        "btc_high": 77843.0,
+        "btc_low": 76421.0,
+        "btc_close": 76652.5,
+        "dvol_open": 36.03,
+        "dvol_high": 36.03,
+        "dvol_low": 34.13,
+        "dvol_close": 34.44,
+        "dvol_percentile": 3.33
+    },
+    {
+        "date": "2026-05-26",
+        "btc_open": 76652.5,
+        "btc_high": 78041.0,
+        "btc_low": 75200.0,
+        "btc_close": 75867.0,
+        "dvol_open": 34.44,
+        "dvol_high": 36.1,
+        "dvol_low": 34.07,
+        "dvol_close": 35.86,
+        "dvol_percentile": 6.67
+    },
+    {
+        "date": "2026-05-27",
+        "btc_open": 75867.5,
+        "btc_high": 76069.0,
+        "btc_low": 72666.0,
+        "btc_close": 73388.0,
+        "dvol_open": 35.86,
+        "dvol_high": 37.34,
+        "dvol_low": 35.58,
+        "dvol_close": 37.19,
+        "dvol_percentile": 23.33
+    },
+    {
+        "date": "2026-05-28",
+        "btc_open": 73388.0,
+        "btc_high": 73868.5,
+        "btc_low": 72476.0,
+        "btc_close": 73479.0,
+        "dvol_open": 37.19,
+        "dvol_high": 37.95,
+        "dvol_low": 36.94,
+        "dvol_close": 37.27,
+        "dvol_percentile": 26.67
+    },
+    {
+        "date": "2026-05-29",
+        "btc_open": 73479.5,
+        "btc_high": 74235.0,
+        "btc_low": 72409.0,
+        "btc_close": 73461.0,
+        "dvol_open": 37.27,
+        "dvol_high": 37.38,
+        "dvol_low": 35.51,
+        "dvol_close": 35.99,
+        "dvol_percentile": 10.0
+    },
+    {
+        "date": "2026-05-30",
+        "btc_open": 73461.0,
+        "btc_high": 74174.5,
+        "btc_low": 73425.0,
+        "btc_close": 73782.0,
+        "dvol_open": 35.99,
+        "dvol_high": 36.07,
+        "dvol_low": 34.57,
+        "dvol_close": 35.28,
+        "dvol_percentile": 6.67
+    },
+    {
+        "date": "2026-05-31",
+        "btc_open": 73782.0,
+        "btc_high": 74108.0,
+        "btc_low": 72604.5,
+        "btc_close": 72711.0,
+        "dvol_open": 35.28,
+        "dvol_high": 36.53,
+        "dvol_low": 35.19,
+        "dvol_close": 36.4,
+        "dvol_percentile": 20.0
+    },
+    {
+        "date": "2026-06-01",
+        "btc_open": 72711.0,
+        "btc_high": 73007.5,
+        "btc_low": 69634.5,
+        "btc_close": 70018.0,
+        "dvol_open": 36.4,
+        "dvol_high": 38.22,
+        "dvol_low": 36.05,
+        "dvol_close": 37.27,
+        "dvol_percentile": 40.0
+    },
+    {
+        "date": "2026-06-02",
+        "btc_open": 70018.0,
+        "btc_high": 70072.5,
+        "btc_low": 65353.0,
+        "btc_close": 67120.5,
+        "dvol_open": 37.27,
+        "dvol_high": 43.36,
+        "dvol_low": 37.27,
+        "dvol_close": 43.28,
+        "dvol_percentile": 100.0
+    },
+    {
+        "date": "2026-06-03",
+        "btc_open": 67120.5,
+        "btc_high": 67367.5,
+        "btc_low": 61270.0,
+        "btc_close": 63521.0,
+        "dvol_open": 43.28,
+        "dvol_high": 47.9,
+        "dvol_low": 42.29,
+        "dvol_close": 47.9,
+        "dvol_percentile": 100.0
+    },
+    {
+        "date": "2026-06-04",
+        "btc_open": 63521.0,
+        "btc_high": 64408.0,
+        "btc_low": 61060.0,
+        "btc_close": 63040.0,
+        "dvol_open": 47.9,
+        "dvol_high": 53.28,
+        "dvol_low": 46.16,
+        "dvol_close": 46.17,
+        "dvol_percentile": 96.67
+    },
+    {
+        "date": "2026-06-05",
+        "btc_open": 63040.0,
+        "btc_high": 63170.0,
+        "btc_low": 59052.0,
+        "btc_close": 60963.5,
+        "dvol_open": 46.17,
+        "dvol_high": 54.46,
+        "dvol_low": 45.62,
+        "dvol_close": 49.14,
+        "dvol_percentile": 100.0
+    },
+    {
+        "date": "2026-06-06",
+        "btc_open": 60963.0,
+        "btc_high": 62381.0,
+        "btc_low": 60174.5,
+        "btc_close": 62370.5,
+        "dvol_open": 49.14,
+        "dvol_high": 50.51,
+        "dvol_low": 47.7,
+        "dvol_close": 48.62,
+        "dvol_percentile": 96.67
+    },
+    {
+        "date": "2026-06-07",
+        "btc_open": 62370.0,
+        "btc_high": 64183.0,
+        "btc_low": 61150.0,
+        "btc_close": 63224.0,
+        "dvol_open": 48.62,
+        "dvol_high": 51.27,
+        "dvol_low": 48.24,
+        "dvol_close": 49.37,
+        "dvol_percentile": 100.0
+    },
+    {
+        "date": "2026-06-08",
+        "btc_open": 63238.5,
+        "btc_high": 64168.5,
+        "btc_low": 62400.5,
+        "btc_close": 63155.5,
+        "dvol_open": 49.37,
+        "dvol_high": 49.37,
+        "dvol_low": 44.09,
+        "dvol_close": 45.64,
+        "dvol_percentile": 83.33
+    },
+    {
+        "date": "2026-06-09",
+        "btc_open": 63155.0,
+        "btc_high": 63155.5,
+        "btc_low": 60753.5,
+        "btc_close": 61617.0,
+        "dvol_open": 45.64,
+        "dvol_high": 47.85,
+        "dvol_low": 44.78,
+        "dvol_close": 46.24,
+        "dvol_percentile": 86.67
+    },
+    {
+        "date": "2026-06-10",
+        "btc_open": 61630.0,
+        "btc_high": 62951.5,
+        "btc_low": 60646.5,
+        "btc_close": 62655.0,
+        "dvol_open": 46.24,
+        "dvol_high": 48.51,
+        "dvol_low": 45.34,
+        "dvol_close": 46.96,
+        "dvol_percentile": 86.67
+    },
+    {
+        "date": "2026-06-11",
+        "btc_open": 62655.0,
+        "btc_high": 63885.0,
+        "btc_low": 62278.0,
+        "btc_close": 62995.0,
+        "dvol_open": 46.96,
+        "dvol_high": 46.97,
+        "dvol_low": 43.22,
+        "dvol_close": 43.27,
+        "dvol_percentile": 70.0
+    },
+    {
+        "date": "2026-06-12",
+        "btc_open": 62995.5,
+        "btc_high": 64349.0,
+        "btc_low": 62966.5,
+        "btc_close": 63801.5,
+        "dvol_open": 43.34,
+        "dvol_high": 43.96,
+        "dvol_low": 40.41,
+        "dvol_close": 40.47,
+        "dvol_percentile": 66.67
+    },
+    {
+        "date": "2026-06-13",
+        "btc_open": 63801.0,
+        "btc_high": 64739.5,
+        "btc_low": 63700.0,
+        "btc_close": 64397.5,
+        "dvol_open": 40.47,
+        "dvol_high": 40.78,
+        "dvol_low": 39.95,
+        "dvol_close": 40.77,
+        "dvol_percentile": 66.67
+    },
+    {
+        "date": "2026-06-14",
+        "btc_open": 64397.5,
+        "btc_high": 64567.5,
+        "btc_low": 64300.0,
+        "btc_close": 64547.5,
+        "dvol_open": 40.77,
+        "dvol_high": 40.79,
+        "dvol_low": 40.4,
+        "dvol_close": 40.56,
+        "dvol_percentile": 63.33
     }
 ]
