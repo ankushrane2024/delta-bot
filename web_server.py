@@ -288,39 +288,62 @@ def stop_bot():
 def emergency_close():
     if not bot_engine:
         return jsonify({'error': 'Engine not initialized'}), 500
-        
-    # Calculate closed P&L and log it to performance tracker and diary before wiping positions
+
+    # Calculate closed P&L and log it to performance tracker before wiping positions
     if bot_engine.execution.active_positions and bot_engine.total_entry_premium > 0:
         current_total_value = 0
         for sym, data in bot_engine.execution.active_positions.items():
             ws_data = bot_engine.api_client.get_realtime_ticker(sym)
             if ws_data and 'mark_price' in ws_data:
-                # BTC_Quantity = Lots * LOT_TO_BTC (0.001 per lot)
                 btc_qty = data['size'] * LOT_TO_BTC
                 current_total_value += float(ws_data['mark_price']) * btc_qty
-        
-        # Fallback to entry prices if live ticker not received yet
+
+        # Fallback to entry prices if live ticker not received
         if current_total_value == 0:
             current_total_value = sum(
                 data['entry_price'] * data['size'] * LOT_TO_BTC
                 for data in bot_engine.execution.active_positions.values()
             )
-            
+
         profit = bot_engine.total_entry_premium - current_total_value
-        bot_engine._log_and_reset_trade(profit, "Emergency Manual Closed")
+
+        # ── CRITICAL FIX ──────────────────────────────────────────────────
+        # _log_and_reset_trade checks current_trade_info["calls"] to decide
+        # whether to save the trade. During manual close, the bot loop may
+        # not have populated this yet → the trade gets silently skipped.
+        # We force-populate it here from active_positions so it is ALWAYS saved.
+        if not bot_engine.current_trade_info.get("calls"):
+            from utils import get_ist_now
+            calls = [sym for sym, d in bot_engine.execution.active_positions.items() if d.get('side') == 'sell' and 'C-' in sym]
+            puts  = [sym for sym, d in bot_engine.execution.active_positions.items() if d.get('side') == 'sell' and 'P-' in sym]
+            # Fallback: split all symbols into calls/puts if side not tagged
+            if not calls and not puts:
+                for sym in bot_engine.execution.active_positions:
+                    if 'C-' in sym:
+                        calls.append(sym)
+                    elif 'P-' in sym:
+                        puts.append(sym)
+            bot_engine.current_trade_info["calls"] = calls
+            bot_engine.current_trade_info["puts"]  = puts
+            if not bot_engine.current_trade_info.get("entry_time"):
+                bot_engine.current_trade_info["entry_time"] = get_ist_now().isoformat()
+            app_logger.info(f"Emergency Close: Force-populated current_trade_info → calls={calls}, puts={puts}")
+        # ─────────────────────────────────────────────────────────────────
+
+        bot_engine._log_and_reset_trade(profit, "Manual Square-Off")
         from notifier import notifier
-        notifier.notify_full_exit("Emergency Manual Closed", profit)
-        
+        notifier.notify_full_exit("Manual Square-Off", profit)
+
     bot_engine.execution.close_all(reason="Emergency Manual Square-Off")
     bot_engine.smart_hedging.close_hedge()
     bot_engine.reset_daily_state()
-    
+
     bot_engine.today_trade_status = "Emergency Manual Closed"
-    bot_engine.today_skip_reason = "User Triggered Emergency"
-    
+    bot_engine.today_skip_reason  = "User Triggered Emergency"
+
     from notifier import notifier
     notifier.notify_error("🚨 USER EMERGENCY 🚨\nAll positions squared off manually via Dashboard.")
-    
+
     return jsonify({'status': 'success'})
 
 @app.route('/api/toggle_regime', methods=['POST'])
