@@ -130,10 +130,11 @@ class AdvancedBacktester:
 
         # ATM Strike
         ATM_strike = round(S / 1000.0) * 1000.0
-        
-        # Minimum 4 strikes OTM
-        min_call_strike = ATM_strike + 4000.0
-        min_put_strike = ATM_strike - 4000.0
+
+        # Real bot picks strikes ~1 strike OTM (1000 pts).
+        # Using 4000+ OTM made SL mathematically impossible (BTC never moves that far in 1 day).
+        min_call_strike = ATM_strike + 1000.0
+        min_put_strike  = ATM_strike - 1000.0
         
         # 1. Select Call Strike
         call_strike = min_call_strike
@@ -343,15 +344,17 @@ class AdvancedBacktester:
             call_sigma = (dvol * 1.95) / 100.0
             put_sigma = (dvol * 2.25) / 100.0
 
-            # 1. Calculate Peak Premium (Max Loss path at daily High/Low extremes)
-            # Strangle Call peak at high
-            c_high = black_scholes_call(btc_high, K_C, T_exit, r_free, call_sigma)
-            p_high = black_scholes_put(btc_high, K_P, T_exit, r_free, put_sigma)
+            # 1. Calculate Peak Premium using T_ENTRY time.
+            # A big adverse BTC move can happen right at open when options still
+            # have maximum time-value, so this gives the worst-case intraday loss.
+            # BUG FIX: was using T_exit which understated peak loss and prevented SL from ever triggering.
+            c_high = black_scholes_call(btc_high, K_C, T_entry, r_free, call_sigma)
+            p_high = black_scholes_put(btc_high, K_P, T_entry, r_free, put_sigma)
             strangle_high = c_high + p_high
 
-            # Strangle Put peak at low
-            c_low = black_scholes_call(btc_low, K_C, T_exit, r_free, call_sigma)
-            p_low = black_scholes_put(btc_low, K_P, T_exit, r_free, put_sigma)
+            # Strangle value at daily Low (put leg blows up)
+            c_low = black_scholes_call(btc_low, K_C, T_entry, r_free, call_sigma)
+            p_low = black_scholes_put(btc_low, K_P, T_entry, r_free, put_sigma)
             strangle_low = c_low + p_low
 
             peak_strangle_premium = max(strangle_high, strangle_low)
