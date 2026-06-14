@@ -62,6 +62,7 @@ class DeltaTradingEngine:
         self.pnl_chart_data = []  # Live P&L chart snapshots: [{t, pnl, hedge_pnl}]
         
         self.market_regime_filter_enabled = False
+        self.smart_hedging_enabled = True  # Hedging toggle
         self.current_market_regime = "Unknown"
         self.current_adx_value = 0.0
         self.adx_history = []
@@ -879,10 +880,13 @@ class DeltaTradingEngine:
                             f"loss_usd={-profit:.2f} | "
                             f"volatile={'YES' if _is_volatile else 'NO'}"
                         )
-                        self.smart_hedging.manage_hedge(
-                            self.execution.active_positions, unrealized_loss_pct, profit
-                        )
-                        self.hedging_triggered_today = self.smart_hedging.hedge_active
+                        if self.smart_hedging_enabled:
+                            self.smart_hedging.manage_hedge(
+                                self.execution.active_positions, unrealized_loss_pct, profit
+                            )
+                            self.hedging_triggered_today = self.smart_hedging.hedge_active
+                        else:
+                            app_logger.info("Hedge: Skipped - Smart Hedging is DISABLED.")
                     # ────────────────────────────────────────────────────────────────
 
                 else:

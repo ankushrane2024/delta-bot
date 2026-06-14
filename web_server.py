@@ -248,6 +248,7 @@ def get_status():
         'rule_report': bot_engine.latest_rule_report,
         'schedule_info': bot_engine.get_schedule_info(),
         'regime_filter_enabled': bot_engine.market_regime_filter_enabled,
+        'smart_hedging_enabled': getattr(bot_engine, 'smart_hedging_enabled', True),
         'current_market_regime': bot_engine.current_market_regime,
         'current_adx_value': bot_engine.current_adx_value,
         'adx_history': getattr(bot_engine, 'adx_history', []),
@@ -356,6 +357,17 @@ def toggle_regime():
     app_logger.info(f"Web: Market Regime Filter {state}")
     
     return jsonify({'status': 'success', 'enabled': bot_engine.market_regime_filter_enabled})
+
+@app.route('/api/toggle_hedge', methods=['POST'])
+def toggle_hedge():
+    if not bot_engine:
+        return jsonify({'error': 'Engine not initialized'}), 500
+        
+    bot_engine.smart_hedging_enabled = not bot_engine.smart_hedging_enabled
+    state = "ENABLED" if bot_engine.smart_hedging_enabled else "DISABLED"
+    app_logger.info(f"Web: Smart Hedging {state}")
+    
+    return jsonify({'status': 'success', 'enabled': bot_engine.smart_hedging_enabled})
     
 @app.route('/api/test_order', methods=['POST'])
 def test_order():
