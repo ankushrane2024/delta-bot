@@ -1,7 +1,7 @@
 {
   "name": "Delta BTC Options Bot",
   "short_name": "BTC Bot",
-  "start_url": "/",
+  "start_url": "/?mode=pwa",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
