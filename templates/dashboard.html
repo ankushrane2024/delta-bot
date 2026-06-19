@@ -1179,69 +1179,6 @@
             </div>
 
                     </div>
-<!-- Performance Summary Panel -->
-        <div class="glass-panel">
-            <h2>Performance Summary</h2>
-            <!-- Horizontal compact stat row: Today | Overall -->
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <!-- Today chip -->
-                <div style="flex: 1; min-width: 0; background: rgba(56,189,248,0.07); border: 1px solid rgba(56,189,248,0.18); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                    <span style="color: #38bdf8; font-weight: 700; font-size: 0.85rem; white-space: nowrap;">Today</span>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="stat-label" style="font-size:0.8rem;">P&L</span>
-                        <span id="perf-today-pnl" style="font-weight: 800; font-size: 0.95rem;">$0.00</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="stat-label" style="font-size:0.8rem;">Trades</span>
-                        <span id="perf-today-trades" style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">0</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="stat-label" style="font-size:0.8rem;">Win Rate</span>
-                        <span id="perf-today-winrate" style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">0%</span>
-                    </div>
-                </div>
-                <!-- Overall chip -->
-                <div style="flex: 1; min-width: 0; background: rgba(192,132,252,0.07); border: 1px solid rgba(192,132,252,0.18); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                    <span style="color: #c084fc; font-weight: 700; font-size: 0.85rem; white-space: nowrap;">Overall</span>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="stat-label" style="font-size:0.8rem;">P&L</span>
-                        <span id="perf-overall-pnl" style="font-weight: 800; font-size: 0.95rem;">$0.00</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="stat-label" style="font-size:0.8rem;">Win Rate</span>
-                        <span id="perf-overall-winrate" style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">0%</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="stat-label" style="font-size:0.8rem;">Max DD</span>
-                        <span id="perf-overall-maxdd" style="font-weight: 600; color: var(--danger); font-size: 0.95rem;">0%</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Filter Comparison -->
-            <div style="margin-top: 20px; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="color: #f59e0b; font-weight: 600; margin-bottom: 10px; border-bottom: 1px solid rgba(245, 158, 11, 0.2); padding-bottom: 5px;">Filter Comparison (ADX Regime)</div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem;">
-                    <div>
-                        <div style="color: var(--text-secondary); margin-bottom: 5px; font-weight: bold;">Filter OFF (Before)</div>
-                        <div style="display: flex; justify-content: space-between;"><span>Win Rate:</span> <span id="comp-off-wr" style="color:#fff;">0%</span></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Net P&L:</span> <span id="comp-off-pnl" style="color:#fff;">$0.00</span></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Max DD:</span> <span id="comp-off-dd" style="color:var(--danger);">0%</span></div>
-                    </div>
-                    <div>
-                        <div style="color: var(--success); margin-bottom: 5px; font-weight: bold;">Filter ON (After)</div>
-                        <div style="display: flex; justify-content: space-between;"><span>Win Rate:</span> <span id="comp-on-wr" style="color:#fff;">0%</span></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Net P&L:</span> <span id="comp-on-pnl" style="color:#fff;">$0.00</span></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Max DD:</span> <span id="comp-on-dd" style="color:var(--danger);">0%</span></div>
-                    </div>
-                </div>
-                <div id="comp-diff" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); font-size: 0.9rem; text-align: center; color: var(--text-secondary);">
-                    Difference: -
-                </div>
-            </div>
-        </div>
-
 
             <!-- News & Events / Volatility Alerts Panel -->
             <div class="glass-panel" id="news-panel" style="flex: 1; display: flex; flex-direction: column;">
@@ -1986,49 +1923,6 @@
                     }
                 }
 
-                // Update Performance
-                if(data.performance) {
-                    const today = data.performance.today;
-                    const overall = data.performance.overall;
-                    
-                    const tPnl = document.getElementById('perf-today-pnl');
-                    tPnl.textContent = `$${today.pnl.toLocaleString()}`;
-                    tPnl.style.color = today.pnl >= 0 ? 'var(--success)' : 'var(--danger)';
-                    
-                    document.getElementById('perf-today-trades').textContent = today.trades;
-                    document.getElementById('perf-today-winrate').textContent = `${today.win_rate}%`;
-
-                    const oPnl = document.getElementById('perf-overall-pnl');
-                    oPnl.textContent = `$${overall.pnl.toLocaleString()}`;
-                    oPnl.style.color = overall.pnl >= 0 ? 'var(--success)' : 'var(--danger)';
-                    
-                    document.getElementById('perf-overall-winrate').textContent = `${overall.win_rate}%`;
-                    document.getElementById('perf-overall-maxdd').textContent = `${overall.max_drawdown}%`;
-                    
-                    // Filter Comparison
-                    if(data.performance.comparison) {
-                        const comp = data.performance.comparison;
-                        
-                        document.getElementById('comp-off-wr').textContent = `${comp.filter_off.win_rate}%`;
-                        document.getElementById('comp-off-pnl').textContent = `$${comp.filter_off.pnl.toFixed(2)}`;
-                        document.getElementById('comp-off-dd').textContent = `${comp.filter_off.max_drawdown}%`;
-                        
-                        document.getElementById('comp-on-wr').textContent = `${comp.filter_on.win_rate}%`;
-                        document.getElementById('comp-on-pnl').textContent = `$${comp.filter_on.pnl.toFixed(2)}`;
-                        document.getElementById('comp-on-dd').textContent = `${comp.filter_on.max_drawdown}%`;
-                        
-                        const diffWr = (comp.filter_on.win_rate - comp.filter_off.win_rate).toFixed(1);
-                        const diffPnl = (comp.filter_on.pnl - comp.filter_off.pnl).toFixed(2);
-                        const diffDd = (comp.filter_on.max_drawdown - comp.filter_off.max_drawdown).toFixed(1);
-                        
-                        document.getElementById('comp-diff').innerHTML = `
-                            Difference: 
-                            <span style="color: ${diffWr >= 0 ? 'var(--success)' : 'var(--danger)'}">${diffWr >= 0 ? '+' : ''}${diffWr}% Win Rate</span>,
-                            <span style="color: ${diffPnl >= 0 ? 'var(--success)' : 'var(--danger)'}">${diffPnl >= 0 ? '+' : ''}$${diffPnl} Profit</span>,
-                            <span style="color: ${diffDd <= 0 ? 'var(--success)' : 'var(--danger)'}">${diffDd > 0 ? '+' : ''}${diffDd}% Max DD</span>
-                        `;
-                    }
-                }
 
                 // ── Update Active Positions ──────────────────────────────────────────
                 const posCards  = document.getElementById('positions-cards');
