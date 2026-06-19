@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from bot_core import bot_instance
 import os, threading, time, datetime
 
@@ -40,6 +40,14 @@ if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory('static', 'manifest.json')
+
+@app.route('/sw.js')
+def serve_sw():
+    return send_from_directory('static', 'sw.js')
 
 @app.route('/health')
 def health():
