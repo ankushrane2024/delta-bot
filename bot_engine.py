@@ -1087,6 +1087,16 @@ class DeltaTradingEngine:
             except Exception as chart_err:
                 app_logger.error(f"Engine: Chart generation/send failed: {chart_err}")
 
+            # Send full trade_history.json to Telegram as ultimate backup
+            try:
+                history_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trade_history.json')
+                if os.path.exists(history_file):
+                    trade_count = len(self.performance_tracker.trades)
+                    notifier.send_document(history_file, caption=f"💾 <b>Trade History Backup</b>\n{trade_count} trades saved | Equity: ${self.risk_manager.current_equity:.2f}")
+                    app_logger.info("Engine: trade_history.json backup sent to Telegram.")
+            except Exception as backup_err:
+                app_logger.error(f"Engine: History backup send failed: {backup_err}")
+
     def _apply_dynamic_sizing(self, base_lots):
         """Calculates the dynamic size multiplier based on DVOL and money management (Section 4)."""
         multiplier = 1.0
