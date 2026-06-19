@@ -26,6 +26,26 @@ class TelegramNotifier:
         except Exception as e:
             error_logger.error(f"Telegram notification error: {e}")
 
+    def send_document(self, file_path, caption=""):
+        if not self.enabled:
+            return
+            
+        url = f"https://api.telegram.org/bot{self.token}/sendDocument"
+        payload = {
+            "chat_id": self.chat_id,
+            "caption": caption,
+            "parse_mode": "HTML"
+        }
+        
+        try:
+            with open(file_path, 'rb') as doc:
+                files = {'document': doc}
+                response = requests.post(url, data=payload, files=files, timeout=20)
+                if not response.json().get("ok"):
+                    error_logger.error(f"Telegram document upload failed: {response.text}")
+        except Exception as e:
+            error_logger.error(f"Telegram document send error: {e}")
+
     def notify_startup(self, mode, capital):
         self.send_message(f"🚀 <b>Bot Started in {mode} mode | Capital: ${capital}</b>")
 

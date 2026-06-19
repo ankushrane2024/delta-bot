@@ -585,6 +585,12 @@ class DeltaTradingEngine:
             report_generator.generate_xlsx_report(data, xlsx_file)
             report_generator.save_report_data(data)
             
+            # Send the actual files to Telegram for permanent off-server backup
+            if os.path.exists(pdf_file):
+                notifier.send_document(pdf_file, caption=f"📄 Daily Report PDF ({date_str})")
+            if os.path.exists(xlsx_file):
+                notifier.send_document(xlsx_file, caption=f"📊 Daily Report Excel ({date_str})")
+            
             return True, f"Report for {date_str} generated successfully."
             
         except Exception as e:
