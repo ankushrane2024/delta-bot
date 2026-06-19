@@ -123,6 +123,27 @@
         .chart-wrap {
             position: relative;
             height: 280px;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        .chart-inner {
+            height: 100%;
+            min-width: 100%;
+        }
+        /* Custom scrollbar for charts */
+        .chart-wrap::-webkit-scrollbar {
+            height: 8px;
+        }
+        .chart-wrap::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+        .chart-wrap::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+        .chart-wrap::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         /* ── Trade Cards ──────────────────── */
@@ -216,7 +237,9 @@
         <div class="chart-panel">
             <h2>📈 Equity Curve</h2>
             <div class="chart-wrap">
-                <canvas id="equityChart"></canvas>
+                <div class="chart-inner" id="equityChartInner">
+                    <canvas id="equityChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -226,7 +249,9 @@
         <div class="chart-panel">
             <h2>💰 Per-Trade P&L</h2>
             <div class="chart-wrap">
-                <canvas id="pnlBarChart"></canvas>
+                <div class="chart-inner" id="pnlBarChartInner">
+                    <canvas id="pnlBarChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -288,6 +313,10 @@
                 const eqData = [10000, ...chronoTrades.map(t => t.equity_after || 10000)];
 
                 const eqCtx = document.getElementById('equityChart').getContext('2d');
+                
+                // Dynamic width for scrollable chart
+                const eqReqWidth = Math.max(100, eqData.length * 60); // 60px per point
+                document.getElementById('equityChartInner').style.width = `max(100%, ${eqReqWidth}px)`;
                 
                 // Green/red gradient under the line
                 const eqGradient = eqCtx.createLinearGradient(0, 0, 0, 280);
@@ -353,6 +382,10 @@
                 const barBorders = barData.map(v => v >= 0 ? '#10b981' : '#ef4444');
 
                 const barCtx = document.getElementById('pnlBarChart').getContext('2d');
+                
+                // Dynamic width for scrollable chart
+                const barReqWidth = Math.max(100, barData.length * 60); // 60px per bar
+                document.getElementById('pnlBarChartInner').style.width = `max(100%, ${barReqWidth}px)`;
                 pnlBarChart = new Chart(barCtx, {
                     type: 'bar',
                     data: {
