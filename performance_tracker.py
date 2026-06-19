@@ -29,9 +29,13 @@ class PerformanceTracker:
 
     def _reload(self):
         """Load history from Cloud DB (primary) or local JSON (fallback)."""
+        cloud_error = False
         if db_manager.is_connected():
             cloud_data = db_manager.load_all_data()
-            if cloud_data and "trades" in cloud_data:
+            if cloud_data is None:
+                # Network or SSL error occurred
+                cloud_error = True
+            elif cloud_data and "trades" in cloud_data:
                 self.max_equity = cloud_data.get("max_equity", 0.0)
                 self.trades = cloud_data.get("trades", [])
                 # Also keep local JSON in sync as a backup copy
@@ -44,7 +48,8 @@ class PerformanceTracker:
         self.trades = data.get("trades", [])
         
         # If we loaded from local but cloud is connected, sync up to cloud
-        if db_manager.is_connected() and len(self.trades) > 0:
+        # ONLY IF there was no network error loading from the cloud.
+        if db_manager.is_connected() and len(self.trades) > 0 and not cloud_error:
             app_logger.info("Tracker: Syncing local JSON up to Cloud DB...")
             db_manager.save_all_data({"max_equity": self.max_equity, "trades": self.trades})
 

@@ -12,7 +12,11 @@ import os
 import json
 import requests
 import time
+import urllib3
 from logger import app_logger
+
+# Suppress insecure request warnings since we are disabling SSL verification for jsonblob
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ---------------------------------------------------------------------------
 # Cloud DB Config
@@ -48,14 +52,14 @@ def _get_cloud_url():
 def load_all_data() -> dict:
     """
     Load the entire database from the cloud.
-    Returns: {"max_equity": float, "trades": [dict, ...]}
+    Returns: {"max_equity": float, "trades": [dict, ...]} or None on network error.
     """
     if not _connect():
         return {}
 
     try:
         headers = {'Accept': 'application/json'}
-        res = requests.get(_get_cloud_url(), headers=headers, timeout=10)
+        res = requests.get(_get_cloud_url(), headers=headers, timeout=10, verify=False)
         
         if res.status_code == 200:
             data = res.json()
@@ -63,10 +67,10 @@ def load_all_data() -> dict:
             return data
         else:
             app_logger.error(f"DB: Failed to load from Cloud (HTTP {res.status_code})")
-            return {}
+            return None
     except Exception as e:
         app_logger.error(f"DB: Exception loading from Cloud: {e}")
-        return {}
+        return None
 
 def save_all_data(data: dict) -> bool:
     """
@@ -78,7 +82,7 @@ def save_all_data(data: dict) -> bool:
 
     try:
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-        res = requests.put(_get_cloud_url(), json=data, headers=headers, timeout=10)
+        res = requests.put(_get_cloud_url(), json=data, headers=headers, timeout=10, verify=False)
         
         if res.status_code in [200, 201]:
             app_logger.info(f"DB: Successfully synced to Cloud DB.")
