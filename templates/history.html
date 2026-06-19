@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trade History | Delta Bot</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --bg-dark: #0f172a;
@@ -14,6 +15,8 @@
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
+            --accent: #3b82f6;
+            --border-color: rgba(255,255,255,0.06);
         }
 
         body {
@@ -21,27 +24,27 @@
             background-color: var(--bg-dark);
             color: var(--text-primary);
             margin: 0;
-            padding: 40px 20px;
+            padding: 30px 20px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 24px;
+            gap: 20px;
         }
 
         header {
-            max-width: 1100px;
+            max-width: 1200px;
             width: 100%;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         h1 { font-weight: 800; margin: 0; display: flex; align-items: center; gap: 15px;}
         
         .tab-nav {
-            max-width: 1100px;
+            max-width: 1200px;
             width: 100%;
             display: flex;
             gap: 4px;
@@ -70,26 +73,75 @@
         }
 
         .container {
-            max-width: 1100px;
+            max-width: 1200px;
             width: 100%;
             display: flex;
             flex-direction: column;
             gap: 20px;
         }
 
+        /* ── Summary Stats Row ────────────── */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+        .summary-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+        .summary-card .label {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .summary-card .value {
+            font-size: 1.4rem;
+            font-weight: 800;
+        }
+
+        /* ── Chart Panels ─────────────────── */
+        .chart-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px 24px;
+        }
+        .chart-panel h2 {
+            margin: 0 0 16px 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chart-wrap {
+            position: relative;
+            height: 280px;
+        }
+
+        /* ── Trade Cards ──────────────────── */
         .trade-card {
             background: var(--panel-bg);
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 20px;
             display: flex;
             flex-direction: column;
             gap: 15px;
+            transition: border-color 0.2s;
         }
+        .trade-card:hover { border-color: rgba(255,255,255,0.15); }
         
         .trade-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             border-bottom: 1px solid rgba(255,255,255,0.05);
             padding-bottom: 15px;
         }
@@ -98,6 +150,9 @@
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 15px;
+        }
+        @media (max-width: 700px) {
+            .trade-grid { grid-template-columns: repeat(2, 1fr); }
         }
         
         .stat-box {
@@ -108,13 +163,33 @@
             text-align: center;
         }
         
-        .stat-label { font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 5px; }
+        .stat-label { font-size: 0.78rem; color: var(--text-secondary); display: block; margin-bottom: 5px; }
         .stat-val { font-size: 1.1rem; font-weight: 700; }
         
         .pnl-pos { color: var(--success); }
         .pnl-neg { color: var(--danger); }
         
-        .timestamp { font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; display: block; }
+        .timestamp { font-size: 0.73rem; color: var(--text-secondary); margin-top: 4px; display: block; }
+
+        .trades-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 10px 0 0 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .badge-win { background: rgba(16,185,129,0.15); color: var(--success); }
+        .badge-loss { background: rgba(239,68,68,0.15); color: var(--danger); }
     </style>
 </head>
 <body>
@@ -129,68 +204,255 @@
         <button class="tab-btn active">📓 Trade History</button>
     </nav>
 
-    <div class="container" id="history-container">
-        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Loading Trade History...</div>
+    <!-- ═══ Summary Stats ═══ -->
+    <div class="container">
+        <div class="summary-row" id="summary-row">
+            <!-- Filled by JS -->
+        </div>
+    </div>
+
+    <!-- ═══ Equity Curve Chart ═══ -->
+    <div class="container">
+        <div class="chart-panel">
+            <h2>📈 Equity Curve</h2>
+            <div class="chart-wrap">
+                <canvas id="equityChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Daily P&L Bar Chart ═══ -->
+    <div class="container">
+        <div class="chart-panel">
+            <h2>💰 Per-Trade P&L</h2>
+            <div class="chart-wrap">
+                <canvas id="pnlBarChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Trade Cards ═══ -->
+    <div class="container">
+        <div class="trades-title">📋 Individual Trades</div>
+        <div id="history-container">
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Loading Trade History...</div>
+        </div>
     </div>
 
     <script>
+        let equityChart = null;
+        let pnlBarChart = null;
+
         async function loadHistory() {
             try {
                 const response = await fetch('/api/history');
                 const data = await response.json();
-                const container = document.getElementById('history-container');
                 
                 if (!data.trades || data.trades.length === 0) {
-                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No trades recorded yet.</div>';
+                    document.getElementById('history-container').innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No trades recorded yet.</div>';
                     return;
                 }
+
+                // Sort trades chronologically (oldest first) for charts
+                const chronoTrades = [...data.trades].sort((a, b) => (a.entry_time || a.date || '').localeCompare(b.entry_time || b.date || ''));
+
+                // ══════════════════════════════════════════════
+                // SUMMARY STATS
+                // ══════════════════════════════════════════════
+                const totalTrades = chronoTrades.length;
+                const wins = chronoTrades.filter(t => (t.pnl + (t.hedge_pnl || 0)) > 0).length;
+                const losses = chronoTrades.filter(t => (t.pnl + (t.hedge_pnl || 0)) < 0).length;
+                const winRate = totalTrades > 0 ? (wins / totalTrades * 100).toFixed(0) : '0';
+                const netPnl = chronoTrades.reduce((s, t) => s + t.pnl + (t.hedge_pnl || 0), 0);
+                const latestEquity = chronoTrades[chronoTrades.length - 1].equity_after || 10000;
+                const maxEquity = Math.max(...chronoTrades.map(t => t.equity_after || 10000));
+                const drawdown = maxEquity > 0 ? ((maxEquity - latestEquity) / maxEquity * 100).toFixed(2) : '0.00';
+                const avgWin = wins > 0 ? (chronoTrades.filter(t => t.pnl > 0).reduce((s, t) => s + t.pnl, 0) / wins).toFixed(2) : '0.00';
+                const avgLoss = losses > 0 ? (chronoTrades.filter(t => t.pnl < 0).reduce((s, t) => s + t.pnl, 0) / losses).toFixed(2) : '0.00';
+                const profitFactor = losses > 0 ? Math.abs(chronoTrades.filter(t => t.pnl > 0).reduce((s, t) => s + t.pnl, 0) / chronoTrades.filter(t => t.pnl < 0).reduce((s, t) => s + t.pnl, 0)).toFixed(2) : '∞';
+
+                document.getElementById('summary-row').innerHTML = `
+                    <div class="summary-card"><div class="label">Total Trades</div><div class="value" style="color:#fff;">${totalTrades}</div></div>
+                    <div class="summary-card"><div class="label">Wins / Losses</div><div class="value"><span class="pnl-pos">${wins}</span><span style="color:var(--text-secondary);"> / </span><span class="pnl-neg">${losses}</span></div></div>
+                    <div class="summary-card"><div class="label">Win Rate</div><div class="value" style="color:${parseFloat(winRate) >= 50 ? 'var(--success)' : 'var(--danger)'};">${winRate}%</div></div>
+                    <div class="summary-card"><div class="label">Net P&L</div><div class="value ${netPnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${netPnl >= 0 ? '+' : ''}$${netPnl.toFixed(2)}</div></div>
+                    <div class="summary-card"><div class="label">Equity</div><div class="value" style="color:var(--accent);">$${latestEquity.toFixed(2)}</div></div>
+                    <div class="summary-card"><div class="label">Max Drawdown</div><div class="value pnl-neg">${drawdown}%</div></div>
+                    <div class="summary-card"><div class="label">Profit Factor</div><div class="value" style="color:var(--warning);">${profitFactor}</div></div>
+                `;
+
+                // ══════════════════════════════════════════════
+                // EQUITY CURVE CHART
+                // ══════════════════════════════════════════════
+                const eqLabels = ['Start', ...chronoTrades.map(t => t.date || t.entry_time?.substring(0,10) || '?')];
+                const eqData = [10000, ...chronoTrades.map(t => t.equity_after || 10000)];
+
+                const eqCtx = document.getElementById('equityChart').getContext('2d');
                 
-                // Sort trades by date descending (newest first)
-                const sortedTrades = data.trades.reverse();
+                // Green/red gradient under the line
+                const eqGradient = eqCtx.createLinearGradient(0, 0, 0, 280);
+                eqGradient.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
+                eqGradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+                equityChart = new Chart(eqCtx, {
+                    type: 'line',
+                    data: {
+                        labels: eqLabels,
+                        datasets: [{
+                            label: 'Equity ($)',
+                            data: eqData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: eqGradient,
+                            fill: true,
+                            tension: 0.3,
+                            pointBackgroundColor: eqData.map((v, i) => i === 0 ? '#fff' : (v >= (eqData[i-1] || 10000) ? '#10b981' : '#ef4444')),
+                            pointBorderColor: '#3b82f6',
+                            pointRadius: eqData.length > 30 ? 2 : 5,
+                            pointHoverRadius: 7,
+                            borderWidth: 2.5
+                        }, {
+                            label: 'Starting Capital',
+                            data: eqLabels.map(() => 10000),
+                            borderColor: 'rgba(245, 158, 11, 0.5)',
+                            borderDash: [6, 4],
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: true, labels: { color: '#94a3b8', font: { size: 11 } } },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleColor: '#f8fafc',
+                                bodyColor: '#e2e8f0',
+                                borderColor: '#334155',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: ctx => `Equity: $${ctx.parsed.y.toFixed(2)}`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#64748b', maxRotation: 45, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                            y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString(), font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                        }
+                    }
+                });
+
+                // ══════════════════════════════════════════════
+                // PER-TRADE P&L BAR CHART
+                // ══════════════════════════════════════════════
+                const barLabels = chronoTrades.map(t => t.date || '?');
+                const barData = chronoTrades.map(t => t.pnl + (t.hedge_pnl || 0));
+                const barColors = barData.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(239, 68, 68, 0.85)');
+                const barBorders = barData.map(v => v >= 0 ? '#10b981' : '#ef4444');
+
+                const barCtx = document.getElementById('pnlBarChart').getContext('2d');
+                pnlBarChart = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: barLabels,
+                        datasets: [{
+                            label: 'Trade P&L ($)',
+                            data: barData,
+                            backgroundColor: barColors,
+                            borderColor: barBorders,
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleColor: '#f8fafc',
+                                bodyColor: '#e2e8f0',
+                                borderColor: '#334155',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: ctx => `P&L: $${ctx.parsed.y.toFixed(2)}`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#64748b', maxRotation: 45, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                            y: { ticks: { color: '#64748b', callback: v => '$' + v, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                        }
+                    }
+                });
+
+                // ══════════════════════════════════════════════
+                // TRADE CARDS (newest first)
+                // ══════════════════════════════════════════════
+                const sortedTrades = [...chronoTrades].reverse();
+                const container = document.getElementById('history-container');
                 
-                container.innerHTML = sortedTrades.map(trade => {
-                    const pnlClass = trade.pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
+                container.innerHTML = sortedTrades.map((trade, idx) => {
+                    const totalPnl = trade.pnl + (trade.hedge_pnl || 0);
+                    const pnlClass = totalPnl >= 0 ? 'pnl-pos' : 'pnl-neg';
+                    const badge = totalPnl >= 0 ? '<span class="badge badge-win">WIN</span>' : '<span class="badge badge-loss">LOSS</span>';
                     const maxPnl = ((trade.max_pnl_pct || 0) * 100).toFixed(2);
                     const minPnl = ((trade.min_pnl_pct || 0) * 100).toFixed(2);
                     
                     const maxPnlTimeStr = trade.max_pnl_time ? new Date(trade.max_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';
                     const minPnlTimeStr = trade.min_pnl_time ? new Date(trade.min_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';
                     
+                    const entryTimeShort = trade.entry_time ? new Date(trade.entry_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : '—';
+                    const exitTimeShort = trade.exit_time ? new Date(trade.exit_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : '—';
+
+                    const hedgePnl = trade.hedge_pnl || 0;
+                    const hedgeRow = hedgePnl !== 0 ? `
+                        <div class="stat-box" style="border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.05);">
+                            <span class="stat-label" style="color: #a78bfa;">Hedge P&L</span>
+                            <span class="stat-val" style="color: ${hedgePnl >= 0 ? 'var(--success)' : 'var(--danger)'};">${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}</span>
+                        </div>` : '';
+
                     return `
                         <div class="trade-card">
                             <div class="trade-header">
                                 <div>
-                                    <strong style="font-size: 1.1rem;">${trade.date}</strong>
-                                    <span style="color: var(--text-secondary); margin-left: 10px; font-size: 0.9rem;">${trade.entry_time} → ${trade.exit_time || 'Closed'}</span>
+                                    <strong style="font-size: 1.1rem;">#${sortedTrades.length - idx} — ${trade.date}</strong>
+                                    <span style="color: var(--text-secondary); margin-left: 10px; font-size: 0.85rem;">${entryTimeShort} → ${exitTimeShort}</span>
+                                    ${badge}
                                 </div>
-                                <div style="color: var(--text-secondary); font-size: 0.9rem;">
-                                    Reason: <strong style="color: #fff;">${trade.exit_reason || 'Manual'}</strong>
+                                <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                                    ${trade.exit_reason || 'Manual'}
                                 </div>
                             </div>
                             
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: -5px;">
-                                Symbols: <strong>${trade.call_symbol || 'N/A'}</strong> / <strong>${trade.put_symbol || 'N/A'}</strong>
+                            <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: -5px;">
+                                📞 <strong>${trade.call_symbol || 'N/A'}</strong> &nbsp;|&nbsp; 📉 <strong>${trade.put_symbol || 'N/A'}</strong>
                             </div>
                             
                             <div class="trade-grid">
                                 <div class="stat-box">
-                                    <span class="stat-label">Net P&L (USD)</span>
-                                    <span class="stat-val ${pnlClass}">${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)}</span>
+                                    <span class="stat-label">Net P&L</span>
+                                    <span class="stat-val ${pnlClass}">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span>
                                 </div>
                                 <div class="stat-box">
-                                    <span class="stat-label">Premium Collected</span>
-                                    <span class="stat-val">$${trade.premium_collected.toFixed(2)}</span>
+                                    <span class="stat-label">Premium</span>
+                                    <span class="stat-val">$${(trade.premium_collected || 0).toFixed(2)}</span>
                                 </div>
                                 <div class="stat-box" style="border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05);">
-                                    <span class="stat-label" style="color: var(--success);">Max Profit % (Peak)</span>
+                                    <span class="stat-label" style="color: var(--success);">Peak Profit</span>
                                     <span class="stat-val pnl-pos">+${maxPnl}%</span>
                                     <span class="timestamp">@ ${maxPnlTimeStr}</span>
                                 </div>
                                 <div class="stat-box" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05);">
-                                    <span class="stat-label" style="color: var(--danger);">Max Drawdown %</span>
+                                    <span class="stat-label" style="color: var(--danger);">Max Drawdown</span>
                                     <span class="stat-val pnl-neg">${minPnl}%</span>
                                     <span class="timestamp">@ ${minPnlTimeStr}</span>
                                 </div>
+                                ${hedgeRow}
                             </div>
                         </div>
                     `;
