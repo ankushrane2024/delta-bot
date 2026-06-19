@@ -854,26 +854,39 @@
             </div>
 
             <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-                    <div>
-                        <div style="font-weight: 700; font-size: 1.05rem; color: #f8fafc;">Manual Lot Size Override</div>
-                        <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 4px;">Currently active: <strong id="active-lot-display" style="color: #c084fc; font-size:1.1rem;">— lots</strong> <span id="active-lot-perleg"></span></div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 16px;">
+                    
+                    <!-- Lot Size Box -->
+                    <div style="background: rgba(0,0,0,0.15); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 10px; padding: 18px; box-shadow: inset 0 0 10px rgba(168, 85, 247, 0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                            <div>
+                                <div style="font-weight: 700; font-size: 1.05rem; color: #f8fafc; margin-bottom: 4px;">Manual Lot Size Override</div>
+                                <div style="font-size: 0.9rem; color: #94a3b8;">
+                                    Currently active: <strong id="active-lot-display" style="color: #c084fc; font-size: 1.15rem;">— lots</strong> <span id="active-lot-perleg" style="opacity: 0.8; font-size: 0.85rem;"></span>
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                                <div style="display: flex; gap: 8px;">
+                                    <input id="lotSizeInput" type="number" min="1" max="10000" placeholder="e.g. 200" class="input-modern" style="width: 110px; text-align: center; font-weight: bold;" />
+                                    <button id="saveLotSizeBtn" onclick="saveLotSize()" class="btn-embossed btn-violet" style="padding: 8px 20px; font-size: 0.95rem;">Save</button>
+                                </div>
+                                <div id="lotSizeFeedback" style="font-size: 0.8rem; font-weight: 600; text-align: right; margin-top: 6px; min-height: 16px;"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                        <input id="lotSizeInput" type="number" min="1" max="10000" placeholder="e.g. 200" class="input-modern" style="width: 140px;" />
-                        <button id="saveLotSizeBtn" onclick="saveLotSize()" class="btn-embossed btn-violet" style="padding: 10px 24px;">Save Override</button>
+
+                    <!-- Stats Box -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 18px;">
+                        <div style="display: flex; flex-direction: column; justify-content: center; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 16px;">
+                            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 700; margin-bottom: 8px;">Consecutive Losses</div>
+                            <div id="consecutive-losses-val" style="font-weight: 800; color: var(--danger); font-size: 1.4rem;">0</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; justify-content: center; padding-left: 8px;">
+                            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 700; margin-bottom: 8px;">Sizing Cooldown</div>
+                            <div id="sizing-cooldown-val" style="font-weight: 800; color: #f8fafc; font-size: 1.1rem;">No Cooldown</div>
+                        </div>
                     </div>
-                    <div id="lotSizeFeedback" style="font-size: 0.85rem; font-weight: 600; margin-top: 8px; min-height: 20px;"></div>
-                </div>
-            </div>
-            <div style="display: flex; gap: 20px; margin-top: 20px;">
-                <div>
-                    <div class="stat-label">Consecutive Losses</div>
-                    <div id="consecutive-losses-val" style="font-weight: 600; color: var(--danger); font-size: 1.1rem;">0</div>
-                </div>
-                <div>
-                    <div class="stat-label">Sizing Cooldown</div>
-                    <div id="sizing-cooldown-val" style="font-weight: 600; color: var(--text-secondary); font-size: 1.1rem;">No Cooldown</div>
+
                 </div>
             </div>
         </div>
