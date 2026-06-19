@@ -789,23 +789,7 @@
             </div>
         </div>
 
-        <!-- Section 4: Live Trade Rules Monitor -->
-        <div class="glass-panel" id="rule-compliance-panel">
-            <h2>⚖️ Live Trade Rules Monitor</h2>
-            <div style="margin-top: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-                    <div style="font-size: 0.95rem; color: #94a3b8;">Real-time monitoring of all entry conditions.</div>
-                    <div id="compliance-badge" style="font-weight: 800; font-size: 1.1rem; padding: 8px 16px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--success);">
-                        100% Compliant
-                    </div>
-                </div>
-                <div id="rules-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
-                    <!-- Populated by JS -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Section 5: Controls Panel -->
+        <!-- Section 4: Controls Panel (Moved to top) -->
         <div class="glass-panel" style="border: 1px solid rgba(168, 85, 247, 0.2); background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(168, 85, 247, 0.05) 100%);">
             <h2>⚙️ Manual Controls</h2>
             
@@ -887,6 +871,22 @@
                         </div>
                     </div>
 
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Live Trade Rules Monitor (Moved below Controls) -->
+        <div class="glass-panel" id="rule-compliance-panel">
+            <h2>⚖️ Live Trade Rules Monitor</h2>
+            <div style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <div style="font-size: 0.95rem; color: #94a3b8;">Real-time monitoring of all entry conditions.</div>
+                    <div id="compliance-badge" style="font-weight: 800; font-size: 1.1rem; padding: 8px 16px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--success);">
+                        100% Compliant
+                    </div>
+                </div>
+                <div id="rules-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+                    <!-- Populated by JS -->
                 </div>
             </div>
         </div>
