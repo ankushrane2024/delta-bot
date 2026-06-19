@@ -314,9 +314,10 @@
 
                 const eqCtx = document.getElementById('equityChart').getContext('2d');
                 
-                // Dynamic width for scrollable chart - increased spacing to trigger scrollbar
-                const eqReqWidth = Math.max(100, eqData.length * 120); // 120px per point to make it spread out beautifully
-                document.getElementById('equityChartInner').style.width = `max(100%, ${eqReqWidth}px)`;
+                // Dynamic width for scrollable chart - use minWidth to guarantee it pushes the boundary
+                const eqReqWidth = Math.max(1200, eqData.length * 150); // Huge width to ensure it overflows
+                document.getElementById('equityChartInner').style.minWidth = eqReqWidth + 'px';
+                document.getElementById('equityChartInner').style.position = 'relative';
                 
                 // Green/red gradient under the line
                 const eqGradient = eqCtx.createLinearGradient(0, 0, 0, 280);
@@ -383,9 +384,10 @@
 
                 const barCtx = document.getElementById('pnlBarChart').getContext('2d');
                 
-                // Dynamic width for scrollable chart - increased spacing
-                const barReqWidth = Math.max(100, barData.length * 120); // 120px per bar
-                document.getElementById('pnlBarChartInner').style.width = `max(100%, ${barReqWidth}px)`;
+                // Dynamic width for scrollable chart
+                const barReqWidth = Math.max(1200, barData.length * 150);
+                document.getElementById('pnlBarChartInner').style.minWidth = barReqWidth + 'px';
+                document.getElementById('pnlBarChartInner').style.position = 'relative';
                 pnlBarChart = new Chart(barCtx, {
                     type: 'bar',
                     data: {
