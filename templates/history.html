@@ -314,8 +314,8 @@
 
                 const eqCtx = document.getElementById('equityChart').getContext('2d');
                 
-                // Dynamic width for scrollable chart
-                const eqReqWidth = Math.max(100, eqData.length * 60); // 60px per point
+                // Dynamic width for scrollable chart - increased spacing to trigger scrollbar
+                const eqReqWidth = Math.max(100, eqData.length * 120); // 120px per point to make it spread out beautifully
                 document.getElementById('equityChartInner').style.width = `max(100%, ${eqReqWidth}px)`;
                 
                 // Green/red gradient under the line
@@ -383,8 +383,8 @@
 
                 const barCtx = document.getElementById('pnlBarChart').getContext('2d');
                 
-                // Dynamic width for scrollable chart
-                const barReqWidth = Math.max(100, barData.length * 60); // 60px per bar
+                // Dynamic width for scrollable chart - increased spacing
+                const barReqWidth = Math.max(100, barData.length * 120); // 120px per bar
                 document.getElementById('pnlBarChartInner').style.width = `max(100%, ${barReqWidth}px)`;
                 pnlBarChart = new Chart(barCtx, {
                     type: 'bar',
