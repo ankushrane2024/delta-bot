@@ -1057,6 +1057,36 @@ class DeltaTradingEngine:
             except Exception as rep_err:
                 app_logger.error(f"Engine: Automatic report post-close failed: {rep_err}")
 
+            # Generate P&L chart screenshot and send to Telegram as permanent record
+            try:
+                import chart_generator
+                current_trade_info = {
+                    'pnl': profit,
+                    'hedge_pnl': hedge_pnl,
+                    'exit_reason': reason,
+                    'call_symbol': c_syms,
+                    'put_symbol': p_syms,
+                }
+                chart_path = chart_generator.generate_trade_close_chart(
+                    trades=self.performance_tracker.trades,
+                    current_trade=current_trade_info
+                )
+                if chart_path and os.path.exists(chart_path):
+                    from utils import get_ist_now
+                    ist_now = get_ist_now()
+                    date_str = ist_now.strftime('%Y-%m-%d')
+                    pnl_sign = '+' if profit >= 0 else ''
+                    caption = (
+                        f"📊 <b>Trade Close Chart — {date_str}</b>\n"
+                        f"Exit: {reason}\n"
+                        f"P&L: {pnl_sign}${profit:.2f} | Hedge: ${hedge_pnl:.2f}\n"
+                        f"Equity: ${self.risk_manager.current_equity:.2f}"
+                    )
+                    notifier.send_document(chart_path, caption=caption)
+                    app_logger.info(f"Engine: Trade close chart sent to Telegram: {chart_path}")
+            except Exception as chart_err:
+                app_logger.error(f"Engine: Chart generation/send failed: {chart_err}")
+
     def _apply_dynamic_sizing(self, base_lots):
         """Calculates the dynamic size multiplier based on DVOL and money management (Section 4)."""
         multiplier = 1.0
