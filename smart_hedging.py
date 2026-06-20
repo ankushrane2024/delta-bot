@@ -225,24 +225,34 @@ class SmartHedgingManager:
 
     def _calculate_hedge_size(self, bleed_usd, positions, size_factor=0.50):
         """
-        Calculate how much BTC to hedge based on the current USD loss.
+        Calculate how much BTC to hedge based on the true directional risk (Net Delta).
         
         The idea: if we're losing $X from options, we need a BTC position that
-        will gain ~$X if BTC continues moving in the same direction by the same amount.
-        
-        We use the total option exposure as a baseline and scale by size_factor.
+        will perfectly offset that loss. We achieve this by calculating the
+        absolute Net Delta of the short option legs, which represents our real BTC exposure.
         """
-        total_size = sum(data.get('size', 0) for data in positions.values())
-        exposure_btc = total_size * 0.001  # Total BTC exposure
+        net_delta_lots = 0.0
+        for data in positions.values():
+            # For short options, delta is inverted. Fallback to 0.15 if missing.
+            d = data.get('last_known_delta', 0.15)
+            net_delta_lots -= d * data.get('size', 0)
+            
+        # Total directional exposure in BTC
+        exposure_btc = abs(net_delta_lots) * 0.001
         
-        # Size the hedge proportional to the exposure, scaled by factor
+        # If exposure is somehow zero, fallback to a small default based on size
+        if exposure_btc < 0.001:
+            total_size = sum(data.get('size', 0) for data in positions.values())
+            exposure_btc = (total_size * 0.001) * 0.15 # fallback 0.15 average delta
+
+        # Size the hedge proportional to the delta exposure, scaled by factor
         hedge_btc = exposure_btc * size_factor
         
         # Minimum hedge size: at least 0.001 BTC
         hedge_btc = max(0.001, hedge_btc)
         
         app_logger.info(
-            f"Hedge: Sizing — exposure={exposure_btc:.4f} BTC | "
+            f"Hedge: Sizing — net_delta_exposure={exposure_btc:.4f} BTC | "
             f"factor={size_factor:.0%} | hedge_size={hedge_btc:.4f} BTC"
         )
         return hedge_btc
