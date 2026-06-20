@@ -21,12 +21,11 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ---------------------------------------------------------------------------
 # Cloud DB Config
 # ---------------------------------------------------------------------------
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloud_db_config.json")
-_blob_id = None
+_blob_id = "019eea90-751e-7ded-b0d0-73c302cf5a5c"  # HARDCODED PRO BACKUP DB
 _connected = False
 
 def _connect():
-    """Load the Blob ID from environment variable (primary) or config file (fallback)."""
+    """Load the Blob ID from environment variable (primary) or hardcoded fallback."""
     global _blob_id, _connected
     
     if _connected:
@@ -40,18 +39,11 @@ def _connect():
         app_logger.info("DB: Connected to Cloud DB via JSONBLOB_ID env var.")
         return True
 
-    # FALLBACK: Load from local config file
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, 'r') as f:
-                config = json.load(f)
-                _blob_id = config.get("blob_id")
-                if _blob_id:
-                    _connected = True
-                    app_logger.info("DB: Connected to Cloud DB via local config file.")
-                    return True
-        except Exception as e:
-            app_logger.error(f"DB: Failed to load cloud config: {e}")
+    # FALLBACK: Use the hardcoded Blob ID
+    if _blob_id:
+        _connected = True
+        app_logger.info("DB: Connected to Cloud DB via permanent hardcoded ID.")
+        return True
             
     app_logger.warning("DB: Cloud DB not configured. Using local JSON only.")
     return False
