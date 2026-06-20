@@ -37,18 +37,13 @@ _keep_alive_started = False
 
 
 def _get_active_blob_id() -> str:
-    """Returns the active blob ID: env var > cache file > hardcoded fallback."""
+    """Returns the active blob ID: env var > hardcoded fallback.
+    NOTE: We do NOT use a cache file anymore — it caused stale old IDs to
+    override the correct hardcoded one after Render deploys.
+    """
     env_id = os.environ.get("JSONBLOB_ID")
     if env_id:
         return env_id
-    if os.path.exists(_BLOB_ID_FILE):
-        try:
-            with open(_BLOB_ID_FILE, 'r') as f:
-                cached = f.read().strip()
-                if cached:
-                    return cached
-        except Exception:
-            pass
     return _FALLBACK_BLOB_ID
 
 
