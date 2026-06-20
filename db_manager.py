@@ -26,12 +26,21 @@ _blob_id = None
 _connected = False
 
 def _connect():
-    """Load the Blob ID from config."""
+    """Load the Blob ID from environment variable (primary) or config file (fallback)."""
     global _blob_id, _connected
     
     if _connected:
         return True
 
+    # PRIMARY: Load from environment variable (survives Render restarts)
+    env_blob_id = os.environ.get("JSONBLOB_ID")
+    if env_blob_id:
+        _blob_id = env_blob_id
+        _connected = True
+        app_logger.info("DB: Connected to Cloud DB via JSONBLOB_ID env var.")
+        return True
+
+    # FALLBACK: Load from local config file
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r') as f:
@@ -39,6 +48,7 @@ def _connect():
                 _blob_id = config.get("blob_id")
                 if _blob_id:
                     _connected = True
+                    app_logger.info("DB: Connected to Cloud DB via local config file.")
                     return True
         except Exception as e:
             app_logger.error(f"DB: Failed to load cloud config: {e}")
