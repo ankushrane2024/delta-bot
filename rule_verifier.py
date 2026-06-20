@@ -11,9 +11,9 @@ def verify_all_rules():
         },
         {
             "id": 2,
-            "name": "Strike Selection (Min 5 OTM + $90 Premium)",
-            "expected": "Min 5 strikes OTM, Premium >= $90, Max 20% Premium Skew, Net Delta <= 0.10",
-            "check": config.MIN_OTM_STRIKES == 5 and config.NET_DELTA_ENTRY_LIMIT == 0.10
+            "name": "Strike Selection (IV-Based + 5 OTM)",
+            "expected": "DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10",
+            "check": config.MIN_OTM_STRIKES == 5 and config.PUT_SKEW_CAP == 1.30 and config.NET_DELTA_ENTRY_LIMIT == 0.10
         },
         {
             "id": 3,
