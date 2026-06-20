@@ -37,13 +37,31 @@ _keep_alive_started = False
 
 
 def _get_active_blob_id() -> str:
-    """Returns the active blob ID: env var > hardcoded fallback.
-    NOTE: We do NOT use a cache file anymore — it caused stale old IDs to
-    override the correct hardcoded one after Render deploys.
+    """Returns the active blob ID: validated env var > hardcoded fallback.
+
+    IMPORTANT: If JSONBLOB_ID env var is set but points to an old/empty blob
+    (from a previous session), we fall back to the hardcoded blob ID.
+    This prevents stale Render env vars from breaking trade history.
     """
     env_id = os.environ.get("JSONBLOB_ID")
-    if env_id:
-        return env_id
+    if env_id and env_id != _FALLBACK_BLOB_ID:
+        # Quick sanity check — verify the env var blob actually has our data
+        try:
+            test_url = f"https://jsonblob.com/api/jsonBlob/{env_id}"
+            test_res = requests.get(test_url, headers={'Accept': 'application/json'},
+                                    timeout=5, verify=False)
+            if test_res.status_code == 200:
+                test_data = test_res.json()
+                if len(test_data.get("trades", [])) > 0:
+                    app_logger.info(f"DB: Using JSONBLOB_ID env var blob (has {len(test_data['trades'])} trades).")
+                    return env_id
+                else:
+                    app_logger.warning(f"DB: JSONBLOB_ID env var blob has 0 trades — falling back to hardcoded blob.")
+            else:
+                app_logger.warning(f"DB: JSONBLOB_ID env var blob returned HTTP {test_res.status_code} — falling back to hardcoded blob.")
+        except Exception as e:
+            app_logger.warning(f"DB: Could not validate JSONBLOB_ID env var: {e} — falling back to hardcoded blob.")
+
     return _FALLBACK_BLOB_ID
 
 
