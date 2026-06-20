@@ -547,11 +547,10 @@
                 // ══════════════════════════════════════════════
                 const sortedTrades = [...chronoTrades].reverse();
                 const container = document.getElementById('history-container');
-                // Cache trades for the floating chart modal (sorted newest-first, same as display)
                 cacheTradesForModal(sortedTrades);
                 
                 container.innerHTML = sortedTrades.map((trade, idx) => {
-                    const totalPnl = trade.pnl + (trade.hedge_pnl || 0);
+                    const totalPnl = trade.pnl || 0;
                     const pnlClass = totalPnl >= 0 ? 'pnl-pos' : 'pnl-neg';
                     const badge = totalPnl >= 0 ? '<span class="badge badge-win">WIN</span>' : '<span class="badge badge-loss">LOSS</span>';
                     const maxPnl = ((trade.max_pnl_pct || 0) * 100).toFixed(2);
@@ -673,33 +672,35 @@
 
             const chartData = trade.chart_data;
             const labels   = chartData.map(p => p.t);
-            const optPnl   = chartData.map(p => p.pnl);
-            const hedgePnl = chartData.map(p => p.hedge || 0);
-            const totalPnl = chartData.map(p => p.total != null ? p.total : p.pnl + (p.hedge || 0));
+            const optPnl   = chartData.map(p => p.pnl);          // Options-only PnL line
+            const totalPnl = chartData.map(p => p.total != null ? p.total : (p.pnl + (p.hedge || 0)));  // Net total line
 
-            // Set title
-            const totalNet = trade.pnl + (trade.hedge_pnl || 0);
-            const sign = totalNet >= 0 ? '+' : '';
+            // trade.pnl IS the net PnL. hedge_pnl is the hedge component. Options = net - hedge.
+            const netPnl     = trade.pnl || 0;
+            const hedgePnl   = trade.hedge_pnl || 0;
+            const optionsOnly = netPnl - hedgePnl;
+            const sign = netPnl >= 0 ? '+' : '';
+
             document.getElementById('chart-modal-title').textContent =
-                `📊 Trade #${_allTradesCache.length - idx} — ${trade.date}  |  Net: ${sign}$${totalNet.toFixed(2)}`;
+                `📊 Trade #${_allTradesCache.length - idx} — ${trade.date}  |  Net: ${sign}$${netPnl.toFixed(2)}`;
 
             // Stats bar
             const pct = trade.pct_profit_captured != null
                 ? trade.pct_profit_captured.toFixed(2)
-                : (trade.premium_collected ? (trade.pnl / trade.premium_collected * 100).toFixed(2) : '0.00');
+                : (trade.premium_collected ? (netPnl / trade.premium_collected * 100).toFixed(2) : '0.00');
 
             document.getElementById('chart-modal-stats').innerHTML = `
                 <div class="modal-stat">
                     <div class="ms-label">Options P&L</div>
-                    <div class="ms-val" style="color:${trade.pnl>=0?'#10b981':'#ef4444'}">${trade.pnl>=0?'+':''}$${(trade.pnl||0).toFixed(2)}</div>
+                    <div class="ms-val" style="color:${optionsOnly>=0?'#10b981':'#ef4444'}">${optionsOnly>=0?'+':''}$${optionsOnly.toFixed(2)}</div>
                 </div>
                 <div class="modal-stat">
                     <div class="ms-label">Hedge P&L</div>
-                    <div class="ms-val" style="color:${(trade.hedge_pnl||0)>=0?'#a78bfa':'#ef4444'}">${(trade.hedge_pnl||0)>=0?'+':''}$${(trade.hedge_pnl||0).toFixed(2)}</div>
+                    <div class="ms-val" style="color:${hedgePnl>=0?'#38bdf8':'#ef4444'}">${hedgePnl>=0?'+':''}$${hedgePnl.toFixed(2)}</div>
                 </div>
                 <div class="modal-stat">
                     <div class="ms-label">Net P&L</div>
-                    <div class="ms-val" style="color:${totalNet>=0?'#10b981':'#ef4444'}">${sign}$${totalNet.toFixed(2)}</div>
+                    <div class="ms-val" style="color:${netPnl>=0?'#10b981':'#ef4444'}">${sign}$${netPnl.toFixed(2)}</div>
                 </div>
                 <div class="modal-stat">
                     <div class="ms-label">% Profit Captured</div>
@@ -715,6 +716,17 @@
             if (_modalChart) { _modalChart.destroy(); _modalChart = null; }
 
             const ctx = document.getElementById('chart-modal-canvas').getContext('2d');
+
+            // ── Exact same gradient as Live Dashboard ──────────────────────
+            const greenGrad = ctx.createLinearGradient(0, 0, 0, 280);
+            greenGrad.addColorStop(0,   'rgba(16, 185, 129, 0.35)');
+            greenGrad.addColorStop(0.5, 'rgba(16, 185, 129, 0.10)');
+            greenGrad.addColorStop(1,   'rgba(16, 185, 129, 0.0)');
+            const redGrad = ctx.createLinearGradient(0, 0, 0, 280);
+            redGrad.addColorStop(0,   'rgba(239, 68, 68, 0.0)');
+            redGrad.addColorStop(0.5, 'rgba(239, 68, 68, 0.10)');
+            redGrad.addColorStop(1,   'rgba(239, 68, 68, 0.35)');
+
             _modalChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -723,66 +735,71 @@
                         {
                             label: 'Options P&L ($)',
                             data: optPnl,
-                            borderColor: '#ef4444',
-                            backgroundColor: 'rgba(239,68,68,0.1)',
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            fill: true,
-                            tension: 0.3
-                        },
-                        {
-                            label: 'Hedge P&L ($)',
-                            data: hedgePnl,
-                            borderColor: '#a78bfa',
-                            backgroundColor: 'rgba(167,139,250,0.08)',
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            fill: false,
-                            tension: 0.3
-                        },
-                        {
-                            label: 'Net Total ($)',
-                            data: totalPnl,
                             borderColor: '#10b981',
-                            backgroundColor: 'rgba(16,185,129,0.12)',
                             borderWidth: 2.5,
-                            pointRadius: 4,
-                            fill: true,
-                            tension: 0.3
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.35,
+                            fill: {
+                                target: { value: 0 },
+                                above: greenGrad,
+                                below: redGrad
+                            }
+                        },
+                        {
+                            label: 'Total P&L incl. Hedge ($)',
+                            data: totalPnl,
+                            borderColor: '#38bdf8',
+                            borderWidth: 1.5,
+                            borderDash: [5, 3],
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.35,
+                            fill: false
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 0 },
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: {
-                            labels: { color: '#94a3b8', font: { size: 12, weight: '600' } }
-                        },
+                        legend: { display: false },
                         tooltip: {
-                            backgroundColor: '#1e293b',
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
                             borderColor: 'rgba(255,255,255,0.1)',
                             borderWidth: 1,
-                            titleColor: '#f8fafc',
-                            bodyColor: '#94a3b8',
+                            titleColor: 'rgba(255,255,255,0.6)',
+                            bodyColor: '#fff',
+                            padding: 12,
                             callbacks: {
-                                label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}$${ctx.parsed.y.toFixed(4)}`
+                                label: ctx => {
+                                    const val = ctx.raw;
+                                    const s = val >= 0 ? '+' : '';
+                                    const ico = val >= 0 ? '🟢' : '🔴';
+                                    return `${ico} ${ctx.dataset.label}: ${s}$${val.toFixed(4)}`;
+                                }
                             }
                         }
                     },
                     scales: {
                         x: {
-                            ticks: { color: '#64748b', font: { size: 11 } },
-                            grid: { color: 'rgba(255,255,255,0.04)' }
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0 }
                         },
                         y: {
-                            ticks: {
-                                color: '#64748b',
-                                font: { size: 11 },
-                                callback: v => (v >= 0 ? '+' : '') + '$' + v.toFixed(2)
+                            grid: {
+                                color: ctx => ctx.tick.value === 0 ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.05)',
+                                lineWidth: ctx => ctx.tick.value === 0 ? 2 : 1
                             },
-                            grid: { color: 'rgba(255,255,255,0.04)' }
+                            suggestedMax: 1,
+                            suggestedMin: -1,
+                            ticks: {
+                                color: 'rgba(255,255,255,0.4)',
+                                font: { size: 10 },
+                                callback: v => (v >= 0 ? '+' : '') + '$' + v.toFixed(2)
+                            }
                         }
                     }
                 }
