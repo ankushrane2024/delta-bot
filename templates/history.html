@@ -163,6 +163,108 @@
             transition: border-color 0.2s;
         }
         .trade-card:hover { border-color: rgba(255,255,255,0.15); }
+
+        /* ── View Chart Button ────────────── */
+        .view-chart-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.3);
+            color: #60a5fa;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .view-chart-btn:hover {
+            background: rgba(59,130,246,0.25);
+            border-color: rgba(59,130,246,0.6);
+            transform: translateY(-1px);
+        }
+
+        /* ── Floating Chart Modal ─────────── */
+        #chart-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(6px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #chart-modal-overlay.visible {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        #chart-modal {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 18px;
+            padding: 24px;
+            width: 100%;
+            max-width: 800px;
+            position: relative;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+        }
+        #chart-modal-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin: 0 0 16px 0;
+            color: #f8fafc;
+        }
+        #chart-modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #94a3b8;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        #chart-modal-close:hover {
+            background: rgba(239,68,68,0.2);
+            border-color: rgba(239,68,68,0.4);
+            color: #ef4444;
+        }
+        #chart-modal-canvas-wrap {
+            position: relative;
+            height: 300px;
+        }
+        #chart-modal-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .modal-stat {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 10px;
+            padding: 10px 16px;
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+        }
+        .modal-stat .ms-label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .modal-stat .ms-val { font-size: 1.1rem; font-weight: 700; }
         
         .trade-header {
             display: flex;
@@ -445,6 +547,8 @@
                 // ══════════════════════════════════════════════
                 const sortedTrades = [...chronoTrades].reverse();
                 const container = document.getElementById('history-container');
+                // Cache trades for the floating chart modal (sorted newest-first, same as display)
+                cacheTradesForModal(sortedTrades);
                 
                 container.innerHTML = sortedTrades.map((trade, idx) => {
                     const totalPnl = trade.pnl + (trade.hedge_pnl || 0);
@@ -452,6 +556,8 @@
                     const badge = totalPnl >= 0 ? '<span class="badge badge-win">WIN</span>' : '<span class="badge badge-loss">LOSS</span>';
                     const maxPnl = ((trade.max_pnl_pct || 0) * 100).toFixed(2);
                     const minPnl = ((trade.min_pnl_pct || 0) * 100).toFixed(2);
+                    const pctCaptured = trade.pct_profit_captured != null ? trade.pct_profit_captured.toFixed(2) : (trade.premium_collected ? (trade.pnl / trade.premium_collected * 100).toFixed(2) : '0.00');
+                    const pctCapturedColor = parseFloat(pctCaptured) >= 0 ? 'var(--success)' : 'var(--danger)';
                     
                     const maxPnlTimeStr = trade.max_pnl_time ? new Date(trade.max_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';
                     const minPnlTimeStr = trade.min_pnl_time ? new Date(trade.min_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';
@@ -466,16 +572,23 @@
                             <span class="stat-val" style="color: ${hedgePnl >= 0 ? 'var(--success)' : 'var(--danger)'};">${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}</span>
                         </div>` : '';
 
+                    const hasChart = trade.chart_data && trade.chart_data.length > 0;
+                    const tradeIdx = sortedTrades.length - idx;
+                    const chartBtnHtml = hasChart
+                        ? `<button class="view-chart-btn" onclick="openTradeChart(${idx})" id="chart-btn-${idx}">📊 View Chart</button>`
+                        : `<button class="view-chart-btn" style="opacity:0.35; cursor:not-allowed;">📊 No Chart</button>`;
+
                     return `
                         <div class="trade-card">
                             <div class="trade-header">
                                 <div>
-                                    <strong style="font-size: 1.1rem;">#${sortedTrades.length - idx} — ${trade.date}</strong>
+                                    <strong style="font-size: 1.1rem;">#${tradeIdx} — ${trade.date}</strong>
                                     <span style="color: var(--text-secondary); margin-left: 10px; font-size: 0.85rem;">${entryTimeShort} → ${exitTimeShort}</span>
                                     ${badge}
                                 </div>
-                                <div style="color: var(--text-secondary); font-size: 0.85rem;">
-                                    ${trade.exit_reason || 'Manual'}
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    ${chartBtnHtml}
+                                    <span style="color: var(--text-secondary); font-size: 0.85rem;">${trade.exit_reason || 'Manual'}</span>
                                 </div>
                             </div>
                             
@@ -491,6 +604,10 @@
                                 <div class="stat-box">
                                     <span class="stat-label">Premium</span>
                                     <span class="stat-val">$${(trade.premium_collected || 0).toFixed(2)}</span>
+                                </div>
+                                <div class="stat-box" style="border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.05);">
+                                    <span class="stat-label" style="color:#60a5fa;">% Profit Captured</span>
+                                    <span class="stat-val" style="color:${pctCapturedColor};">${parseFloat(pctCaptured) >= 0 ? '+' : ''}${pctCaptured}%</span>
                                 </div>
                                 <div class="stat-box" style="border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05);">
                                     <span class="stat-label" style="color: var(--success);">Peak Profit</span>
@@ -525,6 +642,165 @@
           });
         });
       }
+    </script>
+    <!-- ════════════════════════════════════════════════════════════════════
+         FLOATING TRADE CHART MODAL
+         ════════════════════════════════════════════════════════════════════ -->
+    <div id="chart-modal-overlay" onclick="if(event.target===this) closeTradeChart()">
+        <div id="chart-modal">
+            <p id="chart-modal-title">📊 Trade PnL Chart</p>
+            <button id="chart-modal-close" onclick="closeTradeChart()" title="Close">✕</button>
+            <div id="chart-modal-canvas-wrap">
+                <canvas id="chart-modal-canvas"></canvas>
+            </div>
+            <div id="chart-modal-stats"></div>
+        </div>
+    </div>
+
+    <script>
+        // ── Trade Chart Modal Logic ──────────────────────────────────────────
+        let _modalChart = null;
+        let _allTradesCache = [];
+
+        // Called by loadHistory() to cache trades for the modal
+        function cacheTradesForModal(trades) {
+            _allTradesCache = trades;
+        }
+
+        function openTradeChart(idx) {
+            const trade = _allTradesCache[idx];
+            if (!trade || !trade.chart_data || trade.chart_data.length === 0) return;
+
+            const chartData = trade.chart_data;
+            const labels   = chartData.map(p => p.t);
+            const optPnl   = chartData.map(p => p.pnl);
+            const hedgePnl = chartData.map(p => p.hedge || 0);
+            const totalPnl = chartData.map(p => p.total != null ? p.total : p.pnl + (p.hedge || 0));
+
+            // Set title
+            const totalNet = trade.pnl + (trade.hedge_pnl || 0);
+            const sign = totalNet >= 0 ? '+' : '';
+            document.getElementById('chart-modal-title').textContent =
+                `📊 Trade #${_allTradesCache.length - idx} — ${trade.date}  |  Net: ${sign}$${totalNet.toFixed(2)}`;
+
+            // Stats bar
+            const pct = trade.pct_profit_captured != null
+                ? trade.pct_profit_captured.toFixed(2)
+                : (trade.premium_collected ? (trade.pnl / trade.premium_collected * 100).toFixed(2) : '0.00');
+
+            document.getElementById('chart-modal-stats').innerHTML = `
+                <div class="modal-stat">
+                    <div class="ms-label">Options P&L</div>
+                    <div class="ms-val" style="color:${trade.pnl>=0?'#10b981':'#ef4444'}">${trade.pnl>=0?'+':''}$${(trade.pnl||0).toFixed(2)}</div>
+                </div>
+                <div class="modal-stat">
+                    <div class="ms-label">Hedge P&L</div>
+                    <div class="ms-val" style="color:${(trade.hedge_pnl||0)>=0?'#a78bfa':'#ef4444'}">${(trade.hedge_pnl||0)>=0?'+':''}$${(trade.hedge_pnl||0).toFixed(2)}</div>
+                </div>
+                <div class="modal-stat">
+                    <div class="ms-label">Net P&L</div>
+                    <div class="ms-val" style="color:${totalNet>=0?'#10b981':'#ef4444'}">${sign}$${totalNet.toFixed(2)}</div>
+                </div>
+                <div class="modal-stat">
+                    <div class="ms-label">% Profit Captured</div>
+                    <div class="ms-val" style="color:${parseFloat(pct)>=0?'#60a5fa':'#ef4444'}">${parseFloat(pct)>=0?'+':''}${pct}%</div>
+                </div>
+                <div class="modal-stat">
+                    <div class="ms-label">Premium</div>
+                    <div class="ms-val" style="color:#f8fafc">$${(trade.premium_collected||0).toFixed(2)}</div>
+                </div>
+            `;
+
+            // Destroy previous chart if exists
+            if (_modalChart) { _modalChart.destroy(); _modalChart = null; }
+
+            const ctx = document.getElementById('chart-modal-canvas').getContext('2d');
+            _modalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Options P&L ($)',
+                            data: optPnl,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239,68,68,0.1)',
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Hedge P&L ($)',
+                            data: hedgePnl,
+                            borderColor: '#a78bfa',
+                            backgroundColor: 'rgba(167,139,250,0.08)',
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            fill: false,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Net Total ($)',
+                            data: totalPnl,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16,185,129,0.12)',
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#94a3b8', font: { size: 12, weight: '600' } }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            titleColor: '#f8fafc',
+                            bodyColor: '#94a3b8',
+                            callbacks: {
+                                label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}$${ctx.parsed.y.toFixed(4)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#64748b', font: { size: 11 } },
+                            grid: { color: 'rgba(255,255,255,0.04)' }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 11 },
+                                callback: v => (v >= 0 ? '+' : '') + '$' + v.toFixed(2)
+                            },
+                            grid: { color: 'rgba(255,255,255,0.04)' }
+                        }
+                    }
+                }
+            });
+
+            // Show modal
+            document.getElementById('chart-modal-overlay').classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeTradeChart() {
+            document.getElementById('chart-modal-overlay').classList.remove('visible');
+            document.body.style.overflow = '';
+            if (_modalChart) { _modalChart.destroy(); _modalChart = null; }
+        }
+
+        // Close on Escape key
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTradeChart(); });
     </script>
 </body>
 </html>

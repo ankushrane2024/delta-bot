@@ -134,7 +134,7 @@ class PerformanceTracker:
     def log_trade(self, entry_time, call_symbol, put_symbol, premium_collected, pnl, exit_reason, current_equity,
                   regime_filter_enabled=False, current_iv=0.0, dvol_status=None, size_multiplier=1.0, hedge_status=None,
                   adx=0.0, mode='PAPER', call_entry_price=0.0, put_entry_price=0.0, call_exit_price=0.0, put_exit_price=0.0,
-                  hedge_pnl=0.0, max_pnl_pct=0.0, min_pnl_pct=0.0, max_pnl_time="", min_pnl_time=""):
+                  hedge_pnl=0.0, max_pnl_pct=0.0, min_pnl_pct=0.0, max_pnl_time="", min_pnl_time="", chart_data=None):
         """
         Logs a completed trade to BOTH Cloud DB (permanent) and local JSON (backup).
         """
@@ -143,6 +143,10 @@ class PerformanceTracker:
         hedge_status = hedge_status or {}
 
         from utils import get_ist_now
+
+        # % profit captured = (net pnl / premium collected) * 100
+        # Shows how much of the collected premium was actually kept as profit
+        pct_profit_captured = round((pnl / premium_collected * 100), 2) if premium_collected else 0.0
 
         trade_record = {
             "date": today,
@@ -158,6 +162,7 @@ class PerformanceTracker:
             "premium_collected": premium_collected,
             "pnl": pnl,
             "hedge_pnl": hedge_pnl,
+            "pct_profit_captured": pct_profit_captured,
             "max_pnl_pct": max_pnl_pct,
             "min_pnl_pct": min_pnl_pct,
             "max_pnl_time": max_pnl_time,
@@ -165,7 +170,8 @@ class PerformanceTracker:
             "exit_reason": exit_reason,
             "equity_after": current_equity,
             "regime_filter_enabled": regime_filter_enabled,
-            "adx": adx
+            "adx": adx,
+            "chart_data": chart_data or []  # PnL chart snapshot for post-trade analysis
         }
 
         # Update local state

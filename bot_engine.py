@@ -1062,7 +1062,8 @@ class DeltaTradingEngine:
                 max_pnl_pct=self.current_trade_info.get("max_pnl_pct", 0.0),
                 min_pnl_pct=self.current_trade_info.get("min_pnl_pct", 0.0),
                 max_pnl_time=self.current_trade_info.get("max_pnl_time", ""),
-                min_pnl_time=self.current_trade_info.get("min_pnl_time", "")
+                min_pnl_time=self.current_trade_info.get("min_pnl_time", ""),
+                chart_data=list(self.pnl_chart_data)  # Snapshot saved permanently with trade
             )
             self.current_trade_info = {"calls": [], "puts": []}
             self.pnl_chart_data = []  # Clear chart for next trade
