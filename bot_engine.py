@@ -837,16 +837,18 @@ class DeltaTradingEngine:
                                 profit = adjusted_profit
                         
                         if action == "STOP_LOSS_ALL":
-                            app_logger.warning("Engine: Combined 150% Stop Loss Hit!")
-                            self._log_and_reset_trade(profit, "Stop Loss Hit")
-                            self.execution.close_all(reason="Stop Loss Hit")
+                            sl_pct = int(config.SL_PERCENT * 100)
+                            app_logger.warning(f"Engine: Combined {sl_pct}% Stop Loss Hit!")
+                            self._log_and_reset_trade(profit, f"Stop Loss Hit (-{sl_pct}%)")
+                            self.execution.close_all(reason=f"Stop Loss Hit (-{sl_pct}%)")
                             notifier.notify_stop_loss(profit, False) # RECOST is completely disabled
                         
                         elif action == "TAKE_PROFIT_ALL":
-                            app_logger.info("Engine: Profit Target Hit (70%)!")
-                            self._log_and_reset_trade(profit, "Profit Target Hit")
-                            self.execution.close_all(reason="Profit Target Hit")
-                            notifier.notify_full_exit("Profit Target (70%)", profit)
+                            pt_pct = int(config.EXIT_PROFIT_TARGET * 100)
+                            app_logger.info(f"Engine: Profit Target Hit ({pt_pct}%)!")
+                            self._log_and_reset_trade(profit, f"Profit Target Hit ({pt_pct}%)")
+                            self.execution.close_all(reason=f"Profit Target Hit ({pt_pct}%)")
+                            notifier.notify_full_exit(f"Profit Target ({pt_pct}%)", profit)
                             
                         elif action == "TRAILING_SL_EXIT":
                             app_logger.info("Engine: Trailing Stop Loss Hit (Breakeven)!")
