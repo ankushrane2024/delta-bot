@@ -134,15 +134,14 @@ def get_status():
                 candidate_price = float(ws_data['mark_price'])
                 
                 # ── Price Sanity Guard ──────────────────────────────────────────
-                # Reject any live price that is unrealistically far from entry.
-                # A BTC option premium cannot move >95% in one monitor cycle.
-                # This is the root cause of "1.31 USDT" appearing when WS sends
-                # stale/garbage data after reconnect.
-                # Also reject if price is zero or negative (invalid API response).
+                # Reject garbage data (e.g. $0.01 after WS reconnect) but ALLOW
+                # legitimate violent moves. Options CAN double/triple during a
+                # flash crash (200-300% premium spike is real). Using 10x (1000%)
+                # threshold so the dashboard never hides real market damage.
                 price_is_valid = (
                     candidate_price > 0.01 and               # must be positive
                     entry_price > 0 and                       # need entry to compare
-                    abs(candidate_price - entry_price) / entry_price < 0.99  # max 99% move
+                    abs(candidate_price - entry_price) / entry_price < 10.0  # max 1000% move
                 )
                 
                 if price_is_valid:

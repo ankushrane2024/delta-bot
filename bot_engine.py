@@ -811,11 +811,12 @@ class DeltaTradingEngine:
                         if _now_ts - _last_chart_ts >= 60 or len(self.pnl_chart_data) == 0:
                             self._last_chart_snapshot_ts = _now_ts
                             hedge_pnl_now = self.smart_hedging.get_live_hedge_pnl() if self.smart_hedging.hedge_active else 0.0
+                            # FIX: Use options_profit (not profit) because profit already includes hedge_pnl
                             self.pnl_chart_data.append({
                                 "t": get_ist_now().strftime("%H:%M"),
-                                "pnl": round(profit, 4),
+                                "pnl": round(options_profit, 4),
                                 "hedge": round(hedge_pnl_now, 4),
-                                "total": round(profit + hedge_pnl_now, 4)
+                                "total": round(options_profit + hedge_pnl_now, 4)
                             })
 
                         if self.trailing_sl_active and pnl_pct <= 0.0:
@@ -888,11 +889,11 @@ class DeltaTradingEngine:
                     # Even if WebSocket prices are partially missing, we still attempt to hedge
                     # based on whatever delta/loss data we DO have.
                     #
-                    # Dynamic interval: 10s when losing >10% or after 3PM, 30s otherwise.
+                    # Dynamic interval: 5s when losing >10% or after 3PM, 15s otherwise.
                     # This ensures we catch sudden BTC spikes (like the 3PM move) quickly.
                     _now_ist_h = get_ist_now().hour
                     _is_volatile = (_now_ist_h >= 15) or (pnl_pct < -0.10)
-                    _hedge_interval = 10 if _is_volatile else HEDGE_RECHECK_INTERVAL  # 10s volatile / 30s normal
+                    _hedge_interval = 5 if _is_volatile else 15  # 5s volatile / 15s normal
 
                     if not self.last_hedge_check_time or (time.time() - self.last_hedge_check_time >= _hedge_interval):
                         self.last_hedge_check_time = time.time()
@@ -905,10 +906,14 @@ class DeltaTradingEngine:
                             f"volatile={'YES' if _is_volatile else 'NO'}"
                         )
                         if self.smart_hedging_enabled:
-                            self.smart_hedging.manage_hedge(
-                                self.execution.active_positions, unrealized_loss_pct, profit
-                            )
-                            self.hedging_triggered_today = self.smart_hedging.hedge_active
+                            try:
+                                self.smart_hedging.manage_hedge(
+                                    self.execution.active_positions, unrealized_loss_pct, profit
+                                )
+                                self.hedging_triggered_today = self.smart_hedging.hedge_active
+                            except Exception as hedge_err:
+                                error_logger.error(f"Monitor: HEDGE ERROR (isolated): {hedge_err}")
+                                notifier.notify_error(f"⚠️ Hedge check error (non-fatal): {hedge_err}")
                         else:
                             app_logger.info("Hedge: Skipped - Smart Hedging is DISABLED.")
                     # ────────────────────────────────────────────────────────────────
