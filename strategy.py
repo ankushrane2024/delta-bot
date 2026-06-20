@@ -109,7 +109,7 @@ class ShortStrangleStrategy:
             app_logger.info(f"Strategy: Using legacy premium range ${premium_min}–${premium_max}")
 
         # Separate and filter options (Section 1: Minimum MIN_OTM_STRIKES OTM from ATM)
-        min_otm = MIN_OTM_STRIKES  # 4 strikes OTM minimum
+        min_otm = MIN_OTM_STRIKES  # 5 strikes OTM minimum
         eligible_calls = []
         eligible_puts = []
         for t in expiry_tickers:
@@ -148,18 +148,18 @@ class ShortStrangleStrategy:
         valid_pairs = []
         if check_premium:
             for c in eligible_calls:
-                # STRICT REQUIREMENT: Both legs must have premium >= $50 USD
-                if c['premium_inr'] < 50:
+                # STRICT REQUIREMENT: Both legs must have premium >= $90 USD
+                if c['premium_inr'] < 90:
                     continue
                 if not (premium_min <= c['premium_inr'] <= premium_max):
                     continue
                 for p in eligible_puts:
-                    if p['premium_inr'] < 50:
+                    if p['premium_inr'] < 90:
                         continue
                     if not (premium_min <= p['premium_inr'] <= premium_max):
                         continue
-                    # Put premium must be <= PUT_SKEW_CAP * Call premium (Section 1)
-                    if p['premium_inr'] > PUT_SKEW_CAP * c['premium_inr']:
+                    # Premiums must closely match each other (max 20% difference)
+                    if p['premium_inr'] > 1.20 * c['premium_inr'] or c['premium_inr'] > 1.20 * p['premium_inr']:
                         continue
                     valid_pairs.append((c, p))
 
