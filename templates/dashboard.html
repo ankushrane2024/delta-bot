@@ -697,7 +697,7 @@
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                         <div class="stat-box-modern">
-                            <span class="stat-label">Total P&L (USD)</span>
+                            <span class="stat-label">NET P&L (Opt + Hdg)</span>
                             <div id="pos-total-pnl-usd" class="stat-val pnl-pos">0.00 USDT</div>
                         </div>
                         <div class="stat-box-modern">
@@ -2002,10 +2002,19 @@
                     const pnlPctSignPrem = totalPnlPctPrem >= 0 ? '+' : '';
                     const pnlPctSignCap = totalPnlPctCap >= 0 ? '+' : '';
                     
+                    const optionsPnl = data.options_pnl_usd || 0;
+                    const hedgePnl = totalPnlUsd - optionsPnl;
+                    const breakdownHtml = `<div style="font-size: 0.85rem; font-weight: 600; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: ${optionsPnl >= 0 ? '#00e676' : '#ff5252'}">Opt: ${optionsPnl >= 0 ? '+' : ''}${optionsPnl.toFixed(2)}</span>
+                        <span style="color: #8892b0; font-size: 0.8rem;">+</span>
+                        <span style="color: ${hedgePnl >= 0 ? '#00e676' : '#ff5252'}">Hdg: ${hedgePnl >= 0 ? '+' : ''}${hedgePnl.toFixed(2)}</span>
+                    </div>`;
+
                     const pnlUsdEl = document.getElementById('pos-total-pnl-usd');
                     pnlUsdEl.innerHTML = `<div style="display: flex; flex-direction: column; gap: 2px; padding-top: 4px;">
                         <span style="font-size: 1.6rem; font-weight: 800; line-height: 1;">${totalPnlUsd >= 0 ? '+' : ''}${totalPnlUsd.toFixed(4)} USDT</span>
                         <span style="font-size: 0.8rem; font-weight: 500; opacity: 0.8; letter-spacing: 0.2px; color: var(--text-secondary);">(${pnlPctSignPrem}${totalPnlPctPrem.toFixed(2)}% Prem &nbsp;|&nbsp; ${pnlPctSignCap}${totalPnlPctCap.toFixed(2)}% Cap)</span>
+                        ${breakdownHtml}
                     </div>`;
                     pnlUsdEl.className = totalPnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg';
                     
