@@ -747,8 +747,13 @@ class DeltaTradingEngine:
                         collected_premium = self.total_entry_premium
                         current_option_value = current_total_value
                         
-                        # For short positions, profit = collected_premium - current_option_value
-                        profit = collected_premium - current_option_value
+                        # For short positions, options profit = collected_premium - current_option_value
+                        options_profit = collected_premium - current_option_value
+                        
+                        # Add Hedge Profit to represent True Total PnL
+                        hedge_pnl = self.smart_hedging.get_live_hedge_pnl() if getattr(self, 'smart_hedging', None) and self.smart_hedging.hedge_active else 0.0
+                        profit = options_profit + hedge_pnl
+                        
                         pnl_pct = profit / collected_premium
                         
                         # Emergency Trade Loss Limit (-45% on the active trade)
