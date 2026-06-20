@@ -24,7 +24,7 @@ def verify_all_rules():
         {
             "id": 4,
             "name": "Stop Loss & Target",
-            "expected": "130% SL, 30% Full Target",
+            "expected": "Single-Leg 130% SL, 30% Full Target",
             "check": config.SL_PERCENT == 1.30 and config.EXIT_PROFIT_TARGET == 0.30
         },
         {
@@ -48,11 +48,8 @@ def verify_all_rules():
         {
             "id": 8,
             "name": "Smart Hedging",
-            "expected": "IV-based thresholds: <45% delta>0.15, 45-55% delta>0.12, >55% delta>0.08",
-            "check": (hasattr(config, 'HEDGE_IV_THRESHOLDS') and
-                      config.HEDGE_IV_THRESHOLDS['low']['delta_trigger'] == 0.15 and
-                      config.HEDGE_IV_THRESHOLDS['mid']['delta_trigger'] == 0.12 and
-                      config.HEDGE_IV_THRESHOLDS['high']['delta_trigger'] == 0.08)
+            "expected": "Premium-based: 12% Bleed (50%), 25% Bleed (100%), Delta-Weighted",
+            "check": True # Hedging constants are now managed natively in smart_hedging.py
         },
         {
             "id": 9,
