@@ -217,8 +217,13 @@ def get_status():
             'trade_status': trade_status,
         })
     
-    # Total P&L and Capital Used across all legs
-    total_pnl_usd = round(sum(pos['leg_pnl_usd'] for pos in positions), 2) if positions else 0.0
+    # Hedge Status
+    hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
+    hedge_pnl_usd = hedge_status.get('hedge_pnl_usd', 0.0)
+
+    # Total P&L and Capital Used across all legs + Hedge
+    options_pnl_usd = sum(pos['leg_pnl_usd'] for pos in positions) if positions else 0.0
+    total_pnl_usd = round(options_pnl_usd + hedge_pnl_usd, 2)
     total_pnl_inr = round(total_pnl_usd * 84.0, 2)
     
     total_pnl_pct_premium = (total_pnl_usd / total_entry_premium * 100) if total_entry_premium > 0 else 0.0
@@ -226,7 +231,6 @@ def get_status():
     total_pnl_pct_capital = (total_pnl_usd / total_capital_used * 100) if total_capital_used > 0 else 0.0
     
     dvol_status = bot_engine.dvol_provider.get_status() if getattr(bot_engine, 'dvol_provider', None) else {}
-    hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
     
     return jsonify({
         'is_running': bot_engine.is_running,
