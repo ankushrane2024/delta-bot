@@ -675,6 +675,8 @@ class DeltaTradingEngine:
                     net_delta = 0
                     total_gamma = 0
                     
+                    any_leg_hit_sl = False
+                    
                     for sym, data in self.execution.active_positions.items():
                         entry_price = data.get('entry_price', 0)
                         current_price = entry_price  # default fallback
@@ -685,11 +687,11 @@ class DeltaTradingEngine:
                         if ws_data and 'mark_price' in ws_data:
                             candidate_price = float(ws_data['mark_price'])
                             
-                            # Price Sanity Guard: reject suspicious moves (>99% or negative/zero)
+                            # Price Sanity Guard: allow up to 1000% spikes so SL can trigger
                             price_is_valid = (
                                 candidate_price > 0.01 and
                                 entry_price > 0 and
-                                abs(candidate_price - entry_price) / entry_price < 0.99
+                                abs(candidate_price - entry_price) / entry_price < 10.0
                             )
                             
                             if price_is_valid:
@@ -729,9 +731,14 @@ class DeltaTradingEngine:
                                 net_delta -= last_d * data['size']
                                 total_gamma -= last_g * data['size']
                                 
+                        # Check Single Leg Stop Loss (Loss is negative profit, e.g. -1.30)
+                        if entry_price > 0:
+                            leg_loss_pct = (entry_price - current_price) / entry_price
+                            if leg_loss_pct <= -config.SL_PERCENT:
+                                any_leg_hit_sl = True
+                                
                         # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
                         current_total_value += current_price * data['size'] * LOT_TO_BTC
-                            
                     profit = 0.0
                     pnl_pct = 0.0
                     
@@ -770,6 +777,10 @@ class DeltaTradingEngine:
                                 continue
                         
                         action = self.risk_manager.check_sl_tp(collected_premium, current_option_value, pnl_pct)
+                        
+                        # Override action if ANY individual leg hit the Stop Loss
+                        if any_leg_hit_sl:
+                            action = "STOP_LOSS_ALL"
                         
                         # Safely compute time in trade (fallback to time.time() if None to yield 0s)
                         start_ts = getattr(self, '_trade_start_ts', None) or time.time()
