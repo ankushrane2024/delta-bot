@@ -20,8 +20,9 @@ from notifier import notifier
 # ─────────────────────────────────────────────────────────────────
 # NEW V2 CONSTANTS (Premium-Based Smart Hedging)
 # ─────────────────────────────────────────────────────────────────
-HEDGE_BLEED_TRIGGER_PCT = 0.12        # Hedge fires when any leg bleeds 12%+
-HEDGE_ESCALATE_BLEED_PCT = 0.25       # Escalate to full size at 25%+ bleed
+HEDGE_BLEED_TRIGGER_PCT = 0.20        # Hedge fires when any leg bleeds 20%+ (was 12% - too aggressive)
+HEDGE_ESCALATE_BLEED_PCT = 0.35       # Escalate to full size at 35%+ bleed (was 25%)
+HEDGE_CONFIRM_CHECKS = 3             # Bleed must persist for 3 consecutive checks before triggering
 HEDGE_INITIAL_SIZE_FACTOR = 0.50      # Start hedge at 50% of calculated size
 HEDGE_FULL_SIZE_FACTOR = 1.00         # Full hedge size
 HEDGE_BREAKEVEN_BUFFER = 0.30         # Close hedge if P&L drops below $0.30 after being profitable
@@ -76,6 +77,8 @@ class SmartHedgingManager:
         self._hedge_peak_pnl = 0.0        # Track peak P&L for trailing stop
         self._hedge_size_factor = 0.0     # Current size factor (0.5 or 1.0)
         self._hedge_direction = None       # 'buy' or 'sell'
+        self._bleed_confirm_count = 0     # How many consecutive checks bleed was above trigger
+        self._bleed_confirm_leg = None    # Which leg was bleeding during confirmation
 
     # ─────────────────────────────────────────────────────────────────
     # PUBLIC STATUS
@@ -425,13 +428,31 @@ class SmartHedgingManager:
                 )
             return
         
-        # ── PRIMARY TRIGGER: Per-leg premium bleed >= 12% AND net trade is losing ──
+        # ── PRIMARY TRIGGER: Per-leg premium bleed >= 20% AND net trade is losing ──
+        # Must persist for HEDGE_CONFIRM_CHECKS consecutive checks to filter temporary spikes
         if bleeding_leg and bleed_pct >= HEDGE_BLEED_TRIGGER_PCT:
-            app_logger.info(
-                f"Hedge: TRIGGER! {bleeding_leg.upper()} bleeding {bleed_pct*100:.1f}% >= {HEDGE_BLEED_TRIGGER_PCT*100:.0f}% threshold. "
-                f"Net loss: {unrealized_loss_pct*100:.1f}%. Loss: ${bleed_usd:.2f}. Opening hedge..."
-            )
-            self._open_new_hedge(positions, bleeding_leg, bleed_pct, bleed_usd, direction)
+            # Check if same leg as last time
+            if bleeding_leg == self._bleed_confirm_leg:
+                self._bleed_confirm_count += 1
+            else:
+                # Different leg started bleeding — reset counter
+                self._bleed_confirm_count = 1
+                self._bleed_confirm_leg = bleeding_leg
+            
+            if self._bleed_confirm_count >= HEDGE_CONFIRM_CHECKS:
+                app_logger.info(
+                    f"Hedge: CONFIRMED TRIGGER! {bleeding_leg.upper()} bleeding {bleed_pct*100:.1f}% >= "
+                    f"{HEDGE_BLEED_TRIGGER_PCT*100:.0f}% for {self._bleed_confirm_count} consecutive checks. "
+                    f"Net loss: {unrealized_loss_pct*100:.1f}%. Loss: ${bleed_usd:.2f}. Opening hedge..."
+                )
+                self._bleed_confirm_count = 0
+                self._bleed_confirm_leg = None
+                self._open_new_hedge(positions, bleeding_leg, bleed_pct, bleed_usd, direction)
+            else:
+                app_logger.info(
+                    f"Hedge: {bleeding_leg.upper()} bleeding {bleed_pct*100:.1f}% — confirmation "
+                    f"{self._bleed_confirm_count}/{HEDGE_CONFIRM_CHECKS}. Waiting for sustained bleed..."
+                )
             return
 
         # ── EMERGENCY FALLBACK TRIGGER: Total portfolio loss >= 15% ──
@@ -474,7 +495,16 @@ class SmartHedgingManager:
             self._open_new_hedge(positions, emergency_leg, unrealized_loss_pct, bleed_usd, emergency_direction)
             return
 
-        # ── NO TRIGGER — Log and monitor ──
+        # ── NO TRIGGER — Reset confirmation counter and monitor ──
+        # Bleed dropped below threshold, so previous confirmations don't count
+        if self._bleed_confirm_count > 0:
+            app_logger.info(
+                f"Hedge: Bleed dropped below {HEDGE_BLEED_TRIGGER_PCT*100:.0f}% threshold. "
+                f"Resetting confirmation counter (was {self._bleed_confirm_count}/{HEDGE_CONFIRM_CHECKS})."
+            )
+            self._bleed_confirm_count = 0
+            self._bleed_confirm_leg = None
+
         if bleeding_leg:
             app_logger.info(
                 f"Hedge: {bleeding_leg} bleeding {bleed_pct*100:.1f}% — below trigger ({HEDGE_BLEED_TRIGGER_PCT*100:.0f}%). "
@@ -654,6 +684,8 @@ class SmartHedgingManager:
         self._hedge_peak_pnl = 0.0
         self._hedge_size_factor = 0.0
         self._hedge_direction = None
+        self._bleed_confirm_count = 0
+        self._bleed_confirm_leg = None
         app_logger.info("Hedge: Smart hedge state fully reset.")
 
     def _get_options_exposure_btc(self, positions):
