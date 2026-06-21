@@ -407,13 +407,29 @@ class SmartHedgingManager:
             self._check_and_trigger(positions, bleeding_leg, bleed_pct, bleed_usd, direction, unrealized_loss_pct)
 
     def _check_and_trigger(self, positions, bleeding_leg, bleed_pct, bleed_usd, direction, unrealized_loss_pct):
-        """Check if we should open a new hedge — includes EMERGENCY fallback."""
+        """Check if we should open a new hedge — includes EMERGENCY fallback.
         
-        # ── PRIMARY TRIGGER: Per-leg premium bleed >= 12% ──
+        CRITICAL RULE: NEVER hedge when the NET trade is profitable.
+        A single leg bleeding 12%+ is normal in a strangle — the OTHER leg
+        may be decaying even faster, making the NET position profitable.
+        We only hedge when the OVERALL portfolio is actually losing money.
+        """
+        
+        # ── SAFETY CHECK: DO NOT HEDGE IF NET TRADE IS PROFITABLE ──
+        # unrealized_loss_pct > 0 means trade is losing. If == 0, trade is profitable.
+        if unrealized_loss_pct <= 0.0:
+            if bleeding_leg:
+                app_logger.info(
+                    f"Hedge: {bleeding_leg} leg bleeding {bleed_pct*100:.1f}%, BUT net trade is PROFITABLE "
+                    f"(loss_pct={unrealized_loss_pct*100:.2f}%). NO HEDGE NEEDED — one leg decay offsets the bleed."
+                )
+            return
+        
+        # ── PRIMARY TRIGGER: Per-leg premium bleed >= 12% AND net trade is losing ──
         if bleeding_leg and bleed_pct >= HEDGE_BLEED_TRIGGER_PCT:
             app_logger.info(
                 f"Hedge: TRIGGER! {bleeding_leg.upper()} bleeding {bleed_pct*100:.1f}% >= {HEDGE_BLEED_TRIGGER_PCT*100:.0f}% threshold. "
-                f"Loss: ${bleed_usd:.2f}. Opening hedge..."
+                f"Net loss: {unrealized_loss_pct*100:.1f}%. Loss: ${bleed_usd:.2f}. Opening hedge..."
             )
             self._open_new_hedge(positions, bleeding_leg, bleed_pct, bleed_usd, direction)
             return
