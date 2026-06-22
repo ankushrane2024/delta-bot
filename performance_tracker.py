@@ -192,6 +192,17 @@ class PerformanceTracker:
             f"{exit_reason} | PnL: ${pnl:.2f}"
         )
 
+        # Telegram Permanent Backup
+        try:
+            from notifier import notifier
+            if os.path.exists(self.filepath):
+                notifier.send_document(
+                    self.filepath, 
+                    caption=f"📁 **Permanent Archive Backup**\nTrade #{len(self.trades)} just closed.\nThis file is your immutable cloud backup."
+                )
+        except Exception as e:
+            app_logger.error(f"Tracker: Failed to send Telegram backup: {e}")
+
         # Write pro-trader journal
         self.log_pro_trader_journal(trade_record, current_iv, dvol_status, size_multiplier, hedge_status)
 
