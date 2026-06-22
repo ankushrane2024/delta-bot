@@ -30,6 +30,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # Self-healer auto-creates a new blob if this one ever expires (404).
 # ---------------------------------------------------------------------------
 _FALLBACK_BLOB_ID = "019ef067-5b0c-7655-80e9-a78b4079a780"  # Provisioned 2026-06-22 with 13 trades
+_BACKUP_BLOB_ID = "019ef082-6969-794f-ae32-e7f3b2690ab8"   # Secondary Backup Blob
 _BLOB_ID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".blob_id_cache")
 _blob_id = _FALLBACK_BLOB_ID
 _connected = False
@@ -157,6 +158,30 @@ def _connect():
 
 def _get_cloud_url():
     return f"https://jsonblob.com/api/jsonBlob/{_blob_id}"
+
+def _get_backup_url():
+    return f"https://jsonblob.com/api/jsonBlob/{_BACKUP_BLOB_ID}"
+
+def load_backup_data() -> dict:
+    """Loads data exclusively from the secondary backup blob."""
+    try:
+        headers = {'Accept': 'application/json'}
+        res = requests.get(_get_backup_url(), headers=headers, timeout=10, verify=False)
+        if res.status_code == 200:
+            return res.json()
+    except Exception as e:
+        app_logger.error(f"DB: Exception loading backup from Cloud: {e}")
+    return None
+
+def save_backup_data(data: dict) -> bool:
+    """Saves data exclusively to the secondary backup blob."""
+    try:
+        headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+        res = requests.put(_get_backup_url(), json=data, headers=headers, timeout=15, verify=False)
+        return res.status_code in [200, 201]
+    except Exception as e:
+        app_logger.error(f"DB: Exception saving backup to Cloud: {e}")
+        return False
 
 def load_all_data() -> dict:
     """

@@ -92,6 +92,11 @@ class PerformanceTracker:
         # Sync to cloud
         if db_manager.is_connected() and getattr(self, '_cloud_sync_safe', True):
             db_manager.save_all_data(data)
+            
+            # Sync to Secondary Cloud Backup (Append-only safety)
+            # Only save to backup if we actually have trades (prevents empty overrides)
+            if len(self.trades) > 0:
+                db_manager.save_backup_data(data)
 
     def update_high_water_mark(self, current_equity):
         """Updates the peak equity to calculate accurate Max Drawdown."""
@@ -191,17 +196,6 @@ class PerformanceTracker:
             f"Tracker: Trade logged [{ 'Cloud DB + Local JSON' if db_manager.is_connected() else 'Local JSON only' }] -> "
             f"{exit_reason} | PnL: ${pnl:.2f}"
         )
-
-        # Telegram Permanent Backup
-        try:
-            from notifier import notifier
-            if os.path.exists(self.filepath):
-                notifier.send_document(
-                    self.filepath, 
-                    caption=f"📁 **Permanent Archive Backup**\nTrade #{len(self.trades)} just closed.\nThis file is your immutable cloud backup."
-                )
-        except Exception as e:
-            app_logger.error(f"Tracker: Failed to send Telegram backup: {e}")
 
         # Write pro-trader journal
         self.log_pro_trader_journal(trade_record, current_iv, dvol_status, size_multiplier, hedge_status)
