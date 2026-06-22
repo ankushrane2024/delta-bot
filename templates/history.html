@@ -337,9 +337,10 @@
         </div>
     </header>
 
-    <nav class="tab-nav">
+    <nav class="tab-nav" style="display: flex;">
         <button class="tab-btn" onclick="window.location.href='/'">Live Dashboard</button>
-        <button class="tab-btn active">📓 Trade History</button>
+        <button class="tab-btn active">📊 Trade History</button>
+        <button class="tab-btn" onclick="restoreHistory()" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); color: #ef4444; margin-left: auto;">♻️ Restore Backup</button>
     </nav>
 
     <!-- ═══ Summary Stats ═══ -->
@@ -384,6 +385,32 @@
     <script>
         let equityChart = null;
         let pnlBarChart = null;
+
+        async function restoreHistory() {
+            if (!confirm("Are you sure you want to restore history from the server's local backup? This will overwrite the current cloud database.")) return;
+            
+            try {
+                const btn = document.querySelector('button[onclick="restoreHistory()"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = "⏳ Restoring...";
+                btn.disabled = true;
+                
+                const response = await fetch('/api/restore_history', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert("Success: " + result.message);
+                    location.reload();
+                } else {
+                    alert("Failed: " + result.message);
+                }
+                
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            } catch (err) {
+                alert("Error calling restore API: " + err);
+            }
+        }
 
         async function loadHistory() {
             try {

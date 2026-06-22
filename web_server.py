@@ -722,6 +722,32 @@ def get_trade_history():
             app_logger.error(f"Failed to read trade_history.json: {e}")
     return jsonify({"max_equity": 0.0, "trades": []})
 
+@app.route('/api/restore_history', methods=['POST'])
+def restore_history():
+    """Restores the cloud trade history from the local backup JSON."""
+    try:
+        import db_manager
+        import json
+        import os
+        backup_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trade_history.json')
+        if not os.path.exists(backup_file):
+            return jsonify({"success": False, "message": "No local backup found."}), 404
+            
+        with open(backup_file, 'r') as f:
+            local_data = json.load(f)
+            
+        if not local_data.get('trades'):
+            return jsonify({"success": False, "message": "Local backup is empty."}), 400
+            
+        success = db_manager.save_all_data(local_data)
+        if success:
+            return jsonify({"success": True, "message": f"Successfully restored {len(local_data['trades'])} trades to Cloud."})
+        else:
+            return jsonify({"success": False, "message": "Failed to connect to Cloud DB."}), 500
+    except Exception as e:
+        app_logger.error(f"Error restoring history: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
 @app.route('/api/pnl_chart')
 def get_pnl_chart():
     """Returns live P&L chart data for the current active trade.
