@@ -52,6 +52,11 @@ class PerformanceTracker:
         if db_manager.is_connected() and len(self.trades) > 0 and not cloud_error:
             app_logger.info("Tracker: Syncing local JSON up to Cloud DB...")
             db_manager.save_all_data({"max_equity": self.max_equity, "trades": self.trades})
+            
+        # SAFETY CHECK: If cloud load failed, disable cloud saving to prevent wiping data
+        self._cloud_sync_safe = not cloud_error
+        if cloud_error:
+            app_logger.critical("Tracker: Cloud DB load failed! Disabling cloud writes to prevent data loss.")
 
     def _load_local(self) -> dict:
         """Load from local JSON file."""
@@ -85,7 +90,7 @@ class PerformanceTracker:
         self._write_local_backup()
         
         # Sync to cloud
-        if db_manager.is_connected():
+        if db_manager.is_connected() and getattr(self, '_cloud_sync_safe', True):
             db_manager.save_all_data(data)
 
     def update_high_water_mark(self, current_equity):
