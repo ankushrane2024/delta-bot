@@ -241,6 +241,7 @@ def get_status():
         'total_entry_premium': round(total_entry_premium, 4),
         'total_capital_used': total_capital_used,
         'btc_price': round(btc_price, 2),
+        'options_pnl_usd': round(options_pnl_usd, 2),
         'total_pnl_usd': total_pnl_usd,
         'total_pnl_inr': total_pnl_inr,
         'total_pnl_pct_premium': round(total_pnl_pct_premium, 2),

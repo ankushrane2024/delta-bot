@@ -25,10 +25,10 @@ HEDGE_ESCALATE_BLEED_PCT = 0.35       # Escalate to full size at 35%+ bleed (was
 HEDGE_CONFIRM_CHECKS = 3             # Bleed must persist for 3 consecutive checks before triggering
 HEDGE_INITIAL_SIZE_FACTOR = 0.50      # Start hedge at 50% of calculated size
 HEDGE_FULL_SIZE_FACTOR = 1.00         # Full hedge size
-HEDGE_BREAKEVEN_PTS = 200             # Close if BTC profit drops back to $200 points
-HEDGE_MIN_PROFIT_PTS = 500            # Start trailing breakeven after BTC moves $500 in our favor
+HEDGE_BREAKEVEN_BUFFER = 0.30         # Close hedge if P&L drops below $0.30 after being profitable
+HEDGE_MIN_PROFIT_TO_TRAIL = 0.50      # Start trailing breakeven after $0.50 profit
 HEDGE_REVERSAL_THRESHOLD = 0.10       # Other leg must bleed 10%+ to trigger reversal
-HEDGE_MAX_LOSS_PTS = -1000            # Hard stop: close hedge if BTC moves $1000 against us
+HEDGE_MAX_LOSS_ABSOLUTE = -1.00       # Hard stop: close hedge if it loses more than $1.00
 
 
 class SmartHedgingManager:
@@ -74,11 +74,16 @@ class SmartHedgingManager:
         # --- Premium tracking ---
         self._entry_premiums = {}          # {symbol: entry_price_per_lot}
         self._bleeding_leg = None          # 'call' or 'put'
-        self._hedge_peak_pts = 0.0        # Track peak BTC points for trailing stop
+        self._hedge_peak_pnl = 0.0        # Track peak P&L for trailing stop
         self._hedge_size_factor = 0.0     # Current size factor (0.5 or 1.0)
         self._hedge_direction = None       # 'buy' or 'sell'
         self._bleed_confirm_count = 0     # How many consecutive checks bleed was above trigger
         self._bleed_confirm_leg = None    # Which leg was bleeding during confirmation
+        
+        # --- ATR & Trend Breakout ---
+        self._entry_btc_price = 0.0
+        self._cached_atr = 400.0          # Fallback default ATR
+        self._last_atr_time = 0
 
     # ─────────────────────────────────────────────────────────────────
     # PUBLIC STATUS
@@ -152,7 +157,8 @@ class SmartHedgingManager:
         self._entry_premiums = {}
         for sym, data in positions.items():
             self._entry_premiums[sym] = data.get('entry_price', 0)
-        app_logger.info(f"Hedge: Cached entry premiums: {self._entry_premiums}")
+        self._entry_btc_price = self._get_btc_mark_price()
+        app_logger.info(f"Hedge: Cached entry premiums: {self._entry_premiums} | BTC Entry: ${self._entry_btc_price:.2f}")
 
     # ─────────────────────────────────────────────────────────────────
     # PREMIUM-BASED BLEEDING DETECTION (Core v2 Innovation)
@@ -181,7 +187,8 @@ class SmartHedgingManager:
                 if entry_p > 0:
                     self._entry_premiums[sym] = entry_p
             if self._entry_premiums:
-                app_logger.info(f"Hedge: SELF-HEAL complete. Recovered premiums: {self._entry_premiums}")
+                self._entry_btc_price = self._get_btc_mark_price()
+                app_logger.info(f"Hedge: SELF-HEAL complete. Recovered premiums: {self._entry_premiums} | BTC Entry: ${self._entry_btc_price:.2f}")
                 notifier.notify_error(
                     f"🔧 Hedge Self-Heal Activated\n"
                     f"Entry premiums recovered from position data after restart.\n"
@@ -426,7 +433,24 @@ class SmartHedgingManager:
                     f"Hedge: {bleeding_leg} leg bleeding {bleed_pct*100:.1f}%, BUT net trade is PROFITABLE "
                     f"(loss_pct={unrealized_loss_pct*100:.2f}%). NO HEDGE NEEDED — one leg decay offsets the bleed."
                 )
+            self._bleed_confirm_count = 0
             return
+            
+        # ── TREND CONFIRMATION: ATR BREAKOUT RULE ──
+        current_btc = self._get_btc_mark_price()
+        atr = self._get_current_atr()
+        atr_breakout_required = atr * 0.5
+        
+        if self._entry_btc_price > 0 and current_btc > 0:
+            btc_move = abs(current_btc - self._entry_btc_price)
+            if btc_move < atr_breakout_required:
+                if bleeding_leg:
+                    app_logger.info(
+                        f"Hedge: {bleeding_leg} bleeding {bleed_pct*100:.1f}%, but BTC moved only ${btc_move:.0f}. "
+                        f"Requires 0.5 ATR breakout (${atr_breakout_required:.0f}) to confirm trend. BLOCKED."
+                    )
+                self._bleed_confirm_count = 0
+                return
         
         # ── PRIMARY TRIGGER: Per-leg premium bleed >= 20% AND net trade is losing ──
         # Must persist for HEDGE_CONFIRM_CHECKS consecutive checks to filter temporary spikes
@@ -535,7 +559,7 @@ class SmartHedgingManager:
             self.hedge_order_id = result.get('order_id', 'N/A')
             self.hedge_placed_time = time.time()
             self._bleeding_leg = bleeding_leg
-            self._hedge_peak_pts = 0.0
+            self._hedge_peak_pnl = 0.0
             self._hedge_size_factor = size_factor
             self._hedge_direction = direction
 
@@ -564,47 +588,41 @@ class SmartHedgingManager:
         """
         hedge_pnl = self.get_live_hedge_pnl()
         
-        # Calculate how many points BTC has moved relative to hedge size
-        # This makes SL and Trailing perfectly scalable from 1 lot to 5000 lots
-        if abs(self.hedge_size_btc) > 0:
-            hedge_pts = hedge_pnl / abs(self.hedge_size_btc)
-        else:
-            hedge_pts = 0.0
-        
         # ── STEP 1: PROTECT HEDGE P&L ──────────────────────────────
-        # Track peak points
-        if hedge_pts > self._hedge_peak_pts:
-            self._hedge_peak_pts = hedge_pts
-            app_logger.info(f"Hedge: New peak movement: +{self._hedge_peak_pts:.0f} BTC pts (${hedge_pnl:.2f})")
+        # Track peak P&L
+        if hedge_pnl > self._hedge_peak_pnl:
+            self._hedge_peak_pnl = hedge_pnl
+            app_logger.info(f"Hedge: New peak P&L: ${self._hedge_peak_pnl:.2f}")
 
-        # Hard stop: if hedge goes against us by 1000 BTC points
-        if hedge_pts <= HEDGE_MAX_LOSS_PTS:
+        # Hard stop: if hedge loses more than $1, close immediately
+        if hedge_pnl <= HEDGE_MAX_LOSS_ABSOLUTE:
             app_logger.warning(
-                f"Hedge: HARD STOP! BTC moved {hedge_pts:.0f} pts against us <= {HEDGE_MAX_LOSS_PTS} pts. "
-                f"P&L: ${hedge_pnl:.2f}. Closing to prevent further bleed. Cooldown: 60s."
+                f"Hedge: HARD STOP! P&L ${hedge_pnl:.2f} <= ${HEDGE_MAX_LOSS_ABSOLUTE:.2f}. "
+                f"Closing to prevent further bleed. Will re-enable after 60s cooldown."
             )
             self.close_hedge()
             self.hedge_stopped_out = True
             self._hedge_stopped_out_time = time.time()  # Track when it was stopped for cooldown
             notifier.notify_error(
-                f"Hedge Hard Stop Hit!\nHedge P&L: ${hedge_pnl:.2f} ({hedge_pts:.0f} pts)\n"
+                f"Hedge Hard Stop Hit!\nHedge P&L: ${hedge_pnl:.2f}\n"
                 f"Closed to prevent further loss.\n"
                 f"Will re-enable after 60s cooldown if loss persists."
             )
             return
 
-        # Trailing breakeven: if we made > 500 pts, close if it drops below 200 pts
-        if self._hedge_peak_pts >= HEDGE_MIN_PROFIT_PTS and hedge_pts <= HEDGE_BREAKEVEN_PTS:
-            app_logger.info(
-                f"Hedge: TRAILING STOP HIT! Peak was +{self._hedge_peak_pts:.0f} pts, "
-                f"now dropped to +{hedge_pts:.0f} pts. Locking in breakeven. (P&L: ${hedge_pnl:.2f})"
-            )
-            self.close_hedge()
-            notifier.notify_hedge_closed(
-                reason="Trailing Stop Hit",
-                pnl=f"${hedge_pnl:.2f} (+{hedge_pts:.0f} pts)"
-            )
-            return
+        # Trailing breakeven: if hedge was profitable but now dropping back to zero
+        if self._hedge_peak_pnl >= HEDGE_MIN_PROFIT_TO_TRAIL:
+            if hedge_pnl <= HEDGE_BREAKEVEN_BUFFER:
+                app_logger.info(
+                    f"Hedge: TRAILING BREAKEVEN triggered! Peak was ${self._hedge_peak_pnl:.2f}, "
+                    f"now ${hedge_pnl:.2f} <= ${HEDGE_BREAKEVEN_BUFFER:.2f}. Closing at breakeven."
+                )
+                self.close_hedge()
+                notifier.notify_error(
+                    f"Hedge closed at breakeven\n"
+                    f"Peak profit was ${self._hedge_peak_pnl:.2f}, closed at ${hedge_pnl:.2f}"
+                )
+                return
 
         # ── STEP 2: REVERSAL DETECTION ─────────────────────────────
         if bleeding_leg and bleeding_leg != self._bleeding_leg and bleed_pct >= HEDGE_REVERSAL_THRESHOLD:
@@ -616,6 +634,7 @@ class SmartHedgingManager:
             )
             
             # Close current hedge (lock in whatever P&L it has)
+            old_pnl = hedge_pnl
             self.close_hedge()
             
             # Only re-hedge if the new bleed is significant enough
@@ -657,9 +676,58 @@ class SmartHedgingManager:
         # ── NO ACTION NEEDED ──
         app_logger.info(
             f"Hedge: Active ({self._bleeding_leg} hedge). P&L: ${hedge_pnl:+.2f} | "
-            f"Peak: +{self._hedge_peak_pts:.0f} pts | Size: {abs(self.execution.hedge_size_btc):.4f} BTC | "
+            f"Peak: ${self._hedge_peak_pnl:.2f} | Size: {abs(self.execution.hedge_size_btc):.4f} BTC | "
             f"Bleed: {self._bleeding_leg}={bleed_pct*100:.1f}%"
         )
+
+    def _get_btc_mark_price(self):
+        try:
+            ws_data = self.api_client.get_realtime_ticker('BTCUSD')
+            if ws_data and 'mark_price' in ws_data:
+                return float(ws_data['mark_price'])
+        except Exception:
+            pass
+        return 0.0
+
+    def _get_current_atr(self):
+        """Fetches 14-period 5m ATR. Caches for 5 minutes to avoid spamming API."""
+        now = time.time()
+        if now - self._last_atr_time < 300 and self._cached_atr > 0:
+            return self._cached_atr
+            
+        try:
+            # Try to fetch 30 candles of 5m resolution
+            end_time = int(now)
+            start_time = end_time - (30 * 5 * 60)
+            res = self.api_client.get_candles(symbol='BTCUSD', resolution='5m', start=start_time, end=end_time)
+            
+            if res and res.get('success'):
+                candles = res.get('result', [])
+                if len(candles) >= 14:
+                    # Calculate True Range manually
+                    trs = []
+                    for i in range(1, len(candles)):
+                        high = float(candles[i].get('high', 0))
+                        low = float(candles[i].get('low', 0))
+                        prev_close = float(candles[i-1].get('close', 0))
+                        
+                        hl = high - low
+                        hc = abs(high - prev_close)
+                        lc = abs(low - prev_close)
+                        trs.append(max(hl, hc, lc))
+                        
+                    # Get average of last 14 True Ranges
+                    if len(trs) >= 14:
+                        atr = sum(trs[-14:]) / 14
+                        if atr > 0:
+                            self._cached_atr = atr
+                            self._last_atr_time = now
+                            app_logger.info(f"Hedge: Updated ATR: ${self._cached_atr:.2f}")
+                            return self._cached_atr
+        except Exception as e:
+            app_logger.warning(f"Hedge: Failed to calculate ATR: {e}. Using cached/fallback: ${self._cached_atr:.2f}")
+            
+        return self._cached_atr
 
     # ─────────────────────────────────────────────────────────────────
     # CLOSE HEDGE
@@ -686,7 +754,7 @@ class SmartHedgingManager:
         self.hedge_avg_entry_price = 0.0
         self.hedge_total_cost_btc = 0.0
         self._bleeding_leg = None
-        self._hedge_peak_pts = 0.0
+        self._hedge_peak_pnl = 0.0
         self._hedge_size_factor = 0.0
         self._hedge_direction = None
         self._bleed_confirm_count = 0
