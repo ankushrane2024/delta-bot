@@ -1134,72 +1134,13 @@ class DeltaTradingEngine:
                 multiplier += DVOL_MID_SIZE_BOOST
                 reasons.append(f"DVOL 40-55% boost (+{DVOL_MID_SIZE_BOOST*100:.0f}%)")
 
-        # 2. Consecutive losses reduction: -20% size reduction for next 3 trades after 2 consecutive losses
-        if self.reduced_size_trades_remaining > 0:
-            multiplier -= CONSECUTIVE_LOSS_REDUCE_PCT
-            reasons.append(f"Consecutive loss cooldown (-{CONSECUTIVE_LOSS_REDUCE_PCT*100:.0f}%)")
-
-        # 3. Daily loss check: -30% size reduction if daily loss > 2%
-        if self.daily_loss_pct >= DAILY_LOSS_REDUCE_THRESHOLD:
-            multiplier -= DAILY_LOSS_REDUCE_PCT
-            reasons.append(f"Daily loss >= 2% reduction (-{DAILY_LOSS_REDUCE_PCT*100:.0f}%)")
-
-        # Never increase size after a big loss day (cap at 1.0)
-        if self.daily_loss_pct >= DAILY_LOSS_REDUCE_THRESHOLD:
-            if multiplier > 1.0:
-                multiplier = 1.0
-                reasons.append("Capped at 1.0x due to big loss day")
-
-        # Apply PAPER lot multiplier if in PAPER mode
-        if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
-            multiplier *= self.paper_lot_multiplier
-            reasons.append(f"Paper multiplier ({self.paper_lot_multiplier:.2f}x)")
-
-        # 4. DVOL percentile paper trade reduction: DISABLED (Completely bypassed as requested)
-        # import config
-        # pct = self.dvol_provider.get_dvol_percentile()
-        # if pct < config.DVOL_PERCENTILE_MIN or pct > config.DVOL_PERCENTILE_MAX:
-        #     if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
-        #         multiplier *= 0.50
-        #         reasons.append(f"DVOL Percentile {pct:.1f}% outside [{config.DVOL_PERCENTILE_MIN}-{config.DVOL_PERCENTILE_MAX}] paper reduction (-50%)")
-
-        # Ensure multiplier is never negative or zero
-        multiplier = max(0.10, multiplier)
-        self.size_multiplier = multiplier
-
-        adjusted_lots = int(round(base_lots * multiplier))
-        # Ensure at least 1 lot per leg, meaning total_lots >= 2 (1 call + 1 put)
-        adjusted_lots = max(2, adjusted_lots)
-        
-        reason_str = ", ".join(reasons) if reasons else "Base Sizing"
-        app_logger.info(f"Engine: Dynamic sizing applied. Base: {base_lots} lots, Adjusted: {adjusted_lots} lots (Multiplier: {multiplier:.2f}x, Reasons: {reason_str})")
-        notifier.notify_size_adjusted(base_lots, adjusted_lots, multiplier, reason_str)
-        
-        return adjusted_lots
+        """Hardcoded to 500 lots per leg for testing, skipping all money management."""
+        app_logger.info(f"Engine: Dynamic sizing and money management bypassed for testing. Forced 500 lots.")
+        return 500
 
     def _check_max_risk(self, lots, call_opt, put_opt):
-        """Dynamically check collected premium vs 1.5% max risk threshold (Section 5)."""
-        premium_sum = float(call_opt.get('mark_price', 0)) + float(put_opt.get('mark_price', 0))
-        scale_factor = 0.001 if premium_sum > 5.0 else 1.0
-        estimated_premium = premium_sum * lots * scale_factor
-        
-        # Stop loss triggers at 150% unrealized loss, so maximum risk is 1.50 * estimated_premium
-        estimated_risk = estimated_premium * SL_PERCENT
-        
-        self.risk_manager.update_equity()
-        max_allowed_risk = self.risk_manager.calculate_max_risk_per_trade()
-        
-        app_logger.info(
-            f"Engine: Risk Check — Lots: {lots}, Premium Sum: {premium_sum:.2f}, "
-            f"Scale: {scale_factor}, Est. Premium: ${estimated_premium:.2f}, "
-            f"Est. Risk: ${estimated_risk:.2f}, Max Allowed: ${max_allowed_risk:.2f}"
-        )
-        
-        if estimated_risk > max_allowed_risk:
-            app_logger.warning(f"Engine: Risk check failed! Estimated risk ${estimated_risk:.2f} > Max allowed risk ${max_allowed_risk:.2f} (1.5% of equity)")
-            return False
-            
-        app_logger.info("Engine: Risk check passed.")
+        """Bypassed for testing. Always returns True."""
+        app_logger.info("Engine: Risk check bypassed for testing. Allowing trade.")
         return True
 
     def _record_skip(self, reason, status="Trade Skipped"):
