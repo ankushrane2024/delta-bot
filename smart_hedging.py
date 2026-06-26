@@ -4,14 +4,7 @@ import math
 from config import (
     HEDGE_WAIT_AFTER_ENTRY,
     HEDGE_RECHECK_INTERVAL,
-    HEDGE_IV_THRESHOLDS,
-    HEDGE_PARTIAL_INITIAL_PCT,
-    HEDGE_PARTIAL_ESCALATE_PCT,
-    HEDGE_PARTIAL_WAIT,
-    HEDGE_EMERGENCY_LOSS_PCT,
-    HEDGE_EMERGENCY_SL_TIGHTEN,
-    HEDGE_SYMBOL,
-    HEDGE_MAX_LOSS_PER_LOT
+    HEDGE_SYMBOL
 )
 from logger import app_logger
 from notifier import notifier

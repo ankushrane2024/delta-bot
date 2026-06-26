@@ -54,9 +54,6 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # --- Strategy Parameters ---
-# Target delta for strike selection
-DELTA_TARGET = 0.15
-DELTA_TOLERANCE = 0.03
 
 # --- DVOL-Based Strike Selection (Section 1) ---
 # Minimum number of strikes OTM from ATM for both call and put legs.
@@ -82,31 +79,15 @@ EXIT_PROFIT_TARGET = 0.30     # 30% total profit -> full exit
 MIN_HOLD_SECONDS = 30         # Minimum seconds to hold before any profit target exit is allowed
 
 # --- Hedging Parameters ---
-# When net Delta or Gamma exceed these thresholds, the bot hedges using BTC futures.
 HEDGE_SYMBOL = "BTCUSD"           # BTC Perpetual futures contract symbol
-HEDGE_DELTA_THRESHOLD = 0.20      # Net delta above 0.20 triggers hedging
-HEDGE_GAMMA_THRESHOLD = 0.02      # Net gamma above 0.02 triggers hedging
 HEDGE_MONITOR_INTERVAL = 15       # Smart hedge monitoring interval in seconds (Tighter)
 HEDGE_RETRY_COUNT = 3             # Number of retries for hedge order placement
 HEDGE_RETRY_DELAY = 2             # Seconds between hedge order retries
 HEDGE_LIMIT_ORDER_SPREAD = 0.001  # 0.1% spread for limit hedge orders
-HEDGE_EMERGENCY_SL_TIGHTEN = 1.05 # Tighten SL to 105% during emergency hedge
 
 # --- Smart Hedging Pipeline (Section 3) ---
 HEDGE_WAIT_AFTER_ENTRY = 5        # Seconds to wait after order fill before first hedge check
 HEDGE_RECHECK_INTERVAL = 15       # Seconds between continuous hedge management checks
-# IV-based hedging decision thresholds (Step 2)
-HEDGE_IV_THRESHOLDS = {
-    "low":  {"iv_max": 45, "delta_trigger": 0.15, "action": "full"},
-    "mid":  {"iv_min": 45, "iv_max": 55, "delta_trigger": 0.12, "action": "full"},
-    "high": {"iv_min": 55, "delta_trigger": 0.08, "action": "partial"},
-}
-HEDGE_PARTIAL_INITIAL_PCT = 0.50      # Start partial hedge at 50% of required size
-HEDGE_PARTIAL_ESCALATE_PCT = 0.80     # Escalate partial hedge to 80–100%
-HEDGE_PARTIAL_ESCALATE_DELTA = 0.10   # Re-check threshold after partial hedge
-HEDGE_PARTIAL_WAIT = 10               # Seconds to wait between partial hedge steps
-HEDGE_EMERGENCY_LOSS_PCT = 0.25       # 25% unrealized loss → force emergency hedge
-HEDGE_MAX_LOSS_PER_LOT = 2.50         # Maximum allowed loss in USD per option lot before auto-closing the hedge
 
 # --- Dynamic Position Sizing (Section 4) ---
 DVOL_MID_SIZE_BOOST = 0.20            # 20% lot increase when DVOL is 40–55%

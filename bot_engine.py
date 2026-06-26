@@ -5,7 +5,7 @@ import random
 import config
 from config import (
     BOT_MODE, ENTRY_TIMES, EXIT_TIME_START, MAX_DAILY_LOSS_PCT,
-    HEDGE_DELTA_THRESHOLD, HEDGE_GAMMA_THRESHOLD, STARTING_CAPITAL, MANUAL_TOTAL_LOTS,
+    STARTING_CAPITAL, MANUAL_TOTAL_LOTS,
     MAX_CONSECUTIVE_LOSSES_DAY, DAILY_LOSS_LIMIT_PCT, SL_PERCENT, HEDGE_RECHECK_INTERVAL,
     DVOL_MID_SIZE_BOOST, CONSECUTIVE_LOSS_REDUCE_PCT, CONSECUTIVE_LOSS_THRESHOLD,
     CONSECUTIVE_LOSS_COOLDOWN_TRADES, DAILY_LOSS_REDUCE_THRESHOLD, DAILY_LOSS_REDUCE_PCT,
@@ -1122,18 +1122,6 @@ class DeltaTradingEngine:
                 app_logger.error(f"Engine: History backup send failed: {backup_err}")
 
     def _apply_dynamic_sizing(self, base_lots):
-        """Calculates the dynamic size multiplier based on DVOL and money management (Section 4)."""
-        multiplier = 1.0
-        reasons = []
-
-        # 1. DVOL-based size boost: +20% boost when DVOL is 40–55%
-        dvol = self.dvol_provider.get_current_dvol()
-        if 40.0 <= dvol <= 55.0:
-            # Never increase size after a big loss day
-            if self.daily_loss_pct < DAILY_LOSS_REDUCE_THRESHOLD:
-                multiplier += DVOL_MID_SIZE_BOOST
-                reasons.append(f"DVOL 40-55% boost (+{DVOL_MID_SIZE_BOOST*100:.0f}%)")
-
         """Hardcoded to 500 lots per leg for testing, skipping all money management."""
         app_logger.info(f"Engine: Dynamic sizing and money management bypassed for testing. Forced 500 lots.")
         return 500

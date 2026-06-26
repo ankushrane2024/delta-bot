@@ -1,11 +1,11 @@
-from config import DELTA_TARGET, DELTA_TOLERANCE, MIN_OTM_STRIKES, PUT_SKEW_CAP, NET_DELTA_ENTRY_LIMIT
+from config import MIN_OTM_STRIKES, PUT_SKEW_CAP, NET_DELTA_ENTRY_LIMIT
 from logger import app_logger
 
 class ShortStrangleStrategy:
     def __init__(self, api_client):
         self.api_client = api_client
 
-    def find_strikes(self, target_delta=DELTA_TARGET, expiry_date=None, check_premium=True, dvol_provider=None):
+    def find_strikes(self, target_delta=0.15, expiry_date=None, check_premium=True, dvol_provider=None):
         """
         Finds the best Call and Put strikes based on the advanced strike selection rules.
         
