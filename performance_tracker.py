@@ -155,8 +155,9 @@ class PerformanceTracker:
         from utils import get_ist_now
 
         # % profit captured = (net pnl / premium collected) * 100
-        # Shows how much of the collected premium was actually kept as profit
-        pct_profit_captured = round((pnl / premium_collected * 100), 2) if premium_collected else 0.0
+        # Net PnL = options profit + hedge profit (always combined for true capture %)
+        net_pnl = pnl + hedge_pnl
+        pct_profit_captured = round((net_pnl / premium_collected * 100), 2) if premium_collected else 0.0
 
         trade_record = {
             "date": today,

@@ -481,9 +481,9 @@
                 const latestEquity = chronoTrades[chronoTrades.length - 1].equity_after || 10000;
                 const maxEquity = Math.max(...chronoTrades.map(t => t.equity_after || 10000));
                 const drawdown = maxEquity > 0 ? ((maxEquity - latestEquity) / maxEquity * 100).toFixed(2) : '0.00';
-                const avgWin = wins > 0 ? (chronoTrades.filter(t => t.pnl > 0).reduce((s, t) => s + t.pnl, 0) / wins).toFixed(2) : '0.00';
-                const avgLoss = losses > 0 ? (chronoTrades.filter(t => t.pnl < 0).reduce((s, t) => s + t.pnl, 0) / losses).toFixed(2) : '0.00';
-                const profitFactor = losses > 0 ? Math.abs(chronoTrades.filter(t => t.pnl > 0).reduce((s, t) => s + t.pnl, 0) / chronoTrades.filter(t => t.pnl < 0).reduce((s, t) => s + t.pnl, 0)).toFixed(2) : '∞';
+                const avgWin = wins > 0 ? (chronoTrades.filter(t => (t.pnl + (t.hedge_pnl||0)) > 0).reduce((s, t) => s + t.pnl + (t.hedge_pnl||0), 0) / wins).toFixed(2) : '0.00';
+                const avgLoss = losses > 0 ? (chronoTrades.filter(t => (t.pnl + (t.hedge_pnl||0)) < 0).reduce((s, t) => s + t.pnl + (t.hedge_pnl||0), 0) / losses).toFixed(2) : '0.00';
+                const profitFactor = losses > 0 ? Math.abs(chronoTrades.filter(t => (t.pnl + (t.hedge_pnl||0)) > 0).reduce((s, t) => s + t.pnl + (t.hedge_pnl||0), 0) / chronoTrades.filter(t => (t.pnl + (t.hedge_pnl||0)) < 0).reduce((s, t) => s + t.pnl + (t.hedge_pnl||0), 0)).toFixed(2) : '∞';
 
                 document.getElementById('summary-row').innerHTML = `
                     <div class="summary-card"><div class="label">Total Trades</div><div class="value" style="color:#fff;">${totalTrades}</div></div>
@@ -645,12 +645,19 @@
                 cacheTradesForModal(sortedTrades);
                 
                 container.innerHTML = sortedTrades.map((trade, idx) => {
-                    const totalPnl = trade.pnl || 0;
+                    // STRICT: Net P&L = Options PnL + Hedge PnL. Always combined.
+                    const optionsPnl = trade.pnl || 0;
+                    const hedgePnl = trade.hedge_pnl || 0;
+                    const totalPnl = optionsPnl + hedgePnl;
                     const pnlClass = totalPnl >= 0 ? 'pnl-pos' : 'pnl-neg';
                     const badge = totalPnl >= 0 ? '<span class="badge badge-win">WIN</span>' : '<span class="badge badge-loss">LOSS</span>';
                     const maxPnl = ((trade.max_pnl_pct || 0) * 100).toFixed(2);
                     const minPnl = ((trade.min_pnl_pct || 0) * 100).toFixed(2);
-                    const pctCaptured = trade.pct_profit_captured != null ? trade.pct_profit_captured.toFixed(2) : (trade.premium_collected ? (trade.pnl / trade.premium_collected * 100).toFixed(2) : '0.00');
+                    // pct_profit_captured: use stored value if valid, else compute from true net PnL
+                    const storedPct = trade.pct_profit_captured;
+                    const pctCaptured = (storedPct != null && storedPct !== 0)
+                        ? storedPct.toFixed(2)
+                        : (trade.premium_collected ? (totalPnl / trade.premium_collected * 100).toFixed(2) : '0.00');
                     const pctCapturedColor = parseFloat(pctCaptured) >= 0 ? 'var(--success)' : 'var(--danger)';
                     
                     const maxPnlTimeStr = trade.max_pnl_time ? new Date(trade.max_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';
@@ -659,7 +666,6 @@
                     const entryTimeShort = trade.entry_time ? new Date(trade.entry_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : '—';
                     const exitTimeShort = trade.exit_time ? new Date(trade.exit_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : '—';
 
-                    const hedgePnl = trade.hedge_pnl || 0;
                     const hedgeRow = hedgePnl !== 0 ? `
                         <div class="stat-box" style="border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.05);">
                             <span class="stat-label" style="color: #a78bfa;">Hedge P&L</span>
@@ -691,7 +697,7 @@
                             </div>
                             
                             <div class="trade-grid">
-                                <div class="stat-box">
+                                	<div class="stat-box">
                                     <span class="stat-label">Net P&L</span>
                                     <span class="stat-val ${pnlClass}">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span>
                                 </div>
