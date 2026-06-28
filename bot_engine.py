@@ -95,6 +95,15 @@ class DeltaTradingEngine:
         # Connect WebSockets for zero-latency feeds
         self.api_client.start_ws()
         
+        # In PAPER mode, restore the simulated equity from trade history if available
+        # This prevents the equity curve from dropping back to starting capital after a restart
+        if BOT_MODE == 'PAPER' and getattr(self, 'performance_tracker', None):
+            if len(self.performance_tracker.trades) > 0:
+                last_equity = self.performance_tracker.trades[-1].get('equity_after', STARTING_CAPITAL)
+                if last_equity > 0:
+                    self.risk_manager.current_equity = last_equity
+                    app_logger.info(f"Engine: Restored PAPER simulated equity to ${last_equity:.2f} from previous trades.")
+
         # Record starting equity for daily -3% loss check
         self.risk_manager.update_equity()
         self.daily_start_equity = self.risk_manager.current_equity
