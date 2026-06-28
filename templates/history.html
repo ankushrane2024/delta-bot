@@ -340,7 +340,10 @@
     <nav class="tab-nav" style="display: flex;">
         <button class="tab-btn" onclick="window.location.href='/'">Live Dashboard</button>
         <button class="tab-btn active">📊 Trade History</button>
-        <button class="tab-btn" onclick="restoreHistory()" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); color: #ef4444; margin-left: auto;">♻️ Restore Backup</button>
+        <div style="margin-left: auto; display: flex; gap: 8px;">
+            <button class="tab-btn" onclick="backupHistory()" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.4); color: #10b981;">💾 Backup Data</button>
+            <button class="tab-btn" onclick="restoreHistory()" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); color: #ef4444;">♻️ Restore Backup</button>
+        </div>
     </nav>
 
     <!-- ═══ Summary Stats ═══ -->
@@ -385,6 +388,31 @@
     <script>
         let equityChart = null;
         let pnlBarChart = null;
+
+        async function backupHistory() {
+            if (!confirm("Are you sure you want to backup the current history? This will overwrite the secondary backup.")) return;
+            
+            try {
+                const btn = document.querySelector('button[onclick="backupHistory()"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = "⏳ Backing up...";
+                btn.disabled = true;
+                
+                const response = await fetch('/api/backup_history', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert("Success: " + result.message);
+                } else {
+                    alert("Failed: " + result.message);
+                }
+                
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            } catch (err) {
+                alert("Error calling backup API: " + err);
+            }
+        }
 
         async function restoreHistory() {
             if (!confirm("Are you sure you want to restore history from the server's local backup? This will overwrite the current cloud database.")) return;

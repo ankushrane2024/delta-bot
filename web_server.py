@@ -722,6 +722,28 @@ def get_trade_history():
             app_logger.error(f"Failed to read trade_history.json: {e}")
     return jsonify({"max_equity": 0.0, "trades": []})
 
+@app.route('/api/backup_history', methods=['POST'])
+def backup_history():
+    """Manually trigger a backup to the Secondary Cloud Backup."""
+    try:
+        import db_manager
+        
+        # Load from the primary database
+        primary_data = db_manager.load_all_data()
+        
+        if not primary_data or not primary_data.get('trades'):
+            return jsonify({"success": False, "message": "Primary database is empty. Nothing to backup."}), 400
+            
+        # Overwrite the secondary database with the primary
+        success = db_manager.save_backup_data(primary_data)
+        if success:
+            return jsonify({"success": True, "message": f"Successfully backed up {len(primary_data['trades'])} trades to Secondary Cloud DB."})
+        else:
+            return jsonify({"success": False, "message": "Failed to save to Secondary Cloud DB."}), 500
+    except Exception as e:
+        app_logger.error(f"Error backing up history: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
 @app.route('/api/restore_history', methods=['POST'])
 def restore_history():
     """Restores the cloud trade history from the Secondary Cloud Backup."""
