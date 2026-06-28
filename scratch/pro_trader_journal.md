@@ -228,3 +228,41 @@
 
 ---
 
+## Trade Diary - Date: 2026-06-20 (WIN)
+- **Entry Time (IST)**: `2026-06-20T09:15:00+05:30`
+- **Exit Time (IST)**: `2026-06-20T17:53:02.861996+05:30`
+- **Symbols**: Call: `C-BTC-65000-200626` | Put: `P-BTC-63500-200626`
+- **Size Multiplier**: `1.00x` | **Total Premium Collected**: `$66.78`
+- **Net P&L**: `$6.10` | **Exit Reason**: `TAKE_PROFIT_ALL`
+- **Account Equity After**: `$10000.00`
+
+### Volatility & Market Environment
+- **DVOL Index**: `N/A%` (Percentile: `N/A%`)
+- **Current IV**: `0.0%`
+- **Market Regime**: `Ranging` (ADX: `0.0`)
+
+### Smart Hedging Telemetry
+- **Hedging Triggered**: `False` (Type: `None`)
+- **Futures Hedge Size**: `0.0 BTC` | **Tightened SL**: `False`
+
+---
+
+## Trade Diary - Date: 2026-06-22 (WIN)
+- **Entry Time (IST)**: `2026-06-22T10:00:00`
+- **Exit Time (IST)**: `2026-06-22T23:38:20.065080+05:30`
+- **Symbols**: Call: `C-BTC-65000` | Put: `P-BTC-63000`
+- **Size Multiplier**: `1.00x` | **Total Premium Collected**: `$100.00`
+- **Net P&L**: `$25.00` | **Exit Reason**: `Take Profit Hit`
+- **Account Equity After**: `$10025.00`
+
+### Volatility & Market Environment
+- **DVOL Index**: `N/A%` (Percentile: `N/A%`)
+- **Current IV**: `0.0%`
+- **Market Regime**: `Ranging` (ADX: `0.0`)
+
+### Smart Hedging Telemetry
+- **Hedging Triggered**: `False` (Type: `None`)
+- **Futures Hedge Size**: `0.0 BTC` | **Tightened SL**: `False`
+
+---
+

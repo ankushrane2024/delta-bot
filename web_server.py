@@ -553,6 +553,9 @@ def save_lot_size():
         payload = {'total_lots': new_lots}
         with open(LOT_SIZE_FILE, 'w') as f:
             json.dump(payload, f)
+            
+        import db_manager
+        db_manager.trigger_cloud_sync()
 
         app_logger.info(f"Web [save_lot_size]: Saved new lot size → {new_lots} total ({new_lots // 2} per leg)")
         return jsonify({'success': True, 'total_lots': new_lots, 'per_leg': new_lots // 2})

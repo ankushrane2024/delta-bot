@@ -1,0 +1,666 @@
+ {
+            try {
+                const res = await fetch('/api/live/status');
+                const data = await res.json();
+
+
+                // Update Badge
+                const badge = document.getElementById('status-badge');
+                if(data.is_running) {
+                    badge.textContent = `🟢 ENGINE RUNNING`;
+                    badge.className = 'status-badge';
+                } else {
+                    badge.textContent = `🔴 ENGINE STOPPED`;
+                    badge.className = 'status-badge offline';
+                }
+
+                // Update Stats
+                document.getElementById('live-equity-val').textContent = `$${data.equity.toLocaleString()}`;
+                document.getElementById('live-mode-val').textContent = data.mode;
+                document.getElementById('live-loss-hits-val').textContent = `${data.daily_loss_hits} / 2`;
+
+                // Update IV Status Card
+                if (data.current_iv !== undefined) {
+                    document.getElementById('current-iv-val').textContent = `${data.current_iv.toFixed(2)}%`;
+                    document.getElementById('avg-iv-val').textContent = `${data.avg_7d_iv.toFixed(2)}%`;
+                    
+                    const ivBadge = document.getElementById('iv-status-badge');
+                    if (data.iv_status === 'Normal') {
+                        ivBadge.textContent = '🟢 Normal';
+                        ivBadge.style.color = 'var(--success)';
+                        ivBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+                        ivBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                    } else if (data.iv_status === 'Bypassed' || data.iv_status === 'Disabled') {
+                        ivBadge.textContent = '🟢 Bypassed (Testing)';
+                        ivBadge.style.color = 'var(--success)';
+                        ivBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+                        ivBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                    } else {
+                        ivBadge.textContent = '🔴 Low';
+                        ivBadge.style.color = 'var(--danger)';
+                        ivBadge.style.background = 'rgba(239, 68, 68, 0.1)';
+                        ivBadge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                    }
+                }
+
+                // Update PAPER Mode enhancements
+                const paperNote = document.getElementById('paper-mode-note');
+                if (paperNote) {
+                    paperNote.style.display = data.mode === 'PAPER' ? 'block' : 'none';
+                }
+                const lotMultVal = document.getElementById('live-lot-multiplier-val');
+                if (lotMultVal) {
+                    lotMultVal.textContent = `${(data.size_multiplier * 100).toFixed(0)}% of base (${data.size_multiplier.toFixed(2)}x)`;
+                }
+                const apiStatusBadge = document.getElementById('live-api-status-badge');
+                if (apiStatusBadge) {
+                    if (data.api_connected) {
+                        apiStatusBadge.textContent = '🟢 Connected';
+                        apiStatusBadge.style.color = 'var(--success)';
+                    } else {
+                        apiStatusBadge.textContent = '🔴 Disconnected';
+                        apiStatusBadge.style.color = 'var(--danger)';
+                    }
+                }
+
+                // Update Advanced Rules and Dynamic Sizing stats
+                document.getElementById('live-consecutive-losses-val').textContent = data.consecutive_loss_count || 0;
+                const cooldownEl = document.getElementById('live-sizing-cooldown-val');
+                if (data.reduced_size_trades_remaining > 0) {
+                    cooldownEl.textContent = `${data.reduced_size_trades_remaining} trades remaining (-20%)`;
+                    cooldownEl.style.color = 'var(--warning)';
+                } else if (data.size_multiplier < 0.99 && data.size_multiplier > 0.69) {
+                    cooldownEl.textContent = 'Daily Loss Cooldown (-30%)';
+                    cooldownEl.style.color = 'var(--warning)';
+                } else {
+                    cooldownEl.textContent = 'No Cooldown';
+                    cooldownEl.style.color = 'var(--text-secondary)';
+                }
+                const pauseContainer = document.getElementById('live-next-day-paused-container');
+                if (pauseContainer) {
+                    pauseContainer.style.display = data.next_day_paused ? 'block' : 'none';
+                }
+
+                // Update IV & DVOL Panel
+                if (data.dvol_status) {
+                    document.getElementById('dvol-val').textContent = `${data.dvol_status.current_dvol.toFixed(2)}%`;
+                    document.getElementById('dvol-percentile-val').textContent = `${data.dvol_status.dvol_percentile.toFixed(1)}%`;
+                    document.getElementById('dvol-percentile-bar').style.width = `${data.dvol_status.dvol_percentile}%`;
+                    
+                    if (data.dvol_status.premium_range) {
+                        document.getElementById('premium-range-val').textContent = `$${data.dvol_status.premium_range[0]} - $${data.dvol_status.premium_range[1]}`;
+                    }
+                    
+                    const dvolBadge = document.getElementById('dvol-can-trade-badge');
+                    if (dvolBadge) {
+                        if (data.dvol_status.is_bypassed) {
+                            dvolBadge.textContent = '🟢 Bypassed (Testing)';
+                            dvolBadge.style.color = 'var(--success)';
+                            dvolBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+                            dvolBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                        } else if (data.dvol_status.eligible_to_trade) {
+                            dvolBadge.textContent = '🟢 Safe to Trade';
+                            dvolBadge.style.color = 'var(--success)';
+                            dvolBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+                            dvolBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                        } else {
+                            dvolBadge.textContent = '🔴 Skip (DVOL Extreme)';
+                            dvolBadge.style.color = 'var(--danger)';
+                            dvolBadge.style.background = 'rgba(239, 68, 68, 0.1)';
+                            dvolBadge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                        }
+                    }
+                }
+
+                // Update Smart Hedging Panel
+                if (data.hedge_status) {
+                    const hBadge = document.getElementById('live-hedge-active-badge');
+                    if (hBadge) {
+                        if (data.hedge_status.hedge_active) {
+                            hBadge.textContent = '🛡️ ACTIVE';
+                            hBadge.style.color = 'var(--success)';
+                            hBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+                            hBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                        } else {
+                            hBadge.textContent = '⚪ INACTIVE';
+                            hBadge.style.color = 'var(--text-secondary)';
+                            hBadge.style.background = 'rgba(255, 255, 255, 0.05)';
+                            hBadge.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        }
+                    }
+                    
+                    document.getElementById('live-hedge-type-val').textContent = (data.hedge_status.hedge_type || 'none').toUpperCase();
+                    document.getElementById('live-hedge-size-val').textContent = `${(data.hedge_status.hedge_size_btc || 0).toFixed(6)} BTC`;
+                    
+                    const hedgePnl = data.hedge_status.hedge_pnl_usd || 0;
+                    const pnlSpan = document.getElementById('live-hedge-pnl-val');
+                    pnlSpan.textContent = `${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}`;
+                    pnlSpan.style.color = hedgePnl > 0 ? 'var(--success)' : (hedgePnl < 0 ? 'var(--danger)' : 'var(--text-secondary)');
+                    
+                    document.getElementById('live-hedge-percentage-val').textContent = `${(data.hedge_status.hedge_percentage || 0).toFixed(0)}%`;
+                    document.getElementById('live-hedge-percentage-bar').style.width = `${data.hedge_status.hedge_percentage || 0}%`;
+                    
+                    const slTight = document.getElementById('live-sl-tightened-badge');
+                    if (slTight) {
+                        slTight.style.display = data.hedge_status.sl_tightened ? 'block' : 'none';
+                    }
+                }
+
+                // Show/Hide Test Order button based on mode
+                const testBtn = document.getElementById('live-btn-test-order');
+                if (testBtn) {
+                    testBtn.style.display = data.mode === 'PAPER' ? 'block' : 'none';
+                }
+                
+                // Update Badge and Toggle
+                const regimeBadge = document.getElementById('regime-badge');
+                if(data.current_market_regime !== undefined) {
+                    let rColor = data.current_market_regime === 'Trending' ? 'var(--danger)' : 'var(--success)';
+                    let rIcon = data.current_market_regime === 'Trending' ? '🔴' : '🟢';
+                    if (data.current_market_regime === 'Unknown') { rColor = 'var(--text-secondary)'; rIcon = '⚪'; }
+                    regimeBadge.innerHTML = `${rIcon} ${data.current_market_regime} (ADX: ${data.current_adx_value.toFixed(1)})`;
+                    regimeBadge.style.color = rColor;
+                }
+                
+                // Update Market Regime Detector UI
+                if (data.current_market_regime) {
+                    const regime = data.current_market_regime.toUpperCase();
+                    const adx = data.current_adx_value || 0;
+                    
+                    const mainLabel = document.getElementById('regime-main-label');
+                    const recLabel = document.getElementById('regime-recommendation');
+                    if (mainLabel && recLabel) {
+                        mainLabel.textContent = regime;
+                        if (regime === 'TRENDING') {
+                            mainLabel.style.color = 'var(--rose)';
+                            mainLabel.style.background = 'rgba(244, 63, 94, 0.1)';
+                            mainLabel.style.boxShadow = '0 0 20px rgba(244, 63, 94, 0.2)';
+                            recLabel.textContent = '⚠️ Caution - Trending Market';
+                        } else if (regime === 'SIDEWAYS' || regime === 'RANGING') {
+                            mainLabel.style.color = 'var(--emerald)';
+                            mainLabel.style.background = 'rgba(16, 185, 129, 0.1)';
+                            mainLabel.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.2)';
+                            recLabel.textContent = '✅ Best for Short Strangle';
+                        } else {
+                            mainLabel.style.color = 'var(--text-secondary)';
+                            mainLabel.style.background = 'rgba(255, 255, 255, 0.05)';
+                            mainLabel.style.boxShadow = 'none';
+                            recLabel.textContent = 'Waiting for stable data...';
+                        }
+                    }
+
+                    const gaugePath = document.getElementById('adx-gauge-path');
+                    const gaugeVal = document.getElementById('adx-gauge-val');
+                    if (gaugePath && gaugeVal) {
+                        gaugeVal.textContent = adx.toFixed(1);
+                        const maxAdx = 60;
+                        const percentage = Math.min(Math.max(adx / maxAdx, 0), 1);
+                        const offset = 125 - (percentage * 125);
+                        gaugePath.style.strokeDashoffset = offset;
+                        
+                        let strokeColor = 'var(--emerald)';
+                        if (adx > 25) strokeColor = 'var(--rose)';
+                        else if (adx >= 22) strokeColor = 'var(--warning)';
+                        gaugePath.style.stroke = strokeColor;
+                    }
+
+                    const history = data.adx_history || [];
+                    const sparkline = document.getElementById('adx-sparkline');
+                    const trendDirection = document.getElementById('adx-trend-direction');
+                    if (sparkline && history.length >= 2) {
+                        const min = Math.min(...history) - 2;
+                        const max = Math.max(...history) + 2;
+                        const range = max - min === 0 ? 1 : max - min;
+                        
+                        let pathD = '';
+                        history.forEach((val, i) => {
+                            const x = (i / (history.length - 1)) * 100;
+                            const y = 40 - (((val - min) / range) * 40);
+                            if (i === 0) pathD += `M ${x} ${y} `;
+                            else pathD += `L ${x} ${y} `;
+                        });
+                        sparkline.innerHTML = `<path d="${pathD}"></path>`;
+                        
+                        const curr = history[history.length - 1];
+                        const prev = history[history.length - 2];
+                        if (curr > prev) {
+                            trendDirection.innerHTML = '📈 RISING';
+                            trendDirection.style.color = 'var(--rose)';
+                            sparkline.style.stroke = 'var(--rose)';
+                        } else if (curr < prev) {
+                            trendDirection.innerHTML = '📉 FALLING';
+                            trendDirection.style.color = 'var(--emerald)';
+                            sparkline.style.stroke = 'var(--emerald)';
+                        } else {
+                            trendDirection.innerHTML = 'FLAT';
+                            trendDirection.style.color = 'var(--text-secondary)';
+                            sparkline.style.stroke = 'var(--text-secondary)';
+                        }
+                    }
+                }
+                
+                // Sync pill button state
+                const pill = document.getElementById('live-regime-pill');
+                if(pill && data.regime_filter_enabled !== undefined) {
+                    if(data.regime_filter_enabled) {
+                        pill.textContent = 'ON';
+                        pill.style.background = 'var(--success)';
+                        pill.style.borderColor = 'var(--success)';
+                        pill.style.color = '#fff';
+                        pill.style.boxShadow = '0 0 10px rgba(16,185,129,0.4)';
+                    } else {
+                        pill.textContent = 'OFF';
+                        pill.style.background = '#334155';
+                        pill.style.borderColor = '#334155';
+                        pill.style.color = '#94a3b8';
+                        pill.style.boxShadow = 'none';
+                    }
+                }
+
+                const hedgePill = document.getElementById('live-hedge-pill');
+                if(hedgePill && data.smart_hedging_enabled !== undefined) {
+                    if(data.smart_hedging_enabled) {
+                        hedgePill.textContent = 'ON';
+                        hedgePill.style.background = 'var(--success)';
+                        hedgePill.style.borderColor = 'var(--success)';
+                        hedgePill.style.color = '#fff';
+                        hedgePill.style.boxShadow = '0 0 10px rgba(16,185,129,0.4)';
+                    } else {
+                        hedgePill.textContent = 'OFF';
+                        hedgePill.style.background = '#334155';
+                        hedgePill.style.borderColor = '#334155';
+                        hedgePill.style.color = '#94a3b8';
+                        hedgePill.style.boxShadow = 'none';
+                    }
+                }
+
+
+                // ── Update Active Positions ──────────────────────────────────────────
+                const posCards  = document.getElementById('live-positions-cards');
+                const totalBar  = document.getElementById('live-pos-total-bar');
+                const posContainer = document.getElementById('live-active-positions-container');
+                
+                if (data.positions && data.positions.length > 0) {
+                    if (posContainer) posContainer.classList.add('active-trade-glow');
+                    totalBar.style.display = 'flex';
+                    
+                    // ── Apply EMA smoothing to prevent wild jumps on tab switch / refresh ──
+                    // Formula: PnL = (Entry_Premium - Current_Premium) * Lots * 0.001 BTC
+                    const rawTotalPnlUsd = data.total_pnl_usd || 0;
+                    const rawTotalPnlInr = data.total_pnl_inr || 0;
+                    const { smoothedPositions, smoothedTotalPnlUsd, smoothedTotalPnlInr } =
+                        applyPnlSmoothing(data.positions, rawTotalPnlUsd, rawTotalPnlInr);
+                    const totalPnlUsd = smoothedTotalPnlUsd;
+                    const totalPnlInr = smoothedTotalPnlInr;
+
+                    // Update summary bar
+                    const totalEntryPremium = data.total_entry_premium || 0;
+                    document.getElementById('live-pos-total-entry').textContent = totalEntryPremium.toFixed(4);
+                    
+                    // Display Capital Used and reference BTC price
+                    const totalCapitalUsed = data.total_capital_used || 0;
+                    document.getElementById('live-pos-total-capital').textContent = totalCapitalUsed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    document.getElementById('live-pos-btc-price').textContent = (data.btc_price || 70000).toLocaleString(undefined, {maximumFractionDigits: 0});
+                    
+                    // Recalculate percentages based on smoothed P&L and actual denominators
+                    const totalPnlPctPrem = totalEntryPremium > 0 ? (totalPnlUsd / totalEntryPremium * 100) : 0.0;
+                    const totalPnlPctCap = totalCapitalUsed > 0 ? (totalPnlUsd / totalCapitalUsed * 100) : 0.0;
+                    
+                    const pnlPctSignPrem = totalPnlPctPrem >= 0 ? '+' : '';
+                    const pnlPctSignCap = totalPnlPctCap >= 0 ? '+' : '';
+                    
+                    const pnlUsdEl = document.getElementById('live-pos-total-pnl-usd');
+                    pnlUsdEl.innerHTML = `<div style="display: flex; flex-direction: column; gap: 2px; padding-top: 4px;">
+                        <span style="font-size: 1.6rem; font-weight: 800; line-height: 1;">${totalPnlUsd >= 0 ? '+' : ''}${totalPnlUsd.toFixed(4)} USDT</span>
+                        <span style="font-size: 0.8rem; font-weight: 500; opacity: 0.8; letter-spacing: 0.2px; color: var(--text-secondary);">(${pnlPctSignPrem}${totalPnlPctPrem.toFixed(2)}% Prem &nbsp;|&nbsp; ${pnlPctSignCap}${totalPnlPctCap.toFixed(2)}% Cap)</span>
+                    </div>`;
+                    pnlUsdEl.className = totalPnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg';
+                    
+                    const pnlInrEl = document.getElementById('live-pos-total-pnl-inr');
+                    pnlInrEl.textContent = '₹' + (totalPnlInr >= 0 ? '+' : '') + totalPnlInr.toFixed(2);
+                    pnlInrEl.className = totalPnlInr >= 0 ? 'pnl-pos' : 'pnl-neg';
+                    
+                    const mins = data.positions[0]?.mins_to_squareoff ?? 0;
+                    const hh = Math.floor(mins / 60);
+                    const mm = mins % 60;
+                    document.getElementById('live-pos-time-remaining').textContent = mins > 0 ? `${hh}h ${mm}m` : 'Market Closed';
+
+                    // Build one card per leg (using smoothed positions)
+                    posCards.innerHTML = smoothedPositions.map(pos => {
+
+                        const isCall = pos.leg_type === 'call';
+                        const legLabel = isCall
+                            ? '<span class="pos-call-label">📈 CALL</span>'
+                            : '<span class="pos-put-label">📉 PUT</span>';
+                        
+                        const pnlClass  = pos.leg_pnl_usd >= 0 ? 'pnl-pos' : 'pnl-neg';
+                        const pnlSign   = pos.leg_pnl_usd >= 0 ? '+' : '';
+                        const pnlInrSign = pos.leg_pnl_inr >= 0 ? '+' : '';
+
+                        let statusClass = 'status-running';
+                        let statusIcon  = '🟢 Running';
+                        if (pos.trade_status === 'Trailing SL Active') { statusClass = 'status-trailing'; statusIcon = '🔴 Trailing SL'; }
+                        else if (pos.trade_status === 'Partial Profit Booked') { statusClass = 'status-partial'; statusIcon = '🟡 Partial Profit'; }
+
+                        // Entry time formatting
+                        let entryTimeDisplay = '—';
+                        if (pos.entry_time) {
+                            try {
+                                const d = new Date(pos.entry_time);
+                                entryTimeDisplay = d.toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true});
+                            } catch(e) { entryTimeDisplay = pos.entry_time.slice(11, 16); }
+                        }
+
+                        const minsLeft = pos.mins_to_squareoff || 0;
+                        const hh2 = Math.floor(minsLeft / 60), mm2 = minsLeft % 60;
+                        const timeLeft = minsLeft > 0 ? `${hh2}h ${mm2}m` : '—';
+
+                        // Premium change %
+                        const premChangePct = pos.entry_price > 0
+                            ? (((pos.current_price - pos.entry_price) / pos.entry_price) * 100).toFixed(1)
+                            : '0.0';
+                        const premChangeSign = parseFloat(premChangePct) >= 0 ? '+' : '';
+
+                        // Calculate accurate leg capital used and smoothed leg P&L percentages
+                        const legCapitalUsed = pos.leg_capital_used || 0;
+                        const legEntryPremium = pos.leg_entry_premium_total || 0;
+                        
+                        const legPnlPctPremium = legEntryPremium > 0 ? (pos.leg_pnl_usd / legEntryPremium * 100) : 0.0;
+                        const legPnlPctCapital = legCapitalUsed > 0 ? (pos.leg_pnl_usd / legCapitalUsed * 100) : 0.0;
+                        
+                        const legPnlPctPremiumStr = (legPnlPctPremium >= 0 ? '+' : '') + legPnlPctPremium.toFixed(2);
+                        const legPnlPctCapitalStr = (legPnlPctCapital >= 0 ? '+' : '') + legPnlPctCapital.toFixed(2);
+
+                        return `
+                        <div class="pos-card">
+                            <div class="pos-card-header">
+                                <div>
+                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                                        ${legLabel}
+                                        <span style="font-size:0.7rem;color:var(--text-secondary);background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:4px;">${pos.side}</span>
+                                    </div>
+                                    <div class="pos-symbol">${pos.symbol}</div>
+                                    ${pos.strike ? `<div class="pos-strike-label">Strike: $${parseFloat(pos.strike).toLocaleString()}</div>` : ''}
+                                </div>
+                                <div class="pos-status-badge ${statusClass}">${statusIcon}</div>
+                            </div>
+
+                            <div class="pos-metrics">
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Entry Premium</div>
+                                    <div class="pos-metric-value">${pos.entry_price.toFixed(2)}</div>
+                                    <div class="pos-metric-sub">USDT / lot</div>
+                                </div>
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Current Premium</div>
+                                    <div class="pos-metric-value" style="color:${parseFloat(premChangePct)<0?'#34d399':'#f87171'}">${pos.current_price.toFixed(2)}</div>
+                                    <div class="pos-metric-sub">${premChangeSign}${premChangePct}% from entry</div>
+                                </div>
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Leg P&amp;L</div>
+                                    <div style="display: flex; flex-direction: column; gap: 2px; margin-top: 2px;">
+                                        <div class="pos-metric-value ${pnlClass}" style="line-height: 1;">${pnlSign}${pos.leg_pnl_usd.toFixed(2)} USD</div>
+                                        <div style="font-size: 0.75rem; font-weight: 500; opacity: 0.8; color: var(--text-secondary);">(${legPnlPctPremiumStr}% Prem | ${legPnlPctCapitalStr}% Cap)</div>
+                                        <div class="pos-metric-sub ${pnlClass}" style="margin-top: 0;">${pnlInrSign}₹${pos.leg_pnl_inr.toFixed(0)}</div>
+                                    </div>
+                                </div>
+                                <div class="pos-metric" style="background: rgba(16,185,129,0.04); border: 1px solid rgba(16,185,129,0.08);">
+                                    <div class="pos-metric-label" style="color: #34d399;">Capital Used</div>
+                                    <div class="pos-metric-value" style="color: #34d399; font-weight: 800;">$${legCapitalUsed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                    <div class="pos-metric-sub">at $${(data.btc_price || 70000).toLocaleString(undefined, {maximumFractionDigits: 0})} BTC</div>
+                                </div>
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Lot Size</div>
+                                    <div class="pos-metric-value">${pos.size}</div>
+                                    <div class="pos-metric-sub">contracts</div>
+                                </div>
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Delta / Gamma</div>
+                                    <div class="pos-metric-value">${pos.delta.toFixed(3)}</div>
+                                    <div class="pos-metric-sub">γ ${pos.gamma.toFixed(4)}</div>
+                                </div>
+                                <div class="pos-metric">
+                                    <div class="pos-metric-label">Live IV</div>
+                                    <div class="pos-metric-value">${pos.current_iv_pct.toFixed(2)}%</div>
+                                    <div class="pos-metric-sub">Implied Volatility</div>
+                                </div>
+                            </div>
+
+                            <div class="pos-divider"></div>
+                            <div class="pos-footer">
+                                <div class="pos-footer-chip">🕐 Entry: <strong>${entryTimeDisplay} IST</strong></div>
+                                <div class="pos-footer-chip">⏱ SqOff in: <strong>${timeLeft}</strong></div>
+                            </div>
+                        </div>`;
+                    }).join('');
+
+                } else {
+                    totalBar.style.display = 'none';
+                    posCards.innerHTML = `
+                        <div class="pos-empty">
+                            <div class="pos-empty-icon">📭</div>
+                            <div style="font-weight:600;color:var(--text-secondary);">No Active Positions</div>
+                            <div style="font-size:0.8rem;margin-top:6px;opacity:0.6;">The bot has no open trades right now.</div>
+                        </div>`;
+                    if (posContainer) posContainer.classList.remove('active-trade-glow');
+                }
+
+                // Update Rule Compliance
+                if(data.rule_report && data.rule_report.results) {
+                    // Check if today was skipped and map to rules
+                    const skipReason = data.today_skip_reason || "";
+                    let failedRuleName = null;
+                    
+                    if (skipReason) {
+                        const reasonLower = skipReason.toLowerCase();
+                        if (reasonLower.includes("loss limit") || reasonLower.includes("sls") || reasonLower.includes("max loss")) {
+                            failedRuleName = "Daily Loss Limit";
+                        } else if (reasonLower.includes("strike") || reasonLower.includes("premium") || reasonLower.includes("net delta")) {
+                            failedRuleName = "Strike Selection";
+                        } else if (reasonLower.includes("capital") || reasonLower.includes("lot size") || reasonLower.includes("insufficient") || reasonLower.includes("consecutive losses")) {
+                            failedRuleName = "Lot Size";
+                        } else if (reasonLower.includes("exit")) {
+                            failedRuleName = "Exit Time";
+                        } else if (reasonLower.includes("hedge")) {
+                            failedRuleName = "Hedging";
+                        }
+                    }
+
+                    const badge = document.getElementById('live-compliance-badge');
+                    if (failedRuleName) {
+                        const failedCount = data.rule_report.results.filter(r => r.name === failedRuleName || !r.passed).length;
+                        const compliancePct = Math.round(((data.rule_report.results.length - failedCount) / data.rule_report.results.length) * 100);
+                        badge.textContent = `${compliancePct}% Compliant`;
+                        badge.style.color = 'var(--danger)';
+                        badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                        badge.style.background = 'rgba(239, 68, 68, 0.1)';
+                    } else {
+                        badge.textContent = `100% Compliant`;
+                        badge.style.color = 'var(--success)';
+                        badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                        badge.style.background = 'rgba(16, 185, 129, 0.1)';
+                    }
+
+                    const rulesGrid = document.getElementById('live-rules-grid');
+                    rulesGrid.innerHTML = data.rule_report.results.map(r => {
+                        const isFailed = (r.name === failedRuleName) || !r.passed;
+                        const bg = isFailed ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.06)';
+                        const border = isFailed ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(16, 185, 129, 0.18)';
+                        const icon = isFailed ? '❌' : '✅';
+                        
+                        return `
+                            <div style="background: ${bg}; padding: 12px; border-radius: 8px; border: ${border}; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
+                                <div style="font-size: 1.2rem;">${icon}</div>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.9rem; color: #fff;">${r.name}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">${r.expected}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    // Today's Skip Reason Section update
+                    const skipTitle = document.getElementById('skip-reason-title');
+                    const skipText = document.getElementById('live-skip-reason-text');
+                    
+                    if (data.today_skip_reason) {
+                        // We have an active skip today! Style in red.
+                        skipTitle.innerHTML = "🚫 Today's Skip Reason";
+                        skipText.textContent = data.today_skip_reason;
+                        skipText.style.color = "#fca5a5";
+                        skipText.style.background = "rgba(239, 68, 68, 0.08)";
+                        skipText.style.borderColor = "rgba(239, 68, 68, 0.15)";
+                    } else if (data.schedule_info && data.schedule_info.today_status === "Trade Taken") {
+                        // Trade taken successfully! Style in green.
+                        skipTitle.innerHTML = "✅ Today's Status";
+                        skipText.textContent = "Trade taken successfully";
+                        skipText.style.color = "#a7f3d0";
+                        skipText.style.background = "rgba(16, 185, 129, 0.08)";
+                        skipText.style.borderColor = "rgba(16, 185, 129, 0.18)";
+                    } else {
+                        // No active skips/trades yet today (system normal). Style in grey/secondary.
+                        skipTitle.innerHTML = "ℹ️ Today's Status";
+                        skipText.textContent = "None (System running normally)";
+                        skipText.style.color = "var(--text-secondary)";
+                        skipText.style.background = "rgba(255, 255, 255, 0.03)";
+                        skipText.style.borderColor = "rgba(255, 255, 255, 0.08)";
+                    }
+                }
+
+                
+                // Update Skip & Schedule Info
+                if(data.schedule_info) {
+                    const statusBadge = document.getElementById('today-status-badge');
+                    const status = data.schedule_info.today_status;
+                    const reason = data.schedule_info.today_reason;
+                    
+                    if (status === "Trade Taken") {
+                        statusBadge.textContent = "✅ " + status;
+                        statusBadge.style.color = "var(--success)";
+                        statusBadge.style.background = "rgba(16, 185, 129, 0.1)";
+                        statusBadge.style.border = "1px solid rgba(16, 185, 129, 0.2)";
+                    } else if (status === "Trade Skipped") {
+                        statusBadge.textContent = "⏭️ " + status + (reason ? ` (${reason})` : "");
+                        if (reason && (reason.includes("Weekend") || reason.includes("News"))) {
+                            statusBadge.style.color = "var(--danger)";
+                            statusBadge.style.background = "rgba(239, 68, 68, 0.1)";
+                            statusBadge.style.border = "1px solid rgba(239, 68, 68, 0.2)";
+                        } else {
+                            statusBadge.style.color = "var(--warning)";
+                            statusBadge.style.background = "rgba(245, 158, 11, 0.1)";
+                            statusBadge.style.border = "1px solid rgba(245, 158, 11, 0.2)";
+                        }
+                    } else {
+                        statusBadge.textContent = "⏳ " + status;
+                        statusBadge.style.color = "var(--text-secondary)";
+                        statusBadge.style.background = "rgba(255, 255, 255, 0.05)";
+                        statusBadge.style.border = "1px solid rgba(255, 255, 255, 0.1)";
+                    }
+
+                    // ── TRADE SKIP ALERT CARD ──────────────────────────────────────
+                    (function() {
+                        const skipAlertCard = document.getElementById('live-trade-skip-alert-card');
+                        if (!skipAlertCard) return;
+                        const skipReasonEl = document.getElementById('live-skip-reason-text');
+                        const skipHintEl   = document.getElementById('live-skip-hint-text');
+                        const skipTsEl     = document.getElementById('live-skip-timestamp');
+                        const skipHistEl   = document.getElementById('live-skip-history-list');
+                        const skipHistSec  = document.getElementById('live-skip-history-section');
+
+                        if (status === 'Trade Skipped' && reason) {
+                            skipAlertCard.style.display = 'block';
+                            skipAlertCard.style.animation = 'slide-down-in 0.4s ease';
+                            skipReasonEl.textContent = reason;
+
+                            const hist = data.schedule_info.skip_history || [];
+                            skipTsEl.textContent = hist.length > 0 ? hist[0].time : '';
+
+                            const hintMap = [
+                                ['Maximum 1 trade',     'Next entry window will be tomorrow at 09:00 AM IST.'],
+                                ['Next day pause',      'Trading resumes once the daily P&L is above -2.5%.'],
+                                ['consecutive losses',  'Bot will resume trading after tonight\'s daily reset.'],
+                                ['API connection',      'Check your internet connection and API key in the Config tab.'],
+                                ['Daily Loss Limit',    'The -3% daily loss limit was hit. Trading resumes tomorrow.'],
+                                ['No suitable strikes', 'DVOL premium targets not matched. Strikes retry at next slot.'],
+                                ['risk per trade',      'Position size too large for equity. Reduce lot size in Config.'],
+                                ['Trending',            'ADX > 25 means trending market. Bot waits for sideways.'],
+                                ['DVOL',                'Volatility index out of safe range. Waiting for DVOL to normalize.'],
+                                ['Weekend',             'Markets closed. Trading resumes Monday 09:00 AM IST.'],
+                            ];
+                            let hint = 'Trade skipped by risk management. Next slot will be checked automatically.';
+                            for (const [key, val] of hintMap) {
+                                if (reason.includes(key)) { hint = val; break; }
+                            }
+                            skipHintEl.textContent = hint;
+
+                            if (hist.length > 0) {
+                                skipHistEl.innerHTML = hist.map((e, i) => `
+                                    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;
+                                        background:${i===0?'rgba(245,158,11,0.10)':'rgba(255,255,255,0.02)'};
+                                        border:1px solid ${i===0?'rgba(245,158,11,0.22)':'rgba(255,255,255,0.05)'};
+                                        border-radius:7px;font-size:0.78rem;">
+                                        <span>${i===0?'🔴':'🟡'}</span>
+                                        <span style="color:rgba(255,255,255,0.5);min-width:145px;flex-shrink:0;">${e.time}</span>
+                                        <span style="color:${i===0?'#fbbf24':'rgba(255,255,255,0.6)'};font-weight:${i===0?700:400};">${e.reason}</span>
+                                    </div>`).join('');
+                                skipHistSec.style.display = 'block';
+                            } else {
+                                skipHistSec.style.display = 'none';
+                            }
+                        } else {
+                            skipAlertCard.style.display = 'none';
+                        }
+                    })();
+                    // ──────────────────────────────────────────────────────────────
+
+                    const schedBody = document.getElementById('schedule-body');
+                    let showWarning = false;
+                    let warningText = "";
+                    
+                    if (data.schedule_info.upcoming_schedule && data.schedule_info.upcoming_schedule.length > 0) {
+                        schedBody.innerHTML = '';
+                        data.schedule_info.upcoming_schedule.forEach((day, index) => {
+                            if ((index === 1 || index === 2) && day.skip && !showWarning) {
+                                showWarning = true;
+                                warningText = `⚠️ EARLY WARNING: Trading will be skipped on ${day.day} (${day.reason})`;
+                            }
+                            
+                            let statusColor = day.skip ? (day.skip_type === 'severe' ? 'var(--danger)' : 'var(--warning)') : 'var(--success)';
+                            let statusText = day.skip ? '⏭️ Skipped' : '✅ Scheduled';
+                            
+                            schedBody.innerHTML += `
+                                <tr>
+                                    <td style="font-weight: 600;">${day.date}</td>
+                                    <td style="color: var(--text-secondary);">${day.day}</td>
+                                    <td style="color: ${statusColor}; font-weight: 600;">${statusText}</td>
+                                    <td style="color: var(--text-secondary);">${day.reason || '-'}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    
+                    const warningBox = document.getElementById('early-warning-box');
+                    if (showWarning) {
+                        warningBox.style.display = 'flex';
+                        warningBox.textContent = warningText;
+                    } else {
+                        warningBox.style.display = 'none';
+                    }
+                }
+
+                // Update Logs
+                const logTerm = document.getElementById('live-log-terminal');
+                const isScrolledToBottom = logTerm.scrollHeight - logTerm.clientHeight <= logTerm.scrollTop + 10;
+                
+                logTerm.innerHTML = data.logs.map(line => {
+                    let color = "#a7f3d0"; // default green-ish
+                    if(line.includes("ERROR") || line.includes("CRITICAL")) color = "#fca5a5";
+                    if(line.includes("WARNING")) color = "#fde047";
+                    return `<div class="log-line" style="color: ${color};">${line}</div>`;
+                }).join('');
+
+                if (isScrolledToBottom) {
+                    logTerm.scrollTop = logTerm.scrollHeight;
+                }
+
+            

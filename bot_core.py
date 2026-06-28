@@ -448,7 +448,10 @@ class DeltaOptionsBot:
                     'balance':   self.state[mode]['balance']
                 }
             with open(self.state_file, 'w') as f:
-                json.dump(data, f)
+                json.dump(data, f, indent=4)
+                
+            import db_manager
+            db_manager.trigger_cloud_sync()
         except Exception as e:
             logging.error(f"Failed to save state: {e}")
 

@@ -358,3 +358,6 @@ def save_report_data(data):
     
     with open(filepath, 'w') as f:
         json.dump(sorted_history, f, indent=4)
+        
+    import db_manager
+    db_manager.trigger_cloud_sync()

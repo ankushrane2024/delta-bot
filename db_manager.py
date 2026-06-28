@@ -207,6 +207,16 @@ def get_last_backup_time() -> str:
                 return f.read().strip()
         except Exception:
             pass
+    # If local file missing (Render reset), fetch from cloud
+    try:
+        res = requests.head(_get_backup_url(), timeout=5, verify=False)
+        if res.status_code == 200:
+            ts = res.headers.get('X-jsonblob-last-modified')
+            if ts:
+                dt = datetime.datetime.fromtimestamp(int(ts))
+                return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        pass
     return "Never"
 
 def _get_backup_url():
@@ -247,6 +257,48 @@ def save_backup_data(data: dict) -> bool:
     except Exception as e:
         app_logger.error(f"DB: Exception saving backup to Cloud: {e}")
         return False
+def _gather_local_state() -> dict:
+    """Reads local JSON state files to bundle them into a single cloud sync."""
+    unified = {}
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    files_to_sync = [
+        ('lot_size.json', 'lot_size'),
+        ('bot_state.json', 'bot_state'),
+        ('daily_reports.json', 'daily_reports'),
+        ('trade_history.json', 'trade_history')
+    ]
+    for filename, key in files_to_sync:
+        filepath = os.path.join(base_dir, filename)
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    unified[key] = json.load(f)
+            except Exception:
+                unified[key] = {}
+        else:
+            unified[key] = {}
+    return unified
+
+def _unpack_local_state(unified: dict):
+    """Writes the bundled cloud state back to local JSON files (for Render reboot recovery)."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    files_to_sync = [
+        ('lot_size.json', 'lot_size'),
+        ('bot_state.json', 'bot_state'),
+        ('daily_reports.json', 'daily_reports'),
+        ('trade_history.json', 'trade_history')
+    ]
+    for filename, key in files_to_sync:
+        if key in unified and unified[key]:
+            filepath = os.path.join(base_dir, filename)
+            try:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(unified[key], f, indent=4)
+            except Exception as e:
+                app_logger.error(f"DB: Failed to unpack {filename}: {e}")
+
 
 def load_all_data() -> dict:
     """
@@ -262,8 +314,17 @@ def load_all_data() -> dict:
         
         if res.status_code == 200:
             data = res.json()
-            app_logger.info(f"DB: Loaded {len(data.get('trades', []))} trades from Cloud DB.")
-            return data
+            
+            # UNIFIED STATE CHECK
+            if 'trade_history' in data:
+                app_logger.info("DB: Unified state detected. Unpacking local files...")
+                _unpack_local_state(data)
+                trade_data = data['trade_history']
+            else:
+                trade_data = data
+                
+            app_logger.info(f"DB: Loaded {len(trade_data.get('trades', []))} trades from Cloud DB.")
+            return trade_data
         elif res.status_code == 404:
             app_logger.error("DB: Blob 404 on load. Triggering self-heal...")
             if _self_heal():
@@ -271,8 +332,15 @@ def load_all_data() -> dict:
                 res2 = requests.get(_get_cloud_url(), headers=headers, timeout=10, verify=False)
                 if res2.status_code == 200:
                     data = res2.json()
-                    app_logger.info(f"DB: Self-heal load success! {len(data.get('trades', []))} trades restored.")
-                    return data
+                    
+                    if 'trade_history' in data:
+                        _unpack_local_state(data)
+                        trade_data = data['trade_history']
+                    else:
+                        trade_data = data
+                        
+                    app_logger.info(f"DB: Self-heal load success! {len(trade_data.get('trades', []))} trades restored.")
+                    return trade_data
             return None
         else:
             app_logger.error(f"DB: Failed to load from Cloud (HTTP {res.status_code})")
@@ -281,26 +349,30 @@ def load_all_data() -> dict:
         app_logger.error(f"DB: Exception loading from Cloud: {e}")
         return None
 
-def save_all_data(data: dict) -> bool:
+def save_all_data(trade_data: dict) -> bool:
     """
-    Overwrite the entire database in the cloud with the provided data.
+    Overwrite the entire database in the cloud with the unified state payload.
     JSONBlob uses PUT for full document replacement.
     """
     if not _connect():
         return False
 
     try:
+        # Package everything into one payload
+        unified = _gather_local_state()
+        unified['trade_history'] = trade_data
+        
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-        res = requests.put(_get_cloud_url(), json=data, headers=headers, timeout=10, verify=False)
+        res = requests.put(_get_cloud_url(), json=unified, headers=headers, timeout=10, verify=False)
         
         if res.status_code in [200, 201]:
             app_logger.info("DB: Successfully synced to Cloud DB.")
             return True
         elif res.status_code == 404:
             app_logger.error("DB: Blob 404 on save. Triggering self-heal...")
-            if _self_heal(local_backup=data):
+            if _self_heal(local_backup=unified):
                 # Retry save to the newly created blob
-                res2 = requests.put(_get_cloud_url(), json=data, headers=headers, timeout=10, verify=False)
+                res2 = requests.put(_get_cloud_url(), json=unified, headers=headers, timeout=10, verify=False)
                 if res2.status_code in [200, 201]:
                     app_logger.info("DB: Self-heal save success!")
                     return True
@@ -308,8 +380,19 @@ def save_all_data(data: dict) -> bool:
             app_logger.error(f"DB: Failed to sync to Cloud (HTTP {res.status_code})")
             return False
     except Exception as e:
-        app_logger.error(f"DB: Exception saving to Cloud: {e}")
+        app_logger.error(f"DB: Exception saving to Cloud DB: {e}")
         return False
+
+def trigger_cloud_sync():
+    """Forces a sync of all local state to the cloud. Used when non-trade state changes."""
+    unified = _gather_local_state()
+    # Ensure trade_history has a valid structure if it was missing locally
+    if 'trade_history' not in unified or 'trades' not in unified['trade_history']:
+        unified['trade_history'] = {"max_equity": 0.0, "trades": []}
+    
+    # save_all_data expects the trade_history dict
+    save_all_data(unified['trade_history'])
+
 
 def is_connected() -> bool:
     """Returns True if Cloud DB is configured."""
