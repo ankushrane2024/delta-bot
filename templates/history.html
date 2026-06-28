@@ -660,35 +660,89 @@
                         : (trade.premium_collected ? (totalPnl / trade.premium_collected * 100).toFixed(2) : '0.00');
                     const pctCapturedColor = parseFloat(pctCaptured) >= 0 ? 'var(--success)' : 'var(--danger)';
                     
-                    // ── Extract accurate PnL from last chart point if available ──
+                    // ══════════════════════════════════════════════════
+                    // HEDGE FORENSICS — Full event log OR legacy summary
+                    // ══════════════════════════════════════════════════
+                    const hedgeEvents = trade.hedge_events || [];
                     const chart = trade.chart_data || [];
-                    const lastChartPt = chart.length > 0 ? chart[chart.length - 1] : null;
-                    // Find the peak hedge PnL from chart (most hedge was ever worth)
                     const peakHedgePnl = chart.length > 0 ? Math.max(...chart.map(p => p.hedge || 0)) : 0;
-                    // Find the point where hedge was first activated
-                    const hedgeStartPt = chart.find(p => (p.hedge || 0) !== 0);
-                    // Exit point from chart (last point = square-off snapshot)
-                    const chartExitOptPnl = lastChartPt ? (lastChartPt.pnl || 0) : null;
-                    const chartExitHedgePnl = lastChartPt ? (lastChartPt.hedge || 0) : null;
-                    const chartExitTotal = lastChartPt ? (lastChartPt.total || 0) : null;
-                    const hedgeWasActive = hedgePnl !== 0 || peakHedgePnl !== 0;
+                    const hedgeWasActive = hedgePnl !== 0 || peakHedgePnl !== 0 || hedgeEvents.length > 0;
 
-                    // Hedge detail row (shown only when hedge was active)
-                    const hedgeRow = hedgeWasActive ? `
-                        <div style="grid-column: 1/-1; background: rgba(124,58,237,0.07); border: 1px solid rgba(124,58,237,0.25); border-radius: 10px; padding: 12px 16px; margin-top: 4px;">
-                            <div style="font-size:0.78rem; font-weight:700; color:#a78bfa; letter-spacing:0.05em; margin-bottom:8px;">⚡ HEDGE ACTIVATED</div>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:8px;">
+                    let hedgeRow = '';
+                    if (hedgeEvents.length > 0) {
+                        // ── NEW FORMAT: Full forensic event timeline ──
+                        const evtColors = {
+                            'OPEN': {bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.35)', dot: '#3b82f6', label: '🔵 OPEN'},
+                            'ESCALATE': {bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.35)', dot: '#f59e0b', label: '🟡 ESCALATE'},
+                            'CLOSE': {bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.35)', dot: '#10b981', label: '🟢 CLOSE'}
+                        };
+                        const evtHtml = hedgeEvents.map((evt, ei) => {
+                            const c = evtColors[evt.event] || evtColors['OPEN'];
+                            const dir = (evt.direction||'').toUpperCase();
+                            const dirLabel = dir === 'BUY' ? '📈 LONG BTC Futures' : dir === 'SELL' ? '📉 SHORT BTC Futures' : dir;
+                            const isClose = evt.event === 'CLOSE';
+                            return `
+                            <div style="display:flex; gap:12px; align-items:stretch;">
+                                <div style="display:flex; flex-direction:column; align-items:center; width:20px;">
+                                    <div style="width:10px;height:10px;border-radius:50%;background:${c.dot};flex-shrink:0;margin-top:6px;box-shadow:0 0 8px ${c.dot}60;"></div>
+                                    ${ei < hedgeEvents.length - 1 ? '<div style="flex:1;width:2px;background:rgba(167,139,250,0.2);margin:4px 0;"></div>' : ''}
+                                </div>
+                                <div style="flex:1;background:${c.bg};border:1px solid ${c.border};border-radius:8px;padding:10px 14px;margin-bottom:8px;">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                                        <span style="font-weight:700;font-size:0.78rem;color:${c.dot};letter-spacing:0.04em;">#${ei+1} ${c.label}</span>
+                                        <span style="font-size:0.75rem;color:#94a3b8;">⏱ ${evt.time_str}</span>
+                                    </div>
+                                    <div style="font-size:0.78rem;color:#cbd5e1;margin-bottom:6px;">${evt.trigger_reason}</div>
+                                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;">
+                                        <div style="font-size:0.72rem;color:#94a3b8;">Direction<br><span style="color:#e2e8f0;font-weight:600;font-size:0.8rem;">${dirLabel}</span></div>
+                                        <div style="font-size:0.72rem;color:#94a3b8;">${isClose ? 'Closed' : 'Added'} Size<br><span style="color:#e2e8f0;font-weight:600;font-size:0.8rem;">${evt.size_btc} BTC</span></div>
+                                        ${!isClose ? `<div style="font-size:0.72rem;color:#94a3b8;">Total Size<br><span style="color:#e2e8f0;font-weight:600;font-size:0.8rem;">${evt.total_btc} BTC</span></div>` : ''}
+                                        <div style="font-size:0.72rem;color:#94a3b8;">BTC Price<br><span style="color:#e2e8f0;font-weight:600;font-size:0.8rem;">$${evt.btc_price.toLocaleString()}</span></div>
+                                        <div style="font-size:0.72rem;color:#94a3b8;">Options P&L<br><span style="color:${evt.options_pnl_usd >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:600;font-size:0.8rem;">${evt.options_pnl_usd >= 0 ? '+' : ''}$${evt.options_pnl_usd.toFixed(2)}</span></div>
+                                        <div style="font-size:0.72rem;color:#94a3b8;">Hedge P&L<br><span style="color:${evt.hedge_pnl_usd >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:600;font-size:0.8rem;">${evt.hedge_pnl_usd >= 0 ? '+' : ''}$${evt.hedge_pnl_usd.toFixed(2)}</span></div>
+                                        <div style="font-size:0.72rem;color:#94a3b8;">Net P&L<br><span style="color:${evt.net_pnl_usd >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700;font-size:0.85rem;">${evt.net_pnl_usd >= 0 ? '+' : ''}$${evt.net_pnl_usd.toFixed(2)}</span></div>
+                                    </div>
+                                </div>
+                            </div>`;
+                        }).join('');
+
+                        hedgeRow = `
+                        <div style="grid-column:1/-1;background:rgba(124,58,237,0.05);border:1px solid rgba(124,58,237,0.25);border-radius:12px;padding:14px 16px;margin-top:4px;">
+                            <div style="font-size:0.82rem;font-weight:700;color:#a78bfa;letter-spacing:0.06em;margin-bottom:12px;">⚡ HEDGE FORENSICS — ${hedgeEvents.length} event${hedgeEvents.length > 1 ? 's' : ''}</div>
+                            ${evtHtml}
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:4px;padding-top:10px;border-top:1px solid rgba(167,139,250,0.15);">
                                 <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
-                                    <span class="stat-label" style="color:#a78bfa;">Options P&L at Exit</span>
+                                    <span class="stat-label" style="color:#a78bfa;">Options P&L</span>
                                     <span class="stat-val" style="color:${optionsPnl >= 0 ? 'var(--success)' : 'var(--danger)'}">${optionsPnl >= 0 ? '+' : ''}$${optionsPnl.toFixed(2)}</span>
                                 </div>
                                 <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
-                                    <span class="stat-label" style="color:#a78bfa;">Hedge P&L at Exit</span>
+                                    <span class="stat-label" style="color:#a78bfa;">Hedge P&L</span>
                                     <span class="stat-val" style="color:${hedgePnl >= 0 ? 'var(--success)' : 'var(--danger)'}">${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}</span>
                                 </div>
                                 <div class="stat-box" style="border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.1);">
-                                    <span class="stat-label" style="color:#c4b5fd;">Net P&L (Options+Hedge)</span>
-                                    <span class="stat-val" style="color:${totalPnl >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span>
+                                    <span class="stat-label" style="color:#c4b5fd;">Net P&L</span>
+                                    <span class="stat-val" style="color:${totalPnl >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700;">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>`;
+                    } else if (hedgeWasActive) {
+                        // ── LEGACY FORMAT: Chart-based summary for old trades ──
+                        const hedgeStartPt = chart.find(p => (p.hedge || 0) !== 0);
+                        hedgeRow = `
+                        <div style="grid-column:1/-1;background:rgba(124,58,237,0.07);border:1px solid rgba(124,58,237,0.25);border-radius:10px;padding:12px 16px;margin-top:4px;">
+                            <div style="font-size:0.78rem;font-weight:700;color:#a78bfa;letter-spacing:0.05em;margin-bottom:8px;">⚡ HEDGE ACTIVATED</div>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;">
+                                <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
+                                    <span class="stat-label" style="color:#a78bfa;">Options P&L</span>
+                                    <span class="stat-val" style="color:${optionsPnl >= 0 ? 'var(--success)' : 'var(--danger)'}">${optionsPnl >= 0 ? '+' : ''}$${optionsPnl.toFixed(2)}</span>
+                                </div>
+                                <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
+                                    <span class="stat-label" style="color:#a78bfa;">Hedge P&L</span>
+                                    <span class="stat-val" style="color:${hedgePnl >= 0 ? 'var(--success)' : 'var(--danger)'}">${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}</span>
+                                </div>
+                                <div class="stat-box" style="border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.1);">
+                                    <span class="stat-label" style="color:#c4b5fd;">Net P&L</span>
+                                    <span class="stat-val" style="color:${totalPnl >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700;">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span>
                                 </div>
                                 ${peakHedgePnl > 0 ? `
                                 <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
@@ -697,11 +751,13 @@
                                 </div>` : ''}
                                 ${hedgeStartPt ? `
                                 <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
-                                    <span class="stat-label" style="color:#a78bfa;">Hedge Triggered At</span>
-                                    <span class="stat-val" style="color:#e2e8f0; font-size:0.85rem;">${hedgeStartPt.t}</span>
+                                    <span class="stat-label" style="color:#a78bfa;">Triggered At</span>
+                                    <span class="stat-val" style="color:#e2e8f0;font-size:0.85rem;">${hedgeStartPt.t}</span>
                                 </div>` : ''}
                             </div>
-                        </div>` : '';
+                        </div>`;
+                    }
+
                     
                     const maxPnlTimeStr = trade.max_pnl_time ? new Date(trade.max_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';
                     const minPnlTimeStr = trade.min_pnl_time ? new Date(trade.min_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';

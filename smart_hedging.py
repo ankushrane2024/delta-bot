@@ -95,6 +95,13 @@ class SmartHedgingManager:
         self._last_escalation_time = 0.0
         self._hedge_size_factor = 0.0             # Compat with old code
 
+        # ─── Hedge Event Log (cleared each trade) ─────────────────
+        # Each entry: {event, time_str, trigger_reason, direction,
+        #              size_btc, total_btc, btc_price,
+        #              options_pnl_usd, hedge_pnl_usd, net_pnl_usd,
+        #              exit_reason (CLOSE only)}
+        self.hedge_event_log = []
+
     # ═══════════════════════════════════════════════════════════════
     # PUBLIC: STATUS FOR DASHBOARD
     # ═══════════════════════════════════════════════════════════════
@@ -116,6 +123,46 @@ class SmartHedgingManager:
             "bleeding_leg": self._bleeding_leg or "None",
             "hedge_peak_pnl": round(self._hedge_peak_pnl, 2)
         }
+
+    # ═══════════════════════════════════════════════════════════════
+    # HEDGE EVENT LOGGING — FORENSICS CAPTURE
+    # ═══════════════════════════════════════════════════════════════
+
+    def _log_hedge_event(self, event_type, trigger_reason, direction,
+                          size_btc, total_btc, btc_price,
+                          options_pnl_usd, hedge_pnl_usd,
+                          exit_reason=None):
+        """
+        Records one hedge lifecycle event into hedge_event_log.
+        Called at OPEN, ESCALATE, and CLOSE moments.
+        """
+        from utils import get_ist_now
+        now = get_ist_now()
+        entry = {
+            "event":           event_type,                    # "OPEN"|"ESCALATE"|"CLOSE"
+            "time_iso":        now.isoformat(),
+            "time_str":        now.strftime("%H:%M"),
+            "trigger_reason":  trigger_reason,
+            "direction":       direction,                     # "buy" or "sell"
+            "size_btc":        round(size_btc, 4),            # BTC added in this event
+            "total_btc":       round(total_btc, 4),           # cumulative BTC after event
+            "btc_price":       round(btc_price, 2),           # BTC mark price at event
+            "options_pnl_usd": round(options_pnl_usd, 4),    # options P&L at this moment
+            "hedge_pnl_usd":   round(hedge_pnl_usd, 4),      # hedge P&L at this moment
+            "net_pnl_usd":     round(options_pnl_usd + hedge_pnl_usd, 4),
+        }
+        if exit_reason is not None:
+            entry["exit_reason"] = exit_reason
+        self.hedge_event_log.append(entry)
+        app_logger.info(
+            f"HedgeLog [{event_type}]: {trigger_reason} | "
+            f"{direction.upper()} {size_btc:.4f} BTC @ ${btc_price:,.0f} | "
+            f"OptsPnL=${options_pnl_usd:+.2f} HedgePnL=${hedge_pnl_usd:+.2f}"
+        )
+
+    def get_hedge_event_log(self):
+        """Returns a copy of the hedge event log for saving with the trade record."""
+        return list(self.hedge_event_log)
 
     # ═══════════════════════════════════════════════════════════════
     # PUBLIC: LIVE HEDGE P&L
@@ -758,6 +805,18 @@ class SmartHedgingManager:
 
             self._last_escalation_time = time.time()
 
+            # ── Log OPEN event ────────────────────────────────────
+            self._log_hedge_event(
+                event_type     = "OPEN",
+                trigger_reason = f"{bleeding_leg.upper()} leg bleeding {bleed_pct*100:.1f}%",
+                direction      = direction,
+                size_btc       = hedge_size,
+                total_btc      = abs(self.execution.hedge_size_btc),
+                btc_price      = self._get_btc_mark_price(),
+                options_pnl_usd= profit_usd,
+                hedge_pnl_usd  = 0.0,          # just opened, no P&L yet
+            )
+
             app_logger.info(
                 f"Hedge: NEW HEDGE OPENED | Leg: {bleeding_leg} | "
                 f"Dir: {direction} | Size: {hedge_size:.4f} BTC | "
@@ -859,7 +918,8 @@ class SmartHedgingManager:
                 )
                 self._close_hedge_with_reason(
                     f"TOTAL P&L POSITIVE — hedge recovered all losses "
-                    f"(Options: ${options_only_pnl:+.2f}, Hedge: ${hedge_pnl:+.2f})"
+                    f"(Options: ${options_only_pnl:+.2f}, Hedge: ${hedge_pnl:+.2f})",
+                    options_pnl_usd=options_only_pnl
                 )
                 return
 
@@ -879,7 +939,8 @@ class SmartHedgingManager:
                 )
                 self._close_hedge_with_reason(
                     f"Options now profitable (${options_only_pnl:+.2f}) — "
-                    f"hedge no longer needed"
+                    f"hedge no longer needed",
+                    options_pnl_usd=options_only_pnl
                 )
                 return
 
@@ -899,7 +960,8 @@ class SmartHedgingManager:
                 )
                 self._close_hedge_with_reason(
                     f"Options loss recovered to {options_loss_pct*100:.1f}% "
-                    f"(Total P&L: ${total_pnl:+.2f})"
+                    f"(Total P&L: ${total_pnl:+.2f})",
+                    options_pnl_usd=options_only_pnl
                 )
                 return
 
@@ -919,7 +981,8 @@ class SmartHedgingManager:
                         f"Trend failed. Cutting hedge to prevent reversal loss."
                     )
                     self._close_hedge_with_reason(
-                        f"Options recovered > 50% from entry loss"
+                        f"Options recovered > 50% from entry loss",
+                        options_pnl_usd=options_only_pnl
                     )
                     return
 
@@ -946,7 +1009,8 @@ class SmartHedgingManager:
                     f"Dynamic Limit: ${dynamic_whipsaw_limit:.2f}. Cutting oversized hedge to prevent bleed!"
                 )
                 self._close_hedge_with_reason(
-                    f"Reversal Square-Off (Hedge at ${hedge_pnl:.2f})"
+                    f"Reversal Square-Off (Hedge at ${hedge_pnl:.2f})",
+                    options_pnl_usd=options_only_pnl
                 )
                 return
 
@@ -982,7 +1046,8 @@ class SmartHedgingManager:
             )
             self._close_hedge_with_reason(
                 f"Direction flip — {self._bleeding_leg} → {bleeding_leg} "
-                f"(total P&L: ${total_pnl:+.2f})"
+                f"(total P&L: ${total_pnl:+.2f})",
+                options_pnl_usd=options_only_pnl
             )
             self._open_new_hedge(
                 positions, bleeding_leg, bleed_pct,
@@ -1022,6 +1087,18 @@ class SmartHedgingManager:
                     self._last_escalation_time = time.time()
                     self._last_sizing_loss_usd = current_loss
 
+                    # ── Log ESCALATE event ────────────────────────
+                    self._log_hedge_event(
+                        event_type     = "ESCALATE",
+                        trigger_reason = f"Loss grew {growth*100:.0f}% — adding {add_btc:.4f} BTC",
+                        direction      = self._hedge_direction or "buy",
+                        size_btc       = add_btc,
+                        total_btc      = abs(self.execution.hedge_size_btc),
+                        btc_price      = self._get_btc_mark_price(),
+                        options_pnl_usd= profit_usd,
+                        hedge_pnl_usd  = self.get_live_hedge_pnl(),
+                    )
+
                     app_logger.info(
                         f"Hedge: ESCALATED! Added {add_btc:.4f} BTC. "
                         f"Total: {abs(self.execution.hedge_size_btc):.4f} BTC. "
@@ -1050,10 +1127,27 @@ class SmartHedgingManager:
     # CLOSE HEDGE
     # ═══════════════════════════════════════════════════════════════
 
-    def _close_hedge_with_reason(self, reason):
+    def _close_hedge_with_reason(self, reason, options_pnl_usd=0.0):
         """Closes hedge with detailed logging and P&L tracking."""
-        final_pnl = self.get_live_hedge_pnl()
+        final_pnl  = self.get_live_hedge_pnl()
+        btc_price  = self._get_btc_mark_price()
+        total_size = abs(self.execution.hedge_size_btc)
+        direction  = self._hedge_direction or "unknown"
         self._cumulative_realized_pnl += final_pnl
+
+        # ── Log CLOSE event BEFORE state is wiped ─────────────────
+        self._log_hedge_event(
+            event_type     = "CLOSE",
+            trigger_reason = reason,
+            direction      = direction,
+            size_btc       = total_size,      # full size being closed
+            total_btc      = 0.0,             # 0 after close
+            btc_price      = btc_price,
+            options_pnl_usd= options_pnl_usd,
+            hedge_pnl_usd  = final_pnl,
+            exit_reason    = reason,
+        )
+
         app_logger.info(
             f"Hedge: Closing — {reason}. Final P&L: ${final_pnl:+.2f} | "
             f"Cumulative realized: ${self._cumulative_realized_pnl:+.2f}"
@@ -1087,6 +1181,7 @@ class SmartHedgingManager:
         self._hedge_entry_time = 0.0
         self._last_sizing_loss_usd = 0.0
         self._last_escalation_time = 0.0
+        self.hedge_event_log = []   # Clear log after close (caller must call get_hedge_event_log() first)
         app_logger.info("Hedge: State fully reset.")
 
     # ═══════════════════════════════════════════════════════════════

@@ -144,7 +144,8 @@ class PerformanceTracker:
     def log_trade(self, entry_time, call_symbol, put_symbol, premium_collected, pnl, exit_reason, current_equity,
                   regime_filter_enabled=False, current_iv=0.0, dvol_status=None, size_multiplier=1.0, hedge_status=None,
                   adx=0.0, mode='PAPER', call_entry_price=0.0, put_entry_price=0.0, call_exit_price=0.0, put_exit_price=0.0,
-                  hedge_pnl=0.0, max_pnl_pct=0.0, min_pnl_pct=0.0, max_pnl_time="", min_pnl_time="", chart_data=None):
+                  hedge_pnl=0.0, max_pnl_pct=0.0, min_pnl_pct=0.0, max_pnl_time="", min_pnl_time="",
+                  hedge_events=None, chart_data=None):
         """
         Logs a completed trade to BOTH Cloud DB (permanent) and local JSON (backup).
         """
@@ -182,6 +183,7 @@ class PerformanceTracker:
             "equity_after": current_equity,
             "regime_filter_enabled": regime_filter_enabled,
             "adx": adx,
+            "hedge_events": hedge_events or [],  # Full forensic log: [{event,time_str,direction,size_btc,...},...]
             "chart_data": chart_data or []  # PnL chart snapshot for post-trade analysis
         }
 

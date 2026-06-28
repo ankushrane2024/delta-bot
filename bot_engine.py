@@ -1085,6 +1085,9 @@ class DeltaTradingEngine:
                 if self.daily_loss_pct >= DAILY_LOSS_REDUCE_THRESHOLD:
                     self.size_multiplier = min(1.0, self.size_multiplier)
 
+            # Capture hedge event log BEFORE hedge is closed (close_hedge resets the list)
+            hedge_events = self.smart_hedging.get_hedge_event_log() if getattr(self, 'smart_hedging', None) else []
+
             dvol_status = self.dvol_provider.get_status() if getattr(self, 'dvol_provider', None) else {}
             hedge_status = self.smart_hedging.get_status() if getattr(self, 'smart_hedging', None) else {}
 
@@ -1112,6 +1115,7 @@ class DeltaTradingEngine:
                 min_pnl_pct=self.current_trade_info.get("min_pnl_pct", 0.0),
                 max_pnl_time=self.current_trade_info.get("max_pnl_time", ""),
                 min_pnl_time=self.current_trade_info.get("min_pnl_time", ""),
+                hedge_events=hedge_events,
                 chart_data=list(self.pnl_chart_data)  # Snapshot saved permanently with trade
             )
             self.current_trade_info = {"calls": [], "puts": []}
