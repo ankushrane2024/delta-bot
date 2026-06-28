@@ -2026,17 +2026,17 @@
                     document.getElementById('pos-total-capital').textContent = totalCapitalUsed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
                     document.getElementById('pos-btc-price').textContent = (data.btc_price || 70000).toLocaleString(undefined, {maximumFractionDigits: 0});
                     
-                    // Recalculate percentages based on smoothed P&L and actual denominators
-                    const totalPnlPctPrem = totalEntryPremium > 0 ? (totalPnlUsd / totalEntryPremium * 100) : 0.0;
-                    const totalPnlPctCap = totalCapitalUsed > 0 ? (totalPnlUsd / totalCapitalUsed * 100) : 0.0;
+                    // Recalculate precisely without smoothing artifacts
+                    const optionsPnl = data.options_pnl_usd || 0;
+                    const hedgePnl = (data.hedge_status && data.hedge_status.hedge_pnl_usd) ? data.hedge_status.hedge_pnl_usd : 0;
+                    const exactTotalPnlUsd = optionsPnl + hedgePnl;
+
+                    const totalPnlPctPrem = totalEntryPremium > 0 ? (exactTotalPnlUsd / totalEntryPremium * 100) : 0.0;
+                    const totalPnlPctCap = totalCapitalUsed > 0 ? (exactTotalPnlUsd / totalCapitalUsed * 100) : 0.0;
                     
                     const pnlPctSignPrem = totalPnlPctPrem >= 0 ? '+' : '';
                     const pnlPctSignCap = totalPnlPctCap >= 0 ? '+' : '';
                     
-                    const optionsPnl = data.options_pnl_usd || 0;
-                    const hedgePnl = (data.hedge_status && data.hedge_status.hedge_pnl_usd) ? data.hedge_status.hedge_pnl_usd : 0;
-                    // Force the total to be exactly Opt + Hdg so there are no floating point artifacts
-                    const exactTotalPnlUsd = optionsPnl + hedgePnl;
                     const breakdownHtml = `<div style="font-size: 0.85rem; font-weight: 600; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
                         <span style="color: ${optionsPnl >= 0 ? '#00e676' : '#ff5252'}">Opt: ${optionsPnl >= 0 ? '+' : ''}${optionsPnl.toFixed(2)}</span>
                         <span style="color: #8892b0; font-size: 0.8rem;">+</span>
