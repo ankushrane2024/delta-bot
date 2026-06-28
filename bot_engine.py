@@ -1072,6 +1072,18 @@ class DeltaTradingEngine:
 
             dvol_status = self.dvol_provider.get_status() if getattr(self, 'dvol_provider', None) else {}
             hedge_status = self.smart_hedging.get_status() if getattr(self, 'smart_hedging', None) else {}
+
+            # Inject a final precise "CLOSE" chart point with exact square-off values
+            # This ensures the chart always ends at the true final PnL, not an earlier tick
+            from utils import get_ist_now
+            close_time_str = get_ist_now().strftime('%H:%M')
+            self.pnl_chart_data.append({
+                't': f'{close_time_str} ★',   # Star marks the exact close point
+                'pnl': round(profit, 4),
+                'hedge': round(hedge_pnl, 4),
+                'total': round(profit + hedge_pnl, 4)
+            })
+
             self.performance_tracker.log_trade(
                 entry_time=self.current_trade_info.get("entry_time", ""),
                 call_symbol=c_syms,
