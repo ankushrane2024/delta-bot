@@ -858,6 +858,43 @@ class SmartHedgingManager:
                 return
 
         # ══════════════════════════════════════════════════════════
+        # EXIT RULE 4: OPTIONS RECOVERED BY 50% (Trend Failed)
+        # ══════════════════════════════════════════════════════════
+        # If the option was bleeding heavily, but the market reversed
+        # and the option loss has shrunk by 50% from its peak, the trend
+        # has failed. Cut the oversized hedge before it loses too much money.
+        if time_held >= self.MIN_HEDGE_HOLD_SECONDS:
+            if self._options_pnl_at_hedge_entry < 0:
+                if options_only_pnl > (self._options_pnl_at_hedge_entry * self.LOSS_RECOVERY_PCT):
+                    app_logger.info(
+                        f"Hedge: ✅ OPTIONS RECOVERED 50%! "
+                        f"Entry Loss: ${self._options_pnl_at_hedge_entry:.2f} | "
+                        f"Current Loss: ${options_only_pnl:.2f}. "
+                        f"Trend failed. Cutting hedge to prevent reversal loss."
+                    )
+                    self._close_hedge_with_reason(
+                        f"Options recovered > 50% from entry loss"
+                    )
+                    return
+
+        # ══════════════════════════════════════════════════════════
+        # EXIT RULE 5: HEDGE BREAKEVEN STOP (Protect against Whipsaw)
+        # ══════════════════════════════════════════════════════════
+        # If the oversized hedge was in profit but the market violently
+        # reversed, cut the hedge at breakeven ($0) so it doesn't become
+        # a massive loser.
+        if time_held >= self.MIN_HEDGE_HOLD_SECONDS:
+            if self._hedge_peak_pnl >= 2.0 and hedge_pnl <= 0.0:
+                app_logger.warning(
+                    f"Hedge: ⚠️ WHIPSAW DETECTED! Hedge was in profit (Peak: ${self._hedge_peak_pnl:.2f}) "
+                    f"but fell to ${hedge_pnl:.2f}. Cutting oversized hedge at breakeven!"
+                )
+                self._close_hedge_with_reason(
+                    f"Whipsaw - Trailing breakeven stop hit"
+                )
+                return
+
+        # ══════════════════════════════════════════════════════════
         # ⛔ DO NOT EXIT — TRADE STILL IN LOSS
         # ══════════════════════════════════════════════════════════
         # If we reach here, the trade is still in loss:
