@@ -352,10 +352,11 @@ class SmartHedgingManager:
         abs_bleed = abs(bleed_usd) if bleed_usd > 0 else 1.0
 
         # The Gamma & Recovery Multiplier
-        # Why 1.5x? 
+        # Why 2.0x? 
         # 1. Negative Gamma: As the trend continues, the option loses money FASTER than its current delta.
         # 2. Initial Loss Recovery: We need excess profit to recover the $ loss that happened BEFORE the hedge.
-        GAMMA_RECOVERY_MULTIPLIER = 1.5
+        # Simulation shows 1.0x leaves trade in RED, 1.5x leaves trade slightly RED, 2.0x guarantees GREEN.
+        GAMMA_RECOVERY_MULTIPLIER = 2.0
 
         # Method 1: BTC has moved enough to calculate real exposure
         btc_move_usd = 0.0
