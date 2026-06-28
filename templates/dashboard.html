@@ -348,6 +348,41 @@
         .size-val-color { color: #fbbf24 !important; text-shadow: 0 0 10px rgba(251, 191, 36, 0.2); }
 
         /* LIVE TRADE COMPONENTS */
+        .hero-pnl-card {
+            position: relative;
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255,255,255,0.05);
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .hero-pnl-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 100%;
+            background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.1), transparent 60%);
+            pointer-events: none;
+        }
+        .hero-pnl-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            border-color: rgba(56, 189, 248, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.1);
+        }
+        .hero-pnl-card .stat-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+            z-index: 1;
+        }
+
         .stat-box-modern {
             background: rgba(0, 0, 0, 0.2);
             border: 1px solid var(--border-color);
@@ -696,13 +731,13 @@
                 <div id="pos-total-bar" style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px; display: none;">
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div class="stat-box-modern">
+                        <div class="hero-pnl-card">
                             <span class="stat-label">NET P&L (Opt + Hdg)</span>
-                            <div id="pos-total-pnl-usd" class="stat-val pnl-pos">0.00 USDT</div>
+                            <div id="pos-total-pnl-usd" class="stat-val pnl-pos" style="z-index: 1;">0.00 USDT</div>
                         </div>
-                        <div class="stat-box-modern">
+                        <div class="hero-pnl-card">
                             <span class="stat-label">Total P&L (INR)</span>
-                            <div id="pos-total-pnl-inr" class="stat-val pnl-pos" style="font-size:1.5rem; padding-top: 4px;">₹0.00</div>
+                            <div id="pos-total-pnl-inr" class="stat-val pnl-pos" style="font-size:1.8rem; padding-top: 10px; z-index: 1;">₹0.00</div>
                         </div>
                     </div>
 
@@ -1051,6 +1086,11 @@
         .mode-val-color { color: #38bdf8 !important; }
         .loss-val-color { color: #f87171 !important; }
         .size-val-color { color: #fbbf24 !important; }
+        
+        .hero-pnl-card {
+            padding: 16px;
+            gap: 6px;
+        }
         
         .stat-box-modern {
             background: rgba(255, 255, 255, 0.03);
