@@ -513,55 +513,59 @@
                 eqGradient.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
                 eqGradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
 
-                equityChart = new Chart(eqCtx, {
-                    type: 'line',
-                    data: {
-                        labels: eqLabels,
-                        datasets: [{
-                            label: 'Equity ($)',
-                            data: eqData,
-                            borderColor: '#3b82f6',
-                            backgroundColor: eqGradient,
-                            fill: true,
-                            tension: 0.3,
-                            pointBackgroundColor: eqData.map((v, i) => i === 0 ? '#fff' : (v >= (eqData[i-1] || 10000) ? '#10b981' : '#ef4444')),
-                            pointBorderColor: '#3b82f6',
-                            pointRadius: eqData.length > 30 ? 2 : 5,
-                            pointHoverRadius: 7,
-                            borderWidth: 2.5
-                        }, {
-                            label: 'Starting Capital',
-                            data: eqLabels.map(() => 10000),
-                            borderColor: 'rgba(245, 158, 11, 0.5)',
-                            borderDash: [6, 4],
-                            borderWidth: 1.5,
-                            pointRadius: 0,
-                            fill: false
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: { mode: 'index', intersect: false },
-                        plugins: {
-                            legend: { display: true, labels: { color: '#94a3b8', font: { size: 11 } } },
-                            tooltip: {
-                                backgroundColor: '#1e293b',
-                                titleColor: '#f8fafc',
-                                bodyColor: '#e2e8f0',
-                                borderColor: '#334155',
-                                borderWidth: 1,
-                                callbacks: {
-                                    label: ctx => `Equity: $${ctx.parsed.y.toFixed(2)}`
-                                }
-                            }
+                try {
+                    equityChart = new Chart(eqCtx, {
+                        type: 'line',
+                        data: {
+                            labels: eqLabels,
+                            datasets: [{
+                                label: 'Equity ($)',
+                                data: eqData,
+                                borderColor: '#3b82f6',
+                                backgroundColor: eqGradient,
+                                fill: true,
+                                tension: 0.3,
+                                pointBackgroundColor: eqData.map((v, i) => i === 0 ? '#fff' : (v >= (eqData[i-1] || 10000) ? '#10b981' : '#ef4444')),
+                                pointBorderColor: '#3b82f6',
+                                pointRadius: eqData.length > 30 ? 2 : 5,
+                                pointHoverRadius: 7,
+                                borderWidth: 2.5
+                            }, {
+                                label: 'Starting Capital',
+                                data: eqLabels.map(() => 10000),
+                                borderColor: 'rgba(245, 158, 11, 0.5)',
+                                borderDash: [6, 4],
+                                borderWidth: 1.5,
+                                pointRadius: 0,
+                                fill: false
+                            }]
                         },
-                        scales: {
-                            x: { ticks: { color: '#64748b', maxRotation: 45, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                            y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString(), font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { display: true, labels: { color: '#94a3b8', font: { size: 11 } } },
+                                tooltip: {
+                                    backgroundColor: '#1e293b',
+                                    titleColor: '#f8fafc',
+                                    bodyColor: '#e2e8f0',
+                                    borderColor: '#334155',
+                                    borderWidth: 1,
+                                    callbacks: {
+                                        label: ctx => `Equity: $${ctx.parsed.y.toFixed(2)}`
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { ticks: { color: '#64748b', maxRotation: 45, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                                y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString(), font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                            }
                         }
-                    }
-                });
+                    });
+                } catch(err) {
+                    console.warn("Chart.js failed to load for Equity Chart. Possibly blocked by adblocker.", err);
+                }
 
                 // ══════════════════════════════════════════════
                 // PER-TRADE P&L BAR CHART
@@ -577,42 +581,46 @@
                 const barReqWidth = Math.max(1200, barData.length * 150);
                 document.getElementById('pnlBarChartInner').style.minWidth = barReqWidth + 'px';
                 document.getElementById('pnlBarChartInner').style.position = 'relative';
-                pnlBarChart = new Chart(barCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: barLabels,
-                        datasets: [{
-                            label: 'Trade P&L ($)',
-                            data: barData,
-                            backgroundColor: barColors,
-                            borderColor: barBorders,
-                            borderWidth: 1,
-                            borderRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: { mode: 'index', intersect: false },
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                backgroundColor: '#1e293b',
-                                titleColor: '#f8fafc',
-                                bodyColor: '#e2e8f0',
-                                borderColor: '#334155',
+                try {
+                    pnlBarChart = new Chart(barCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: barLabels,
+                            datasets: [{
+                                label: 'Trade P&L ($)',
+                                data: barData,
+                                backgroundColor: barColors,
+                                borderColor: barBorders,
                                 borderWidth: 1,
-                                callbacks: {
-                                    label: ctx => `P&L: $${ctx.parsed.y.toFixed(2)}`
-                                }
-                            }
+                                borderRadius: 4
+                            }]
                         },
-                        scales: {
-                            x: { ticks: { color: '#64748b', maxRotation: 45, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                            y: { ticks: { color: '#64748b', callback: v => '$' + v, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#1e293b',
+                                    titleColor: '#f8fafc',
+                                    bodyColor: '#e2e8f0',
+                                    borderColor: '#334155',
+                                    borderWidth: 1,
+                                    callbacks: {
+                                        label: ctx => `P&L: $${ctx.parsed.y.toFixed(2)}`
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { ticks: { color: '#64748b', maxRotation: 45, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                                y: { ticks: { color: '#64748b', callback: v => '$' + v, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                            }
                         }
-                    }
-                });
+                    });
+                } catch(err) {
+                    console.warn("Chart.js failed to load for PNL Chart. Possibly blocked by adblocker.", err);
+                }
 
                 // ══════════════════════════════════════════════
                 // TRADE CARDS (newest first)
@@ -697,7 +705,11 @@
                 }).join('');
                 
             } catch(e) {
-                document.getElementById('history-container').innerHTML = '<div style="text-align: center; color: var(--danger); padding: 40px;">Error loading history.</div>';
+                document.getElementById('history-container').innerHTML = `<div style="text-align: center; color: var(--danger); padding: 40px; font-family: monospace;">
+                    <b>Error loading history.</b><br><br>
+                    ${e.message}<br>
+                    <pre style="text-align: left; background: #1e293b; padding: 15px; margin-top: 15px; border-radius: 8px; font-size: 12px; color: #cbd5e1; overflow-x: auto;">${e.stack}</pre>
+                </div>`;
                 console.error(e);
             }
         }
