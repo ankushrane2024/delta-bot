@@ -338,7 +338,7 @@ class SmartHedgingManager:
     # HEDGE SIZING — DOLLAR-LOSS MATCHED
     # ═══════════════════════════════════════════════════════════════
 
-    def _calculate_hedge_size(self, bleed_usd, positions):
+    def _calculate_hedge_size(self, bleed_usd, positions, atr_usd=100.0):
         """
         Calculates hedge size in BTC to match the dollar loss.
 
@@ -365,21 +365,34 @@ class SmartHedgingManager:
 
         if btc_move_usd > 50:
             effective_exposure = abs_bleed / btc_move_usd
-            hedge_btc = effective_exposure * GAMMA_RECOVERY_MULTIPLIER
+            
+            # --- GRID SIZING LOGIC ---
+            # Instead of buying 100% of the hedge instantly, we scale in based on trend strength
+            atr_distance = btc_move_usd / atr_usd if atr_usd > 0 else 0
+            scale_factor = 0.30  # Default to Tier 1 (30%)
+            
+            if atr_distance >= 3.0:
+                scale_factor = 1.0  # Tier 3: Full 100% Hedge
+            elif atr_distance >= 2.5:
+                scale_factor = 0.60 # Tier 2: 60% Hedge
+            elif atr_distance >= 2.0:
+                scale_factor = 0.30 # Tier 1: 30% Hedge
+                
+            hedge_btc = effective_exposure * GAMMA_RECOVERY_MULTIPLIER * scale_factor
             app_logger.info(
-                f"Hedge: Sizing [Smart Recovery] | Loss=${abs_bleed:.2f} | "
-                f"BTC moved=${btc_move_usd:.0f} | Base Exp={effective_exposure:.4f} BTC | "
-                f"Multiplier={GAMMA_RECOVERY_MULTIPLIER}x | Final Hedge={hedge_btc:.4f} BTC"
+                f"Hedge: Sizing [Grid Scale] | Loss=${abs_bleed:.2f} | "
+                f"BTC moved=${btc_move_usd:.0f} ({atr_distance:.1f} ATR) | "
+                f"Base Exp={effective_exposure:.4f} BTC | "
+                f"Grid Tier={scale_factor*100:.0f}% | Final Hedge={hedge_btc:.4f} BTC"
             )
         else:
             # Method 2: Position-based fallback
             total_lots = sum(d.get('size', 0) for d in positions.values())
             exposure_btc = (total_lots * 0.001) * self.DEFAULT_DELTA_ESTIMATE
-            hedge_btc = exposure_btc * GAMMA_RECOVERY_MULTIPLIER
+            hedge_btc = exposure_btc * GAMMA_RECOVERY_MULTIPLIER * 0.30 # Default safe scale
             app_logger.info(
-                f"Hedge: Sizing [Fallback Smart] | Lots={total_lots} | "
-                f"Base Exp={exposure_btc:.4f} BTC | Multiplier={GAMMA_RECOVERY_MULTIPLIER}x | "
-                f"Hedge={hedge_btc:.4f} BTC"
+                f"Hedge: Sizing [Fallback Grid] | Lots={total_lots} | "
+                f"Base Exp={exposure_btc:.4f} BTC | Final Hedge={hedge_btc:.4f} BTC"
             )
 
         # Clamp to min/max
@@ -452,7 +465,7 @@ class SmartHedgingManager:
                 )
                 self._open_new_hedge(
                     positions, bleeding_leg, bleed_pct,
-                    bleed_usd, direction, profit_usd=0.0
+                    bleed_usd, direction, profit_usd=0.0, atr_usd=100.0
                 )
             else:
                 app_logger.info(
@@ -494,7 +507,7 @@ class SmartHedgingManager:
         if self.hedge_active:
             self._manage_active_hedge(
                 positions, bleeding_leg, bleed_pct, bleed_usd,
-                direction, unrealized_loss_pct, profit_usd
+                direction, unrealized_loss_pct, profit_usd, atr_usd
             )
         else:
             self._check_and_trigger_hedge(
@@ -577,7 +590,7 @@ class SmartHedgingManager:
             self._bleed_confirm_leg = None
             self._open_new_hedge(
                 positions, bleeding_leg, bleed_pct,
-                bleed_usd, direction, profit_usd
+                bleed_usd, direction, profit_usd, atr_usd
             )
             return
 
@@ -592,7 +605,7 @@ class SmartHedgingManager:
             self._bleed_confirm_leg = None
             self._open_new_hedge(
                 positions, bleeding_leg, bleed_pct,
-                bleed_usd, direction, profit_usd
+                bleed_usd, direction, profit_usd, atr_usd
             )
             return
 
@@ -615,7 +628,7 @@ class SmartHedgingManager:
                 self._bleed_confirm_leg = None
                 self._open_new_hedge(
                     positions, bleeding_leg, bleed_pct,
-                    bleed_usd, direction, profit_usd
+                    bleed_usd, direction, profit_usd, atr_usd
                 )
             else:
                 app_logger.info(
@@ -659,7 +672,7 @@ class SmartHedgingManager:
             )
             self._open_new_hedge(
                 positions, emergency_leg, unrealized_loss_pct,
-                bleed_usd, emergency_direction, profit_usd
+                bleed_usd, emergency_direction, profit_usd, atr_usd
             )
             return
 
@@ -688,9 +701,9 @@ class SmartHedgingManager:
     # ═══════════════════════════════════════════════════════════════
 
     def _open_new_hedge(self, positions, bleeding_leg, bleed_pct,
-                         bleed_usd, direction, profit_usd):
-        """Opens a new hedge position with dollar-loss matched sizing."""
-        hedge_size = self._calculate_hedge_size(bleed_usd, positions)
+                         bleed_usd, direction, profit_usd, atr_usd=100.0):
+        """Opens a new hedge position with Grid scaling sizing."""
+        hedge_size = self._calculate_hedge_size(bleed_usd, positions, atr_usd)
         result = self._place_hedge(hedge_size, direction, "OPEN")
 
         if result and result.get('success'):
@@ -749,7 +762,7 @@ class SmartHedgingManager:
 
     def _manage_active_hedge(self, positions, bleeding_leg, bleed_pct,
                               bleed_usd, direction, unrealized_loss_pct,
-                              profit_usd):
+                              profit_usd, atr_usd=100.0):
         """
         PRO TRADER hedge management — keeps hedge alive until ALL
         option losses are recovered.
@@ -937,7 +950,7 @@ class SmartHedgingManager:
             )
             self._open_new_hedge(
                 positions, bleeding_leg, bleed_pct,
-                bleed_usd, direction, profit_usd
+                bleed_usd, direction, profit_usd, atr_usd
             )
             return
 
@@ -956,14 +969,18 @@ class SmartHedgingManager:
 
             if (growth >= self.ESCALATION_GROWTH_PCT and
                     time_since_last >= self.ESCALATION_COOLDOWN_S):
-                additional = self._calculate_hedge_size(bleed_usd, positions)
-                add_btc = additional * (growth / (1 + growth))
-                add_btc = max(self.HEDGE_MIN_SIZE_BTC, add_btc)
-                add_btc = min(self.HEDGE_MAX_SIZE_BTC / 2, add_btc)
-
-                result = self._place_hedge(
-                    add_btc, self._hedge_direction, "ESCALATE"
-                )
+                # Calculate the FULL target size using Grid Math
+                target_total_hedge = self._calculate_hedge_size(bleed_usd, positions, atr_usd)
+                current_size = abs(self.execution.hedge_size_btc)
+                
+                # Add only what we need to reach the target tier size
+                if target_total_hedge > current_size:
+                    add_btc = target_total_hedge - current_size
+                    add_btc = max(self.HEDGE_MIN_SIZE_BTC, add_btc)
+                    
+                    result = self._place_hedge(
+                        add_btc, self._hedge_direction, "GRID-ESCALATE"
+                    )
                 if result and result.get('success'):
                     self.hedge_size_btc = self.execution.hedge_size_btc
                     self._last_escalation_time = time.time()
