@@ -351,6 +351,12 @@ class SmartHedgingManager:
 
         abs_bleed = abs(bleed_usd) if bleed_usd > 0 else 1.0
 
+        # The Gamma & Recovery Multiplier
+        # Why 1.5x? 
+        # 1. Negative Gamma: As the trend continues, the option loses money FASTER than its current delta.
+        # 2. Initial Loss Recovery: We need excess profit to recover the $ loss that happened BEFORE the hedge.
+        GAMMA_RECOVERY_MULTIPLIER = 1.5
+
         # Method 1: BTC has moved enough to calculate real exposure
         btc_move_usd = 0.0
         if self._entry_btc_price > 0:
@@ -358,20 +364,20 @@ class SmartHedgingManager:
 
         if btc_move_usd > 50:
             effective_exposure = abs_bleed / btc_move_usd
-            hedge_btc = effective_exposure
+            hedge_btc = effective_exposure * GAMMA_RECOVERY_MULTIPLIER
             app_logger.info(
-                f"Hedge: Sizing [Dollar-Match] | Loss=${abs_bleed:.2f} | "
-                f"BTC moved=${btc_move_usd:.0f} | Exposure={effective_exposure:.4f} BTC | "
-                f"Hedge={hedge_btc:.4f} BTC"
+                f"Hedge: Sizing [Smart Recovery] | Loss=${abs_bleed:.2f} | "
+                f"BTC moved=${btc_move_usd:.0f} | Base Exp={effective_exposure:.4f} BTC | "
+                f"Multiplier={GAMMA_RECOVERY_MULTIPLIER}x | Final Hedge={hedge_btc:.4f} BTC"
             )
         else:
             # Method 2: Position-based fallback
             total_lots = sum(d.get('size', 0) for d in positions.values())
             exposure_btc = (total_lots * 0.001) * self.DEFAULT_DELTA_ESTIMATE
-            hedge_btc = exposure_btc
+            hedge_btc = exposure_btc * GAMMA_RECOVERY_MULTIPLIER
             app_logger.info(
-                f"Hedge: Sizing [Fallback] | Lots={total_lots} | "
-                f"Delta est.={self.DEFAULT_DELTA_ESTIMATE} | "
+                f"Hedge: Sizing [Fallback Smart] | Lots={total_lots} | "
+                f"Base Exp={exposure_btc:.4f} BTC | Multiplier={GAMMA_RECOVERY_MULTIPLIER}x | "
                 f"Hedge={hedge_btc:.4f} BTC"
             )
 
