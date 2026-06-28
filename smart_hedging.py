@@ -878,19 +878,26 @@ class SmartHedgingManager:
                     return
 
         # ══════════════════════════════════════════════════════════
-        # EXIT RULE 5: HEDGE BREAKEVEN STOP (Protect against Whipsaw)
+        # EXIT RULE 5: IMMEDIATE REVERSAL SQUARE-OFF (Breakeven/Low Loss)
         # ══════════════════════════════════════════════════════════
-        # If the oversized hedge was in profit but the market violently
-        # reversed, cut the hedge at breakeven ($0) so it doesn't become
-        # a massive loser.
+        # As explicitly requested: If the market reverses, square off immediately 
+        # at breakeven or a very low loss.
         if time_held >= self.MIN_HEDGE_HOLD_SECONDS:
-            if self._hedge_peak_pnl >= 2.0 and hedge_pnl <= 0.0:
+            market_is_reversing = options_only_pnl > self._options_pnl_at_hedge_entry
+            
+            # 1. Breakeven Stop: If it was in profit but fell to $0.
+            hit_breakeven = self._hedge_peak_pnl >= 1.0 and hedge_pnl <= 0.0
+            
+            # 2. Low Loss Stop: If it instantly reverses into a low loss (-$3.00 max risk).
+            hit_low_loss = market_is_reversing and hedge_pnl <= -3.0
+            
+            if hit_breakeven or hit_low_loss:
                 app_logger.warning(
-                    f"Hedge: ⚠️ WHIPSAW DETECTED! Hedge was in profit (Peak: ${self._hedge_peak_pnl:.2f}) "
-                    f"but fell to ${hedge_pnl:.2f}. Cutting oversized hedge at breakeven!"
+                    f"Hedge: ⚠️ IMMEDIATE REVERSAL SQUARE-OFF! Hedge P&L: ${hedge_pnl:.2f}. "
+                    f"Cutting oversized hedge at breakeven or low loss to prevent bleed!"
                 )
                 self._close_hedge_with_reason(
-                    f"Whipsaw - Trailing breakeven stop hit"
+                    f"Reversal Square-Off (Hedge at ${hedge_pnl:.2f})"
                 )
                 return
 
