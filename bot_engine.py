@@ -111,9 +111,10 @@ class DeltaTradingEngine:
         schedule.every().day.at("09:30", "Asia/Kolkata").do(self.run_rule_verification)
         schedule.every().day.at("18:00", "Asia/Kolkata").do(self.run_rule_verification)
         schedule.every().day.at("17:30", "Asia/Kolkata").do(self.send_daily_report)
+        schedule.every().day.at("17:30", "Asia/Kolkata").do(self.auto_backup_history)
         
         app_logger.info("Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)")
-        app_logger.info("Engine: Scheduled daily report at 17:30 IST (Asia/Kolkata timezone)")
+        app_logger.info("Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)")
         
         # Run rule verification once on startup (Moved to __init__)
         
@@ -484,6 +485,25 @@ class DeltaTradingEngine:
             "results": results,
             "compliance": pct
         }
+
+    def auto_backup_history(self):
+        """Automatically backs up the primary cloud DB to the secondary cloud DB daily."""
+        try:
+            import db_manager
+            primary_data = db_manager.load_all_data()
+            if not primary_data or not primary_data.get('trades'):
+                app_logger.warning("Auto-Backup: Primary database is empty or failed to load. Skipping backup.")
+                return
+
+            success = db_manager.save_backup_data(primary_data)
+            if success:
+                app_logger.info(f"Auto-Backup: Successfully backed up {len(primary_data['trades'])} trades to Secondary Cloud DB.")
+            else:
+                app_logger.error("Auto-Backup: Failed to save to Secondary Cloud DB.")
+                from notifier import notifier
+                notifier.notify_error("⚠️ Auto-Backup Failed: Could not save to Secondary Cloud DB.")
+        except Exception as e:
+            app_logger.error(f"Auto-Backup Exception: {e}")
 
     def send_daily_report(self):
         """Automatically called at 17:30 IST to generate and send report."""

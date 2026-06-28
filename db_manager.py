@@ -32,6 +32,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 _FALLBACK_BLOB_ID = "019f0461-1719-7960-8e15-c826a9966ba1"  # Provisioned 2026-06-26 with 14 trades
 _BACKUP_BLOB_ID = "019f0461-1a9c-799e-8bff-ab2f33f51951"   # Secondary Backup Blob
 _BLOB_ID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".blob_id_cache")
+_BACKUP_BLOB_ID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".backup_blob_id_cache")
 _blob_id = _FALLBACK_BLOB_ID
 _connected = False
 _keep_alive_started = False
@@ -159,8 +160,24 @@ def _connect():
 def _get_cloud_url():
     return f"https://jsonblob.com/api/jsonBlob/{_blob_id}"
 
+def _get_active_backup_blob_id() -> str:
+    if os.path.exists(_BACKUP_BLOB_ID_FILE):
+        try:
+            with open(_BACKUP_BLOB_ID_FILE, 'r') as f:
+                return f.read().strip()
+        except Exception:
+            pass
+    return _BACKUP_BLOB_ID
+
+def _write_backup_blob_id(blob_id: str):
+    try:
+        with open(_BACKUP_BLOB_ID_FILE, 'w') as f:
+            f.write(blob_id)
+    except Exception:
+        pass
+
 def _get_backup_url():
-    return f"https://jsonblob.com/api/jsonBlob/{_BACKUP_BLOB_ID}"
+    return f"https://jsonblob.com/api/jsonBlob/{_get_active_backup_blob_id()}"
 
 def load_backup_data() -> dict:
     """Loads data exclusively from the secondary backup blob."""
@@ -174,11 +191,24 @@ def load_backup_data() -> dict:
     return None
 
 def save_backup_data(data: dict) -> bool:
-    """Saves data exclusively to the secondary backup blob."""
+    """Saves data exclusively to the secondary backup blob. Self-heals if blob expires."""
     try:
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-        res = requests.put(_get_backup_url(), json=data, headers=headers, timeout=15, verify=False)
-        return res.status_code in [200, 201]
+        url = _get_backup_url()
+        res = requests.put(url, json=data, headers=headers, timeout=15, verify=False)
+        
+        if res.status_code in [200, 201]:
+            return True
+        elif res.status_code == 404:
+            app_logger.warning("DB: Backup blob 404. Creating a new backup blob...")
+            res2 = requests.post("https://jsonblob.com/api/jsonBlob", json=data, headers=headers, timeout=15, verify=False)
+            location = res2.headers.get("Location", "")
+            new_id = location.split("/")[-1]
+            if new_id:
+                _write_backup_blob_id(new_id)
+                app_logger.info(f"DB: New backup blob created: ...{new_id[-8:]}")
+                return True
+        return False
     except Exception as e:
         app_logger.error(f"DB: Exception saving backup to Cloud: {e}")
         return False
