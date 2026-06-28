@@ -745,6 +745,19 @@
                         <span id="hedge-pnl-val" style="font-weight:700; color:#94a3b8; font-size:1.1rem;">$0.00</span>
                     </div>
                     
+                    <div class="stat-row-modern" style="border-top: 1px solid rgba(255,255,255,0.05); margin-top: 5px; padding-top: 12px;">
+                        <span class="stat-label">Peak Hedge P&L</span>
+                        <span id="hedge-peak-pnl-val" style="font-weight:700; color:#fbbf24; font-size:1.0rem;">$0.00</span>
+                    </div>
+                    <div class="stat-row-modern">
+                        <span class="stat-label">Bleeding Leg</span>
+                        <span id="hedge-bleeding-leg-val" style="font-weight:700; color:var(--text-secondary); font-size:1.0rem;">None</span>
+                    </div>
+                    <div class="stat-row-modern">
+                        <span class="stat-label">Grid Tier Active</span>
+                        <span id="hedge-grid-tier-val" style="font-weight:700; font-size:1.0rem;">Standby</span>
+                    </div>
+                    
                     <div class="progress-box-modern">
                         <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">
                             <span>Hedge Percentage</span>
@@ -1829,6 +1842,24 @@
                     const pnlSpan = document.getElementById('hedge-pnl-val');
                     pnlSpan.textContent = `${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}`;
                     pnlSpan.style.color = hedgePnl > 0 ? 'var(--success)' : (hedgePnl < 0 ? 'var(--danger)' : 'var(--text-secondary)');
+                    
+                    // PRO LEVEL DETAILS
+                    const peakPnl = data.hedge_status.hedge_peak_pnl || 0;
+                    document.getElementById('hedge-peak-pnl-val').textContent = `${peakPnl >= 0 ? '+' : ''}$${peakPnl.toFixed(2)}`;
+                    document.getElementById('hedge-bleeding-leg-val').textContent = data.hedge_status.bleeding_leg || 'None';
+                    
+                    const hPct = data.hedge_status.hedge_percentage || 0;
+                    const tierSpan = document.getElementById('hedge-grid-tier-val');
+                    if (hPct === 0) {
+                        tierSpan.textContent = 'Standby';
+                        tierSpan.style.color = 'var(--text-secondary)';
+                    } else if (hPct < 70) {
+                        tierSpan.textContent = 'Tier 1 (50%)';
+                        tierSpan.style.color = '#38bdf8'; // blue
+                    } else {
+                        tierSpan.textContent = 'Tier 2 (100% RED ALERT)';
+                        tierSpan.style.color = '#fbbf24'; // yellow/orange
+                    }
                     
                     document.getElementById('hedge-percentage-val').textContent = `${(data.hedge_status.hedge_percentage || 0).toFixed(0)}%`;
                     document.getElementById('hedge-percentage-bar').style.width = `${data.hedge_status.hedge_percentage || 0}%`;
