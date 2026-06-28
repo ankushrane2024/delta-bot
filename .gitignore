@@ -8,7 +8,7 @@ credentials.json
 bot_system.log
 
 # === DATA FILES (NEVER track in Git — they get overwritten on every deploy) ===
-trade_history.json
+# trade_history.json  <-- Removed so it gets baked into the Render image as a permanent fallback
 daily_reports.json
 cloud_db_config.json
 

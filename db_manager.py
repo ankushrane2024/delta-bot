@@ -29,8 +29,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # Cloud DB Config — HARDCODED ID survives Render restarts & code deploys.
 # Self-healer auto-creates a new blob if this one ever expires (404).
 # ---------------------------------------------------------------------------
-_FALLBACK_BLOB_ID = "019f0461-1719-7960-8e15-c826a9966ba1"  # Provisioned 2026-06-26 with 14 trades
-_BACKUP_BLOB_ID = "019f0461-1a9c-799e-8bff-ab2f33f51951"   # Secondary Backup Blob
+_FALLBACK_BLOB_ID = "019f0def-9ad6-7633-baa3-528942380706"  # Provisioned with current history
+_BACKUP_BLOB_ID = "019f0def-9f5b-7a58-a97a-48a56d0f4174"   # Secondary Backup Blob
 _BLOB_ID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".blob_id_cache")
 _BACKUP_BLOB_ID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".backup_blob_id_cache")
 _LAST_BACKUP_TIME_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".last_backup_time")
