@@ -85,10 +85,21 @@ def _self_heal(local_backup: dict = None):
     global _blob_id
     app_logger.warning("DB: Blob 404 detected — Self-healer triggered. Creating new blob...")
 
-    restore_data = local_backup or {"max_equity": 0.0, "trades": []}
+    restore_data = local_backup
 
-    # If no backup passed in, try to load from local JSON file
-    if not local_backup:
+    # Try to load from Secondary Cloud Backup first
+    if not restore_data:
+        app_logger.info("DB: Self-healer attempting to restore from Secondary Cloud Backup...")
+        try:
+            sec_data = load_backup_data()
+            if sec_data and sec_data.get('trades'):
+                restore_data = sec_data
+                app_logger.info(f"DB: Self-healer loaded {len(sec_data['trades'])} trades from Secondary Cloud Backup.")
+        except Exception as e:
+            app_logger.error(f"DB: Self-healer secondary cloud read failed: {e}")
+
+    # If no backup passed in or cloud failed, try to load from local JSON file
+    if not restore_data:
         local_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trade_history.json")
         if os.path.exists(local_file):
             try:
@@ -97,6 +108,9 @@ def _self_heal(local_backup: dict = None):
                 app_logger.info(f"DB: Self-healer loaded {len(restore_data.get('trades', []))} trades from local backup.")
             except Exception as e:
                 app_logger.error(f"DB: Self-healer could not read local backup: {e}")
+                
+    if not restore_data:
+        restore_data = {"max_equity": 0.0, "trades": []}
 
     try:
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
