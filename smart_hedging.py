@@ -613,18 +613,7 @@ class SmartHedgingManager:
             self._bleed_confirm_count = 0
             return
 
-        # ── TREND FILTER (ADX) ──
-        # If market is ranging/choppy (ADX < 20), do not trigger on minor bleeds (15-25%)
-        # because fakeouts are highly likely. Wait for severe bleed (>= 25%).
-        if adx_value > 0 and adx_value < 20.0:
-            if bleeding_leg and self.BLEED_TRIGGER_PCT <= bleed_pct < self.BLEED_SEVERE_PCT:
-                app_logger.info(
-                    f"Hedge: {bleeding_leg} bleeding {bleed_pct*100:.1f}%, BUT "
-                    f"ADX is {adx_value:.1f} (Ranging/Choppy). Skipping hedge to avoid whipsaw. "
-                    f"Will only hedge if bleed reaches {self.BLEED_SEVERE_PCT*100:.0f}%."
-                )
-                self._bleed_confirm_count = 0
-                return
+
 
         # ── HYBRID TREND CONFIRMATION FILTER ──
         # To avoid whipsaws, we require EITHER a closed 5m candle > 1.5 ATR (Small Alert)
