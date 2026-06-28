@@ -839,11 +839,14 @@ class DeltaTradingEngine:
                         app_logger.info(f"Engine [DEBUG] Profit Check: entry_total={collected_premium:.4f} | current_total={current_option_value:.4f} | pnl_pct={pnl_pct*100:.2f}% | target={config.EXIT_PROFIT_TARGET*100:.2f}% | time_in_trade={time_in_trade_seconds:.1f}s{hedge_log}")
                         
                         # Update Max/Min Excursion Tracking
-                        if pnl_pct > self.current_trade_info.get("max_pnl_pct", -999.0):
-                            self.current_trade_info["max_pnl_pct"] = pnl_pct
+                        # STRICTLY use options_profit / collected_premium — not pnl_pct
+                        # pnl_pct can include hedge which distorts the % captured metric
+                        options_pnl_pct = options_profit / collected_premium
+                        if options_pnl_pct > self.current_trade_info.get("max_pnl_pct", -999.0):
+                            self.current_trade_info["max_pnl_pct"] = options_pnl_pct
                             self.current_trade_info["max_pnl_time"] = get_ist_now().isoformat()
-                        if pnl_pct < self.current_trade_info.get("min_pnl_pct", 999.0):
-                            self.current_trade_info["min_pnl_pct"] = pnl_pct
+                        if options_pnl_pct < self.current_trade_info.get("min_pnl_pct", 999.0):
+                            self.current_trade_info["min_pnl_pct"] = options_pnl_pct
                             self.current_trade_info["min_pnl_time"] = get_ist_now().isoformat()
 
                         # ── Live P&L Chart Snapshot (1 point per 60s) ──
