@@ -459,7 +459,7 @@ class SmartHedgingManager:
     # CORE: MANAGE HEDGE (called every 5-15 seconds by bot_engine)
     # ═══════════════════════════════════════════════════════════════
 
-    def manage_hedge(self, positions, unrealized_loss_pct, profit_usd=0.0, adx_value=0.0):
+    def manage_hedge(self, positions, unrealized_loss_pct, profit_usd=0.0, adx_value=0.0, atr_usd=100.0):
         """
         Core hedge management loop.
 
@@ -468,6 +468,7 @@ class SmartHedgingManager:
             unrealized_loss_pct: positive when losing (0.15 = 15% loss)
             profit_usd: current total P&L in USD (includes hedge P&L when active)
             adx_value: ADX trend strength from market_regime
+            atr_usd: BTC Average True Range in USD
         """
         self.last_check_time = time.time()
 
@@ -491,7 +492,7 @@ class SmartHedgingManager:
         else:
             self._check_and_trigger_hedge(
                 positions, bleeding_leg, bleed_pct, bleed_usd,
-                direction, unrealized_loss_pct, profit_usd, adx_value
+                direction, unrealized_loss_pct, profit_usd, adx_value, atr_usd
             )
 
     # ═══════════════════════════════════════════════════════════════
@@ -500,7 +501,7 @@ class SmartHedgingManager:
 
     def _check_and_trigger_hedge(self, positions, bleeding_leg, bleed_pct,
                                   bleed_usd, direction, unrealized_loss_pct,
-                                  profit_usd, adx_value=0.0):
+                                  profit_usd, adx_value=0.0, atr_usd=100.0):
         """
         Decides whether to open a new hedge based on:
         1. Net trade must be losing (no hedge when profitable)
@@ -531,6 +532,25 @@ class SmartHedgingManager:
                     f"ADX is {adx_value:.1f} (Ranging/Choppy). Skipping hedge to avoid whipsaw. "
                     f"Will only hedge if bleed reaches {self.BLEED_SEVERE_PCT*100:.0f}%."
                 )
+                self._bleed_confirm_count = 0
+                return
+
+        # ── IV SPIKE FILTER (ATR) ──
+        # If the option is bleeding but BTC price has barely moved from entry,
+        # it is purely an IV expansion spike. We DO NOT hedge IV spikes with futures.
+        btc_price = self._get_btc_mark_price()
+        if self._entry_btc_price > 0 and btc_price > 0:
+            btc_move_usd = abs(btc_price - self._entry_btc_price)
+            # Require BTC to move at least 1.0x of the 15-min ATR to confirm a real trend
+            trend_threshold = atr_usd * 1.0
+            
+            if bleeding_leg and btc_move_usd < trend_threshold:
+                if bleed_pct >= self.BLEED_TRIGGER_PCT:
+                    app_logger.warning(
+                        f"Hedge: IV SPIKE DETECTED! {bleeding_leg} bleeding {bleed_pct*100:.1f}%, "
+                        f"BUT BTC moved only ${btc_move_usd:.1f} (Threshold: ${trend_threshold:.1f} / 1.0 ATR). "
+                        f"Ignoring IV spike. Hedge REJECTED."
+                    )
                 self._bleed_confirm_count = 0
                 return
 

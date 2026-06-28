@@ -283,3 +283,43 @@ class TradingFilters:
         except Exception as e:
             app_logger.error(f"Filter: Error calculating ADX: {e}")
             return "Unknown", 0.0, []
+
+    def get_btc_atr(self, period=14, resolution="15m"):
+        """Calculates the Average True Range (ATR) of BTCUSDT over the specified resolution."""
+        try:
+            import time
+            end_time = int(time.time())
+            # Fetch period+1 candles to get prev_close for TR calculation
+            seconds_per_candle = int(resolution.replace('m','')) * 60 if 'm' in resolution else 3600
+            start_time = end_time - ((period + 2) * seconds_per_candle)
+            
+            res = requests.get(f'https://api.delta.exchange/v2/history/candles?symbol=BTCUSDT&resolution={resolution}&start={start_time}&end={end_time}', timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                candles = data.get('result', [])
+                if len(candles) < period:
+                    return 100.0 # fallback
+                
+                # Sort chronologically
+                candles.sort(key=lambda x: x['time'])
+                
+                true_ranges = []
+                for i in range(1, len(candles)):
+                    high = float(candles[i]['high'])
+                    low = float(candles[i]['low'])
+                    prev_close = float(candles[i-1]['close'])
+                    
+                    tr = max(
+                        high - low,
+                        abs(high - prev_close),
+                        abs(low - prev_close)
+                    )
+                    true_ranges.append(tr)
+                
+                recent_trs = true_ranges[-period:]
+                atr = sum(recent_trs) / len(recent_trs)
+                app_logger.info(f"Filter: Calculated {period}-period {resolution} BTC ATR: ${atr:.2f}")
+                return atr
+        except Exception as e:
+            app_logger.error(f"Filter: Error calculating ATR: {e}")
+        return 100.0 # Safe fallback
