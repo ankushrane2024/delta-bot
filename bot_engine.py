@@ -1146,9 +1146,9 @@ class DeltaTradingEngine:
                 app_logger.error(f"Engine: History backup send failed: {backup_err}")
 
     def _apply_dynamic_sizing(self, base_lots):
-        """Hardcoded to 500 lots per leg for testing, skipping all money management."""
-        app_logger.info(f"Engine: Dynamic sizing and money management bypassed for testing. Forced 500 lots.")
-        return 500
+        """Returns the actual base_lots set by the user."""
+        app_logger.info(f"Engine: Using user-defined lot size: {base_lots} total lots.")
+        return base_lots
 
     def _check_max_risk(self, lots, call_opt, put_opt):
         """Bypassed for testing. Always returns True."""
