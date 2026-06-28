@@ -275,6 +275,10 @@ class SmartHedgingManager:
             if ep > 0:
                 self._entry_premiums[sym] = ep
         self._entry_btc_price = self._get_btc_mark_price()
+        
+        # CLEAR THE LOG AT THE START OF A NEW TRADE ONLY
+        self.hedge_event_log = []
+        
         app_logger.info(
             f"Hedge: Cached entry premiums: {self._entry_premiums} | "
             f"BTC Entry: ${self._entry_btc_price:.2f}"
@@ -976,32 +980,8 @@ class SmartHedgingManager:
                     return
 
         # ══════════════════════════════════════════════════════════
-        # EXIT RULE 5: IMMEDIATE REVERSAL SQUARE-OFF (Breakeven/Low Loss)
+        # EXIT RULE 5 HAS BEEN REMOVED (No aggressive stop-losses on the hedge)
         # ══════════════════════════════════════════════════════════
-        # Dynamic Loss Threshold: scale the max loss based on position size to prevent premature cuts on 500-lot noise.
-        # Base: -$3.00 for a standard 0.01 BTC hedge.
-        current_size = abs(self.execution.hedge_size_btc)
-        dynamic_whipsaw_limit = max(-50.0, min(-3.0, -3.0 * (current_size / 0.01)))
-        
-        if time_held >= self.MIN_HEDGE_HOLD_SECONDS:
-            market_is_reversing = options_only_pnl > self._options_pnl_at_hedge_entry
-            
-            # 1. Breakeven Stop: If it was in profit but fell to $0.
-            hit_breakeven = self._hedge_peak_pnl >= 1.0 and hedge_pnl <= 0.0
-            
-            # 2. Low Loss Stop: If it instantly reverses into a low loss.
-            hit_low_loss = market_is_reversing and hedge_pnl <= dynamic_whipsaw_limit
-            
-            if hit_breakeven or hit_low_loss:
-                app_logger.warning(
-                    f"Hedge: ⚠️ IMMEDIATE REVERSAL SQUARE-OFF! Hedge P&L: ${hedge_pnl:.2f}. "
-                    f"Dynamic Limit: ${dynamic_whipsaw_limit:.2f}. Cutting oversized hedge to prevent bleed!"
-                )
-                self._close_hedge_with_reason(
-                    f"Reversal Square-Off (Hedge at ${hedge_pnl:.2f})",
-                    options_pnl_usd=options_only_pnl
-                )
-                return
 
         # ══════════════════════════════════════════════════════════
         # ⛔ DO NOT EXIT — TRADE STILL IN LOSS
@@ -1170,7 +1150,6 @@ class SmartHedgingManager:
         self._hedge_entry_time = 0.0
         self._last_sizing_loss_usd = 0.0
         self._last_escalation_time = 0.0
-        self.hedge_event_log = []   # Clear log after close (caller must call get_hedge_event_log() first)
         app_logger.info("Hedge: State fully reset.")
 
     # ═══════════════════════════════════════════════════════════════
