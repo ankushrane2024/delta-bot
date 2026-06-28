@@ -795,9 +795,7 @@ class DeltaTradingEngine:
                         hedge_pnl = self.smart_hedging.get_live_hedge_pnl() if getattr(self, 'smart_hedging', None) and self.smart_hedging.hedge_active else 0.0
                         profit = options_profit + hedge_pnl
                         
-                        # pnl_pct MUST be based on options_profit only vs premium collected (not hedge)
-                        # so that TP/SL thresholds are strictly about options performance
-                        pnl_pct = options_profit / collected_premium
+                        pnl_pct = profit / collected_premium
                         
                         # Emergency Trade Loss Limit (-45% on the active trade)
                         if pnl_pct <= -0.45:
