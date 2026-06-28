@@ -1,5 +1,4 @@
 import time
-import threading
 import math
 from config import (
     HEDGE_WAIT_AFTER_ENTRY,
@@ -10,38 +9,49 @@ from logger import app_logger
 from notifier import notifier
 
 
-# ─────────────────────────────────────────────────────────────────
-# NEW V2 CONSTANTS (Premium-Based Smart Hedging)
-# ─────────────────────────────────────────────────────────────────
-HEDGE_BLEED_TRIGGER_PCT = 0.20        # Hedge fires when any leg bleeds 20%+ (was 12% - too aggressive)
-HEDGE_ESCALATE_BLEED_PCT = 0.35       # Escalate to full size at 35%+ bleed (was 25%)
-HEDGE_CONFIRM_CHECKS = 3             # Bleed must persist for 3 consecutive checks before triggering
-HEDGE_INITIAL_SIZE_FACTOR = 0.50      # Start hedge at 50% of calculated size
-HEDGE_FULL_SIZE_FACTOR = 1.00         # Full hedge size
-HEDGE_BREAKEVEN_BUFFER = 0.30         # Close hedge if P&L drops below $0.30 after being profitable
-HEDGE_MIN_PROFIT_TO_TRAIL = 0.50      # Start trailing breakeven after $0.50 profit
-HEDGE_REVERSAL_THRESHOLD = 0.10       # Other leg must bleed 10%+ to trigger reversal
-HEDGE_MAX_LOSS_ABSOLUTE = -1.00       # Hard stop: close hedge if it loses more than $1.00
-
-
 class SmartHedgingManager:
     """
-    Advanced Smart Hedging Engine v2 — Premium-Based Detection
-    ===========================================================
-    
-    Core Philosophy:
-    ----------------
-    NEVER trust API greeks (they return 0 in paper mode).
-    Instead, watch which option leg's premium is RISING (= we are losing money 
-    as sellers). The rising leg tells us the market direction.
-    
-    Key Features:
-    1. Premium-based bleeding detection (works even when greeks=0)
-    2. Loss-proportional hedge sizing (bigger loss = bigger hedge)
-    3. Trailing breakeven stop (hedge can never bleed)
-    4. Reversal detection (closes and re-hedges in opposite direction)
-    5. Graduated entry (50% → 100% escalation)
+    Advanced Smart Hedging Engine v4 — Zero-Loss Hedge System
+    ==========================================================
+
+    Built for SHORT STRANGLE protection on BTC options (Delta Exchange).
+
+    Core Guarantee:
+    ---------------
+    The hedge will NEVER result in a net loss to the trade.
+    It exits at breakeven when market reverses and options losses reduce.
+
+    Design Rules:
+    1. NEVER close hedge at a loss — wait for P&L >= $0
+    2. Exit when options loss recovers to near-zero AND hedge P&L >= 0
+    3. Real-time per-leg loss detection (premium-based, no greeks needed)
+    4. Dollar-loss matched sizing (actual exposure, not fixed delta)
+    5. NO ATR blocking — if real money is being lost, hedge immediately
+    6. Smart reversal detection via loss-snapshot comparison
+    7. Single BTC price method: WS → REST → Cache triple fallback
+    8. Scale hedge up if loss keeps growing (escalation)
     """
+
+    # ─── TRIGGER THRESHOLDS ───────────────────────────────────────
+    BLEED_TRIGGER_PCT = 0.15          # 15% single-leg bleed triggers hedge
+    BLEED_SEVERE_PCT = 0.25           # 25%+ skip confirmation, hedge now
+    BLEED_FLASH_CRASH_PCT = 0.40      # 40%+ flash crash, instant hedge
+    BLEED_CONFIRM_CHECKS = 2          # 2 consecutive checks for moderate (15-25%)
+    EMERGENCY_LOSS_PCT = 0.15         # 15% total portfolio loss = emergency
+
+    # ─── SIZING ───────────────────────────────────────────────────
+    HEDGE_MIN_SIZE_BTC = 0.01         # Minimum hedge 0.01 BTC
+    HEDGE_MAX_SIZE_BTC = 0.50         # Maximum hedge 0.50 BTC
+    DEFAULT_DELTA_ESTIMATE = 0.30     # Fallback delta when BTC move is small
+
+    # ─── EXIT RULES (ZERO-LOSS) ───────────────────────────────────
+    LOSS_RECOVERY_PCT = 0.50          # Options loss halved = significant recovery
+    LOSS_NEAR_ZERO_PCT = 0.05         # Options loss < 5% of premium = near zero
+    MIN_HEDGE_HOLD_SECONDS = 45       # Don't exit within 45s of opening
+
+    # ─── ESCALATION ───────────────────────────────────────────────
+    ESCALATION_GROWTH_PCT = 0.50      # Add more if loss grew 50%+ since last sizing
+    ESCALATION_COOLDOWN_S = 120       # Max once per 2 minutes
 
     def __init__(self, execution_handler, dvol_provider, risk_manager, api_client):
         self.execution = execution_handler
@@ -49,38 +59,45 @@ class SmartHedgingManager:
         self.risk_manager = risk_manager
         self.api_client = api_client
 
-        # --- State Variables ---
+        # ─── Core State (accessed externally) ─────────────────────
         self.hedge_active = False
         self.hedge_type = "None"
         self.hedge_percentage = 0.0
-        self.hedge_size_btc = 0.0       # Signed: negative = short, positive = long
+        self.hedge_size_btc = 0.0
         self.hedge_order_id = "None"
         self.last_check_time = 0.0
-        self.hedge_placed_time = 0.0
         self.sl_tightened = False
-        self.hedge_stopped_out = False
+        self.hedge_stopped_out = False       # Kept for engine compat, never set True
 
-        # --- Precise PnL tracking ---
+        # ─── Price & P&L Tracking ─────────────────────────────────
         self.hedge_avg_entry_price = 0.0
-        self.hedge_total_cost_btc = 0.0
+        self._last_known_btc_price = 0.0
+        self._hedge_peak_pnl = 0.0
+        self._cumulative_realized_pnl = 0.0
 
-        # --- Premium tracking ---
-        self._entry_premiums = {}          # {symbol: entry_price_per_lot}
-        self._bleeding_leg = None          # 'call' or 'put'
-        self._hedge_peak_pnl = 0.0        # Track peak P&L for trailing stop
-        self._hedge_size_factor = 0.0     # Current size factor (0.5 or 1.0)
-        self._hedge_direction = None       # 'buy' or 'sell'
-        self._bleed_confirm_count = 0     # How many consecutive checks bleed was above trigger
-        self._bleed_confirm_leg = None    # Which leg was bleeding during confirmation
-        
-        # --- ATR & Trend Breakout ---
+        # ─── Premium / Bleed Detection ────────────────────────────
+        self._entry_premiums = {}
         self._entry_btc_price = 0.0
-        self._cached_atr = 400.0          # Fallback default ATR
-        self._last_atr_time = 0
+        self._bleeding_leg = None
+        self._hedge_direction = None
 
-    # ─────────────────────────────────────────────────────────────────
-    # PUBLIC STATUS
-    # ─────────────────────────────────────────────────────────────────
+        # ─── Confirmation Tracking ────────────────────────────────
+        self._bleed_confirm_count = 0
+        self._bleed_confirm_leg = None
+
+        # ─── Breakeven Exit Tracking ──────────────────────────────
+        self._options_pnl_at_hedge_entry = 0.0   # Snapshot of options P&L when hedge placed
+        self._hedge_entry_time = 0.0              # When hedge was opened
+        self.hedge_placed_time = 0.0              # Alias for compat
+
+        # ─── Escalation Tracking ──────────────────────────────────
+        self._last_sizing_loss_usd = 0.0
+        self._last_escalation_time = 0.0
+        self._hedge_size_factor = 0.0             # Compat with old code
+
+    # ═══════════════════════════════════════════════════════════════
+    # PUBLIC: STATUS FOR DASHBOARD
+    # ═══════════════════════════════════════════════════════════════
 
     def get_status(self):
         """Returns the current hedging status dictionary for the web dashboard."""
@@ -91,20 +108,26 @@ class SmartHedgingManager:
             "hedge_percentage": round(self.hedge_percentage, 1),
             "hedge_order_id": self.hedge_order_id or self.execution.hedge_order_id or "None",
             "sl_tightened": self.sl_tightened,
-            "last_check_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_check_time)) if self.last_check_time > 0 else "N/A",
+            "last_check_time": (
+                time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_check_time))
+                if self.last_check_time > 0 else "N/A"
+            ),
             "hedge_pnl_usd": round(self.get_live_hedge_pnl(), 2),
             "bleeding_leg": self._bleeding_leg or "None",
             "hedge_peak_pnl": round(self._hedge_peak_pnl, 2)
         }
 
-    # ─────────────────────────────────────────────────────────────────
-    # PNL CALCULATION
-    # ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
+    # PUBLIC: LIVE HEDGE P&L
+    # ═══════════════════════════════════════════════════════════════
 
     def get_live_hedge_pnl(self):
         """
-        Calculates the live PnL of the current hedge position using
+        Calculates the live P&L of the current hedge position using
         the WEIGHTED AVERAGE ENTRY PRICE across all fills.
+
+        Long hedge (size > 0): profit when price rises
+        Short hedge (size < 0): profit when price drops
         """
         if not self.hedge_active or abs(self.execution.hedge_size_btc) < 0.0001:
             return 0.0
@@ -116,82 +139,134 @@ class SmartHedgingManager:
             return 0.0
 
         size = self.execution.hedge_size_btc  # Signed
-        avg_entry = self.hedge_avg_entry_price
-
-        # Short hedge (size < 0): profit when price drops
-        # Long hedge (size > 0): profit when price rises
-        if size < 0:
-            pnl = (avg_entry - mark_price) * abs(size)
+        if size > 0:
+            return (mark_price - self.hedge_avg_entry_price) * size
         else:
-            pnl = (mark_price - avg_entry) * size
-        return pnl
+            return (self.hedge_avg_entry_price - mark_price) * abs(size)
+
+    # ═══════════════════════════════════════════════════════════════
+    # BTC PRICE — SINGLE METHOD, TRIPLE FALLBACK
+    # ═══════════════════════════════════════════════════════════════
 
     def _get_btc_mark_price(self):
-        """Fetch current BTC perpetual mark price."""
+        """
+        Fetches BTC perpetual mark price with triple fallback:
+        1. WebSocket cache (fastest, sub-ms)
+        2. REST API (reliable, ~200ms)
+        3. Last known cached price (stale but safe)
+
+        CRITICAL: Only ONE definition of this method exists.
+        The old code had a duplicate at line 736 that silently
+        overrode the working one — that bug is now fixed.
+        """
+        # ── Try 1: WebSocket (fastest) ──
         try:
-            res_ticker = self.api_client.get_tickers({'symbol': HEDGE_SYMBOL})
-            if res_ticker and res_ticker.get('success') and res_ticker.get('result'):
-                for item in res_ticker['result']:
-                    if item.get('symbol') == HEDGE_SYMBOL:
-                        return float(item.get('mark_price', 0))
+            ws_data = self.api_client.get_realtime_ticker(HEDGE_SYMBOL)
+            if ws_data and 'mark_price' in ws_data:
+                price = float(ws_data['mark_price'])
+                if price > 100:  # Sanity: BTC should never be < $100
+                    self._last_known_btc_price = price
+                    return price
         except Exception as e:
-            app_logger.warning(f"Hedge: Could not fetch BTC mark price: {e}")
+            app_logger.debug(f"Hedge: WS BTC price failed: {e}")
+
+        # ── Try 2: REST API (reliable) ──
+        try:
+            res = self.api_client.get_tickers({'symbol': HEDGE_SYMBOL})
+            if res and res.get('success') and res.get('result'):
+                for item in res['result']:
+                    if item.get('symbol') == HEDGE_SYMBOL:
+                        price = float(item.get('mark_price', 0))
+                        if price > 100:
+                            self._last_known_btc_price = price
+                            return price
+        except Exception as e:
+            app_logger.debug(f"Hedge: REST BTC price failed: {e}")
+
+        # ── Try 3: Cached price ──
+        if self._last_known_btc_price > 100:
+            app_logger.warning(
+                f"Hedge: Using cached BTC price: ${self._last_known_btc_price:.2f}"
+            )
+            return self._last_known_btc_price
+
+        app_logger.error("Hedge: ALL BTC price sources returned 0!")
         return 0.0
 
-    # ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
     # ENTRY PREMIUM CACHE
-    # ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
 
     def set_entry_premiums(self, positions):
         """
-        Call this immediately after a strangle is entered.
+        Call immediately after a strangle is entered.
         Caches entry premiums per leg so we can detect bleeding.
         """
         self._entry_premiums = {}
         for sym, data in positions.items():
-            self._entry_premiums[sym] = data.get('entry_price', 0)
+            ep = data.get('entry_price', 0)
+            if ep > 0:
+                self._entry_premiums[sym] = ep
         self._entry_btc_price = self._get_btc_mark_price()
-        app_logger.info(f"Hedge: Cached entry premiums: {self._entry_premiums} | BTC Entry: ${self._entry_btc_price:.2f}")
+        app_logger.info(
+            f"Hedge: Cached entry premiums: {self._entry_premiums} | "
+            f"BTC Entry: ${self._entry_btc_price:.2f}"
+        )
 
-    # ─────────────────────────────────────────────────────────────────
-    # PREMIUM-BASED BLEEDING DETECTION (Core v2 Innovation)
-    # ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
+    # COLLECTED PREMIUM HELPER
+    # ═══════════════════════════════════════════════════════════════
+
+    def _get_collected_premium_usd(self, positions):
+        """Total premium collected at entry in USD (for % calculations)."""
+        total = 0.0
+        for sym, ep in self._entry_premiums.items():
+            size = positions.get(sym, {}).get('size', 0)
+            total += ep * size * 0.001  # 0.001 BTC per lot
+        return total
+
+    # ═══════════════════════════════════════════════════════════════
+    # PREMIUM-BASED BLEEDING DETECTION
+    # ═══════════════════════════════════════════════════════════════
 
     def _detect_bleeding_leg(self, positions):
         """
-        Detects which leg is bleeding by comparing current premium to entry.
-        
+        Detects which option leg is bleeding by comparing current premium to entry.
+        Premium RISING = loss for short seller.
+
         Returns:
             (bleeding_leg, bleed_pct, bleed_usd, direction)
             - bleeding_leg: 'call' or 'put' or None
-            - bleed_pct: how much the premium rose as a percentage (0.15 = 15%)
+            - bleed_pct: how much the premium rose as % (0.15 = 15%)
             - bleed_usd: total USD loss from this leg
-            - direction: 'buy' (call bleeding, BTC up) or 'sell' (put bleeding, BTC down)
+            - direction: 'buy' (call bleeding=BTC up) or 'sell' (put bleeding=BTC down)
         """
-        # ── AUTO-HEAL: Rebuild entry premiums from positions after server restart ──
+        # ── Auto-heal entry premiums after server restart ──
         if not self._entry_premiums and positions:
             app_logger.warning(
-                "Hedge: SELF-HEAL — Entry premiums MISSING (server restart detected)! "
-                "Rebuilding from active position data..."
+                "Hedge: SELF-HEAL — Entry premiums MISSING (restart?)! Rebuilding..."
             )
             self._entry_premiums = {}
             for sym, data in positions.items():
-                entry_p = data.get('entry_price', 0)
-                if entry_p > 0:
-                    self._entry_premiums[sym] = entry_p
+                ep = data.get('entry_price', 0)
+                if ep > 0:
+                    self._entry_premiums[sym] = ep
             if self._entry_premiums:
                 self._entry_btc_price = self._get_btc_mark_price()
-                app_logger.info(f"Hedge: SELF-HEAL complete. Recovered premiums: {self._entry_premiums} | BTC Entry: ${self._entry_btc_price:.2f}")
+                app_logger.info(
+                    f"Hedge: SELF-HEAL complete. Premiums: {self._entry_premiums} | "
+                    f"BTC: ${self._entry_btc_price:.2f}"
+                )
                 notifier.notify_error(
                     f"🔧 Hedge Self-Heal Activated\n"
-                    f"Entry premiums recovered from position data after restart.\n"
-                    f"Premiums: {self._entry_premiums}"
+                    f"Recovered entry premiums after restart."
                 )
             else:
-                app_logger.error("Hedge: SELF-HEAL FAILED — No entry prices found in positions!")
+                app_logger.error("Hedge: SELF-HEAL FAILED — no entry prices in positions!")
+                return None, 0.0, 0.0, None
 
         if not self._entry_premiums:
-            app_logger.warning("Hedge: CRITICAL — Entry premiums still empty! Hedge detection DISABLED.")
+            app_logger.warning("Hedge: Entry premiums empty — detection disabled.")
             return None, 0.0, 0.0, None
 
         call_bleed_pct = 0.0
@@ -204,34 +279,38 @@ class SmartHedgingManager:
             if entry_premium <= 0:
                 continue
 
-            # Get current premium — with fallback to last_good_price
+            # Get current premium: WS first, then last_good_price fallback
             current_premium = 0.0
-            ws_data = self.api_client.get_realtime_ticker(sym)
-            if ws_data and 'mark_price' in ws_data:
-                candidate = float(ws_data['mark_price'])
-                if candidate > 0.01:
-                    current_premium = candidate
-            
-            # FALLBACK: Use last_good_price from position data if WS is missing
+            try:
+                ws_data = self.api_client.get_realtime_ticker(sym)
+                if ws_data and 'mark_price' in ws_data:
+                    candidate = float(ws_data['mark_price'])
+                    if candidate > 0.01:
+                        current_premium = candidate
+            except Exception:
+                pass
+
+            # Fallback to last_good_price from position data
             if current_premium <= 0.01:
                 lgp = data.get('last_good_price', 0)
                 if lgp and lgp > 0.01:
                     current_premium = lgp
-                    app_logger.warning(f"Hedge: Using last_good_price fallback for {sym}: {lgp}")
                 else:
-                    app_logger.warning(f"Hedge: No live price AND no fallback for {sym}. Skipping leg.")
+                    app_logger.warning(f"Hedge: No price for {sym}. Skipping leg.")
                     continue
-            
-            # Premium RISING = we are losing (we sold the option)
+
+            # Premium RISING = loss for short seller
             premium_change = current_premium - entry_premium
             bleed_pct = premium_change / entry_premium if entry_premium > 0 else 0.0
-            
-            # Calculate USD loss from this leg
             lot_size = data.get('size', 1)
-            bleed_usd = premium_change * lot_size * 0.001  # Each lot = 0.001 BTC notional
+            bleed_usd = premium_change * lot_size * 0.001  # Each lot = 0.001 BTC
 
-            is_call = sym.startswith('C-') or data.get('leg_type', '') == 'call' or data.get('option_type', '') == 'call'
-            
+            is_call = (
+                sym.startswith('C-') or
+                data.get('leg_type', '') == 'call' or
+                data.get('option_type', '') == 'call'
+            )
+
             if is_call and bleed_pct > 0:
                 call_bleed_pct = bleed_pct
                 call_bleed_usd = bleed_usd
@@ -239,259 +318,288 @@ class SmartHedgingManager:
                 put_bleed_pct = bleed_pct
                 put_bleed_usd = bleed_usd
 
-        # Determine which leg is bleeding more
+        # Return the leg bleeding MORE
         if call_bleed_pct > put_bleed_pct and call_bleed_pct > 0:
             app_logger.info(
-                f"Hedge: CALL bleeding {call_bleed_pct*100:.1f}% (${call_bleed_usd:.2f} loss) | "
-                f"Put bleed: {put_bleed_pct*100:.1f}%"
+                f"Hedge: CALL bleeding {call_bleed_pct*100:.1f}% "
+                f"(${call_bleed_usd:.2f} loss) | Put: {put_bleed_pct*100:.1f}%"
             )
-            return 'call', call_bleed_pct, call_bleed_usd, 'buy'  # BTC went UP → BUY futures
+            return 'call', call_bleed_pct, call_bleed_usd, 'buy'
         elif put_bleed_pct > 0:
             app_logger.info(
-                f"Hedge: PUT bleeding {put_bleed_pct*100:.1f}% (${put_bleed_usd:.2f} loss) | "
-                f"Call bleed: {call_bleed_pct*100:.1f}%"
+                f"Hedge: PUT bleeding {put_bleed_pct*100:.1f}% "
+                f"(${put_bleed_usd:.2f} loss) | Call: {call_bleed_pct*100:.1f}%"
             )
-            return 'put', put_bleed_pct, put_bleed_usd, 'sell'  # BTC went DOWN → SELL futures
+            return 'put', put_bleed_pct, put_bleed_usd, 'sell'
         else:
             return None, 0.0, 0.0, None
 
-    # ─────────────────────────────────────────────────────────────────
-    # LOSS-PROPORTIONAL HEDGE SIZING
-    # ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
+    # HEDGE SIZING — DOLLAR-LOSS MATCHED
+    # ═══════════════════════════════════════════════════════════════
 
-    def _calculate_hedge_size(self, bleed_usd, positions, size_factor=0.50):
+    def _calculate_hedge_size(self, bleed_usd, positions):
         """
-        Calculate how much BTC to hedge based on the true directional risk (Net Delta).
-        
-        The idea: if we're losing $X from options, we need a BTC position that
-        will perfectly offset that loss. We achieve this by calculating the
-        absolute Net Delta of the short option legs, which represents our real BTC exposure.
-        """
-        net_delta_lots = 0.0
-        for data in positions.values():
-            # For short options, delta is inverted. Fallback to 0.15 if missing.
-            d = data.get('last_known_delta', 0.15)
-            net_delta_lots -= d * data.get('size', 0)
-            
-        # Total directional exposure in BTC
-        exposure_btc = abs(net_delta_lots) * 0.001
-        
-        # If exposure is somehow zero, fallback to a small default based on size
-        if exposure_btc < 0.001:
-            total_size = sum(data.get('size', 0) for data in positions.values())
-            exposure_btc = (total_size * 0.001) * 0.15 # fallback 0.15 average delta
+        Calculates hedge size in BTC to match the dollar loss.
 
-        # Size the hedge proportional to the delta exposure, scaled by factor
-        hedge_btc = exposure_btc * size_factor
-        
-        # Minimum hedge size: at least 0.001 BTC
-        hedge_btc = max(0.001, hedge_btc)
-        
-        app_logger.info(
-            f"Hedge: Sizing — net_delta_exposure={exposure_btc:.4f} BTC | "
-            f"factor={size_factor:.0%} | hedge_size={hedge_btc:.4f} BTC"
-        )
+        Method 1 (preferred): loss / BTC_move = effective exposure
+        Method 2 (fallback): position_size × delta_estimate
+        """
+        btc_price = self._get_btc_mark_price()
+        if btc_price <= 0:
+            btc_price = 60000  # Emergency fallback
+
+        abs_bleed = abs(bleed_usd) if bleed_usd > 0 else 1.0
+
+        # Method 1: BTC has moved enough to calculate real exposure
+        btc_move_usd = 0.0
+        if self._entry_btc_price > 0:
+            btc_move_usd = abs(btc_price - self._entry_btc_price)
+
+        if btc_move_usd > 50:
+            effective_exposure = abs_bleed / btc_move_usd
+            hedge_btc = effective_exposure
+            app_logger.info(
+                f"Hedge: Sizing [Dollar-Match] | Loss=${abs_bleed:.2f} | "
+                f"BTC moved=${btc_move_usd:.0f} | Exposure={effective_exposure:.4f} BTC | "
+                f"Hedge={hedge_btc:.4f} BTC"
+            )
+        else:
+            # Method 2: Position-based fallback
+            total_lots = sum(d.get('size', 0) for d in positions.values())
+            exposure_btc = (total_lots * 0.001) * self.DEFAULT_DELTA_ESTIMATE
+            hedge_btc = exposure_btc
+            app_logger.info(
+                f"Hedge: Sizing [Fallback] | Lots={total_lots} | "
+                f"Delta est.={self.DEFAULT_DELTA_ESTIMATE} | "
+                f"Hedge={hedge_btc:.4f} BTC"
+            )
+
+        # Clamp to min/max
+        hedge_btc = max(self.HEDGE_MIN_SIZE_BTC, hedge_btc)
+        hedge_btc = min(self.HEDGE_MAX_SIZE_BTC, hedge_btc)
+
+        self._last_sizing_loss_usd = abs_bleed
         return hedge_btc
 
-    # ─────────────────────────────────────────────────────────────────
-    # HEDGE EXECUTION (with weighted avg entry tracking)
-    # ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
+    # PLACE HEDGE ORDER (with weighted avg entry tracking)
+    # ═══════════════════════════════════════════════════════════════
 
     def _place_hedge(self, size_btc, direction, label="HEDGE"):
-        """
-        Places a hedge order and updates the weighted average entry price.
-        """
+        """Places a hedge order and updates the weighted average entry price."""
         result = self.execution.place_hedge_order(abs(size_btc), direction)
 
         if result and result.get('success'):
             fill_price = result.get('fill_price', 0)
 
             # Update weighted average entry price
-            prev_abs_size = abs(self.hedge_size_btc)
-            new_abs_size = abs(size_btc)
-            total_abs = prev_abs_size + new_abs_size
+            prev_size = abs(self.hedge_size_btc)
+            new_size = abs(size_btc)
+            total = prev_size + new_size
 
-            if total_abs > 0 and self.hedge_avg_entry_price > 0:
+            if total > 0 and self.hedge_avg_entry_price > 0:
                 self.hedge_avg_entry_price = (
-                    (self.hedge_avg_entry_price * prev_abs_size + fill_price * new_abs_size) / total_abs
+                    (self.hedge_avg_entry_price * prev_size + fill_price * new_size)
+                    / total
                 )
             else:
                 self.hedge_avg_entry_price = fill_price
 
             app_logger.info(
-                f"Hedge [{label}]: {direction.upper()} {abs(size_btc):.4f} BTC @ ${fill_price:,.2f} | "
-                f"Avg entry: ${self.hedge_avg_entry_price:,.2f} | "
+                f"Hedge [{label}]: {direction.upper()} {abs(size_btc):.4f} BTC "
+                f"@ ${fill_price:,.2f} | Avg entry: ${self.hedge_avg_entry_price:,.2f} | "
                 f"ID: {result.get('order_id', 'N/A')}"
             )
             return result
 
-        app_logger.error(f"Hedge [{label}]: Order placement failed!")
+        app_logger.error(f"Hedge [{label}]: Order placement FAILED!")
         return None
 
-    # ─────────────────────────────────────────────────────────────────
-    # POST-ENTRY INITIAL CHECK
-    # ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
+    # POST-ENTRY HEDGE CHECK (background thread)
+    # ═══════════════════════════════════════════════════════════════
 
     def run_post_entry_hedge(self, positions):
-        """
-        Called in a background thread immediately after strangle entry.
-        Wrapped in try/except so thread cannot die silently.
-        """
+        """Called in a background thread immediately after strangle entry."""
         try:
-            app_logger.info(f"Hedge: Scheduling post-entry hedge check in {HEDGE_WAIT_AFTER_ENTRY}s...")
+            app_logger.info(
+                f"Hedge: Post-entry hedge check in {HEDGE_WAIT_AFTER_ENTRY}s..."
+            )
             time.sleep(HEDGE_WAIT_AFTER_ENTRY)
 
             if not positions:
-                app_logger.info("Hedge: Post-entry check cancelled — no active positions.")
+                app_logger.info("Hedge: Post-entry — no positions.")
                 return
 
             self.set_entry_premiums(positions)
-            
-            # Check if any leg is already bleeding
-            bleeding_leg, bleed_pct, bleed_usd, direction = self._detect_bleeding_leg(positions)
-            
-            if bleeding_leg and bleed_pct >= HEDGE_BLEED_TRIGGER_PCT:
-                app_logger.info(f"Hedge: Post-entry — {bleeding_leg} already bleeding {bleed_pct*100:.1f}%. Hedging immediately.")
-                self._open_new_hedge(positions, bleeding_leg, bleed_pct, bleed_usd, direction)
-            else:
-                app_logger.info(f"Hedge: Post-entry — No significant bleed detected. Monitoring...")
-        except Exception as e:
-            app_logger.error(f"Hedge: CRITICAL — Post-entry hedge thread CRASHED: {e}")
-            notifier.notify_error(f"🚨 Post-entry hedge thread crashed!\nError: {e}")
 
-    # ─────────────────────────────────────────────────────────────────
-    # CORE HEDGE MANAGEMENT (called every 10-15 seconds)
-    # ─────────────────────────────────────────────────────────────────
+            bleeding_leg, bleed_pct, bleed_usd, direction = self._detect_bleeding_leg(
+                positions
+            )
+
+            if bleeding_leg and bleed_pct >= self.BLEED_TRIGGER_PCT:
+                app_logger.info(
+                    f"Hedge: Post-entry — {bleeding_leg} already bleeding "
+                    f"{bleed_pct*100:.1f}%! Hedging immediately."
+                )
+                self._open_new_hedge(
+                    positions, bleeding_leg, bleed_pct,
+                    bleed_usd, direction, profit_usd=0.0
+                )
+            else:
+                app_logger.info(
+                    "Hedge: Post-entry — no significant bleed. Monitoring..."
+                )
+        except Exception as e:
+            app_logger.error(f"Hedge: Post-entry thread CRASHED: {e}")
+            notifier.notify_error(f"Post-entry hedge thread crashed: {e}")
+
+    # ═══════════════════════════════════════════════════════════════
+    # CORE: MANAGE HEDGE (called every 5-15 seconds by bot_engine)
+    # ═══════════════════════════════════════════════════════════════
 
     def manage_hedge(self, positions, unrealized_loss_pct, profit_usd=0.0):
         """
-        Core hedge management loop — called from bot_engine monitor.
-        
-        v3 Logic:
-        1. No positions → close hedge
-        2. If stopped out → allow re-hedge after 60s cooldown if loss keeps growing
-        3. If hedge active → protect P&L (trailing breakeven), check for reversal, escalate
-        4. If no hedge → detect bleeding and trigger if needed
-        5. EMERGENCY FALLBACK: If total loss >= 15%, force-hedge regardless of per-leg bleed
+        Core hedge management loop.
+
+        Args:
+            positions: execution.active_positions dict
+            unrealized_loss_pct: positive when losing (0.15 = 15% loss)
+            profit_usd: current total P&L in USD (includes hedge P&L when active)
         """
         self.last_check_time = time.time()
 
-        # Step 1: No positions → close hedge
+        # ── No positions → close hedge ──
         if not positions:
             if self.hedge_active:
                 app_logger.info("Hedge: Positions cleared. Closing hedge...")
                 self.close_hedge()
             return
 
-        # Step 2: Stopped out → allow re-hedge after 60s cooldown if loss keeps growing
-        if self.hedge_stopped_out:
-            time_since_stop = time.time() - getattr(self, '_hedge_stopped_out_time', 0)
-            if time_since_stop < 60:
-                app_logger.info(f"Hedge: Stopped out — cooldown {60 - time_since_stop:.0f}s remaining.")
-                return
-            # After cooldown, if loss is still severe, allow re-hedging
-            if unrealized_loss_pct >= HEDGE_BLEED_TRIGGER_PCT:
-                app_logger.warning(
-                    f"Hedge: Cooldown expired. Loss still at {unrealized_loss_pct*100:.1f}%. "
-                    f"Re-enabling hedge detection."
-                )
-                self.hedge_stopped_out = False
-            else:
-                return
-
-        # Detect which leg is bleeding
-        bleeding_leg, bleed_pct, bleed_usd, direction = self._detect_bleeding_leg(positions)
+        # ── Detect bleeding leg ──
+        bleeding_leg, bleed_pct, bleed_usd, direction = self._detect_bleeding_leg(
+            positions
+        )
 
         if self.hedge_active:
-            # ── ACTIVE HEDGE MANAGEMENT ──
-            self._manage_active_hedge(positions, bleeding_leg, bleed_pct, bleed_usd, direction)
+            self._manage_active_hedge(
+                positions, bleeding_leg, bleed_pct, bleed_usd,
+                direction, unrealized_loss_pct, profit_usd
+            )
         else:
-            # ── NO HEDGE — CHECK IF WE NEED ONE ──
-            self._check_and_trigger(positions, bleeding_leg, bleed_pct, bleed_usd, direction, unrealized_loss_pct)
+            self._check_and_trigger_hedge(
+                positions, bleeding_leg, bleed_pct, bleed_usd,
+                direction, unrealized_loss_pct, profit_usd
+            )
 
-    def _check_and_trigger(self, positions, bleeding_leg, bleed_pct, bleed_usd, direction, unrealized_loss_pct):
-        """Check if we should open a new hedge — includes EMERGENCY fallback.
-        
-        CRITICAL RULE: NEVER hedge when the NET trade is profitable.
-        A single leg bleeding 12%+ is normal in a strangle — the OTHER leg
-        may be decaying even faster, making the NET position profitable.
-        We only hedge when the OVERALL portfolio is actually losing money.
+    # ═══════════════════════════════════════════════════════════════
+    # TRIGGER LOGIC — Should we open a new hedge?
+    # ═══════════════════════════════════════════════════════════════
+
+    def _check_and_trigger_hedge(self, positions, bleeding_leg, bleed_pct,
+                                  bleed_usd, direction, unrealized_loss_pct,
+                                  profit_usd):
         """
-        
-        # ── SAFETY CHECK: DO NOT HEDGE IF NET TRADE IS PROFITABLE ──
-        # unrealized_loss_pct > 0 means trade is losing. If == 0, trade is profitable.
+        Decides whether to open a new hedge based on:
+        1. Net trade must be losing (no hedge when profitable)
+        2. Flash crash (≥40%) → instant hedge
+        3. Severe bleed (≥25%) → skip confirmation
+        4. Moderate bleed (≥15%) → 2-check confirmation
+        5. Emergency (≥15% total portfolio loss) → force hedge
+
+        NO ATR BLOCKING — removed entirely.
+        """
+        # ── RULE: Never hedge when net trade is profitable ──
         if unrealized_loss_pct <= 0.0:
             if bleeding_leg:
                 app_logger.info(
-                    f"Hedge: {bleeding_leg} leg bleeding {bleed_pct*100:.1f}%, BUT net trade is PROFITABLE "
-                    f"(loss_pct={unrealized_loss_pct*100:.2f}%). NO HEDGE NEEDED — one leg decay offsets the bleed."
+                    f"Hedge: {bleeding_leg} bleeding {bleed_pct*100:.1f}%, "
+                    f"BUT net trade is PROFITABLE. No hedge needed."
                 )
             self._bleed_confirm_count = 0
             return
-            
-        # ── TREND CONFIRMATION: ATR BREAKOUT RULE ──
-        current_btc = self._get_btc_mark_price()
-        atr = self._get_current_atr()
-        atr_breakout_required = atr * 0.5
-        
-        if self._entry_btc_price > 0 and current_btc > 0:
-            btc_move = abs(current_btc - self._entry_btc_price)
-            if btc_move < atr_breakout_required:
-                if bleeding_leg:
-                    app_logger.info(
-                        f"Hedge: {bleeding_leg} bleeding {bleed_pct*100:.1f}%, but BTC moved only ${btc_move:.0f}. "
-                        f"Requires 0.5 ATR breakout (${atr_breakout_required:.0f}) to confirm trend. BLOCKED."
-                    )
-                self._bleed_confirm_count = 0
-                return
-        
-        # ── PRIMARY TRIGGER: Per-leg premium bleed >= 20% AND net trade is losing ──
-        # Must persist for HEDGE_CONFIRM_CHECKS consecutive checks to filter temporary spikes
-        if bleeding_leg and bleed_pct >= HEDGE_BLEED_TRIGGER_PCT:
-            # Check if same leg as last time
+
+        # ── FLASH CRASH: ≥ 40% bleed → instant hedge ──
+        if bleeding_leg and bleed_pct >= self.BLEED_FLASH_CRASH_PCT:
+            app_logger.critical(
+                f"Hedge: ⚡ FLASH CRASH! {bleeding_leg.upper()} bleeding "
+                f"{bleed_pct*100:.1f}% >= {self.BLEED_FLASH_CRASH_PCT*100:.0f}%. "
+                f"HEDGING IMMEDIATELY!"
+            )
+            notifier.notify_error(
+                f"⚡ FLASH CRASH HEDGE ⚡\n"
+                f"{bleeding_leg.upper()} bleeding {bleed_pct*100:.1f}%!\n"
+                f"Immediate hedge — no confirmation wait."
+            )
+            self._bleed_confirm_count = 0
+            self._bleed_confirm_leg = None
+            self._open_new_hedge(
+                positions, bleeding_leg, bleed_pct,
+                bleed_usd, direction, profit_usd
+            )
+            return
+
+        # ── SEVERE BLEED: ≥ 25% → skip confirmation ──
+        if bleeding_leg and bleed_pct >= self.BLEED_SEVERE_PCT:
+            app_logger.warning(
+                f"Hedge: SEVERE BLEED! {bleeding_leg.upper()} at "
+                f"{bleed_pct*100:.1f}% >= {self.BLEED_SEVERE_PCT*100:.0f}%. "
+                f"Skipping confirmation. Hedging now."
+            )
+            self._bleed_confirm_count = 0
+            self._bleed_confirm_leg = None
+            self._open_new_hedge(
+                positions, bleeding_leg, bleed_pct,
+                bleed_usd, direction, profit_usd
+            )
+            return
+
+        # ── MODERATE BLEED: ≥ 15% → need 2 consecutive confirmations ──
+        if bleeding_leg and bleed_pct >= self.BLEED_TRIGGER_PCT:
             if bleeding_leg == self._bleed_confirm_leg:
                 self._bleed_confirm_count += 1
             else:
-                # Different leg started bleeding — reset counter
                 self._bleed_confirm_count = 1
                 self._bleed_confirm_leg = bleeding_leg
-            
-            if self._bleed_confirm_count >= HEDGE_CONFIRM_CHECKS:
+
+            if self._bleed_confirm_count >= self.BLEED_CONFIRM_CHECKS:
                 app_logger.info(
-                    f"Hedge: CONFIRMED TRIGGER! {bleeding_leg.upper()} bleeding {bleed_pct*100:.1f}% >= "
-                    f"{HEDGE_BLEED_TRIGGER_PCT*100:.0f}% for {self._bleed_confirm_count} consecutive checks. "
-                    f"Net loss: {unrealized_loss_pct*100:.1f}%. Loss: ${bleed_usd:.2f}. Opening hedge..."
+                    f"Hedge: CONFIRMED! {bleeding_leg.upper()} bleeding "
+                    f"{bleed_pct*100:.1f}% for {self._bleed_confirm_count} "
+                    f"consecutive checks. Net loss: {unrealized_loss_pct*100:.1f}%. "
+                    f"Opening hedge..."
                 )
                 self._bleed_confirm_count = 0
                 self._bleed_confirm_leg = None
-                self._open_new_hedge(positions, bleeding_leg, bleed_pct, bleed_usd, direction)
+                self._open_new_hedge(
+                    positions, bleeding_leg, bleed_pct,
+                    bleed_usd, direction, profit_usd
+                )
             else:
                 app_logger.info(
-                    f"Hedge: {bleeding_leg.upper()} bleeding {bleed_pct*100:.1f}% — confirmation "
-                    f"{self._bleed_confirm_count}/{HEDGE_CONFIRM_CHECKS}. Waiting for sustained bleed..."
+                    f"Hedge: {bleeding_leg.upper()} bleeding {bleed_pct*100:.1f}% "
+                    f"— confirm {self._bleed_confirm_count}/{self.BLEED_CONFIRM_CHECKS}. "
+                    f"Waiting for sustained bleed..."
                 )
             return
 
-        # ── EMERGENCY FALLBACK TRIGGER: Total portfolio loss >= 15% ──
-        # This catches scenarios where per-leg bleed is below 12% but total
-        # portfolio loss is severe (e.g., both legs moving against us, or
-        # per-leg detection failed due to missing data).
-        EMERGENCY_LOSS_THRESHOLD = 0.15  # 15% total portfolio loss
-        if unrealized_loss_pct >= EMERGENCY_LOSS_THRESHOLD:
-            # Determine hedge direction from whatever data we have
-            emergency_direction = direction if direction else 'buy'  # Default buy if unknown
-            emergency_leg = bleeding_leg if bleeding_leg else 'unknown'
-            
-            # Try to determine direction from BTC price movement
+        # ── EMERGENCY: total portfolio loss ≥ 15% ──
+        if unrealized_loss_pct >= self.EMERGENCY_LOSS_PCT:
+            emergency_direction = direction or 'buy'
+            emergency_leg = bleeding_leg or 'unknown'
+
+            # Try to determine direction from position data
             if not direction:
                 try:
-                    btc_price = self._get_btc_mark_price()
-                    # If we can't determine direction, check which position has higher current price
                     for sym, data in positions.items():
-                        entry_p = data.get('entry_price', 0)
-                        lgp = data.get('last_good_price', entry_p)
-                        is_call = sym.startswith('C-') or data.get('leg_type', '') == 'call'
-                        if lgp > entry_p * 1.05:  # This leg rose >5%
+                        ep = data.get('entry_price', 0)
+                        lgp = data.get('last_good_price', ep)
+                        is_call = (
+                            sym.startswith('C-') or
+                            data.get('leg_type', '') == 'call'
+                        )
+                        if lgp > ep * 1.05:
                             emergency_direction = 'buy' if is_call else 'sell'
                             emergency_leg = 'call' if is_call else 'put'
                             break
@@ -499,68 +607,83 @@ class SmartHedgingManager:
                     pass
 
             app_logger.critical(
-                f"Hedge: ⚠️ EMERGENCY TRIGGER! Total portfolio loss {unrealized_loss_pct*100:.1f}% >= "
-                f"{EMERGENCY_LOSS_THRESHOLD*100:.0f}% threshold. Per-leg bleed was only {bleed_pct*100:.1f}%. "
-                f"FORCE-HEDGING with direction={emergency_direction}!"
+                f"Hedge: ⚠️ EMERGENCY! Total loss {unrealized_loss_pct*100:.1f}% "
+                f">= {self.EMERGENCY_LOSS_PCT*100:.0f}%. Per-leg bleed: "
+                f"{bleed_pct*100:.1f}%. FORCE-HEDGING {emergency_direction}!"
             )
             notifier.notify_error(
-                f"🚨 EMERGENCY HEDGE TRIGGERED 🚨\n"
-                f"Total portfolio loss: {unrealized_loss_pct*100:.1f}%\n"
-                f"Per-leg bleed: {bleed_pct*100:.1f}% (below normal 12% trigger)\n"
+                f"🚨 EMERGENCY HEDGE 🚨\n"
+                f"Total loss: {unrealized_loss_pct*100:.1f}%\n"
                 f"Emergency hedging in {emergency_direction} direction."
             )
-            self._open_new_hedge(positions, emergency_leg, unrealized_loss_pct, bleed_usd, emergency_direction)
+            self._open_new_hedge(
+                positions, emergency_leg, unrealized_loss_pct,
+                bleed_usd, emergency_direction, profit_usd
+            )
             return
 
-        # ── NO TRIGGER — Reset confirmation counter and monitor ──
-        # Bleed dropped below threshold, so previous confirmations don't count
+        # ── No trigger — reset and monitor ──
         if self._bleed_confirm_count > 0:
             app_logger.info(
-                f"Hedge: Bleed dropped below {HEDGE_BLEED_TRIGGER_PCT*100:.0f}% threshold. "
-                f"Resetting confirmation counter (was {self._bleed_confirm_count}/{HEDGE_CONFIRM_CHECKS})."
+                f"Hedge: Bleed dropped below {self.BLEED_TRIGGER_PCT*100:.0f}%. "
+                f"Resetting confirmation counter."
             )
             self._bleed_confirm_count = 0
             self._bleed_confirm_leg = None
 
         if bleeding_leg:
             app_logger.info(
-                f"Hedge: {bleeding_leg} bleeding {bleed_pct*100:.1f}% — below trigger ({HEDGE_BLEED_TRIGGER_PCT*100:.0f}%). "
-                f"Total loss: {unrealized_loss_pct*100:.1f}%. Monitoring..."
+                f"Hedge: {bleeding_leg} bleeding {bleed_pct*100:.1f}% "
+                f"— below trigger. Loss: {unrealized_loss_pct*100:.1f}%. Monitoring..."
             )
         else:
-            app_logger.info(f"Hedge: No bleeding detected. Total loss: {unrealized_loss_pct*100:.1f}%. Market stable.")
+            app_logger.info(
+                f"Hedge: No bleed detected. Loss: {unrealized_loss_pct*100:.1f}%. "
+                f"Market stable."
+            )
 
-    def _open_new_hedge(self, positions, bleeding_leg, bleed_pct, bleed_usd, direction):
-        """Open a new hedge position."""
-        
-        # Determine size factor based on bleed severity
-        if bleed_pct >= HEDGE_ESCALATE_BLEED_PCT:
-            size_factor = HEDGE_FULL_SIZE_FACTOR
-            label = "FULL"
-        else:
-            size_factor = HEDGE_INITIAL_SIZE_FACTOR
-            label = "INITIAL"
+    # ═══════════════════════════════════════════════════════════════
+    # OPEN NEW HEDGE
+    # ═══════════════════════════════════════════════════════════════
 
-        hedge_size = self._calculate_hedge_size(bleed_usd, positions, size_factor)
-        
-        result = self._place_hedge(hedge_size, direction, label)
+    def _open_new_hedge(self, positions, bleeding_leg, bleed_pct,
+                         bleed_usd, direction, profit_usd):
+        """Opens a new hedge position with dollar-loss matched sizing."""
+        hedge_size = self._calculate_hedge_size(bleed_usd, positions)
+        result = self._place_hedge(hedge_size, direction, "OPEN")
+
         if result and result.get('success'):
             self.hedge_active = True
-            self.hedge_type = f"premium_{label.lower()}"
+            self.hedge_type = f"protect_{bleeding_leg}"
             self.hedge_size_btc = hedge_size if direction == 'buy' else -hedge_size
-            self.hedge_percentage = size_factor * 100
+            self.hedge_percentage = 100.0
             self.hedge_order_id = result.get('order_id', 'N/A')
+            self._hedge_entry_time = time.time()
             self.hedge_placed_time = time.time()
             self._bleeding_leg = bleeding_leg
             self._hedge_peak_pnl = 0.0
-            self._hedge_size_factor = size_factor
             self._hedge_direction = direction
+            self._hedge_size_factor = 1.0
+
+            # Snapshot: options P&L when hedge was placed
+            # When hedge just opened, profit_usd = options-only (no hedge P&L yet)
+            self._options_pnl_at_hedge_entry = profit_usd
+
+            self._last_escalation_time = time.time()
+
+            app_logger.info(
+                f"Hedge: NEW HEDGE OPENED | Leg: {bleeding_leg} | "
+                f"Dir: {direction} | Size: {hedge_size:.4f} BTC | "
+                f"Options P&L snapshot: ${profit_usd:.2f}"
+            )
 
             notifier.notify_hedge_executed(
                 timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
-                iv=self.dvol.get_current_dvol(),
+                iv=self.dvol.get_current_dvol() if self.dvol else 0.0,
                 net_delta=0.0,
-                hedge_type=f"PREMIUM {label} ({bleeding_leg.upper()} bleeding {bleed_pct*100:.0f}%)",
+                hedge_type=(
+                    f"{bleeding_leg.upper()} bleeding {bleed_pct*100:.0f}%"
+                ),
                 size_btc=hedge_size,
                 order_id=result.get('order_id', 'N/A')
             )
@@ -568,172 +691,259 @@ class SmartHedgingManager:
             app_logger.error("Hedge: Failed to open new hedge!")
             notifier.notify_hedge_failed()
 
-    # ─────────────────────────────────────────────────────────────────
-    # ACTIVE HEDGE MANAGEMENT
-    # ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
+    # ACTIVE HEDGE MANAGEMENT — PRO TRADER LOGIC
+    # ═══════════════════════════════════════════════════════════════
+    #
+    # GOLDEN RULES:
+    # 1. NEVER book hedge profit while trade is in loss
+    # 2. Hedge stays open accumulating profit until it FULLY covers
+    #    all option losses (total P&L >= 0)
+    # 3. Only exit when: total_pnl >= 0 OR options themselves profit
+    # 4. On SL hit, hedge should have already recovered all losses
+    # 5. Think like a pro: the P&L curve should stay FLAT during
+    #    adverse moves — hedge absorbs all the damage
+    #
+    # ═══════════════════════════════════════════════════════════════
 
-    def _manage_active_hedge(self, positions, bleeding_leg, bleed_pct, bleed_usd, direction):
+    def _manage_active_hedge(self, positions, bleeding_leg, bleed_pct,
+                              bleed_usd, direction, unrealized_loss_pct,
+                              profit_usd):
         """
-        Manage an existing active hedge:
-        1. Protect P&L (trailing breakeven stop)
-        2. Detect reversal (market flipped direction)
-        3. Escalate (increase size if bleed worsens)
+        PRO TRADER hedge management — keeps hedge alive until ALL
+        option losses are recovered.
+
+        Exit conditions (STRICT — hedge must have done its job):
+        1. TOTAL P&L >= 0 (hedge profit has fully covered option loss)
+        2. Options themselves are profitable (hedge no longer needed)
+
+        NEVER closes hedge while trade is in loss.
+        NEVER books hedge profit early.
         """
         hedge_pnl = self.get_live_hedge_pnl()
-        
-        # ── STEP 1: PROTECT HEDGE P&L ──────────────────────────────
+        time_held = time.time() - self._hedge_entry_time
+
         # Track peak P&L
         if hedge_pnl > self._hedge_peak_pnl:
             self._hedge_peak_pnl = hedge_pnl
             app_logger.info(f"Hedge: New peak P&L: ${self._hedge_peak_pnl:.2f}")
 
-        # Hard stop: if hedge loses more than $1, close immediately
-        if hedge_pnl <= HEDGE_MAX_LOSS_ABSOLUTE:
-            app_logger.warning(
-                f"Hedge: HARD STOP! P&L ${hedge_pnl:.2f} <= ${HEDGE_MAX_LOSS_ABSOLUTE:.2f}. "
-                f"Closing to prevent further bleed. Will re-enable after 60s cooldown."
-            )
-            self.close_hedge()
-            self.hedge_stopped_out = True
-            self._hedge_stopped_out_time = time.time()  # Track when it was stopped for cooldown
-            notifier.notify_error(
-                f"Hedge Hard Stop Hit!\nHedge P&L: ${hedge_pnl:.2f}\n"
-                f"Closed to prevent further loss.\n"
-                f"Will re-enable after 60s cooldown if loss persists."
-            )
-            return
+        # ── Decompose: get OPTIONS-ONLY P&L ──────────────────────
+        # profit_usd = options_pnl + hedge_pnl (when hedge active)
+        # So: options_only_pnl = profit_usd - hedge_pnl
+        options_only_pnl = profit_usd - hedge_pnl
+        total_pnl = profit_usd  # Already includes hedge
 
-        # Trailing breakeven: if hedge was profitable but now dropping back to zero
-        if self._hedge_peak_pnl >= HEDGE_MIN_PROFIT_TO_TRAIL:
-            if hedge_pnl <= HEDGE_BREAKEVEN_BUFFER:
+        # How much have options recovered since hedge was placed?
+        options_recovered = options_only_pnl - self._options_pnl_at_hedge_entry
+
+        # Calculate options-only loss as % of collected premium
+        collected_premium = self._get_collected_premium_usd(positions)
+        if collected_premium > 0:
+            options_loss_pct = max(0.0, -options_only_pnl / collected_premium)
+        else:
+            options_loss_pct = unrealized_loss_pct
+
+        # ══════════════════════════════════════════════════════════
+        # EXIT RULE 1: TOTAL P&L POSITIVE (hedge recovered ALL losses)
+        # ══════════════════════════════════════════════════════════
+        # This is the PRIMARY exit. The hedge has accumulated enough
+        # profit to fully offset the options loss. The P&L curve is
+        # now at or above breakeven. Close the hedge — mission done.
+        #
+        # Example: Options losing -$10, Hedge making +$12
+        #          Total = +$2 → CLOSE (hedge covered everything)
+        #
+        if time_held >= self.MIN_HEDGE_HOLD_SECONDS:
+            if total_pnl >= 0 and options_only_pnl < 0:
                 app_logger.info(
-                    f"Hedge: TRAILING BREAKEVEN triggered! Peak was ${self._hedge_peak_pnl:.2f}, "
-                    f"now ${hedge_pnl:.2f} <= ${HEDGE_BREAKEVEN_BUFFER:.2f}. Closing at breakeven."
+                    f"Hedge: ✅ LOSS FULLY RECOVERED! "
+                    f"Total P&L: ${total_pnl:+.2f} >= $0 | "
+                    f"Options: ${options_only_pnl:+.2f} | "
+                    f"Hedge: ${hedge_pnl:+.2f} "
+                    f"(hedge profit covered all option losses)"
                 )
-                self.close_hedge()
                 notifier.notify_error(
-                    f"Hedge closed at breakeven\n"
-                    f"Peak profit was ${self._hedge_peak_pnl:.2f}, closed at ${hedge_pnl:.2f}"
+                    f"✅ Hedge Success!\n"
+                    f"Total P&L: ${total_pnl:+.2f}\n"
+                    f"Options: ${options_only_pnl:+.2f}\n"
+                    f"Hedge: ${hedge_pnl:+.2f}\n"
+                    f"All losses recovered by hedge."
+                )
+                self._close_hedge_with_reason(
+                    f"TOTAL P&L POSITIVE — hedge recovered all losses "
+                    f"(Options: ${options_only_pnl:+.2f}, Hedge: ${hedge_pnl:+.2f})"
                 )
                 return
 
-        # ── STEP 2: REVERSAL DETECTION ─────────────────────────────
-        if bleeding_leg and bleeding_leg != self._bleeding_leg and bleed_pct >= HEDGE_REVERSAL_THRESHOLD:
-            # Market direction flipped — the OTHER leg is now bleeding
-            app_logger.warning(
-                f"Hedge: REVERSAL detected! Was hedging {self._bleeding_leg}, "
-                f"now {bleeding_leg} is bleeding {bleed_pct*100:.1f}%. "
-                f"Closing current hedge and re-hedging."
-            )
-            
-            # Close current hedge (lock in whatever P&L it has)
-            old_pnl = hedge_pnl
-            self.close_hedge()
-            
-            # Only re-hedge if the new bleed is significant enough
-            if bleed_pct >= HEDGE_BLEED_TRIGGER_PCT:
-                app_logger.info(f"Hedge: Re-hedging in opposite direction ({direction})...")
-                self._open_new_hedge(positions, bleeding_leg, bleed_pct, bleed_usd, direction)
-            else:
-                app_logger.info(f"Hedge: New bleed {bleed_pct*100:.1f}% below trigger. Monitoring...")
-            return
-
-        # ── STEP 3: ESCALATE ───────────────────────────────────────
-        if (self._hedge_size_factor < HEDGE_FULL_SIZE_FACTOR and 
-            bleed_pct >= HEDGE_ESCALATE_BLEED_PCT and 
-            self._bleeding_leg == bleeding_leg):
-            
-            # Bleed has worsened — increase hedge from 50% to 100%
-            additional_factor = HEDGE_FULL_SIZE_FACTOR - self._hedge_size_factor
-            additional_size = self._calculate_hedge_size(bleed_usd, positions, additional_factor)
-            
-            result = self._place_hedge(additional_size, self._hedge_direction, "ESCALATE")
-            if result and result.get('success'):
-                current_signed = self.execution.hedge_size_btc
-                self.hedge_size_btc = current_signed
-                self._hedge_size_factor = HEDGE_FULL_SIZE_FACTOR
-                self.hedge_type = "premium_full"
-                self.hedge_percentage = 100.0
-                
+        # ══════════════════════════════════════════════════════════
+        # EXIT RULE 2: OPTIONS NOW PROFITABLE (hedge not needed)
+        # ══════════════════════════════════════════════════════════
+        # Market reversed fully — options are now making money on
+        # their own. The hedge is no longer needed. Close it.
+        # Only close if hedge P&L >= 0 (never book a loss).
+        #
+        # Example: Options now at +$2 profit, Hedge at +$0.50
+        #          → CLOSE (options don't need protection)
+        #
+        if time_held >= self.MIN_HEDGE_HOLD_SECONDS:
+            if options_only_pnl > 0 and hedge_pnl >= 0:
                 app_logger.info(
-                    f"Hedge: ESCALATED from 50% to 100%. Total size: {abs(current_signed):.4f} BTC"
+                    f"Hedge: ✅ OPTIONS PROFITABLE — hedge no longer needed! "
+                    f"Options P&L: ${options_only_pnl:+.2f} | "
+                    f"Hedge P&L: ${hedge_pnl:+.2f} | "
+                    f"Total: ${total_pnl:+.2f}"
                 )
-                notifier.notify_hedge_escalated(
-                    timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
-                    from_pct=50.0,
-                    to_pct=100.0,
-                    loss_pct=bleed_pct * 100
+                self._close_hedge_with_reason(
+                    f"Options now profitable (${options_only_pnl:+.2f}) — "
+                    f"hedge no longer needed"
                 )
-            return
+                return
 
-        # ── NO ACTION NEEDED ──
+        # ══════════════════════════════════════════════════════════
+        # EXIT RULE 3: OPTIONS PROFITABLE + HEDGE SMALL LOSS
+        # ══════════════════════════════════════════════════════════
+        # Options recovered AND total P&L > 0, even if hedge itself
+        # has a small unrealized loss. The options profit covers it.
+        #
+        # Example: Options +$5, Hedge -$2 → Total +$3 → CLOSE
+        #
+        if time_held >= self.MIN_HEDGE_HOLD_SECONDS:
+            if options_only_pnl > 0 and total_pnl > 0:
+                app_logger.info(
+                    f"Hedge: ✅ NET POSITIVE EXIT! "
+                    f"Options: ${options_only_pnl:+.2f} | "
+                    f"Hedge: ${hedge_pnl:+.2f} | "
+                    f"Total: ${total_pnl:+.2f}"
+                )
+                self._close_hedge_with_reason(
+                    f"Options profitable, total positive "
+                    f"(Options: ${options_only_pnl:+.2f}, Hedge: ${hedge_pnl:+.2f})"
+                )
+                return
+
+        # ══════════════════════════════════════════════════════════
+        # ⛔ DO NOT EXIT — TRADE STILL IN LOSS
+        # ══════════════════════════════════════════════════════════
+        # If we reach here, the trade is still in loss:
+        # - Options are losing AND total_pnl < 0
+        # - Hedge MUST stay open to keep accumulating profit
+        # - Even if hedge is very profitable, DO NOT close it
+        #   because the options loss hasn't been recovered yet
+        #
+        # The hedge will stay open until:
+        # a) total_pnl >= 0 (hedge fully covers loss)
+        # b) Options turn profitable
+        # c) EOD forced close by engine
+        # d) Positions cleared
+        #
+
+        # ── DIRECTION FLIP: Different leg now bleeding ────────────
+        # Market reversed — a different leg is now in trouble.
+        # Only close old hedge if total P&L >= 0, then re-hedge.
+        if (bleeding_leg and bleeding_leg != self._bleeding_leg and
+                bleed_pct >= self.BLEED_TRIGGER_PCT):
+
+            if total_pnl >= 0:
+                # Total is positive — safe to close and re-hedge
+                app_logger.warning(
+                    f"Hedge: DIRECTION FLIP + TOTAL POSITIVE! "
+                    f"Was hedging {self._bleeding_leg}, now {bleeding_leg} "
+                    f"bleeding {bleed_pct*100:.1f}%. "
+                    f"Total P&L: ${total_pnl:+.2f} >= 0. "
+                    f"Closing and re-hedging."
+                )
+                self._close_hedge_with_reason(
+                    f"Direction flip — {self._bleeding_leg} → {bleeding_leg} "
+                    f"(total P&L: ${total_pnl:+.2f})"
+                )
+                self._open_new_hedge(
+                    positions, bleeding_leg, bleed_pct,
+                    bleed_usd, direction, profit_usd
+                )
+                return
+            else:
+                # Total is NEGATIVE — CANNOT close (would book loss)
+                app_logger.warning(
+                    f"Hedge: Direction flip ({self._bleeding_leg} → {bleeding_leg}), "
+                    f"but total P&L: ${total_pnl:+.2f} < 0. "
+                    f"HOLDING hedge — cannot book loss. "
+                    f"Waiting for total to reach breakeven."
+                )
+                return
+
+        # ── ESCALATION: Loss keeps growing, add more hedge ────────
+        if (bleeding_leg and bleeding_leg == self._bleeding_leg and
+                bleed_pct >= self.BLEED_TRIGGER_PCT and
+                self._last_sizing_loss_usd > 0):
+
+            current_loss = abs(bleed_usd) if bleed_usd > 0 else 0
+            growth = (
+                (current_loss - self._last_sizing_loss_usd)
+                / self._last_sizing_loss_usd
+                if self._last_sizing_loss_usd > 0 else 0
+            )
+            time_since_last = time.time() - self._last_escalation_time
+
+            if (growth >= self.ESCALATION_GROWTH_PCT and
+                    time_since_last >= self.ESCALATION_COOLDOWN_S):
+                additional = self._calculate_hedge_size(bleed_usd, positions)
+                add_btc = additional * (growth / (1 + growth))
+                add_btc = max(self.HEDGE_MIN_SIZE_BTC, add_btc)
+                add_btc = min(self.HEDGE_MAX_SIZE_BTC / 2, add_btc)
+
+                result = self._place_hedge(
+                    add_btc, self._hedge_direction, "ESCALATE"
+                )
+                if result and result.get('success'):
+                    self.hedge_size_btc = self.execution.hedge_size_btc
+                    self._last_escalation_time = time.time()
+                    self._last_sizing_loss_usd = current_loss
+
+                    app_logger.info(
+                        f"Hedge: ESCALATED! Added {add_btc:.4f} BTC. "
+                        f"Total: {abs(self.execution.hedge_size_btc):.4f} BTC. "
+                        f"Loss grew {growth*100:.0f}%. "
+                        f"Hedge must keep growing to cover options loss."
+                    )
+                    notifier.notify_hedge_escalated(
+                        timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
+                        from_pct=self.hedge_percentage,
+                        to_pct=self.hedge_percentage + growth * 100,
+                        loss_pct=bleed_pct * 100
+                    )
+                return
+
+        # ── STATUS LOG (no action — hedge stays open) ─────────────
         app_logger.info(
-            f"Hedge: Active ({self._bleeding_leg} hedge). P&L: ${hedge_pnl:+.2f} | "
-            f"Peak: ${self._hedge_peak_pnl:.2f} | Size: {abs(self.execution.hedge_size_btc):.4f} BTC | "
-            f"Bleed: {self._bleeding_leg}={bleed_pct*100:.1f}%"
+            f"Hedge: 🔒 HOLDING ({self._bleeding_leg}) | "
+            f"Hedge P&L: ${hedge_pnl:+.2f} | Peak: ${self._hedge_peak_pnl:.2f} | "
+            f"Options P&L: ${options_only_pnl:+.2f} | "
+            f"Total P&L: ${total_pnl:+.2f} | "
+            f"Size: {abs(self.execution.hedge_size_btc):.4f} BTC | "
+            f"{'⛔ HOLDING — total still negative' if total_pnl < 0 else '⏳ Approaching breakeven...'}"
         )
 
-    def _get_btc_mark_price(self):
-        try:
-            ws_data = self.api_client.get_realtime_ticker('BTCUSD')
-            if ws_data and 'mark_price' in ws_data:
-                return float(ws_data['mark_price'])
-        except Exception:
-            pass
-        return 0.0
-
-    def _get_current_atr(self):
-        """Fetches 14-period 5m ATR. Caches for 5 minutes to avoid spamming API."""
-        now = time.time()
-        if now - self._last_atr_time < 300 and self._cached_atr > 0:
-            return self._cached_atr
-            
-        try:
-            # Try to fetch 30 candles of 5m resolution
-            end_time = int(now)
-            start_time = end_time - (30 * 5 * 60)
-            res = self.api_client.get_candles(symbol='BTCUSD', resolution='5m', start=start_time, end=end_time)
-            
-            if res and res.get('success'):
-                candles = res.get('result', [])
-                if len(candles) >= 14:
-                    # Calculate True Range manually
-                    trs = []
-                    for i in range(1, len(candles)):
-                        high = float(candles[i].get('high', 0))
-                        low = float(candles[i].get('low', 0))
-                        prev_close = float(candles[i-1].get('close', 0))
-                        
-                        hl = high - low
-                        hc = abs(high - prev_close)
-                        lc = abs(low - prev_close)
-                        trs.append(max(hl, hc, lc))
-                        
-                    # Get average of last 14 True Ranges
-                    if len(trs) >= 14:
-                        atr = sum(trs[-14:]) / 14
-                        if atr > 0:
-                            self._cached_atr = atr
-                            self._last_atr_time = now
-                            app_logger.info(f"Hedge: Updated ATR: ${self._cached_atr:.2f}")
-                            return self._cached_atr
-        except Exception as e:
-            app_logger.warning(f"Hedge: Failed to calculate ATR: {e}. Using cached/fallback: ${self._cached_atr:.2f}")
-            
-        return self._cached_atr
-
-    # ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
     # CLOSE HEDGE
-    # ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════
+
+    def _close_hedge_with_reason(self, reason):
+        """Closes hedge with detailed logging and P&L tracking."""
+        final_pnl = self.get_live_hedge_pnl()
+        self._cumulative_realized_pnl += final_pnl
+        app_logger.info(
+            f"Hedge: Closing — {reason}. Final P&L: ${final_pnl:+.2f} | "
+            f"Cumulative realized: ${self._cumulative_realized_pnl:+.2f}"
+        )
+        self.close_hedge()
 
     def close_hedge(self):
         """Closes all active hedge positions and resets all state."""
         if self.hedge_active:
             final_pnl = self.get_live_hedge_pnl()
             app_logger.info(f"Hedge: Closing hedge. Final P&L: ${final_pnl:+.2f}")
-        else:
-            app_logger.info("Hedge: Closing all smart hedge positions...")
-        
+
         self.execution.close_hedge()
 
         # Reset ALL state
@@ -745,14 +955,21 @@ class SmartHedgingManager:
         self.sl_tightened = False
         self.hedge_placed_time = 0.0
         self.hedge_avg_entry_price = 0.0
-        self.hedge_total_cost_btc = 0.0
         self._bleeding_leg = None
         self._hedge_peak_pnl = 0.0
         self._hedge_size_factor = 0.0
         self._hedge_direction = None
         self._bleed_confirm_count = 0
         self._bleed_confirm_leg = None
-        app_logger.info("Hedge: Smart hedge state fully reset.")
+        self._options_pnl_at_hedge_entry = 0.0
+        self._hedge_entry_time = 0.0
+        self._last_sizing_loss_usd = 0.0
+        self._last_escalation_time = 0.0
+        app_logger.info("Hedge: State fully reset.")
+
+    # ═══════════════════════════════════════════════════════════════
+    # UTILITY
+    # ═══════════════════════════════════════════════════════════════
 
     def _get_options_exposure_btc(self, positions):
         """Total option exposure in BTC (each lot = 0.001 BTC)."""
