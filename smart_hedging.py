@@ -459,7 +459,7 @@ class SmartHedgingManager:
     # CORE: MANAGE HEDGE (called every 5-15 seconds by bot_engine)
     # ═══════════════════════════════════════════════════════════════
 
-    def manage_hedge(self, positions, unrealized_loss_pct, profit_usd=0.0):
+    def manage_hedge(self, positions, unrealized_loss_pct, profit_usd=0.0, adx_value=0.0):
         """
         Core hedge management loop.
 
@@ -467,6 +467,7 @@ class SmartHedgingManager:
             positions: execution.active_positions dict
             unrealized_loss_pct: positive when losing (0.15 = 15% loss)
             profit_usd: current total P&L in USD (includes hedge P&L when active)
+            adx_value: ADX trend strength from market_regime
         """
         self.last_check_time = time.time()
 
@@ -490,7 +491,7 @@ class SmartHedgingManager:
         else:
             self._check_and_trigger_hedge(
                 positions, bleeding_leg, bleed_pct, bleed_usd,
-                direction, unrealized_loss_pct, profit_usd
+                direction, unrealized_loss_pct, profit_usd, adx_value
             )
 
     # ═══════════════════════════════════════════════════════════════
@@ -499,7 +500,7 @@ class SmartHedgingManager:
 
     def _check_and_trigger_hedge(self, positions, bleeding_leg, bleed_pct,
                                   bleed_usd, direction, unrealized_loss_pct,
-                                  profit_usd):
+                                  profit_usd, adx_value=0.0):
         """
         Decides whether to open a new hedge based on:
         1. Net trade must be losing (no hedge when profitable)
@@ -519,6 +520,19 @@ class SmartHedgingManager:
                 )
             self._bleed_confirm_count = 0
             return
+
+        # ── TREND FILTER (ADX) ──
+        # If market is ranging/choppy (ADX < 20), do not trigger on minor bleeds (15-25%)
+        # because fakeouts are highly likely. Wait for severe bleed (>= 25%).
+        if adx_value > 0 and adx_value < 20.0:
+            if bleeding_leg and self.BLEED_TRIGGER_PCT <= bleed_pct < self.BLEED_SEVERE_PCT:
+                app_logger.info(
+                    f"Hedge: {bleeding_leg} bleeding {bleed_pct*100:.1f}%, BUT "
+                    f"ADX is {adx_value:.1f} (Ranging/Choppy). Skipping hedge to avoid whipsaw. "
+                    f"Will only hedge if bleed reaches {self.BLEED_SEVERE_PCT*100:.0f}%."
+                )
+                self._bleed_confirm_count = 0
+                return
 
         # ── FLASH CRASH: ≥ 40% bleed → instant hedge ──
         if bleeding_leg and bleed_pct >= self.BLEED_FLASH_CRASH_PCT:

@@ -927,10 +927,11 @@ class DeltaTradingEngine:
                             f"loss_usd={-profit:.2f} | "
                             f"volatile={'YES' if _is_volatile else 'NO'}"
                         )
+                        adx_value = self.market_regime.current_adx_value if hasattr(self, 'market_regime') and self.market_regime else 0.0
                         if self.smart_hedging_enabled:
                             try:
                                 self.smart_hedging.manage_hedge(
-                                    self.execution.active_positions, unrealized_loss_pct, profit
+                                    self.execution.active_positions, unrealized_loss_pct, profit, adx_value
                                 )
                                 self.hedging_triggered_today = self.smart_hedging.hedge_active
                             except Exception as hedge_err:
