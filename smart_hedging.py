@@ -193,6 +193,26 @@ class SmartHedgingManager:
         app_logger.error("Hedge: ALL BTC price sources returned 0!")
         return 0.0
 
+    def _get_last_closed_5m_candle(self):
+        """
+        Fetches the last closed 5-minute candle to filter out real-time noise wicks.
+        Returns the close price of the candle, or 0.0 on failure.
+        """
+        try:
+            res = self.api_client.get_candles(HEDGE_SYMBOL, "5m")
+            if res and res.get('success') and res.get('result'):
+                # Delta API usually returns the latest candle at the end of the list.
+                # The very last candle might be incomplete (still forming).
+                # The second to last candle is the most recently CLOSED candle.
+                candles = res['result']
+                if len(candles) >= 2:
+                    return float(candles[-2].get('close', 0.0))
+                elif len(candles) == 1:
+                    return float(candles[-1].get('close', 0.0))
+        except Exception as e:
+            app_logger.debug(f"Hedge: Failed to fetch 5m candles: {e}")
+        return 0.0
+
     # ═══════════════════════════════════════════════════════════════
     # ENTRY PREMIUM CACHE
     # ═══════════════════════════════════════════════════════════════
@@ -365,20 +385,27 @@ class SmartHedgingManager:
         if btc_move_usd > 50:
             effective_exposure = abs_bleed / btc_move_usd
             
-            # --- AGGRESSIVE GRID SIZING LOGIC ---
-            # To ensure moderate trends end at breakeven, we scale in earlier and harder.
-            atr_distance = btc_move_usd / atr_usd if atr_usd > 0 else 0
-            scale_factor = 0.50  # Default to Tier 1 (50%)
+            # --- HYBRID GRID SIZING LOGIC ---
+            realtime_atr_dist = btc_move_usd / atr_usd if atr_usd > 0 else 0
             
-            if atr_distance >= 2.0:
-                scale_factor = 1.0  # Tier 2: Full 100% Hedge
-            elif atr_distance >= 1.5:
-                scale_factor = 0.50 # Tier 1: 50% Hedge
+            last_candle_close = self._get_last_closed_5m_candle()
+            candle_move_usd = abs(last_candle_close - self._entry_btc_price) if last_candle_close > 0 else 0
+            candle_atr_dist = candle_move_usd / atr_usd if atr_usd > 0 else 0
+            
+            scale_factor = 0.50  # Default to Tier 1
+            
+            if realtime_atr_dist >= 2.0:
+                scale_factor = 1.0  # Rule 2: RED ALERT - Full 100% Hedge
+            elif candle_atr_dist >= 1.5:
+                scale_factor = 0.50 # Rule 1: Small Alert - 50% Hedge
+            elif realtime_atr_dist >= 1.5:
+                # If managed to pass trend filter for some other reason, fallback
+                scale_factor = 0.50
             
             hedge_btc = effective_exposure * GAMMA_RECOVERY_MULTIPLIER * scale_factor
             app_logger.info(
-                f"Hedge: Sizing [Grid Scale] | Loss=${abs_bleed:.2f} | "
-                f"BTC moved=${btc_move_usd:.0f} ({atr_distance:.1f} ATR) | "
+                f"Hedge: Sizing [Hybrid Grid] | Loss=${abs_bleed:.2f} | "
+                f"BTC moved=${btc_move_usd:.0f} ({realtime_atr_dist:.1f} ATR) | "
                 f"Base Exp={effective_exposure:.4f} BTC | "
                 f"Grid Tier={scale_factor*100:.0f}% | Final Hedge={hedge_btc:.4f} BTC"
             )
@@ -552,21 +579,30 @@ class SmartHedgingManager:
                 self._bleed_confirm_count = 0
                 return
 
-        # ── IV SPIKE FILTER (ATR) ──
-        # If the option is bleeding but BTC price has barely moved from entry,
-        # it is purely an IV expansion spike. We DO NOT hedge IV spikes with futures.
+        # ── HYBRID TREND CONFIRMATION FILTER ──
+        # To avoid whipsaws, we require EITHER a closed 5m candle > 1.5 ATR (Small Alert)
+        # OR an instant real-time move > 2.0 ATR (Red Alert).
         btc_price = self._get_btc_mark_price()
         if self._entry_btc_price > 0 and btc_price > 0:
-            btc_move_usd = abs(btc_price - self._entry_btc_price)
-            # Require BTC to move at least 1.5x of the 15-min ATR to confirm a real trend
-            trend_threshold = atr_usd * 1.5
+            realtime_move = abs(btc_price - self._entry_btc_price)
+            last_candle_close = self._get_last_closed_5m_candle()
+            candle_move = abs(last_candle_close - self._entry_btc_price) if last_candle_close > 0 else 0
             
-            if bleeding_leg and btc_move_usd < trend_threshold:
+            # Rule 2: RED ALERT - Realtime > 2.0 ATR
+            red_alert_threshold = atr_usd * 2.0
+            is_red_alert = realtime_move >= red_alert_threshold
+            
+            # Rule 1: Small Alert - Candle Close > 1.5 ATR
+            small_alert_threshold = atr_usd * 1.5
+            is_small_alert = candle_move >= small_alert_threshold
+            
+            if bleeding_leg and not (is_red_alert or is_small_alert):
                 if bleed_pct >= self.BLEED_TRIGGER_PCT:
                     app_logger.warning(
-                        f"Hedge: IV SPIKE DETECTED! {bleeding_leg} bleeding {bleed_pct*100:.1f}%, "
-                        f"BUT BTC moved only ${btc_move_usd:.1f} (Threshold: ${trend_threshold:.1f} / 1.5 ATR). "
-                        f"Ignoring IV spike. Hedge REJECTED."
+                        f"Hedge: WAITING FOR CONFIRMATION! {bleeding_leg} bleeding {bleed_pct*100:.1f}%. "
+                        f"Realtime move: ${realtime_move:.1f} (Needs > ${red_alert_threshold:.1f}). "
+                        f"5m Candle move: ${candle_move:.1f} (Needs > ${small_alert_threshold:.1f}). "
+                        f"Hedge REJECTED to prevent fakeout."
                     )
                 self._bleed_confirm_count = 0
                 return
