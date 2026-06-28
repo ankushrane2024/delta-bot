@@ -780,14 +780,10 @@ class SmartHedgingManager:
         # EXIT RULE 2: OPTIONS NOW PROFITABLE (hedge not needed)
         # ══════════════════════════════════════════════════════════
         # Market reversed fully — options are now making money on
-        # their own. The hedge is no longer needed. Close it.
-        # Only close if hedge P&L >= 0 (never book a loss).
-        #
-        # Example: Options now at +$2 profit, Hedge at +$0.50
-        #          → CLOSE (options don't need protection)
-        #
+        # their own. The hedge is no longer needed. Close it immediately
+        # to stop the hedge from dragging down the P&L.
         if time_held >= self.MIN_HEDGE_HOLD_SECONDS:
-            if options_only_pnl > 0 and hedge_pnl >= 0:
+            if options_only_pnl > 0:
                 app_logger.info(
                     f"Hedge: ✅ OPTIONS PROFITABLE — hedge no longer needed! "
                     f"Options P&L: ${options_only_pnl:+.2f} | "
@@ -801,24 +797,22 @@ class SmartHedgingManager:
                 return
 
         # ══════════════════════════════════════════════════════════
-        # EXIT RULE 3: OPTIONS PROFITABLE + HEDGE SMALL LOSS
+        # EXIT RULE 3: OPTIONS LOSS RECOVERED TO NEAR ZERO
         # ══════════════════════════════════════════════════════════
-        # Options recovered AND total P&L > 0, even if hedge itself
-        # has a small unrealized loss. The options profit covers it.
-        #
-        # Example: Options +$5, Hedge -$2 → Total +$3 → CLOSE
-        #
+        # If the market spiked but then fully reversed, the options
+        # loss has recovered to near breakeven. The hedge is no longer
+        # needed. Cut the hedge to stop it from bleeding further, even
+        # if total P&L is slightly negative.
         if time_held >= self.MIN_HEDGE_HOLD_SECONDS:
-            if options_only_pnl > 0 and total_pnl > 0:
+            if options_only_pnl < 0 and options_loss_pct <= self.LOSS_NEAR_ZERO_PCT:
                 app_logger.info(
-                    f"Hedge: ✅ NET POSITIVE EXIT! "
-                    f"Options: ${options_only_pnl:+.2f} | "
-                    f"Hedge: ${hedge_pnl:+.2f} | "
-                    f"Total: ${total_pnl:+.2f}"
+                    f"Hedge: ✅ OPTIONS RECOVERED! Loss is only "
+                    f"{options_loss_pct*100:.1f}% (< {self.LOSS_NEAR_ZERO_PCT*100:.1f}%). "
+                    f"Hedge no longer needed! Closing."
                 )
                 self._close_hedge_with_reason(
-                    f"Options profitable, total positive "
-                    f"(Options: ${options_only_pnl:+.2f}, Hedge: ${hedge_pnl:+.2f})"
+                    f"Options loss recovered to {options_loss_pct*100:.1f}% "
+                    f"(Total P&L: ${total_pnl:+.2f})"
                 )
                 return
 
@@ -840,37 +834,27 @@ class SmartHedgingManager:
 
         # ── DIRECTION FLIP: Different leg now bleeding ────────────
         # Market reversed — a different leg is now in trouble.
-        # Only close old hedge if total P&L >= 0, then re-hedge.
+        # We MUST close the old hedge immediately to avoid double exposure,
+        # even if it means booking a loss on the hedge.
         if (bleeding_leg and bleeding_leg != self._bleeding_leg and
                 bleed_pct >= self.BLEED_TRIGGER_PCT):
-
-            if total_pnl >= 0:
-                # Total is positive — safe to close and re-hedge
-                app_logger.warning(
-                    f"Hedge: DIRECTION FLIP + TOTAL POSITIVE! "
-                    f"Was hedging {self._bleeding_leg}, now {bleeding_leg} "
-                    f"bleeding {bleed_pct*100:.1f}%. "
-                    f"Total P&L: ${total_pnl:+.2f} >= 0. "
-                    f"Closing and re-hedging."
-                )
-                self._close_hedge_with_reason(
-                    f"Direction flip — {self._bleeding_leg} → {bleeding_leg} "
-                    f"(total P&L: ${total_pnl:+.2f})"
-                )
-                self._open_new_hedge(
-                    positions, bleeding_leg, bleed_pct,
-                    bleed_usd, direction, profit_usd
-                )
-                return
-            else:
-                # Total is NEGATIVE — CANNOT close (would book loss)
-                app_logger.warning(
-                    f"Hedge: Direction flip ({self._bleeding_leg} → {bleeding_leg}), "
-                    f"but total P&L: ${total_pnl:+.2f} < 0. "
-                    f"HOLDING hedge — cannot book loss. "
-                    f"Waiting for total to reach breakeven."
-                )
-                return
+            
+            app_logger.warning(
+                f"Hedge: DIRECTION FLIP DETECTED! "
+                f"Was hedging {self._bleeding_leg}, now {bleeding_leg} "
+                f"bleeding {bleed_pct*100:.1f}%. "
+                f"Total P&L: ${total_pnl:+.2f}. "
+                f"Force closing old hedge to stop double exposure!"
+            )
+            self._close_hedge_with_reason(
+                f"Direction flip — {self._bleeding_leg} → {bleeding_leg} "
+                f"(total P&L: ${total_pnl:+.2f})"
+            )
+            self._open_new_hedge(
+                positions, bleeding_leg, bleed_pct,
+                bleed_usd, direction, profit_usd
+            )
+            return
 
         # ── ESCALATION: Loss keeps growing, add more hedge ────────
         if (bleeding_leg and bleeding_leg == self._bleeding_leg and
