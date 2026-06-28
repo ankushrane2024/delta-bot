@@ -384,14 +384,57 @@ def save_all_data(trade_data: dict) -> bool:
         return False
 
 def trigger_cloud_sync():
-    """Forces a sync of all local state to the cloud. Used when non-trade state changes."""
-    unified = _gather_local_state()
-    # Ensure trade_history has a valid structure if it was missing locally
-    if 'trade_history' not in unified or 'trades' not in unified['trade_history']:
-        unified['trade_history'] = {"max_equity": 0.0, "trades": []}
+    """
+    Forces a sync of all local state (lot_size, bot_state, daily_reports) to the cloud.
     
-    # save_all_data expects the trade_history dict
-    save_all_data(unified['trade_history'])
+    CRITICAL SAFETY RULES:
+    1. NEVER overwrite cloud trade_history with empty/smaller local data
+    2. If local trade_history.json is missing (Render restart), fetch from cloud first
+    3. Only update the non-trade state keys; preserve trade_history from cloud
+    """
+    if not _connect():
+        return
+    
+    try:
+        # Step 1: Fetch current cloud data to get the authoritative trade history
+        headers = {'Accept': 'application/json'}
+        res = requests.get(_get_cloud_url(), headers=headers, timeout=10, verify=False)
+        
+        if res.status_code == 200:
+            cloud_data = res.json()
+            
+            # Extract the authoritative trade_history from cloud
+            if 'trade_history' in cloud_data:
+                cloud_trades = cloud_data['trade_history']
+            elif 'trades' in cloud_data:
+                cloud_trades = cloud_data
+            else:
+                cloud_trades = {"max_equity": 0.0, "trades": []}
+        else:
+            app_logger.warning(f"DB: trigger_cloud_sync — could not fetch cloud data (HTTP {res.status_code}). Skipping sync.")
+            return
+        
+        # Step 2: Gather local state (lot_size, bot_state, daily_reports)
+        local_state = _gather_local_state()
+        
+        # Step 3: Use LOCAL trade_history ONLY if it has MORE trades than cloud
+        local_trades = local_state.get('trade_history', {})
+        local_count = len(local_trades.get('trades', []))
+        cloud_count = len(cloud_trades.get('trades', []))
+        
+        if local_count >= cloud_count and local_count > 0:
+            final_trades = local_trades
+            app_logger.info(f"DB: trigger_cloud_sync — using LOCAL trade_history ({local_count} trades >= cloud {cloud_count})")
+        else:
+            final_trades = cloud_trades
+            if cloud_count > local_count:
+                app_logger.info(f"DB: trigger_cloud_sync — PRESERVING CLOUD trade_history ({cloud_count} trades > local {local_count})")
+        
+        # Step 4: Save unified state with the SAFE trade_history
+        save_all_data(final_trades)
+        
+    except Exception as e:
+        app_logger.error(f"DB: trigger_cloud_sync failed: {e}")
 
 
 def is_connected() -> bool:
