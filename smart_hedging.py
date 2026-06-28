@@ -541,14 +541,14 @@ class SmartHedgingManager:
         btc_price = self._get_btc_mark_price()
         if self._entry_btc_price > 0 and btc_price > 0:
             btc_move_usd = abs(btc_price - self._entry_btc_price)
-            # Require BTC to move at least 1.0x of the 15-min ATR to confirm a real trend
-            trend_threshold = atr_usd * 1.0
+            # Require BTC to move at least 2.0x of the 15-min ATR to confirm a real trend
+            trend_threshold = atr_usd * 2.0
             
             if bleeding_leg and btc_move_usd < trend_threshold:
                 if bleed_pct >= self.BLEED_TRIGGER_PCT:
                     app_logger.warning(
                         f"Hedge: IV SPIKE DETECTED! {bleeding_leg} bleeding {bleed_pct*100:.1f}%, "
-                        f"BUT BTC moved only ${btc_move_usd:.1f} (Threshold: ${trend_threshold:.1f} / 1.0 ATR). "
+                        f"BUT BTC moved only ${btc_move_usd:.1f} (Threshold: ${trend_threshold:.1f} / 2.0 ATR). "
                         f"Ignoring IV spike. Hedge REJECTED."
                     )
                 self._bleed_confirm_count = 0
