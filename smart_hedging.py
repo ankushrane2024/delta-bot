@@ -366,17 +366,15 @@ class SmartHedgingManager:
         if btc_move_usd > 50:
             effective_exposure = abs_bleed / btc_move_usd
             
-            # --- GRID SIZING LOGIC ---
-            # Instead of buying 100% of the hedge instantly, we scale in based on trend strength
+            # --- AGGRESSIVE GRID SIZING LOGIC ---
+            # To ensure moderate trends (like today) end at breakeven, we scale in earlier and harder.
             atr_distance = btc_move_usd / atr_usd if atr_usd > 0 else 0
-            scale_factor = 0.30  # Default to Tier 1 (30%)
+            scale_factor = 0.50  # Default to Tier 1 (50%)
             
-            if atr_distance >= 3.0:
-                scale_factor = 1.0  # Tier 3: Full 100% Hedge
-            elif atr_distance >= 2.5:
-                scale_factor = 0.60 # Tier 2: 60% Hedge
-            elif atr_distance >= 2.0:
-                scale_factor = 0.30 # Tier 1: 30% Hedge
+            if atr_distance >= 2.0:
+                scale_factor = 1.0  # Tier 2: Full 100% Hedge
+            elif atr_distance >= 1.5:
+                scale_factor = 0.50 # Tier 1: 50% Hedge
                 
             hedge_btc = effective_exposure * GAMMA_RECOVERY_MULTIPLIER * scale_factor
             app_logger.info(
@@ -561,14 +559,14 @@ class SmartHedgingManager:
         btc_price = self._get_btc_mark_price()
         if self._entry_btc_price > 0 and btc_price > 0:
             btc_move_usd = abs(btc_price - self._entry_btc_price)
-            # Require BTC to move at least 2.0x of the 15-min ATR to confirm a real trend
-            trend_threshold = atr_usd * 2.0
+            # Require BTC to move at least 1.5x of the 15-min ATR to confirm a real trend
+            trend_threshold = atr_usd * 1.5
             
             if bleeding_leg and btc_move_usd < trend_threshold:
                 if bleed_pct >= self.BLEED_TRIGGER_PCT:
                     app_logger.warning(
                         f"Hedge: IV SPIKE DETECTED! {bleeding_leg} bleeding {bleed_pct*100:.1f}%, "
-                        f"BUT BTC moved only ${btc_move_usd:.1f} (Threshold: ${trend_threshold:.1f} / 2.0 ATR). "
+                        f"BUT BTC moved only ${btc_move_usd:.1f} (Threshold: ${trend_threshold:.1f} / 1.5 ATR). "
                         f"Ignoring IV spike. Hedge REJECTED."
                     )
                 self._bleed_confirm_count = 0
@@ -893,21 +891,24 @@ class SmartHedgingManager:
         # ══════════════════════════════════════════════════════════
         # EXIT RULE 5: IMMEDIATE REVERSAL SQUARE-OFF (Breakeven/Low Loss)
         # ══════════════════════════════════════════════════════════
-        # As explicitly requested: If the market reverses, square off immediately 
-        # at breakeven or a very low loss.
+        # Dynamic Loss Threshold: scale the max loss based on position size to prevent premature cuts on 500-lot noise.
+        # Base: -$3.00 for a standard 0.01 BTC hedge.
+        current_size = abs(self.execution.hedge_size_btc)
+        dynamic_whipsaw_limit = max(-50.0, min(-3.0, -3.0 * (current_size / 0.01)))
+        
         if time_held >= self.MIN_HEDGE_HOLD_SECONDS:
             market_is_reversing = options_only_pnl > self._options_pnl_at_hedge_entry
             
             # 1. Breakeven Stop: If it was in profit but fell to $0.
             hit_breakeven = self._hedge_peak_pnl >= 1.0 and hedge_pnl <= 0.0
             
-            # 2. Low Loss Stop: If it instantly reverses into a low loss (-$3.00 max risk).
-            hit_low_loss = market_is_reversing and hedge_pnl <= -3.0
+            # 2. Low Loss Stop: If it instantly reverses into a low loss.
+            hit_low_loss = market_is_reversing and hedge_pnl <= dynamic_whipsaw_limit
             
             if hit_breakeven or hit_low_loss:
                 app_logger.warning(
                     f"Hedge: ⚠️ IMMEDIATE REVERSAL SQUARE-OFF! Hedge P&L: ${hedge_pnl:.2f}. "
-                    f"Cutting oversized hedge at breakeven or low loss to prevent bleed!"
+                    f"Dynamic Limit: ${dynamic_whipsaw_limit:.2f}. Cutting oversized hedge to prevent bleed!"
                 )
                 self._close_hedge_with_reason(
                     f"Reversal Square-Off (Hedge at ${hedge_pnl:.2f})"
