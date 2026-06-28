@@ -340,7 +340,8 @@
     <nav class="tab-nav" style="display: flex;">
         <button class="tab-btn" onclick="window.location.href='/'">Live Dashboard</button>
         <button class="tab-btn active">📊 Trade History</button>
-        <div style="margin-left: auto; display: flex; gap: 8px;">
+        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
+            <span id="last-backup-info" style="color: #10b981; font-size: 0.85em; margin-right: 15px;">✅ Last Backup: Checking...</span>
             <button class="tab-btn" onclick="backupHistory()" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.4); color: #10b981;">💾 Backup Data</button>
             <button class="tab-btn" onclick="restoreHistory()" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); color: #ef4444;">♻️ Restore Backup</button>
         </div>
@@ -389,6 +390,21 @@
         let equityChart = null;
         let pnlBarChart = null;
 
+        document.addEventListener('DOMContentLoaded', () => {
+            loadHistory();
+            fetchLastBackupTime();
+        });
+
+        async function fetchLastBackupTime() {
+            try {
+                const response = await fetch('/api/last_backup_time');
+                const data = await response.json();
+                document.getElementById('last-backup-info').innerText = '✅ Last Backup: ' + data.time;
+            } catch (err) {
+                document.getElementById('last-backup-info').innerText = '✅ Last Backup: Unknown';
+            }
+        }
+
         async function backupHistory() {
             if (!confirm("Are you sure you want to backup the current history? This will overwrite the secondary backup.")) return;
             
@@ -403,6 +419,7 @@
                 
                 if (result.success) {
                     alert("Success: " + result.message);
+                    fetchLastBackupTime();
                 } else {
                     alert("Failed: " + result.message);
                 }

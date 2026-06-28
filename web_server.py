@@ -722,6 +722,11 @@ def get_trade_history():
             app_logger.error(f"Failed to read trade_history.json: {e}")
     return jsonify({"max_equity": 0.0, "trades": []})
 
+@app.route('/api/last_backup_time')
+def last_backup_time():
+    import db_manager
+    return jsonify({"time": db_manager.get_last_backup_time()})
+
 @app.route('/api/backup_history', methods=['POST'])
 def backup_history():
     """Manually trigger a backup to the Secondary Cloud Backup."""

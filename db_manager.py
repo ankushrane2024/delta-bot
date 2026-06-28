@@ -33,6 +33,7 @@ _FALLBACK_BLOB_ID = "019f0461-1719-7960-8e15-c826a9966ba1"  # Provisioned 2026-0
 _BACKUP_BLOB_ID = "019f0461-1a9c-799e-8bff-ab2f33f51951"   # Secondary Backup Blob
 _BLOB_ID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".blob_id_cache")
 _BACKUP_BLOB_ID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".backup_blob_id_cache")
+_LAST_BACKUP_TIME_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".last_backup_time")
 _blob_id = _FALLBACK_BLOB_ID
 _connected = False
 _keep_alive_started = False
@@ -176,6 +177,24 @@ def _write_backup_blob_id(blob_id: str):
     except Exception:
         pass
 
+def _write_last_backup_time():
+    try:
+        from utils import get_ist_now
+        now_str = get_ist_now().strftime("%d %b, %H:%M IST")
+        with open(_LAST_BACKUP_TIME_FILE, 'w') as f:
+            f.write(now_str)
+    except Exception:
+        pass
+
+def get_last_backup_time() -> str:
+    if os.path.exists(_LAST_BACKUP_TIME_FILE):
+        try:
+            with open(_LAST_BACKUP_TIME_FILE, 'r') as f:
+                return f.read().strip()
+        except Exception:
+            pass
+    return "Never"
+
 def _get_backup_url():
     return f"https://jsonblob.com/api/jsonBlob/{_get_active_backup_blob_id()}"
 
@@ -198,6 +217,7 @@ def save_backup_data(data: dict) -> bool:
         res = requests.put(url, json=data, headers=headers, timeout=15, verify=False)
         
         if res.status_code in [200, 201]:
+            _write_last_backup_time()
             return True
         elif res.status_code == 404:
             app_logger.warning("DB: Backup blob 404. Creating a new backup blob...")
@@ -207,6 +227,7 @@ def save_backup_data(data: dict) -> bool:
             if new_id:
                 _write_backup_blob_id(new_id)
                 app_logger.info(f"DB: New backup blob created: ...{new_id[-8:]}")
+                _write_last_backup_time()
                 return True
         return False
     except Exception as e:
