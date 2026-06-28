@@ -498,6 +498,8 @@ class DeltaTradingEngine:
             success = db_manager.save_backup_data(primary_data)
             if success:
                 app_logger.info(f"Auto-Backup: Successfully backed up {len(primary_data['trades'])} trades to Secondary Cloud DB.")
+                from notifier import notifier
+                notifier.notify_info(f"💾 Auto-Backup Successful: {len(primary_data['trades'])} trades securely saved to Secondary Cloud DB.")
             else:
                 app_logger.error("Auto-Backup: Failed to save to Secondary Cloud DB.")
                 from notifier import notifier
