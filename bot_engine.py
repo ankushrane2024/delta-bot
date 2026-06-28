@@ -288,6 +288,12 @@ class DeltaTradingEngine:
         total_premium_for_this_entry = (call_entry + put_entry) * btc_quantity
         self.total_entry_premium = total_premium_for_this_entry
 
+        # CRITICAL: Lock entry_size into active_positions so PnL always uses the correct lot count.
+        # This prevents the inflation bug where data['size'] grows on re-entries.
+        for sym in [call_opt['symbol'], put_opt['symbol']]:
+            if sym in self.execution.active_positions:
+                self.execution.active_positions[sym]['entry_size'] = per_entry_size
+
         # Reset the watchdog timer on new trade entry so WebSocket has time to fetch the new symbols
         self.api_client.last_price_update_time = time.time()
 
@@ -769,7 +775,11 @@ class DeltaTradingEngine:
                                 any_leg_hit_sl = True
                                 
                         # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
-                        current_total_value += current_price * data['size'] * LOT_TO_BTC
+                        # CRITICAL: Use entry_size (locked at trade start) NOT data['size'] (live position size).
+                        # data['size'] can inflate if positions accumulate across re-entries,
+                        # causing PnL to be inflated by 2-3x vs the actual premium collected.
+                        position_lots = data.get('entry_size', data['size'])
+                        current_total_value += current_price * position_lots * LOT_TO_BTC
                     profit = 0.0
                     pnl_pct = 0.0
                     
@@ -785,7 +795,9 @@ class DeltaTradingEngine:
                         hedge_pnl = self.smart_hedging.get_live_hedge_pnl() if getattr(self, 'smart_hedging', None) and self.smart_hedging.hedge_active else 0.0
                         profit = options_profit + hedge_pnl
                         
-                        pnl_pct = profit / collected_premium
+                        # pnl_pct MUST be based on options_profit only vs premium collected (not hedge)
+                        # so that TP/SL thresholds are strictly about options performance
+                        pnl_pct = options_profit / collected_premium
                         
                         # Emergency Trade Loss Limit (-45% on the active trade)
                         if pnl_pct <= -0.45:
@@ -1072,17 +1084,6 @@ class DeltaTradingEngine:
 
             dvol_status = self.dvol_provider.get_status() if getattr(self, 'dvol_provider', None) else {}
             hedge_status = self.smart_hedging.get_status() if getattr(self, 'smart_hedging', None) else {}
-
-            # Inject a final precise "CLOSE" chart point with exact square-off values
-            # This ensures the chart always ends at the true final PnL, not an earlier tick
-            from utils import get_ist_now
-            close_time_str = get_ist_now().strftime('%H:%M')
-            self.pnl_chart_data.append({
-                't': f'{close_time_str} ★',   # Star marks the exact close point
-                'pnl': round(profit, 4),
-                'hedge': round(hedge_pnl, 4),
-                'total': round(profit + hedge_pnl, 4)
-            })
 
             self.performance_tracker.log_trade(
                 entry_time=self.current_trade_info.get("entry_time", ""),
