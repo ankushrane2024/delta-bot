@@ -496,10 +496,25 @@
                 `;
 
                 // ══════════════════════════════════════════════
-                // EQUITY CURVE CHART
+                // AGGREGATE TRADES BY DAY FOR CHARTS
                 // ══════════════════════════════════════════════
-                const eqLabels = ['Start', ...chronoTrades.map(t => t.date || t.entry_time?.substring(0,10) || '?')];
-                const eqData = [10000, ...chronoTrades.map(t => t.equity_after || 10000)];
+                const dailyAgg = {};
+                for (let t of chronoTrades) {
+                    const d = t.date || t.entry_time?.substring(0,10) || '?';
+                    if (!dailyAgg[d]) {
+                        dailyAgg[d] = { date: d, pnl: 0, equity_after: t.equity_after || 10000 };
+                    }
+                    dailyAgg[d].pnl += (t.pnl + (t.hedge_pnl || 0));
+                    // The last chronological trade of the day sets the final equity for that day
+                    dailyAgg[d].equity_after = t.equity_after || 10000;
+                }
+                const dailyTrades = Object.values(dailyAgg);
+
+                // ══════════════════════════════════════════════
+                // EQUITY CURVE CHART (Daily Aggregated)
+                // ══════════════════════════════════════════════
+                const eqLabels = ['Start', ...dailyTrades.map(t => t.date)];
+                const eqData = [10000, ...dailyTrades.map(t => t.equity_after)];
 
                 const eqCtx = document.getElementById('equityChart').getContext('2d');
                 
@@ -568,10 +583,10 @@
                 }
 
                 // ══════════════════════════════════════════════
-                // PER-TRADE P&L BAR CHART
+                // DAILY P&L BAR CHART (Aggregated)
                 // ══════════════════════════════════════════════
-                const barLabels = chronoTrades.map(t => t.date || '?');
-                const barData = chronoTrades.map(t => t.pnl + (t.hedge_pnl || 0));
+                const barLabels = dailyTrades.map(t => t.date);
+                const barData = dailyTrades.map(t => t.pnl);
                 const barColors = barData.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(239, 68, 68, 0.85)');
                 const barBorders = barData.map(v => v >= 0 ? '#10b981' : '#ef4444');
 
