@@ -423,10 +423,10 @@ class SmartHedgingManager:
         abs_bleed = abs(bleed_usd) if bleed_usd > 0 else 1.0
 
         # The Gamma & Recovery Multiplier
-        # Why 1.6x? 
-        # The 1.6x multiplier guarantees a ~+$40 to +$50 net profit at a 130% Option Stop Loss 
-        # (hitting the exact 20% overall target profit for a 500-lot $200 premium trade)
-        GAMMA_RECOVERY_MULTIPLIER = 1.6
+        # Why 2.0x? 
+        # A 2.0x multiplier ensures the linear futures profit outpaces the accelerating Gamma loss of the options,
+        # guaranteeing a strictly positive Net P&L (covering 100%+ of the loss) if a severe crash hits the 130% SL.
+        GAMMA_RECOVERY_MULTIPLIER = 2.0
 
         # Method 1: BTC has moved enough to calculate real exposure
         btc_move_usd = 0.0
