@@ -433,42 +433,35 @@ class SmartHedgingManager:
         if self._entry_btc_price > 0:
             btc_move_usd = abs(btc_price - self._entry_btc_price)
 
-        if btc_move_usd > 50:
-            effective_exposure = abs_bleed / btc_move_usd
+        # Ensure we don't divide by a tiny number and create a massive oversized hedge during IV spikes
+        # A meaningful move to base delta on is at least 0.5 ATR, or a hard floor of $300
+        safe_btc_move = max(btc_move_usd, max(300.0, atr_usd * 0.5))
+        effective_exposure = abs_bleed / safe_btc_move
             
-            # --- HYBRID GRID SIZING LOGIC ---
-            realtime_atr_dist = btc_move_usd / atr_usd if atr_usd > 0 else 0
-            
-            last_candle_close = self._get_last_closed_5m_candle()
-            candle_move_usd = abs(last_candle_close - self._entry_btc_price) if last_candle_close > 0 else 0
-            candle_atr_dist = candle_move_usd / atr_usd if atr_usd > 0 else 0
-            
-            scale_factor = 0.50  # Default to Tier 1
-            
-            if realtime_atr_dist >= 2.0:
-                scale_factor = 1.0  # Rule 2: RED ALERT - Full 100% Hedge
-            elif candle_atr_dist >= 1.5:
-                scale_factor = 0.50 # Rule 1: Small Alert - 50% Hedge
-            elif realtime_atr_dist >= 1.5:
-                # If managed to pass trend filter for some other reason, fallback
-                scale_factor = 0.50
-            
-            hedge_btc = effective_exposure * GAMMA_RECOVERY_MULTIPLIER * scale_factor
-            app_logger.info(
-                f"Hedge: Sizing [Hybrid Grid] | Loss=${abs_bleed:.2f} | "
-                f"BTC moved=${btc_move_usd:.0f} ({realtime_atr_dist:.1f} ATR) | "
-                f"Base Exp={effective_exposure:.4f} BTC | "
-                f"Grid Tier={scale_factor*100:.0f}% | Final Hedge={hedge_btc:.4f} BTC"
-            )
-        else:
-            # Method 2: Position-based fallback
-            total_lots = sum(d.get('size', 0) for d in positions.values())
-            exposure_btc = (total_lots * 0.001) * self.DEFAULT_DELTA_ESTIMATE
-            hedge_btc = exposure_btc * GAMMA_RECOVERY_MULTIPLIER * 0.30 # Default safe scale
-            app_logger.info(
-                f"Hedge: Sizing [Fallback Grid] | Lots={total_lots} | "
-                f"Base Exp={exposure_btc:.4f} BTC | Final Hedge={hedge_btc:.4f} BTC"
-            )
+        # --- HYBRID GRID SIZING LOGIC ---
+        realtime_atr_dist = btc_move_usd / atr_usd if atr_usd > 0 else 0
+        
+        last_candle_close = self._get_last_closed_5m_candle()
+        candle_move_usd = abs(last_candle_close - self._entry_btc_price) if last_candle_close > 0 else 0
+        candle_atr_dist = candle_move_usd / atr_usd if atr_usd > 0 else 0
+        
+        scale_factor = 0.50  # Default to Tier 1
+        
+        if realtime_atr_dist >= 2.0:
+            scale_factor = 1.0  # Rule 2: RED ALERT - Full 100% Hedge
+        elif candle_atr_dist >= 1.5:
+            scale_factor = 0.50 # Rule 1: Small Alert - 50% Hedge
+        elif realtime_atr_dist >= 1.5:
+            # If managed to pass trend filter for some other reason, fallback
+            scale_factor = 0.50
+        
+        hedge_btc = effective_exposure * GAMMA_RECOVERY_MULTIPLIER * scale_factor
+        app_logger.info(
+            f"Hedge: Sizing [Hybrid Grid] | Loss=${abs_bleed:.2f} | "
+            f"BTC moved=${btc_move_usd:.0f} (Safe Divisor: ${safe_btc_move:.0f}) | "
+            f"Base Exp={effective_exposure:.4f} BTC | "
+            f"Grid Tier={scale_factor*100:.0f}% | Final Hedge={hedge_btc:.4f} BTC"
+        )
 
         # Clamp to min/max
         hedge_btc = max(self.HEDGE_MIN_SIZE_BTC, hedge_btc)
