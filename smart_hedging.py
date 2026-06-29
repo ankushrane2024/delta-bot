@@ -600,6 +600,9 @@ class SmartHedgingManager:
 
         NO ATR BLOCKING — removed entirely.
         """
+        # Calculate total dollar loss to size the hedge correctly
+        total_loss_usd = abs(profit_usd) if profit_usd < 0 else 0.0
+
         # ── RULE: Never hedge when net trade is profitable ──
         if unrealized_loss_pct <= 0.0:
             if bleeding_leg:
@@ -641,42 +644,42 @@ class SmartHedgingManager:
                 return
 
         # ── FLASH CRASH: ≥ 40% bleed → instant hedge ──
-        if bleeding_leg and bleed_pct >= self.BLEED_FLASH_CRASH_PCT:
+        if bleeding_leg and unrealized_loss_pct >= self.BLEED_FLASH_CRASH_PCT:
             app_logger.critical(
-                f"Hedge: ⚡ FLASH CRASH! {bleeding_leg.upper()} bleeding "
-                f"{bleed_pct*100:.1f}% >= {self.BLEED_FLASH_CRASH_PCT*100:.0f}%. "
+                f"Hedge: ⚡ FLASH CRASH! Total loss {unrealized_loss_pct*100:.1f}% "
+                f">= {self.BLEED_FLASH_CRASH_PCT*100:.0f}%. "
                 f"HEDGING IMMEDIATELY!"
             )
             notifier.notify_error(
                 f"⚡ FLASH CRASH HEDGE ⚡\n"
-                f"{bleeding_leg.upper()} bleeding {bleed_pct*100:.1f}%!\n"
+                f"Total loss {unrealized_loss_pct*100:.1f}%!\n"
                 f"Immediate hedge — no confirmation wait."
             )
             self._bleed_confirm_count = 0
             self._bleed_confirm_leg = None
             self._open_new_hedge(
-                positions, bleeding_leg, bleed_pct,
-                bleed_usd, direction, profit_usd, atr_usd
+                positions, bleeding_leg, unrealized_loss_pct,
+                total_loss_usd, direction, profit_usd, atr_usd
             )
             return
 
         # ── SEVERE BLEED: ≥ 25% → skip confirmation ──
-        if bleeding_leg and bleed_pct >= self.BLEED_SEVERE_PCT:
+        if bleeding_leg and unrealized_loss_pct >= self.BLEED_SEVERE_PCT:
             app_logger.warning(
-                f"Hedge: SEVERE BLEED! {bleeding_leg.upper()} at "
-                f"{bleed_pct*100:.1f}% >= {self.BLEED_SEVERE_PCT*100:.0f}%. "
+                f"Hedge: SEVERE BLEED! Total loss at "
+                f"{unrealized_loss_pct*100:.1f}% >= {self.BLEED_SEVERE_PCT*100:.0f}%. "
                 f"Skipping confirmation. Hedging now."
             )
             self._bleed_confirm_count = 0
             self._bleed_confirm_leg = None
             self._open_new_hedge(
-                positions, bleeding_leg, bleed_pct,
-                bleed_usd, direction, profit_usd, atr_usd
+                positions, bleeding_leg, unrealized_loss_pct,
+                total_loss_usd, direction, profit_usd, atr_usd
             )
             return
 
         # ── MODERATE BLEED: ≥ 15% → need 2 consecutive confirmations ──
-        if bleeding_leg and bleed_pct >= self.BLEED_TRIGGER_PCT:
+        if bleeding_leg and unrealized_loss_pct >= self.BLEED_TRIGGER_PCT:
             if bleeding_leg == self._bleed_confirm_leg:
                 self._bleed_confirm_count += 1
             else:
@@ -685,20 +688,20 @@ class SmartHedgingManager:
 
             if self._bleed_confirm_count >= self.BLEED_CONFIRM_CHECKS:
                 app_logger.info(
-                    f"Hedge: CONFIRMED! {bleeding_leg.upper()} bleeding "
-                    f"{bleed_pct*100:.1f}% for {self._bleed_confirm_count} "
-                    f"consecutive checks. Net loss: {unrealized_loss_pct*100:.1f}%. "
+                    f"Hedge: CONFIRMED! Total loss "
+                    f"{unrealized_loss_pct*100:.1f}% for {self._bleed_confirm_count} "
+                    f"consecutive checks. "
                     f"Opening hedge..."
                 )
                 self._bleed_confirm_count = 0
                 self._bleed_confirm_leg = None
                 self._open_new_hedge(
-                    positions, bleeding_leg, bleed_pct,
-                    bleed_usd, direction, profit_usd, atr_usd
+                    positions, bleeding_leg, unrealized_loss_pct,
+                    total_loss_usd, direction, profit_usd, atr_usd
                 )
             else:
                 app_logger.info(
-                    f"Hedge: {bleeding_leg.upper()} bleeding {bleed_pct*100:.1f}% "
+                    f"Hedge: Total loss {unrealized_loss_pct*100:.1f}% "
                     f"— confirm {self._bleed_confirm_count}/{self.BLEED_CONFIRM_CHECKS}. "
                     f"Waiting for sustained bleed..."
                 )
@@ -738,7 +741,7 @@ class SmartHedgingManager:
             )
             self._open_new_hedge(
                 positions, emergency_leg, unrealized_loss_pct,
-                bleed_usd, emergency_direction, profit_usd, atr_usd
+                total_loss_usd, emergency_direction, profit_usd, atr_usd
             )
             return
 
