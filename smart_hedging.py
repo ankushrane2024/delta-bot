@@ -33,10 +33,10 @@ class SmartHedgingManager:
     """
 
     # ─── TRIGGER THRESHOLDS ───────────────────────────────────────
-    BLEED_TRIGGER_PCT = 0.15          # 15% single-leg bleed triggers hedge
-    BLEED_SEVERE_PCT = 0.25           # 25%+ skip confirmation, hedge now
-    BLEED_FLASH_CRASH_PCT = 0.40      # 40%+ flash crash, instant hedge
-    BLEED_CONFIRM_CHECKS = 2          # 2 consecutive checks for moderate (15-25%)
+    BLEED_TRIGGER_PCT = 0.07          # 7% Total Portfolio Loss triggers hedge
+    BLEED_SEVERE_PCT = 0.12           # 12%+ skip confirmation, hedge now
+    BLEED_FLASH_CRASH_PCT = 0.15      # 15%+ flash crash, instant hedge
+    BLEED_CONFIRM_CHECKS = 2          # 2 consecutive checks for moderate
     EMERGENCY_LOSS_PCT = 0.15         # 15% total portfolio loss = emergency
 
     # ─── SIZING ───────────────────────────────────────────────────
@@ -46,7 +46,7 @@ class SmartHedgingManager:
 
     # ─── EXIT RULES (ZERO-LOSS) ───────────────────────────────────
     LOSS_RECOVERY_PCT = 0.50          # Options loss halved = significant recovery
-    LOSS_NEAR_ZERO_PCT = 0.05         # Options loss < 5% of premium = near zero
+    LOSS_NEAR_ZERO_PCT = 0.02         # Hedge closes when Total Loss recovers back to 2%
     MIN_HEDGE_HOLD_SECONDS = 45       # Don't exit within 45s of opening
 
     # ─── ESCALATION ───────────────────────────────────────────────
