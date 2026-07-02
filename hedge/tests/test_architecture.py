@@ -1,5 +1,5 @@
 import unittest
-from hedge.models.enums import MarketState
+from hedge.models.enums import MarketRegime
 from hedge.models.decision import Decision, DecisionAction
 from hedge.engines.market_state_engine import MarketStateEngine
 from hedge.config.hedge_config import HedgeConfig
@@ -7,7 +7,7 @@ from hedge.config.hedge_config import HedgeConfig
 class TestArchitecture(unittest.TestCase):
     
     def test_enums_import(self):
-        self.assertEqual(MarketState.SAFE_RANGE.name, "SAFE_RANGE")
+        self.assertEqual(MarketRegime.SAFE_RANGE.name, "SAFE_RANGE")
         
     def test_decision_dataclass(self):
         d = Decision(
