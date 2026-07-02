@@ -14,13 +14,14 @@ class TrendDirection(Enum):
     LONG = auto()
     SHORT = auto()
 
-class DecisionAction(Enum):
-    NO_ACTION = auto()
+class AresDecision(Enum):
+    HOLD = auto()
+    PREPARE_HEDGE = auto()
     OPEN_HEDGE = auto()
     INCREASE_HEDGE = auto()
     REDUCE_HEDGE = auto()
     CLOSE_HEDGE = auto()
-    EXIT_POSITION = auto()
+    EMERGENCY_EXIT = auto()
 
 class MarginStatus(Enum):
     SAFE = auto()

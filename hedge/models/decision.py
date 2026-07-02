@@ -1,12 +1,18 @@
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
-from .enums import DecisionAction
+from dataclasses import dataclass, field
+from typing import Dict, Any, List
+from .enums import AresDecision
+from .shared import SignalEvidence
 
 @dataclass
-class Decision:
-    action: DecisionAction
+class DecisionResult:
+    evaluation_id: str
+    decision: AresDecision
     confidence: float
-    reason: str
-    metadata: Dict[str, Any]
-    target_size: Optional[float] = None
-    target_price: Optional[float] = None
+    urgency: float
+    explanation: str
+    timestamp: str
+    started_at: float
+    completed_at: float
+    execution_time_ms: float
+    supporting_evidence: List[SignalEvidence] = field(default_factory=list)
+    debug_information: Dict[str, Any] = field(default_factory=dict)
