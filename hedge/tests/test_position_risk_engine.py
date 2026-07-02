@@ -128,6 +128,46 @@ class TestPositionRiskEngine(unittest.TestCase):
         score_invalid3 = self.engine._compute_strike_distance_factor(None, strike)
         self.assertEqual(score_invalid3, 0.0)
 
+    def test_delta_factor(self):
+        import math
+        
+        # 1. Standard delta values
+        score_0 = self.engine._compute_delta_factor(0.00)
+        self.assertAlmostEqual(score_0, 0.0)
+        
+        score_10 = self.engine._compute_delta_factor(0.10)
+        self.assertAlmostEqual(score_10, 1.0)
+        
+        score_25 = self.engine._compute_delta_factor(0.25)
+        self.assertAlmostEqual(score_25, 6.25)
+        
+        score_50 = self.engine._compute_delta_factor(0.50)
+        self.assertAlmostEqual(score_50, 25.0)
+        
+        score_75 = self.engine._compute_delta_factor(0.75)
+        self.assertAlmostEqual(score_75, 56.25)
+        
+        score_100 = self.engine._compute_delta_factor(1.00)
+        self.assertAlmostEqual(score_100, 100.0)
+        
+        # 2. Absolute value mapping (short options have negative delta)
+        score_neg = self.engine._compute_delta_factor(-0.50)
+        self.assertAlmostEqual(score_neg, 25.0)
+        
+        # 3. Output clamped
+        score_extreme = self.engine._compute_delta_factor(1.50)
+        self.assertAlmostEqual(score_extreme, 100.0)
+        
+        # 4. Invalid inputs
+        score_invalid1 = self.engine._compute_delta_factor(None)
+        self.assertAlmostEqual(score_invalid1, 0.0)
+        
+        score_invalid2 = self.engine._compute_delta_factor(float('nan'))
+        self.assertAlmostEqual(score_invalid2, 0.0)
+        
+        score_invalid3 = self.engine._compute_delta_factor(float('inf'))
+        self.assertAlmostEqual(score_invalid3, 0.0)
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)

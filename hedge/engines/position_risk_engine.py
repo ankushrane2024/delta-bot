@@ -149,12 +149,37 @@ class PositionRiskEngine(AbstractBaseEngine):
                 return 0.0
             return 100.0
             
+    def _compute_delta_factor(self, call_delta: float) -> float:
+        try:
+            if call_delta is None or math.isnan(call_delta) or math.isinf(call_delta):
+                msg = f"Invalid inputs for delta_factor: call_delta={call_delta}"
+                self._warnings.append(msg)
+                logger.warning(msg)
+                return 0.0
+                
+            abs_delta = abs(float(call_delta))
+            
+            # Clamp delta between 0.0 and 1.0 (assuming standard delta format)
+            abs_delta = max(0.0, min(1.0, abs_delta))
+            
+            # Map non-linearly: score = 100 * (delta ^ 2)
+            # This ensures low delta = very low stress, high delta = rapidly approaches max
+            score = 100.0 * (abs_delta ** 2)
+            
+            return max(0.0, min(100.0, score))
+        except Exception as e:
+            msg = f"Exception in _compute_delta_factor: {str(e)}"
+            self._warnings.append(msg)
+            logger.warning(msg)
+            return 0.0
+
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
+        delta_factor = self._compute_delta_factor(ctx.call_delta)
         
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
-            delta_factor=0.0,
+            delta_factor=delta_factor,
             gamma_factor=0.0,
             premium_growth_factor=0.0,
             trend_factor=0.0,
@@ -162,7 +187,7 @@ class PositionRiskEngine(AbstractBaseEngine):
             iv_factor=0.0,
             pnl_factor=0.0,
             final_call_stress=0.0,
-            explanation="Call stress components evaluated. Only strike distance factor implemented."
+            explanation="Call stress components evaluated. Strike distance and delta factors implemented."
         )
 
     def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:
