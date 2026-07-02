@@ -1,11 +1,12 @@
 from enum import Enum, auto
 
-class MarketState(Enum):
+class MarketRegime(Enum):
     SAFE_RANGE = auto()
     WEAK_RANGE = auto()
     TRANSITION = auto()
-    BULL_TREND = auto()
-    BEAR_TREND = auto()
+    EARLY_TREND = auto()
+    CONFIRMED_TREND = auto()
+    ACCELERATION = auto()
     TREND_EXHAUSTION = auto()
 
 class TrendDirection(Enum):
