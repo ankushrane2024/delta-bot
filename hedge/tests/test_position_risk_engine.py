@@ -68,6 +68,22 @@ class TestPositionRiskEngine(unittest.TestCase):
         self.assertTrue(health.last_execution_time > 0)
         self.assertEqual(len(health.warnings), 0)
 
+    def test_call_stress_breakdown_structure(self):
+        context = PositionContext(is_valid=True)
+        breakdown = self.engine._compute_call_stress_breakdown(self.dummy_trend, self.dummy_regime, context)
+        from hedge.models.position import CallStressBreakdown
+        
+        # Verify typing and structure
+        self.assertIsInstance(breakdown, CallStressBreakdown)
+        self.assertIsInstance(breakdown.delta_factor, float)
+        self.assertIsInstance(breakdown.gamma_factor, float)
+        self.assertIsInstance(breakdown.premium_growth_factor, float)
+        self.assertIsInstance(breakdown.explanation, str)
+        
+        # Verify it passes through _compute_call_stress correctly
+        stress = self.engine._compute_call_stress(breakdown)
+        self.assertEqual(stress, breakdown.final_call_stress)
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)

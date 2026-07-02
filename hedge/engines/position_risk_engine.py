@@ -8,7 +8,7 @@ from hedge.engines.base_engine import AbstractBaseEngine
 from hedge.models.regime import MarketRegimeResult
 from hedge.models.trend import TrendResult
 from hedge.context.position_context import PositionContext
-from hedge.models.position import PositionRiskResult
+from hedge.models.position import PositionRiskResult, CallStressBreakdown
 from hedge.models.shared import AnalyzerHealth
 
 logger = logging.getLogger("ARES.PositionRiskEngine")
@@ -49,6 +49,10 @@ class PositionRiskEngine(AbstractBaseEngine):
         portfolio_heat = self._compute_portfolio_heat(position_context)
         hedge_urgency = self._compute_hedge_urgency(position_context, regime_result, trend_result)
         
+        # 3. Stress Computation Framework
+        call_stress_breakdown = self._compute_call_stress_breakdown(trend_result, regime_result, position_context)
+        call_stress = self._compute_call_stress(call_stress_breakdown)
+        
         overall_risk_score = self._compute_overall_risk(call_side_risk, put_side_risk, portfolio_heat, hedge_urgency)
         confidence = self._compute_confidence(position_context)
         
@@ -68,7 +72,7 @@ class PositionRiskEngine(AbstractBaseEngine):
             stop_loss_proximity=stop_proximity,
             portfolio_heat=portfolio_heat,
             hedge_urgency=hedge_urgency,
-            call_stress=0.0,
+            call_stress=call_stress,
             put_stress=0.0,
             portfolio_stress=0.0,
             stress_velocity=0.0,
@@ -114,6 +118,23 @@ class PositionRiskEngine(AbstractBaseEngine):
 
     def _compute_hedge_urgency(self, ctx: PositionContext, regime: MarketRegimeResult, trend: TrendResult) -> float:
         return 0.0
+
+    def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
+        return CallStressBreakdown(
+            strike_distance_factor=0.0,
+            delta_factor=0.0,
+            gamma_factor=0.0,
+            premium_growth_factor=0.0,
+            trend_factor=0.0,
+            regime_factor=0.0,
+            iv_factor=0.0,
+            pnl_factor=0.0,
+            final_call_stress=0.0,
+            explanation="Call stress components initialized with placeholders."
+        )
+
+    def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:
+        return breakdown.final_call_stress
 
     def _compute_overall_risk(self, call_risk: float, put_risk: float, heat: float, urgency: float) -> float:
         return 0.0

@@ -30,3 +30,16 @@ class PositionRiskResult:
     execution_time_ms: float
     explanation: str
     debug_information: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class CallStressBreakdown:
+    strike_distance_factor: float = 0.0
+    delta_factor: float = 0.0
+    gamma_factor: float = 0.0
+    premium_growth_factor: float = 0.0
+    trend_factor: float = 0.0
+    regime_factor: float = 0.0
+    iv_factor: float = 0.0
+    pnl_factor: float = 0.0
+    final_call_stress: float = 0.0
+    explanation: str = ""
