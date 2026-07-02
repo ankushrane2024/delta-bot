@@ -1,25 +1,26 @@
 import unittest
-from hedge.analyzers.price_action_analyzer import PriceActionAnalyzer
-from hedge.analyzers.evaluators.interfaces import CandleEvaluator, SwingEvaluator
+from hedge.analyzers.market_structure_analyzer import MarketStructureAnalyzer
+from hedge.analyzers.evaluators.structure_interfaces import StructureBreakEvaluator, HigherHighEvaluator
 from hedge.context.market_context import MarketContext
-from hedge.models.price_action import PriceActionResult, SignalEvidence
-from hedge.analyzers.evaluators.base_evaluator import AbstractPriceEvaluator
+from hedge.models.market_structure import MarketStructureResult
+from hedge.models.shared import SignalEvidence
+from hedge.analyzers.evaluators.base_structure_evaluator import AbstractStructureEvaluator
 
-class FailingEvaluator(AbstractPriceEvaluator):
+class FailingStructureEvaluator(AbstractStructureEvaluator):
     def evaluate(self, context: MarketContext) -> SignalEvidence:
-        raise ValueError("Simulated evaluator crash")
+        raise ValueError("Simulated structure evaluator crash")
 
-class TestPriceActionAnalyzer(unittest.TestCase):
+class TestMarketStructureAnalyzer(unittest.TestCase):
     def setUp(self):
         self.context = MarketContext(current_price=60000.0)
 
     def test_initialization_and_metadata(self):
-        evaluators = [CandleEvaluator(), SwingEvaluator()]
-        analyzer = PriceActionAnalyzer(evaluators=evaluators)
+        evaluators = [StructureBreakEvaluator(), HigherHighEvaluator()]
+        analyzer = MarketStructureAnalyzer(evaluators=evaluators)
         analyzer.initialize()
         
         meta = analyzer.metadata()
-        self.assertEqual(meta["name"], "PriceActionAnalyzer")
+        self.assertEqual(meta["name"], "MarketStructureAnalyzer")
         self.assertEqual(len(meta["evaluators"]), 2)
         
         health = analyzer.health()
@@ -28,24 +29,24 @@ class TestPriceActionAnalyzer(unittest.TestCase):
         self.assertFalse(health.replay_mode)
 
     def test_evaluate_success(self):
-        evaluators = [CandleEvaluator()]
-        analyzer = PriceActionAnalyzer(evaluators=evaluators)
+        evaluators = [StructureBreakEvaluator()]
+        analyzer = MarketStructureAnalyzer(evaluators=evaluators)
         
         result = analyzer.evaluate(self.context)
         
-        self.assertIsInstance(result, PriceActionResult)
+        self.assertIsInstance(result, MarketStructureResult)
         self.assertIsNotNone(result.evaluation_id)
         self.assertTrue(result.execution_time_ms >= 0)
         self.assertEqual(len(result.supporting_evidence), 1)
-        self.assertEqual(result.supporting_evidence[0].source, "CandleEvaluator")
+        self.assertEqual(result.supporting_evidence[0].source, "StructureBreakEvaluator")
         
         health = analyzer.health()
         self.assertTrue(health.last_execution_time > 0)
         self.assertEqual(health.failed_evaluators, 0)
 
     def test_isolated_failures(self):
-        evaluators = [CandleEvaluator(), FailingEvaluator(), SwingEvaluator()]
-        analyzer = PriceActionAnalyzer(evaluators=evaluators)
+        evaluators = [StructureBreakEvaluator(), FailingStructureEvaluator(), HigherHighEvaluator()]
+        analyzer = MarketStructureAnalyzer(evaluators=evaluators)
         
         result = analyzer.evaluate(self.context)
         
@@ -55,7 +56,7 @@ class TestPriceActionAnalyzer(unittest.TestCase):
         health = analyzer.health()
         self.assertEqual(health.failed_evaluators, 1)
         self.assertEqual(len(health.warnings), 1)
-        self.assertIn("Simulated evaluator crash", health.warnings[0])
+        self.assertIn("Simulated structure evaluator crash", health.warnings[0])
 
 if __name__ == "__main__":
     unittest.main()

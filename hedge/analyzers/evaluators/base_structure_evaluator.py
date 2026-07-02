@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
-from hedge.models.price_action import SignalEvidence
+from hedge.models.shared import SignalEvidence
 from hedge.context.market_context import MarketContext
 
-class AbstractPriceEvaluator(ABC):
+class AbstractStructureEvaluator(ABC):
     def __init__(self, weight: float = 1.0, config: Dict[str, Any] = None):
         self.weight = weight
         self.config = config or {}

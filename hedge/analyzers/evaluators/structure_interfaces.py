@@ -1,32 +1,38 @@
-from .base_evaluator import AbstractPriceEvaluator
-from hedge.models.price_action import SignalEvidence
+from .base_structure_evaluator import AbstractStructureEvaluator
+from hedge.models.shared import SignalEvidence
 from hedge.context.market_context import MarketContext
 
-class CandleEvaluator(AbstractPriceEvaluator):
+class StructureBreakEvaluator(AbstractStructureEvaluator):
     def evaluate(self, context: MarketContext) -> SignalEvidence:
         return SignalEvidence(
             source=self.name, score=0.0, confidence=0.0, quality=0.0, explanation="Placeholder"
         )
 
-class SwingEvaluator(AbstractPriceEvaluator):
+class HigherHighEvaluator(AbstractStructureEvaluator):
     def evaluate(self, context: MarketContext) -> SignalEvidence:
         return SignalEvidence(
             source=self.name, score=0.0, confidence=0.0, quality=0.0, explanation="Placeholder"
         )
 
-class BreakoutEvaluator(AbstractPriceEvaluator):
+class LowerLowEvaluator(AbstractStructureEvaluator):
     def evaluate(self, context: MarketContext) -> SignalEvidence:
         return SignalEvidence(
             source=self.name, score=0.0, confidence=0.0, quality=0.0, explanation="Placeholder"
         )
 
-class RejectionEvaluator(AbstractPriceEvaluator):
+class SupportResistanceEvaluator(AbstractStructureEvaluator):
     def evaluate(self, context: MarketContext) -> SignalEvidence:
         return SignalEvidence(
             source=self.name, score=0.0, confidence=0.0, quality=0.0, explanation="Placeholder"
         )
 
-class MomentumEvaluator(AbstractPriceEvaluator):
+class TrendIntegrityEvaluator(AbstractStructureEvaluator):
+    def evaluate(self, context: MarketContext) -> SignalEvidence:
+        return SignalEvidence(
+            source=self.name, score=0.0, confidence=0.0, quality=0.0, explanation="Placeholder"
+        )
+
+class ChangeOfCharacterEvaluator(AbstractStructureEvaluator):
     def evaluate(self, context: MarketContext) -> SignalEvidence:
         return SignalEvidence(
             source=self.name, score=0.0, confidence=0.0, quality=0.0, explanation="Placeholder"
