@@ -42,3 +42,13 @@ class HedgeSide(Enum):
     NONE = auto()
     LONG = auto()
     SHORT = auto()
+
+class ExecutionStatus(Enum):
+    PENDING = auto()
+    VALIDATED = auto()
+    READY = auto()
+    SUBMITTED = auto()
+    PARTIALLY_FILLED = auto()
+    FILLED = auto()
+    FAILED = auto()
+    CANCELLED = auto()
