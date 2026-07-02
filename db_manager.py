@@ -440,3 +440,38 @@ def trigger_cloud_sync():
 def is_connected() -> bool:
     """Returns True if Cloud DB is configured."""
     return _connected or _connect()
+
+# ---------------------------------------------------------------------------
+# PAPER TRADING STATE PERSISTENCE
+# Dedicated blob for active_positions to prevent history wipeouts
+# ---------------------------------------------------------------------------
+_ACTIVE_POS_BLOB_ID = "019f233f-1e6e-74de-857f-a7f211c3e2ac"
+
+def save_active_positions(positions: dict):
+    """Saves the active_positions dictionary to a dedicated cloud blob."""
+    try:
+        url = f"https://jsonblob.com/api/jsonBlob/{_ACTIVE_POS_BLOB_ID}"
+        headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+        res = requests.put(url, json=positions, headers=headers, timeout=5, verify=False)
+        if res.status_code in [200, 201]:
+            app_logger.info(f"DB: Saved {len(positions)} active positions to cloud.")
+        else:
+            app_logger.warning(f"DB: Failed to save active positions (HTTP {res.status_code})")
+    except Exception as e:
+        app_logger.warning(f"DB: Exception saving active positions: {e}")
+
+def load_active_positions() -> dict:
+    """Loads the active_positions dictionary from the dedicated cloud blob."""
+    try:
+        url = f"https://jsonblob.com/api/jsonBlob/{_ACTIVE_POS_BLOB_ID}"
+        headers = {'Accept': 'application/json'}
+        res = requests.get(url, headers=headers, timeout=5, verify=False)
+        if res.status_code == 200:
+            data = res.json()
+            if isinstance(data, dict):
+                app_logger.info(f"DB: Loaded {len(data)} active positions from cloud.")
+                return data
+    except Exception as e:
+        app_logger.warning(f"DB: Exception loading active positions: {e}")
+    return {}
+

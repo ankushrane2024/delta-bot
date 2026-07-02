@@ -294,6 +294,8 @@ class DeltaTradingEngine:
             if sym in self.execution.active_positions:
                 self.execution.active_positions[sym]['entry_size'] = per_entry_size
 
+        self.execution.save_state()
+
         # Reset the watchdog timer on new trade entry so WebSocket has time to fetch the new symbols
         self.api_client.last_price_update_time = time.time()
 

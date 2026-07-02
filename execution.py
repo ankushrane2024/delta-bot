@@ -1,16 +1,28 @@
 from config import HEDGE_SYMBOL, HEDGE_RETRY_COUNT, HEDGE_RETRY_DELAY, HEDGE_LIMIT_ORDER_SPREAD
 from logger import app_logger, trade_logger
 import math
+import db_manager
 
 class ExecutionHandler:
     def __init__(self, api_client, mode='PAPER'):
         self.api_client = api_client
         self.mode = mode
-        self.active_positions = {} # symbol -> data
+        
+        # In PAPER mode, try to recover active positions from cloud DB after a server reboot
+        if self.mode != 'LIVE':
+            self.active_positions = db_manager.load_active_positions()
+        else:
+            self.active_positions = {} # symbol -> data
+            
         self.hedge_position = 0 # Net BTC futures size
         self.hedge_size_btc = 0.0  # Actual BTC size of current hedge
         self.hedge_order_id = None  # Last hedge order ID
         self.hedge_entry_price = 0.0
+
+    def save_state(self):
+        """Persists the current paper trading active positions to the cloud database."""
+        if self.mode != 'LIVE':
+            db_manager.save_active_positions(self.active_positions)
 
     def execute_strangle(self, call_opt, put_opt, size):
         """Places the short strangle orders."""
@@ -48,6 +60,8 @@ class ExecutionHandler:
                     'entry_time': entry_time_str,
                 }
                 results.append({'success': True})
+            
+            self.save_state()
             return results
 
         # ── LIVE ──
@@ -90,6 +104,8 @@ class ExecutionHandler:
         # Close Hedge
         if self.hedge_position != 0 or abs(self.hedge_size_btc) > 0.0001:
             self.close_hedge()
+            
+        self.save_state()
 
     def partial_close(self, percentage=0.5):
         """Closes a portion of all active positions."""
@@ -107,6 +123,8 @@ class ExecutionHandler:
             else:
                 data['size'] -= close_size
                 app_logger.info(f"Execution [PAPER]: Simulating partial close of {symbol}")
+                
+        self.save_state()
 
     def hedge_with_futures(self, target_delta, action="REBALANCE"):
         """
