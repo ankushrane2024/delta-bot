@@ -1,5 +1,6 @@
 import uuid
 import time
+import math
 import logging
 from typing import Dict, Any, List
 from datetime import datetime, timezone
@@ -119,9 +120,40 @@ class PositionRiskEngine(AbstractBaseEngine):
     def _compute_hedge_urgency(self, ctx: PositionContext, regime: MarketRegimeResult, trend: TrendResult) -> float:
         return 0.0
 
+    def _compute_strike_distance_factor(self, futures_price: float, short_call_strike: float) -> float:
+        if not futures_price or futures_price <= 0.0 or not short_call_strike or short_call_strike <= 0.0:
+            msg = f"Invalid inputs for strike_distance_factor: futures_price={futures_price}, strike={short_call_strike}"
+            self._warnings.append(msg)
+            logger.warning(msg)
+            return 0.0
+            
+        # x is the percentage distance. Positive means breached, negative means safe.
+        x = (futures_price - short_call_strike) / short_call_strike
+        
+        # Sigmoid function centered such that 3% OTM gives 50% stress
+        center_offset = 0.03
+        steepness = 100.0
+        
+        try:
+            # Prevent math overflow for extreme values
+            exponent = -steepness * (x + center_offset)
+            if exponent > 50:
+                return 0.0
+            if exponent < -50:
+                return 100.0
+                
+            score = 100.0 / (1.0 + math.exp(exponent))
+            return max(0.0, min(100.0, score))
+        except OverflowError:
+            if x < -center_offset:
+                return 0.0
+            return 100.0
+            
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
+        strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
+        
         return CallStressBreakdown(
-            strike_distance_factor=0.0,
+            strike_distance_factor=strike_dist_factor,
             delta_factor=0.0,
             gamma_factor=0.0,
             premium_growth_factor=0.0,
@@ -130,7 +162,7 @@ class PositionRiskEngine(AbstractBaseEngine):
             iv_factor=0.0,
             pnl_factor=0.0,
             final_call_stress=0.0,
-            explanation="Call stress components initialized with placeholders."
+            explanation="Call stress components evaluated. Only strike distance factor implemented."
         )
 
     def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:

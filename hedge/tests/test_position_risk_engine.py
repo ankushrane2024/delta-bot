@@ -55,7 +55,7 @@ class TestPositionRiskEngine(unittest.TestCase):
         self.assertEqual(health.failed_evaluators, 0)
 
     def test_evaluate_success_valid_context(self):
-        context = PositionContext(total_lots=100, is_valid=True)
+        context = PositionContext(total_lots=100, is_valid=True, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)
         
         self.assertIsInstance(result, PositionRiskResult)
@@ -69,8 +69,13 @@ class TestPositionRiskEngine(unittest.TestCase):
         self.assertEqual(len(health.warnings), 0)
 
     def test_call_stress_breakdown_structure(self):
-        context = PositionContext(is_valid=True)
-        breakdown = self.engine._compute_call_stress_breakdown(self.dummy_trend, self.dummy_regime, context)
+        self.dummy_context = PositionContext(
+            is_valid=True,
+            total_lots=1,
+            futures_price=65000.0,
+            short_call_strike=70000.0
+        )
+        breakdown = self.engine._compute_call_stress_breakdown(self.dummy_trend, self.dummy_regime, self.dummy_context)
         from hedge.models.position import CallStressBreakdown
         
         # Verify typing and structure
@@ -80,12 +85,51 @@ class TestPositionRiskEngine(unittest.TestCase):
         self.assertIsInstance(breakdown.premium_growth_factor, float)
         self.assertIsInstance(breakdown.explanation, str)
         
+        # Verify strike distance factor is populated
+        self.assertGreaterEqual(breakdown.strike_distance_factor, 0.0)
+        
         # Verify it passes through _compute_call_stress correctly
         stress = self.engine._compute_call_stress(breakdown)
         self.assertEqual(stress, breakdown.final_call_stress)
 
+    def test_strike_distance_factor(self):
+        strike = 70000.0
+        
+        # 1. Far from strike (>10% away)
+        # 63000 is 10% away.
+        score_far = self.engine._compute_strike_distance_factor(63000.0, strike)
+        self.assertTrue(0.0 <= score_far < 10.0)
+        
+        # 2. Near strike (~3% away)
+        # 67900 is 3% away. Should be ~50.
+        score_near = self.engine._compute_strike_distance_factor(67900.0, strike)
+        self.assertTrue(40.0 < score_near < 60.0)
+        
+        # 3. At strike (0% away)
+        score_at = self.engine._compute_strike_distance_factor(70000.0, strike)
+        self.assertTrue(90.0 < score_at <= 100.0)
+        
+        # 4. Beyond strike
+        score_beyond = self.engine._compute_strike_distance_factor(72000.0, strike)
+        self.assertTrue(95.0 < score_beyond <= 100.0)
+        
+        # 5. Output always clamped
+        score_extreme_beyond = self.engine._compute_strike_distance_factor(100000.0, strike)
+        self.assertEqual(score_extreme_beyond, 100.0)
+        
+        score_extreme_far = self.engine._compute_strike_distance_factor(30000.0, strike)
+        self.assertEqual(score_extreme_far, 0.0)
+        
+        # 6. Invalid inputs
+        score_invalid1 = self.engine._compute_strike_distance_factor(0.0, strike)
+        self.assertEqual(score_invalid1, 0.0)
+        score_invalid2 = self.engine._compute_strike_distance_factor(60000.0, 0.0)
+        self.assertEqual(score_invalid2, 0.0)
+        score_invalid3 = self.engine._compute_strike_distance_factor(None, strike)
+        self.assertEqual(score_invalid3, 0.0)
+
     def test_evaluate_invalid_context(self):
-        context = PositionContext(total_lots=500, is_valid=False)
+        context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)
         
         self.assertEqual(result.confidence, 0.0)
@@ -96,7 +140,7 @@ class TestPositionRiskEngine(unittest.TestCase):
         self.assertIn("invalid", health.warnings[0].lower())
 
     def test_reset(self):
-        context = PositionContext(is_valid=False)
+        context = PositionContext(is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)
         
         self.assertEqual(len(self.engine._warnings), 1)
