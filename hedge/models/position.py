@@ -14,6 +14,15 @@ class PositionRiskResult:
     stop_loss_proximity: float
     portfolio_heat: float
     hedge_urgency: float
+    
+    # New placeholders for Module 16 enhancement
+    call_stress: float
+    put_stress: float
+    portfolio_stress: float
+    stress_velocity: float
+    recovery_probability: float
+    hedge_efficiency_estimate: float
+    
     confidence: float
     timestamp: str
     started_at: float
