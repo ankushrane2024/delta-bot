@@ -119,7 +119,8 @@ def get_status():
 
     for sym, data in bot_engine.execution.active_positions.items():
         entry_price = data.get('entry_price', 0)
-        size = data.get('size', 0)
+        # Use entry_size if available to prevent inflated PnL calculations on re-entries, just like bot_engine.py
+        size = data.get('entry_size', data.get('size', 0))
         leg_type = data.get('leg_type', 'unknown')
         entry_time_str = data.get('entry_time', '')
         strike = data.get('strike', 0)
