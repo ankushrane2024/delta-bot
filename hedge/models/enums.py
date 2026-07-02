@@ -27,3 +27,18 @@ class MarginStatus(Enum):
     SAFE = auto()
     WARNING = auto()
     CRITICAL = auto()
+
+class HedgeState(Enum):
+    NOT_ACTIVE = auto()
+    PENDING_OPEN = auto()
+    ACTIVE = auto()
+    SCALING_UP = auto()
+    SCALING_DOWN = auto()
+    PENDING_CLOSE = auto()
+    CLOSED = auto()
+    CANCELLED = auto()
+
+class HedgeSide(Enum):
+    NONE = auto()
+    LONG = auto()
+    SHORT = auto()
