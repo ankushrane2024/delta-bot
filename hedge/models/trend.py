@@ -20,6 +20,6 @@ class TrendResult:
     completed_at: float
     execution_time_ms: float
     explanation: str
-    supporting_signals: Dict[str, Any] = field(default_factory=dict)
+    supporting_evidence: List[SignalEvidence] = field(default_factory=list)
     analyzer_health_summary: Dict[str, Any] = field(default_factory=dict)
     debug_information: Dict[str, Any] = field(default_factory=dict)

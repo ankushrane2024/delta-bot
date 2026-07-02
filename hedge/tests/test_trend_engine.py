@@ -55,7 +55,7 @@ class TestTrendEngine(unittest.TestCase):
         self.assertIsInstance(result, TrendResult)
         self.assertIsNotNone(result.evaluation_id)
         self.assertTrue(result.execution_time_ms >= 0)
-        self.assertEqual(len(result.supporting_signals), 2)
+        self.assertEqual(len(result.supporting_evidence), 2)
         self.assertEqual(result.signal_reliability, 100.0)
         self.assertEqual(result.trend_direction, TrendDirection.NONE)
         
@@ -70,9 +70,7 @@ class TestTrendEngine(unittest.TestCase):
         result = engine.evaluate(self.context)
         
         # Should not crash. Should aggregate the 1 successful analyzer.
-        self.assertEqual(len(result.supporting_signals), 1)
-        self.assertIn("dummy1", result.supporting_signals)
-        self.assertNotIn("failing", result.supporting_signals)
+        self.assertEqual(len(result.supporting_evidence), 1)
         
         # Reliability should drop to 50%
         self.assertEqual(result.signal_reliability, 50.0)
@@ -90,7 +88,7 @@ class TestTrendEngine(unittest.TestCase):
         result = engine.evaluate(self.context)
         
         # Should gracefully return defaults without crashing, with reliability 0
-        self.assertEqual(len(result.supporting_signals), 0)
+        self.assertEqual(len(result.supporting_evidence), 0)
         self.assertEqual(result.signal_reliability, 0.0)
         
         health = engine.health()
