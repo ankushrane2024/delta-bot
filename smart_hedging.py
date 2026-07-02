@@ -509,16 +509,8 @@ class SmartHedgingManager:
     # ═══════════════════════════════════════════════════════════════
 
     def run_post_entry_hedge(self, positions):
-        """Called in a background thread immediately after strangle entry."""
-        try:
-            app_logger.info(
-                f"Hedge: Post-entry hedge check in {HEDGE_WAIT_AFTER_ENTRY}s..."
-            )
-            time.sleep(HEDGE_WAIT_AFTER_ENTRY)
-
-            if not positions:
-                app_logger.info("Hedge: Post-entry — no positions.")
-                return
+        """Hedge is permanently disabled. Do nothing."""
+        return
 
             self.set_entry_premiums(positions)
 
@@ -548,40 +540,8 @@ class SmartHedgingManager:
     # ═══════════════════════════════════════════════════════════════
 
     def manage_hedge(self, positions, unrealized_loss_pct, profit_usd=0.0, adx_value=0.0, atr_usd=100.0):
-        """
-        Core hedge management loop.
-
-        Args:
-            positions: execution.active_positions dict
-            unrealized_loss_pct: positive when losing (0.15 = 15% loss)
-            profit_usd: current total P&L in USD (includes hedge P&L when active)
-            adx_value: ADX trend strength from market_regime
-            atr_usd: BTC Average True Range in USD
-        """
-        self.last_check_time = time.time()
-
-        # ── No positions → close hedge ──
-        if not positions:
-            if self.hedge_active:
-                app_logger.info("Hedge: Positions cleared. Closing hedge...")
-                self.close_hedge()
-            return
-
-        # ── Detect bleeding leg ──
-        bleeding_leg, bleed_pct, bleed_usd, direction = self._detect_bleeding_leg(
-            positions
-        )
-
-        if self.hedge_active:
-            self._manage_active_hedge(
-                positions, bleeding_leg, bleed_pct, bleed_usd,
-                direction, unrealized_loss_pct, profit_usd, atr_usd
-            )
-        else:
-            self._check_and_trigger_hedge(
-                positions, bleeding_leg, bleed_pct, bleed_usd,
-                direction, unrealized_loss_pct, profit_usd, adx_value, atr_usd
-            )
+        """Hedge is permanently disabled. Do nothing."""
+        return
 
     # ═══════════════════════════════════════════════════════════════
     # TRIGGER LOGIC — Should we open a new hedge?
