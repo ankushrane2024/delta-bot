@@ -210,6 +210,58 @@ class TestPositionRiskEngine(unittest.TestCase):
         score_invalid3 = self.engine._compute_gamma_factor(float('inf'))
         self.assertEqual(score_invalid3, 0.0)
 
+    def test_vega_factor(self):
+        import math
+        from config import VEGA_REFERENCE
+        
+        v_ref = VEGA_REFERENCE
+        
+        # 1. Zero Vega
+        score_0 = self.engine._compute_vega_factor(0.0)
+        self.assertEqual(score_0, 0.0)
+        
+        # 2. Low Vega
+        # e.g., 20% of reference. Ratio = 0.2. 100 * (1 - exp(-0.693 * 0.04)) = 2.73
+        score_low = self.engine._compute_vega_factor(v_ref * 0.2)
+        self.assertAlmostEqual(score_low, 2.734, places=2)
+        
+        # 3. Medium Vega
+        # e.g., 50% of reference. Ratio = 0.5. 100 * (1 - exp(-0.693 * 0.25)) = 15.91
+        score_med = self.engine._compute_vega_factor(v_ref * 0.5)
+        self.assertAlmostEqual(score_med, 15.910, places=2)
+        
+        # 4. Reference Vega (Exactly 50)
+        score_ref = self.engine._compute_vega_factor(v_ref)
+        self.assertAlmostEqual(score_ref, 50.0, places=2)
+        
+        # 5. High Vega
+        # e.g., 150% of reference. Ratio = 1.5. 100 * (1 - exp(-0.693 * 2.25)) = 78.977
+        score_high = self.engine._compute_vega_factor(v_ref * 1.5)
+        self.assertAlmostEqual(score_high, 78.977, places=2)
+        
+        # 6. Extreme Vega
+        # e.g., 300% of reference. Ratio = 3.0. 100 * (1 - exp(-0.693 * 9)) = 99.805
+        score_extreme = self.engine._compute_vega_factor(v_ref * 3.0)
+        self.assertAlmostEqual(score_extreme, 99.805, places=2)
+        
+        # 7. Asymptotic Boundary (Extreme outlier)
+        score_asymptote = self.engine._compute_vega_factor(v_ref * 20.0)
+        self.assertAlmostEqual(score_asymptote, 100.0, places=2)
+        
+        # 8. Negative values (Vega should be treated absolute)
+        score_neg = self.engine._compute_vega_factor(-v_ref)
+        self.assertAlmostEqual(score_neg, 50.0, places=2)
+        
+        # 9. Invalid inputs
+        score_invalid1 = self.engine._compute_vega_factor(None)
+        self.assertEqual(score_invalid1, 0.0)
+        
+        score_invalid2 = self.engine._compute_vega_factor(float('nan'))
+        self.assertEqual(score_invalid2, 0.0)
+        
+        score_invalid3 = self.engine._compute_vega_factor(float('inf'))
+        self.assertEqual(score_invalid3, 0.0)
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)

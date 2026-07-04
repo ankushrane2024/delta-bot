@@ -222,10 +222,50 @@ class PositionRiskEngine(AbstractBaseEngine):
             logger.warning(msg)
             return 0.0
 
+    def _compute_vega_factor(self, call_vega: float) -> float:
+        try:
+            if call_vega is None or math.isnan(call_vega) or math.isinf(call_vega):
+                msg = f"Invalid inputs for vega_factor: call_vega={call_vega}"
+                self._warnings.append(msg)
+                logger.warning(msg)
+                return 0.0
+                
+            abs_vega = abs(float(call_vega))
+            
+            # Vega represents pure exposure to IV expansion.
+            # We use a Squared Exponential Asymptote (Rayleigh CDF form): 100 * (1 - exp(-k * (vega/ref)^2))
+            # This ensures zero stress at zero vega, flat initial growth, rapid acceleration midway, 
+            # and a natural asymptotic ceiling at 100 without arbitrary clipping.
+            from config import VEGA_REFERENCE
+            v_ref = VEGA_REFERENCE
+            
+            if v_ref <= 0:
+                v_ref = 10.0 # safe fallback
+                
+            # k = ln(2) ≈ 0.693147, so that when vega == v_ref, score is exactly 50.0
+            k = 0.69314718056
+            ratio = abs_vega / v_ref
+            
+            exponent = -k * (ratio ** 2)
+            
+            # Prevent extreme underflow
+            if exponent < -50:
+                return 100.0
+                
+            score = 100.0 * (1.0 - math.exp(exponent))
+            return max(0.0, min(100.0, score))
+            
+        except Exception as e:
+            msg = f"Exception in _compute_vega_factor: {str(e)}"
+            self._warnings.append(msg)
+            logger.warning(msg)
+            return 0.0
+
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
         delta_factor = self._compute_delta_factor(ctx.call_delta)
         gamma_factor = self._compute_gamma_factor(ctx.call_gamma)
+        vega_factor = self._compute_vega_factor(ctx.call_vega)
         
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
@@ -234,10 +274,10 @@ class PositionRiskEngine(AbstractBaseEngine):
             premium_growth_factor=0.0,
             trend_factor=0.0,
             regime_factor=0.0,
-            iv_factor=0.0,
+            iv_factor=vega_factor,
             pnl_factor=0.0,
             final_call_stress=0.0,
-            explanation="Call stress components evaluated. Strike distance, delta, and gamma factors implemented."
+            explanation="Call stress components evaluated. Strike distance, delta, gamma, and vega factors implemented."
         )
 
     def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:

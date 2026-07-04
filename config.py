@@ -114,3 +114,6 @@ DELTA_SIGMOID_STEEPNESS = float(os.getenv("DELTA_SIGMOID_STEEPNESS", 10.0))
 
 # --- Gamma Factor Parameters (Module 20) ---
 GAMMA_SENSITIVITY_K = float(os.getenv("GAMMA_SENSITIVITY_K", 0.05))
+
+# --- Vega Factor Parameters (Module 21) ---
+VEGA_REFERENCE = float(os.getenv("VEGA_REFERENCE", 10.0))  # Vega value at which stress reaches 50%
