@@ -512,29 +512,6 @@ class SmartHedgingManager:
         """Hedge is permanently disabled. Do nothing."""
         return
 
-            self.set_entry_premiums(positions)
-
-            bleeding_leg, bleed_pct, bleed_usd, direction = self._detect_bleeding_leg(
-                positions
-            )
-
-            if bleeding_leg and bleed_pct >= self.BLEED_TRIGGER_PCT:
-                app_logger.info(
-                    f"Hedge: Post-entry — {bleeding_leg} already bleeding "
-                    f"{bleed_pct*100:.1f}%! Hedging immediately."
-                )
-                self._open_new_hedge(
-                    positions, bleeding_leg, bleed_pct,
-                    bleed_usd, direction, profit_usd=0.0, atr_usd=100.0
-                )
-            else:
-                app_logger.info(
-                    "Hedge: Post-entry — no significant bleed. Monitoring..."
-                )
-        except Exception as e:
-            app_logger.error(f"Hedge: Post-entry thread CRASHED: {e}")
-            notifier.notify_error(f"Post-entry hedge thread crashed: {e}")
-
     # ═══════════════════════════════════════════════════════════════
     # CORE: MANAGE HEDGE (called every 5-15 seconds by bot_engine)
     # ═══════════════════════════════════════════════════════════════
