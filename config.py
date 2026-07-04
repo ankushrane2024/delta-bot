@@ -141,3 +141,6 @@ REGIME_BASE_SCORE_TREND_EXHAUSTION = float(os.getenv("REGIME_BASE_SCORE_TREND_EX
 
 # --- Time-to-Expiry Factor Parameters (Module 26) ---
 TIME_EXPIRY_REFERENCE_DAYS = float(os.getenv("TIME_EXPIRY_REFERENCE_DAYS", 10.0))
+
+# --- P&L Factor Parameters (Module 27) ---
+PNL_STRESS_REFERENCE_LOSS = float(os.getenv("PNL_STRESS_REFERENCE_LOSS", 500.0))

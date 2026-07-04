@@ -528,6 +528,50 @@ class TestPositionRiskEngine(unittest.TestCase):
         score_ts = self.engine._compute_time_to_expiry_factor(ctx_ts)
         self.assertTrue(90.0 < score_ts < 91.0) # approx 90.48 depending on microsecond execution time
 
+    def test_pnl_factor(self):
+        from hedge.context.position_context import PositionContext
+        
+        def create_ctx(pnl):
+            ctx = PositionContext()
+            ctx.call_leg_pnl = pnl
+            return ctx
+            
+        # Assuming PNL_STRESS_REFERENCE_LOSS = 500.0
+        # Rayleigh CDF: Score = 100 * (1 - exp(-0.693 * (Loss / 500)^2))
+        
+        # 1. Positive P&L (Profit) -> 0.0
+        self.assertEqual(self.engine._compute_pnl_factor(create_ctx(100.0)), 0.0)
+        
+        # 2. Zero P&L -> 0.0
+        self.assertEqual(self.engine._compute_pnl_factor(create_ctx(0.0)), 0.0)
+        
+        # 3. Small Loss (100.0, ratio=0.2)
+        # exp(-0.693 * 0.04) = exp(-0.0277) ~ 0.972 -> Score ~ 2.73
+        self.assertAlmostEqual(self.engine._compute_pnl_factor(create_ctx(-100.0)), 2.73, places=1)
+        
+        # 4. Moderate Loss (250.0, ratio=0.5)
+        # exp(-0.693 * 0.25) = exp(-0.173) ~ 0.841 -> Score ~ 15.91
+        self.assertAlmostEqual(self.engine._compute_pnl_factor(create_ctx(-250.0)), 15.91, places=1)
+        
+        # 5. Reference Loss (500.0, ratio=1.0) -> Score = 50.0
+        self.assertAlmostEqual(self.engine._compute_pnl_factor(create_ctx(-500.0)), 50.0, places=1)
+        
+        # 6. Large Loss (750.0, ratio=1.5)
+        # exp(-0.693 * 2.25) = exp(-1.559) ~ 0.210 -> Score ~ 78.96
+        self.assertAlmostEqual(self.engine._compute_pnl_factor(create_ctx(-750.0)), 78.96, places=1)
+        
+        # 7. Extremely Large Loss (1500.0, ratio=3.0)
+        # exp(-0.693 * 9.0) = exp(-6.237) ~ 0.0019 -> Score ~ 99.80
+        self.assertAlmostEqual(self.engine._compute_pnl_factor(create_ctx(-1500.0)), 99.80, places=1)
+        
+        # 8. Apocalypse Loss (5000.0) -> Score = 100.0
+        self.assertAlmostEqual(self.engine._compute_pnl_factor(create_ctx(-5000.0)), 100.0, places=1)
+        
+        # 9. Invalid inputs
+        self.assertEqual(self.engine._compute_pnl_factor(create_ctx(None)), 0.0)
+        self.assertEqual(self.engine._compute_pnl_factor(create_ctx(float('nan'))), 0.0)
+        self.assertEqual(self.engine._compute_pnl_factor(create_ctx(float('inf'))), 0.0)
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)

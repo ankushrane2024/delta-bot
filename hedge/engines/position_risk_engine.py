@@ -483,6 +483,48 @@ class PositionRiskEngine(AbstractBaseEngine):
             logger.warning(msg)
             return 0.0
 
+    def _compute_pnl_factor(self, ctx: PositionContext, is_call: bool = True) -> float:
+        try:
+            # We want the unrealized P&L of the specific leg being evaluated.
+            leg_pnl = getattr(ctx, 'call_leg_pnl' if is_call else 'put_leg_pnl', 0.0)
+            
+            if leg_pnl is None or math.isnan(leg_pnl) or math.isinf(leg_pnl):
+                return 0.0
+                
+            leg_pnl = float(leg_pnl)
+            
+            # Positive P&L (profit) generates 0 stress
+            if leg_pnl >= 0.0:
+                return 0.0
+                
+            # Convert to a positive absolute loss
+            loss = abs(leg_pnl)
+            
+            from config import PNL_STRESS_REFERENCE_LOSS
+            ref_loss = float(PNL_STRESS_REFERENCE_LOSS)
+            if ref_loss <= 0.0:
+                ref_loss = 500.0 # Safe fallback
+                
+            # Rayleigh CDF (Squared Exponential Asymptote)
+            # Score = 100 * (1 - exp(-k * (Loss/Ref)^2))
+            # k = ln(2) approx 0.693147 so Score is exactly 50 at Ref.
+            k = 0.69314718056
+            ratio = loss / ref_loss
+            
+            exponent = -k * (ratio ** 2)
+            
+            if exponent < -50:
+                return 100.0
+                
+            score = 100.0 * (1.0 - math.exp(exponent))
+            return max(0.0, min(100.0, score))
+            
+        except Exception as e:
+            msg = f"Exception in _compute_pnl_factor: {str(e)}"
+            self._warnings.append(msg)
+            logger.warning(msg)
+            return 0.0
+
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
         delta_factor = self._compute_delta_factor(ctx.call_delta)
@@ -510,6 +552,7 @@ class PositionRiskEngine(AbstractBaseEngine):
         trend_factor = self._compute_trend_factor(trend, is_call=True)
         regime_factor = self._compute_regime_factor(regime)
         time_to_expiry_factor = self._compute_time_to_expiry_factor(ctx)
+        pnl_factor = self._compute_pnl_factor(ctx, is_call=True)
         
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
@@ -522,9 +565,9 @@ class PositionRiskEngine(AbstractBaseEngine):
             time_to_expiry_factor=time_to_expiry_factor,
             iv_factor=0.0, # Kept for backward compatibility if needed, but not populated actively with vega anymore
             iv_expansion_factor=iv_expansion_factor,
-            pnl_factor=0.0,
+            pnl_factor=pnl_factor,
             final_call_stress=0.0,
-            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, premium growth, IV expansion, trend, regime, and time factors implemented."
+            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, premium growth, IV expansion, trend, regime, time, and pnl factors implemented."
         )
 
 
