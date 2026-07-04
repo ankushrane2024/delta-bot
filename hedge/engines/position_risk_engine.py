@@ -439,6 +439,50 @@ class PositionRiskEngine(AbstractBaseEngine):
             logger.warning(msg)
             return 0.0
 
+    def _compute_time_to_expiry_factor(self, ctx: PositionContext) -> float:
+        try:
+            # Time to expiry logic
+            seconds = ctx.metadata.get('seconds_to_expiry')
+            if seconds is None:
+                seconds = ctx.metadata.get('time_to_expiry_seconds')
+            
+            if seconds is None:
+                expiry_ts = ctx.metadata.get('expiry_timestamp')
+                if expiry_ts:
+                    seconds = float(expiry_ts) - time.time()
+                    
+            if seconds is None or math.isnan(seconds) or math.isinf(seconds):
+                return 0.0
+                
+            seconds = float(seconds)
+            if seconds <= 0.0:
+                # Option is expired or expiring precisely now, max stress
+                return 100.0
+                
+            # Convert to days
+            days_to_expiry = seconds / 86400.0
+            
+            from config import TIME_EXPIRY_REFERENCE_DAYS
+            k = float(TIME_EXPIRY_REFERENCE_DAYS)
+            if k <= 0:
+                k = 10.0 # safe fallback
+                
+            # Standard Exponential Decay (Survival Analysis)
+            # Score = 100 * exp(-t / k)
+            exponent = -days_to_expiry / k
+            
+            if exponent < -50:
+                return 0.0 # Effectively zero for very large time
+                
+            score = 100.0 * math.exp(exponent)
+            return max(0.0, min(100.0, score))
+            
+        except Exception as e:
+            msg = f"Exception in _compute_time_to_expiry_factor: {str(e)}"
+            self._warnings.append(msg)
+            logger.warning(msg)
+            return 0.0
+
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
         delta_factor = self._compute_delta_factor(ctx.call_delta)
@@ -465,6 +509,7 @@ class PositionRiskEngine(AbstractBaseEngine):
         iv_expansion_factor = self._compute_iv_expansion_factor(ctx.call_iv, entry_iv)
         trend_factor = self._compute_trend_factor(trend, is_call=True)
         regime_factor = self._compute_regime_factor(regime)
+        time_to_expiry_factor = self._compute_time_to_expiry_factor(ctx)
         
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
@@ -474,12 +519,14 @@ class PositionRiskEngine(AbstractBaseEngine):
             premium_growth_factor=premium_growth_factor,
             trend_factor=trend_factor,
             regime_factor=regime_factor,
+            time_to_expiry_factor=time_to_expiry_factor,
             iv_factor=0.0, # Kept for backward compatibility if needed, but not populated actively with vega anymore
             iv_expansion_factor=iv_expansion_factor,
             pnl_factor=0.0,
             final_call_stress=0.0,
-            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, premium growth, IV expansion, trend, and regime factors implemented."
+            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, premium growth, IV expansion, trend, regime, and time factors implemented."
         )
+
 
     def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:
         return breakdown.final_call_stress

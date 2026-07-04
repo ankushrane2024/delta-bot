@@ -465,6 +465,69 @@ class TestPositionRiskEngine(unittest.TestCase):
         r_invalid_conf_2 = create_regime(MarketRegime.CONFIRMED_TREND, None)
         self.assertEqual(self.engine._compute_regime_factor(r_invalid_conf_2), 0.0)
 
+    def test_time_to_expiry_factor(self):
+        import time
+        from hedge.context.position_context import PositionContext
+        
+        def create_ctx(seconds):
+            ctx = PositionContext()
+            if seconds is not None:
+                ctx.metadata['seconds_to_expiry'] = seconds
+            return ctx
+            
+        # Standard Exponential Decay: Score = 100 * exp(-t / 10.0) where t is in days
+        
+        # 1. 30 days remaining (30 * 86400 = 2592000s) -> 100 * exp(-3) ~ 4.978
+        ctx_30d = create_ctx(2592000.0)
+        self.assertAlmostEqual(self.engine._compute_time_to_expiry_factor(ctx_30d), 4.978, places=2)
+        
+        # 2. 14 days remaining (14 * 86400 = 1209600s) -> 100 * exp(-1.4) ~ 24.659
+        ctx_14d = create_ctx(1209600.0)
+        self.assertAlmostEqual(self.engine._compute_time_to_expiry_factor(ctx_14d), 24.659, places=2)
+        
+        # 3. 7 days remaining (7 * 86400 = 604800s) -> 100 * exp(-0.7) ~ 49.658
+        ctx_7d = create_ctx(604800.0)
+        self.assertAlmostEqual(self.engine._compute_time_to_expiry_factor(ctx_7d), 49.658, places=2)
+        
+        # 4. 3 days remaining (3 * 86400 = 259200s) -> 100 * exp(-0.3) ~ 74.081
+        ctx_3d = create_ctx(259200.0)
+        self.assertAlmostEqual(self.engine._compute_time_to_expiry_factor(ctx_3d), 74.081, places=2)
+        
+        # 5. 1 day remaining (86400s) -> 100 * exp(-0.1) ~ 90.483
+        ctx_1d = create_ctx(86400.0)
+        self.assertAlmostEqual(self.engine._compute_time_to_expiry_factor(ctx_1d), 90.483, places=2)
+        
+        # 6. 12 hours remaining (43200s, 0.5 days) -> 100 * exp(-0.05) ~ 95.122
+        ctx_12h = create_ctx(43200.0)
+        self.assertAlmostEqual(self.engine._compute_time_to_expiry_factor(ctx_12h), 95.122, places=2)
+        
+        # 7. 1 hour remaining (3600s, ~0.0416 days) -> 100 * exp(-0.00416) ~ 99.584
+        ctx_1h = create_ctx(3600.0)
+        self.assertAlmostEqual(self.engine._compute_time_to_expiry_factor(ctx_1h), 99.584, places=2)
+        
+        # 8. 15 minutes remaining (900s, ~0.0104 days) -> 100 * exp(-0.00104) ~ 99.895
+        ctx_15m = create_ctx(900.0)
+        self.assertAlmostEqual(self.engine._compute_time_to_expiry_factor(ctx_15m), 99.895, places=2)
+        
+        # 9. Expired (0 seconds) -> 100.0
+        ctx_exp = create_ctx(0.0)
+        self.assertEqual(self.engine._compute_time_to_expiry_factor(ctx_exp), 100.0)
+        
+        # 10. Already Expired (-100 seconds) -> 100.0
+        ctx_past = create_ctx(-100.0)
+        self.assertEqual(self.engine._compute_time_to_expiry_factor(ctx_past), 100.0)
+        
+        # 11. Invalid / Missing Inputs
+        self.assertEqual(self.engine._compute_time_to_expiry_factor(create_ctx(None)), 0.0)
+        self.assertEqual(self.engine._compute_time_to_expiry_factor(create_ctx(float('nan'))), 0.0)
+        self.assertEqual(self.engine._compute_time_to_expiry_factor(create_ctx(float('inf'))), 0.0)
+        
+        # 12. Fallback check (expiry_timestamp)
+        ctx_ts = PositionContext()
+        ctx_ts.metadata['expiry_timestamp'] = time.time() + 86400.0 # 1 day
+        score_ts = self.engine._compute_time_to_expiry_factor(ctx_ts)
+        self.assertTrue(90.0 < score_ts < 91.0) # approx 90.48 depending on microsecond execution time
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)

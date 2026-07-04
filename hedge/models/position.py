@@ -40,6 +40,7 @@ class CallStressBreakdown:
     premium_growth_factor: float = 0.0
     trend_factor: float = 0.0
     regime_factor: float = 0.0
+    time_to_expiry_factor: float = 0.0
     iv_factor: float = 0.0
     iv_expansion_factor: float = 0.0
     pnl_factor: float = 0.0
