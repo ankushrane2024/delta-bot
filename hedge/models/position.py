@@ -36,10 +36,12 @@ class CallStressBreakdown:
     strike_distance_factor: float = 0.0
     delta_factor: float = 0.0
     gamma_factor: float = 0.0
+    vega_factor: float = 0.0
     premium_growth_factor: float = 0.0
     trend_factor: float = 0.0
     regime_factor: float = 0.0
     iv_factor: float = 0.0
+    iv_expansion_factor: float = 0.0
     pnl_factor: float = 0.0
     final_call_stress: float = 0.0
     explanation: str = ""

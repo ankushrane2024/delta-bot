@@ -121,3 +121,7 @@ VEGA_REFERENCE = float(os.getenv("VEGA_REFERENCE", 10.0))  # Vega value at which
 # --- Premium Growth Factor Parameters (Module 22) ---
 PREMIUM_GROWTH_REFERENCE_K = float(os.getenv("PREMIUM_GROWTH_REFERENCE_K", 1.0)) # 1.0 = 100% premium growth -> 50 stress
 PREMIUM_GROWTH_STEEPNESS_N = float(os.getenv("PREMIUM_GROWTH_STEEPNESS_N", 3.0)) # Hill coefficient for acceleration
+
+# --- IV Expansion Factor Parameters (Module 23) ---
+IV_EXPANSION_REFERENCE = float(os.getenv("IV_EXPANSION_REFERENCE", 1.0)) # 1.0 = 100% IV increase -> 50 stress
+IV_EXPANSION_SHAPE_N = float(os.getenv("IV_EXPANSION_SHAPE_N", 3.0)) # Weibull shape parameter (Cubed Exponential)

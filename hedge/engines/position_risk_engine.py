@@ -295,6 +295,45 @@ class PositionRiskEngine(AbstractBaseEngine):
             self._warnings.append(msg)
             logger.warning(msg)
             return 0.0
+            
+    def _compute_iv_expansion_factor(self, current_iv: float, entry_iv: float) -> float:
+        try:
+            if current_iv is None or math.isnan(current_iv) or math.isinf(current_iv):
+                return 0.0
+            if entry_iv is None or math.isnan(entry_iv) or math.isinf(entry_iv) or entry_iv <= 0:
+                return 0.0
+                
+            # Expansion ratio = max(0, (current / entry) - 1.0)
+            expansion = max(0.0, (float(current_iv) / float(entry_iv)) - 1.0)
+            
+            if expansion < 1e-9:
+                return 0.0
+                
+            from config import IV_EXPANSION_REFERENCE, IV_EXPANSION_SHAPE_N
+            ref = float(IV_EXPANSION_REFERENCE)
+            n = float(IV_EXPANSION_SHAPE_N)
+            
+            if ref <= 0:
+                ref = 1.0 # Safe fallback
+                
+            # Weibull CDF (Cubed Exponential Asymptote)
+            # Score = 100 * (1 - exp(-k * (expansion/ref)^n))
+            # Perfectly flat near zero (ignores ordinary IV fluctuations), accelerates violently during shock.
+            k = 0.69314718056 # ln(2) so that score=50 when expansion==ref
+            ratio = expansion / ref
+            exponent = -k * math.pow(ratio, n)
+            
+            if exponent < -50:
+                return 100.0
+                
+            score = 100.0 * (1.0 - math.exp(exponent))
+            return max(0.0, min(100.0, score))
+            
+        except Exception as e:
+            msg = f"Exception in _compute_iv_expansion_factor: {str(e)}"
+            self._warnings.append(msg)
+            logger.warning(msg)
+            return 0.0
 
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
@@ -303,33 +342,37 @@ class PositionRiskEngine(AbstractBaseEngine):
         vega_factor = self._compute_vega_factor(ctx.call_vega)
         
         # Deduce entry premium
-        # Try metadata first
         entry_premium = ctx.metadata.get('call_entry_price', None)
         if entry_premium is None:
-            # Reverse engineer from PnL if metadata is missing
             from config import LOT_TO_BTC
-            # Assuming equal legs, lots per leg = total_lots / 2
             lots_per_leg = max(1, ctx.total_lots / 2.0)
             if LOT_TO_BTC > 0 and lots_per_leg > 0:
-                # PnL = (Entry - Current) * Lots * LOT_TO_BTC
-                # Entry = Current + PnL / (Lots * LOT_TO_BTC)
                 entry_premium = ctx.call_mark_price + (ctx.call_leg_pnl / (lots_per_leg * LOT_TO_BTC))
             else:
-                entry_premium = ctx.call_mark_price # default to current, 0 growth
+                entry_premium = ctx.call_mark_price
                 
         premium_growth_factor = self._compute_premium_growth_factor(ctx.call_mark_price, entry_premium)
+        
+        # Get entry IV
+        entry_iv = ctx.metadata.get('call_entry_iv', None)
+        if entry_iv is None:
+            entry_iv = ctx.call_iv # fallback to current IV (no expansion)
+            
+        iv_expansion_factor = self._compute_iv_expansion_factor(ctx.call_iv, entry_iv)
         
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
             delta_factor=delta_factor,
             gamma_factor=gamma_factor,
+            vega_factor=vega_factor,
             premium_growth_factor=premium_growth_factor,
             trend_factor=0.0,
             regime_factor=0.0,
-            iv_factor=vega_factor,
+            iv_factor=0.0, # Kept for backward compatibility if needed, but not populated actively with vega anymore
+            iv_expansion_factor=iv_expansion_factor,
             pnl_factor=0.0,
             final_call_stress=0.0,
-            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, and premium growth factors implemented."
+            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, premium growth, and IV expansion factors implemented."
         )
 
     def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:

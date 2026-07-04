@@ -303,6 +303,46 @@ class TestPositionRiskEngine(unittest.TestCase):
         self.assertEqual(self.engine._compute_premium_growth_factor(100.0, -50.0), 0.0)
         self.assertEqual(self.engine._compute_premium_growth_factor(float('inf'), 100.0), 0.0)
 
+    def test_iv_expansion_factor(self):
+        # Weibull CDF: Score = 100 * (1 - exp(-0.693 * (expansion/1.0)^3))
+        # 1. No IV increase
+        self.assertEqual(self.engine._compute_iv_expansion_factor(40.0, 40.0), 0.0)
+        self.assertEqual(self.engine._compute_iv_expansion_factor(30.0, 40.0), 0.0) # IV drop
+        
+        # 2. 5% IV increase (expansion = 0.05)
+        # exp(-0.693 * 0.05^3) = exp(-0.000086) ~ 1.0 -> score ~ 0.008
+        self.assertAlmostEqual(self.engine._compute_iv_expansion_factor(42.0, 40.0), 0.009, places=2)
+        
+        # 3. 10% IV increase (expansion = 0.10)
+        # exp(-0.693 * 0.1^3) = exp(-0.000693) ~ 1.0 -> score ~ 0.069
+        self.assertAlmostEqual(self.engine._compute_iv_expansion_factor(44.0, 40.0), 0.069, places=2)
+        
+        # 4. 25% IV increase (expansion = 0.25)
+        # 0.25^3 = 0.0156. exp(-0.693 * 0.0156) = exp(-0.0108) ~ 0.989. Score ~ 1.07
+        self.assertAlmostEqual(self.engine._compute_iv_expansion_factor(50.0, 40.0), 1.077, places=2)
+        
+        # 5. 50% IV increase (expansion = 0.50)
+        # 0.5^3 = 0.125. exp(-0.693 * 0.125) = exp(-0.0866). Score ~ 8.3
+        self.assertAlmostEqual(self.engine._compute_iv_expansion_factor(60.0, 40.0), 8.300, places=2)
+        
+        # 6. 100% IV increase (expansion = 1.00)
+        self.assertAlmostEqual(self.engine._compute_iv_expansion_factor(80.0, 40.0), 50.0, places=2)
+        
+        # 7. 150% IV increase (expansion = 1.50)
+        # 1.5^3 = 3.375. exp(-0.693 * 3.375) = exp(-2.339). Score ~ 90.36
+        self.assertAlmostEqual(self.engine._compute_iv_expansion_factor(100.0, 40.0), 90.363, places=2)
+        
+        # 8. Extreme volatility shock (expansion = 3.00, i.e. 40 -> 160)
+        self.assertAlmostEqual(self.engine._compute_iv_expansion_factor(160.0, 40.0), 100.0, places=2)
+        
+        # 9. Invalid inputs
+        self.assertEqual(self.engine._compute_iv_expansion_factor(None, 40.0), 0.0)
+        self.assertEqual(self.engine._compute_iv_expansion_factor(40.0, None), 0.0)
+        self.assertEqual(self.engine._compute_iv_expansion_factor(float('nan'), 40.0), 0.0)
+        self.assertEqual(self.engine._compute_iv_expansion_factor(40.0, 0.0), 0.0)
+        self.assertEqual(self.engine._compute_iv_expansion_factor(40.0, -10.0), 0.0)
+        self.assertEqual(self.engine._compute_iv_expansion_factor(float('inf'), 40.0), 0.0)
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)
