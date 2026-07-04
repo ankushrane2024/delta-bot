@@ -572,6 +572,63 @@ class TestPositionRiskEngine(unittest.TestCase):
         self.assertEqual(self.engine._compute_pnl_factor(create_ctx(float('nan'))), 0.0)
         self.assertEqual(self.engine._compute_pnl_factor(create_ctx(float('inf'))), 0.0)
 
+    def test_stress_fusion_inputs(self):
+        from hedge.models.position import StressFusionBreakdown
+        
+        # 1. Standard valid inputs
+        fusion = self.engine._compute_stress_fusion_inputs(
+            strike_distance_factor=10.0,
+            delta_factor=20.0,
+            gamma_factor=30.0,
+            vega_factor=40.0,
+            premium_growth_factor=50.0,
+            iv_expansion_factor=60.0,
+            trend_factor=70.0,
+            regime_factor=80.0,
+            time_to_expiry_factor=90.0,
+            pnl_factor=100.0
+        )
+        
+        self.assertIsInstance(fusion, StressFusionBreakdown)
+        self.assertEqual(fusion.strike_distance_factor, 10.0)
+        self.assertEqual(fusion.delta_factor, 20.0)
+        self.assertEqual(fusion.gamma_factor, 30.0)
+        self.assertEqual(fusion.vega_factor, 40.0)
+        self.assertEqual(fusion.premium_growth_factor, 50.0)
+        self.assertEqual(fusion.iv_expansion_factor, 60.0)
+        self.assertEqual(fusion.trend_factor, 70.0)
+        self.assertEqual(fusion.regime_factor, 80.0)
+        self.assertEqual(fusion.time_to_expiry_factor, 90.0)
+        self.assertEqual(fusion.pnl_factor, 100.0)
+        self.assertEqual(fusion.fused_score, 0.0) # Ensure it does NOT compute final score yet
+        self.assertIn("normalized_factors", fusion.debug_information)
+        
+        # 2. Invalid inputs, missing values, extreme values (clamping)
+        fusion_invalid = self.engine._compute_stress_fusion_inputs(
+            strike_distance_factor=None,
+            delta_factor=float('nan'),
+            gamma_factor=float('inf'),
+            vega_factor=-50.0, # should clamp to 0
+            premium_growth_factor=150.0, # should clamp to 100
+            iv_expansion_factor="invalid_string", # should safely fallback to 0
+            trend_factor=None,
+            regime_factor=float('-inf'),
+            time_to_expiry_factor=0.0,
+            pnl_factor=100.0
+        )
+        
+        self.assertEqual(fusion_invalid.strike_distance_factor, 0.0)
+        self.assertEqual(fusion_invalid.delta_factor, 0.0)
+        self.assertEqual(fusion_invalid.gamma_factor, 0.0)
+        self.assertEqual(fusion_invalid.vega_factor, 0.0)
+        self.assertEqual(fusion_invalid.premium_growth_factor, 100.0)
+        self.assertEqual(fusion_invalid.iv_expansion_factor, 0.0)
+        self.assertEqual(fusion_invalid.trend_factor, 0.0)
+        self.assertEqual(fusion_invalid.regime_factor, 0.0)
+        self.assertEqual(fusion_invalid.time_to_expiry_factor, 0.0)
+        self.assertEqual(fusion_invalid.pnl_factor, 100.0)
+        self.assertEqual(fusion_invalid.fused_score, 0.0)
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)

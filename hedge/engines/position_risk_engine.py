@@ -525,6 +525,67 @@ class PositionRiskEngine(AbstractBaseEngine):
             logger.warning(msg)
             return 0.0
 
+    def _compute_stress_fusion_inputs(
+        self,
+        strike_distance_factor: float,
+        delta_factor: float,
+        gamma_factor: float,
+        vega_factor: float,
+        premium_growth_factor: float,
+        iv_expansion_factor: float,
+        trend_factor: float,
+        regime_factor: float,
+        time_to_expiry_factor: float,
+        pnl_factor: float
+    ):
+        """
+        Architecture layer for Stress Fusion (Module 28).
+        Validates, normalizes, and packages stress factors for mathematical fusion.
+        Does NOT compute final scores.
+        """
+        from hedge.models.position import StressFusionBreakdown
+        
+        def _safe_float(val) -> float:
+            try:
+                if val is None or math.isnan(val) or math.isinf(val):
+                    return 0.0
+                return max(0.0, min(100.0, float(val)))
+            except Exception:
+                return 0.0
+                
+        debug_info = {}
+        
+        factors = {
+            "strike_distance_factor": _safe_float(strike_distance_factor),
+            "delta_factor": _safe_float(delta_factor),
+            "gamma_factor": _safe_float(gamma_factor),
+            "vega_factor": _safe_float(vega_factor),
+            "premium_growth_factor": _safe_float(premium_growth_factor),
+            "iv_expansion_factor": _safe_float(iv_expansion_factor),
+            "trend_factor": _safe_float(trend_factor),
+            "regime_factor": _safe_float(regime_factor),
+            "time_to_expiry_factor": _safe_float(time_to_expiry_factor),
+            "pnl_factor": _safe_float(pnl_factor)
+        }
+        
+        debug_info["normalized_factors"] = factors
+        debug_info["status"] = "Fusion inputs normalized. Mathematical fusion pending."
+        
+        return StressFusionBreakdown(
+            strike_distance_factor=factors["strike_distance_factor"],
+            delta_factor=factors["delta_factor"],
+            gamma_factor=factors["gamma_factor"],
+            vega_factor=factors["vega_factor"],
+            premium_growth_factor=factors["premium_growth_factor"],
+            iv_expansion_factor=factors["iv_expansion_factor"],
+            trend_factor=factors["trend_factor"],
+            regime_factor=factors["regime_factor"],
+            time_to_expiry_factor=factors["time_to_expiry_factor"],
+            pnl_factor=factors["pnl_factor"],
+            fused_score=0.0, # Placeholder
+            debug_information=debug_info
+        )
+
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
         delta_factor = self._compute_delta_factor(ctx.call_delta)
