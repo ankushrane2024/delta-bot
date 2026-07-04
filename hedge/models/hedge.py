@@ -1,22 +1,32 @@
-from dataclasses import dataclass, field
-from typing import Dict, Any, Optional
-from .enums import AresDecision, HedgeSide, HedgeState
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, List
 
 @dataclass
 class HedgePlan:
-    hedge_action: AresDecision
-    hedge_side: HedgeSide
-    hedge_ratio: float
-    hedge_quantity: float
+    action: str
+    side: str
+    quantity: float
+    execution_priority: int
+    execution_style: str
+    estimated_post_hedge_delta: float
     hedge_reason: str
     urgency: float
-    confidence: float
-    execution_priority: int
-    hedge_id: str
-    linked_position_id: Optional[str]
-    timestamp: str
-    explanation: str
-    started_at: float
-    completed_at: float
-    execution_time_ms: float
-    debug_information: Dict[str, Any] = field(default_factory=dict)
+    timestamp: float
+    warnings: List[str]
+    
+    # Backward compatibility properties for ExecutionEngine
+    @property
+    def hedge_quantity(self) -> float:
+        return self.quantity
+        
+    @property
+    def hedge_side(self) -> Any:
+        # Mock an enum so .name works
+        class MockEnum:
+            def __init__(self, name):
+                self.name = name
+        return MockEnum(self.side)
+        
+    @property
+    def hedge_id(self) -> str:
+        return "mock_id"

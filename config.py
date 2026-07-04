@@ -144,3 +144,27 @@ TIME_EXPIRY_REFERENCE_DAYS = float(os.getenv("TIME_EXPIRY_REFERENCE_DAYS", 10.0)
 
 # --- P&L Factor Parameters (Module 27) ---
 PNL_STRESS_REFERENCE_LOSS = float(os.getenv("PNL_STRESS_REFERENCE_LOSS", 500.0))
+
+# --- Stress Fusion Parameters (Module 29) ---
+FUSION_SOFTMAX_K = float(os.getenv("FUSION_SOFTMAX_K", 0.05)) # Determines how aggressively the dominant factor takes over
+CONFIDENCE_PENALTY_POWER = float(os.getenv("CONFIDENCE_PENALTY_POWER", 2.0)) # How aggressively low confidence penalizes medium risks
+
+# --- Decision Engine Parameters (Module 30) ---
+DECISION_EMA_ALPHA = float(os.getenv("DECISION_EMA_ALPHA", 0.3)) # Smoothing factor for fused stress
+
+HEDGE_THRESHOLD_PREPARE = float(os.getenv("HEDGE_THRESHOLD_PREPARE", 50.0))
+HEDGE_THRESHOLD_PARTIAL = float(os.getenv("HEDGE_THRESHOLD_PARTIAL", 65.0))
+HEDGE_THRESHOLD_FULL = float(os.getenv("HEDGE_THRESHOLD_FULL", 80.0))
+HEDGE_THRESHOLD_EMERGENCY = float(os.getenv("HEDGE_THRESHOLD_EMERGENCY", 95.0))
+
+UNHEDGE_THRESHOLD_BUFFER = float(os.getenv("UNHEDGE_THRESHOLD_BUFFER", 10.0)) # Needs to drop 10 points below threshold to dehedge
+
+PARTIAL_HEDGE_RATIO = float(os.getenv("PARTIAL_HEDGE_RATIO", 0.5))
+FULL_HEDGE_RATIO = float(os.getenv("FULL_HEDGE_RATIO", 1.0))
+
+# --- Hedge Sizing Engine Parameters (Module 31) ---
+FUTURES_CONTRACT_SIZE_BTC = float(os.getenv("FUTURES_CONTRACT_SIZE_BTC", 0.001)) # 1 contract = 0.001 BTC
+MIN_ORDER_QTY = float(os.getenv("MIN_ORDER_QTY", 1.0))
+QTY_STEP_SIZE = float(os.getenv("QTY_STEP_SIZE", 1.0))
+MAX_ORDER_QTY = float(os.getenv("MAX_ORDER_QTY", 10000.0))
+

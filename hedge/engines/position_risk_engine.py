@@ -525,6 +525,74 @@ class PositionRiskEngine(AbstractBaseEngine):
             logger.warning(msg)
             return 0.0
 
+    def _compute_cluster_softmax_ev(self, inputs: Dict[str, float], base_weights: Dict[str, float], k: float) -> 'ClusterOutput':
+        from hedge.models.position import ClusterOutput
+        
+        if not inputs:
+            return ClusterOutput()
+            
+        total_weight = 0.0
+        weighted_sum = 0.0
+        max_val = -1.0
+        dominant_factor = ""
+        
+        for name, val in inputs.items():
+            base = base_weights.get(name, 1.0)
+            weight = base * math.exp(k * val)
+            total_weight += weight
+            weighted_sum += weight * val
+            
+            if val > max_val:
+                max_val = val
+                dominant_factor = name
+                
+        score = weighted_sum / total_weight if total_weight > 0 else 0.0
+        score = max(0.0, min(100.0, score))
+        
+        reason_map = {
+            "strike_distance_factor": "Strike Proximity",
+            "delta_factor": "Directional Threat",
+            "gamma_factor": "Gamma Explosion",
+            "vega_factor": "Volatility Sensitivity",
+            "iv_expansion_factor": "IV Expansion",
+            "premium_growth_factor": "Premium Expansion",
+            "pnl_factor": "Large Unrealized Loss",
+            "trend_factor": "Adverse Trend",
+            "regime_factor": "Hostile Regime"
+        }
+        
+        return ClusterOutput(
+            score=score,
+            confidence=100.0, # Handled by upstream evaluators
+            primary_reason=reason_map.get(dominant_factor, dominant_factor),
+            dominant_factor=dominant_factor,
+            raw_inputs=inputs
+        )
+
+    def _apply_confidence_dampening(self, score: float, confidence: float, power: float) -> float:
+        c = max(0.0, min(100.0, confidence)) / 100.0
+        s = max(0.0, min(100.0, score)) / 100.0
+        multiplier = c + (1.0 - c) * math.pow(s, power)
+        return score * multiplier
+
+    def _compute_mathematical_fusion(self, breakdown: 'StressFusionBreakdown') -> float:
+        from config import CONFIDENCE_PENALTY_POWER
+        
+        survival = 1.0
+        clusters = [
+            breakdown.directional_cluster,
+            breakdown.volatility_cluster,
+            breakdown.financial_cluster,
+            breakdown.context_cluster
+        ]
+        
+        for cluster in clusters:
+            effective_risk = self._apply_confidence_dampening(cluster.score, cluster.confidence, CONFIDENCE_PENALTY_POWER)
+            p_ruin = effective_risk / 100.0
+            survival *= (1.0 - p_ruin)
+            
+        return 100.0 * (1.0 - survival)
+
     def _compute_stress_fusion_inputs(
         self,
         strike_distance_factor: float,
@@ -538,12 +606,8 @@ class PositionRiskEngine(AbstractBaseEngine):
         time_to_expiry_factor: float,
         pnl_factor: float
     ):
-        """
-        Architecture layer for Stress Fusion (Module 28).
-        Validates, normalizes, and packages stress factors for mathematical fusion.
-        Does NOT compute final scores.
-        """
         from hedge.models.position import StressFusionBreakdown
+        from config import FUSION_SOFTMAX_K
         
         def _safe_float(val) -> float:
             try:
@@ -568,10 +632,45 @@ class PositionRiskEngine(AbstractBaseEngine):
             "pnl_factor": _safe_float(pnl_factor)
         }
         
-        debug_info["normalized_factors"] = factors
-        debug_info["status"] = "Fusion inputs normalized. Mathematical fusion pending."
+        k = FUSION_SOFTMAX_K
         
-        return StressFusionBreakdown(
+        # 1. Directional Cluster
+        dir_inputs = {
+            "strike_distance_factor": factors["strike_distance_factor"],
+            "delta_factor": factors["delta_factor"],
+            "gamma_factor": factors["gamma_factor"]
+        }
+        dir_weights = {"strike_distance_factor": 0.4, "delta_factor": 0.8, "gamma_factor": 1.0}
+        dir_cluster = self._compute_cluster_softmax_ev(dir_inputs, dir_weights, k)
+        
+        # 2. Volatility Cluster
+        vol_inputs = {
+            "vega_factor": factors["vega_factor"],
+            "iv_expansion_factor": factors["iv_expansion_factor"]
+        }
+        vol_weights = {"vega_factor": 0.3, "iv_expansion_factor": 0.7}
+        vol_cluster = self._compute_cluster_softmax_ev(vol_inputs, vol_weights, k)
+        
+        # 3. Financial Cluster
+        fin_inputs = {
+            "premium_growth_factor": factors["premium_growth_factor"],
+            "pnl_factor": factors["pnl_factor"]
+        }
+        fin_weights = {"premium_growth_factor": 0.85, "pnl_factor": 1.5}
+        fin_cluster = self._compute_cluster_softmax_ev(fin_inputs, fin_weights, k)
+        
+        # 4. Context Cluster
+        ctx_inputs = {
+            "trend_factor": factors["trend_factor"],
+            "regime_factor": factors["regime_factor"]
+        }
+        ctx_weights = {"trend_factor": 0.5, "regime_factor": 0.3}
+        ctx_cluster = self._compute_cluster_softmax_ev(ctx_inputs, ctx_weights, k)
+        
+        debug_info["normalized_factors"] = factors
+        debug_info["status"] = "Fusion inputs normalized and mathematically clustered."
+        
+        breakdown = StressFusionBreakdown(
             strike_distance_factor=factors["strike_distance_factor"],
             delta_factor=factors["delta_factor"],
             gamma_factor=factors["gamma_factor"],
@@ -582,9 +681,16 @@ class PositionRiskEngine(AbstractBaseEngine):
             regime_factor=factors["regime_factor"],
             time_to_expiry_factor=factors["time_to_expiry_factor"],
             pnl_factor=factors["pnl_factor"],
-            fused_score=0.0, # Placeholder
+            directional_cluster=dir_cluster,
+            volatility_cluster=vol_cluster,
+            financial_cluster=fin_cluster,
+            context_cluster=ctx_cluster,
+            fused_score=0.0, 
             debug_information=debug_info
         )
+        
+        breakdown.fused_score = self._compute_mathematical_fusion(breakdown)
+        return breakdown
 
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
@@ -615,6 +721,19 @@ class PositionRiskEngine(AbstractBaseEngine):
         time_to_expiry_factor = self._compute_time_to_expiry_factor(ctx)
         pnl_factor = self._compute_pnl_factor(ctx, is_call=True)
         
+        fusion_breakdown = self._compute_stress_fusion_inputs(
+            strike_distance_factor=strike_dist_factor,
+            delta_factor=delta_factor,
+            gamma_factor=gamma_factor,
+            vega_factor=vega_factor,
+            premium_growth_factor=premium_growth_factor,
+            iv_expansion_factor=iv_expansion_factor,
+            trend_factor=trend_factor,
+            regime_factor=regime_factor,
+            time_to_expiry_factor=time_to_expiry_factor,
+            pnl_factor=pnl_factor
+        )
+        
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
             delta_factor=delta_factor,
@@ -627,8 +746,8 @@ class PositionRiskEngine(AbstractBaseEngine):
             iv_factor=0.0, # Kept for backward compatibility if needed, but not populated actively with vega anymore
             iv_expansion_factor=iv_expansion_factor,
             pnl_factor=pnl_factor,
-            final_call_stress=0.0,
-            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, premium growth, IV expansion, trend, regime, time, and pnl factors implemented."
+            final_call_stress=fusion_breakdown.fused_score,
+            explanation="Call stress components evaluated and fused via Bayesian Survival (Hierarchical Clusters)."
         )
 
 

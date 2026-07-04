@@ -48,7 +48,16 @@ class CallStressBreakdown:
     explanation: str = ""
 
 @dataclass
+class ClusterOutput:
+    score: float = 0.0
+    confidence: float = 100.0
+    primary_reason: str = ""
+    dominant_factor: str = ""
+    raw_inputs: Dict[str, float] = field(default_factory=dict)
+
+@dataclass
 class StressFusionBreakdown:
+    # Individual Normalized Factors
     strike_distance_factor: float = 0.0
     delta_factor: float = 0.0
     gamma_factor: float = 0.0
@@ -60,7 +69,13 @@ class StressFusionBreakdown:
     time_to_expiry_factor: float = 0.0
     pnl_factor: float = 0.0
     
-    # Placeholder for future fused score
+    # Orthogonal Clusters
+    directional_cluster: ClusterOutput = field(default_factory=ClusterOutput)
+    volatility_cluster: ClusterOutput = field(default_factory=ClusterOutput)
+    financial_cluster: ClusterOutput = field(default_factory=ClusterOutput)
+    context_cluster: ClusterOutput = field(default_factory=ClusterOutput)
+    
+    # Final Fused Bayesian Score
     fused_score: float = 0.0
     
     debug_information: Dict[str, Any] = field(default_factory=dict)

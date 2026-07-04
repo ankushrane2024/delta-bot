@@ -1,122 +1,105 @@
 import unittest
+from unittest.mock import MagicMock
+
 from hedge.engines.decision_engine import DecisionEngine
-from hedge.models.decision import DecisionResult, AresDecision
-from hedge.models.trend import TrendResult
-from hedge.models.regime import MarketRegimeResult
-from hedge.models.position import PositionRiskResult
-from hedge.models.enums import MarketRegime, TrendDirection
+from hedge.models.decision import HedgeAction, HedgeDecision
+from hedge.models.position import StressFusionBreakdown, ClusterOutput
+from hedge.context.position_context import PositionContext
+import config
 
 class TestDecisionEngine(unittest.TestCase):
     def setUp(self):
         self.engine = DecisionEngine()
-        self.engine.initialize()
+        self.context = PositionContext(total_lots=10, is_valid=True, futures_price=60000, short_call_strike=65000)
         
-        self.dummy_trend = TrendResult(
-            evaluation_id="test",
-            trend_direction=TrendDirection.NONE,
-            trend_strength=0.0,
-            trend_confidence=0.0,
-            trend_persistence=0.0,
-            trend_acceleration=0.0,
-            continuation_probability=0.0,
-            reversal_probability=0.0,
-            whipsaw_probability=0.0,
-            signal_reliability=100.0,
-            timestamp="",
-            started_at=0.0,
-            completed_at=0.0,
-            execution_time_ms=0.0,
-            explanation="",
-            supporting_evidence=[],
-            analyzer_health_summary={},
-            debug_information={}
-        )
-        
-        self.dummy_regime = MarketRegimeResult(
-            evaluation_id="test",
-            current_regime=MarketRegime.SAFE_RANGE,
-            previous_regime=None,
-            confidence=100.0,
-            transition_reason="",
-            transition_allowed=True,
-            regime_duration=0.0,
-            regime_strength=0.0,
-            stability_score=0.0,
-            timestamp="",
-            debug_information={}
-        )
-        
-        self.dummy_risk = PositionRiskResult(
-            evaluation_id="test",
-            overall_risk_score=0.0,
-            call_side_risk=0.0,
-            put_side_risk=0.0,
-            delta_exposure=0.0,
-            gamma_exposure=0.0,
-            theta_exposure=0.0,
-            vega_exposure=0.0,
-            stop_loss_proximity=0.0,
-            portfolio_heat=0.0,
-            hedge_urgency=0.0,
-            call_stress=0.0,
-            put_stress=0.0,
-            portfolio_stress=0.0,
-            stress_velocity=0.0,
-            recovery_probability=0.0,
-            hedge_efficiency_estimate=0.0,
-            confidence=100.0,
-            timestamp="",
-            started_at=0.0,
-            completed_at=0.0,
-            execution_time_ms=0.0,
-            explanation="",
-            debug_information={}
-        )
+        self.breakdown = StressFusionBreakdown()
+        self.breakdown.directional_cluster = ClusterOutput(score=80.0, dominant_factor="gamma_factor", primary_reason="Gamma")
+        self.breakdown.volatility_cluster = ClusterOutput(score=40.0)
+        self.breakdown.financial_cluster = ClusterOutput(score=20.0)
+        self.breakdown.context_cluster = ClusterOutput(score=10.0)
 
-    def test_initialization_and_metadata(self):
-        meta = self.engine.metadata()
-        self.assertEqual(meta["name"], "DecisionEngine")
+    def test_ema_smoothing(self):
+        # First eval sets EMA exactly to the incoming score
+        decision1 = self.engine.evaluate(50.0, self.breakdown, self.context, 0.0)
+        self.assertAlmostEqual(decision1.ema_stress, 50.0)
         
-        health = self.engine.health()
-        self.assertFalse(health.replay_mode)
-        self.assertEqual(health.failed_evaluators, 0)
+        # Second eval applies EMA alpha
+        # config.DECISION_EMA_ALPHA is defaulted to 0.3
+        decision2 = self.engine.evaluate(100.0, self.breakdown, self.context, 0.0)
+        expected_ema = (config.DECISION_EMA_ALPHA * 100.0) + ((1.0 - config.DECISION_EMA_ALPHA) * 50.0)
+        self.assertAlmostEqual(decision2.ema_stress, expected_ema)
 
-    def test_evaluate_success(self):
-        result = self.engine.evaluate(self.dummy_trend, self.dummy_regime, self.dummy_risk)
+    def test_scaling_up_transitions(self):
+        # We force EMA by manipulating fused_score on the first tick (EMA initialization)
         
-        self.assertIsInstance(result, DecisionResult)
-        self.assertIsNotNone(result.evaluation_id)
-        self.assertTrue(result.execution_time_ms >= 0)
-        self.assertEqual(result.decision, AresDecision.HOLD)
-        self.assertEqual(result.explanation, "Computed decision HOLD based on consensus.")
+        # NO_ACTION
+        d = self.engine.evaluate(30.0, self.breakdown, self.context, 0.0)
+        self.assertEqual(d.action, HedgeAction.MONITOR)
+        self.assertEqual(d.hedge_ratio, 0.0)
         
-        health = self.engine.health()
-        self.assertTrue(health.last_execution_time > 0)
-        self.assertEqual(len(health.warnings), 0)
+        self.engine.reset_state()
+        
+        # PREPARE_HEDGE
+        d = self.engine.evaluate(config.HEDGE_THRESHOLD_PREPARE + 1, self.breakdown, self.context, 0.0)
+        self.assertEqual(d.action, HedgeAction.PREPARE_HEDGE)
+        self.assertEqual(d.hedge_ratio, 0.0)
+        
+        self.engine.reset_state()
+        
+        # PARTIAL_HEDGE
+        d = self.engine.evaluate(config.HEDGE_THRESHOLD_PARTIAL + 1, self.breakdown, self.context, 0.0)
+        self.assertEqual(d.action, HedgeAction.PARTIAL_HEDGE)
+        self.assertEqual(d.hedge_ratio, config.PARTIAL_HEDGE_RATIO)
+        
+        self.engine.reset_state()
+        
+        # FULL_HEDGE
+        d = self.engine.evaluate(config.HEDGE_THRESHOLD_FULL + 1, self.breakdown, self.context, 0.0)
+        self.assertEqual(d.action, HedgeAction.FULL_HEDGE)
+        self.assertEqual(d.hedge_ratio, config.FULL_HEDGE_RATIO)
+        
+        self.engine.reset_state()
+        
+        # EMERGENCY_HEDGE
+        d = self.engine.evaluate(config.HEDGE_THRESHOLD_EMERGENCY + 1, self.breakdown, self.context, 0.0)
+        self.assertEqual(d.action, HedgeAction.EMERGENCY_HEDGE)
+        self.assertEqual(d.hedge_ratio, config.FULL_HEDGE_RATIO)
 
-    def test_missing_inputs(self):
-        # Missing trend
-        result = self.engine.evaluate(None, self.dummy_regime, self.dummy_risk)
+    def test_hysteresis_scaling_down(self):
+        # Start fully hedged and EMA = FULL threshold + 5
+        ema_start = config.HEDGE_THRESHOLD_FULL + 5.0
+        self.engine.evaluate(ema_start, self.breakdown, self.context, config.FULL_HEDGE_RATIO)
         
-        self.assertEqual(result.decision, AresDecision.HOLD)
-        self.assertIn("EMERGENCY HOLD", result.explanation)
+        # Now drop EMA just slightly below FULL threshold
+        # It should NOT dehedge to PARTIAL because of UNHEDGE_THRESHOLD_BUFFER
+        ema_slight_drop = config.HEDGE_THRESHOLD_FULL - (config.UNHEDGE_THRESHOLD_BUFFER / 2.0)
+        self.engine._ema_stress = ema_slight_drop # directly manipulate for test precision
+        d = self.engine.evaluate(ema_slight_drop, self.breakdown, self.context, config.FULL_HEDGE_RATIO)
+        self.assertEqual(d.action, HedgeAction.MONITOR)
+        self.assertEqual(d.hedge_ratio, config.FULL_HEDGE_RATIO)
         
-        health = self.engine.health()
-        self.assertEqual(len(health.warnings), 1)
-        self.assertIn("Missing", health.warnings[0])
+        # Now drop EMA below the buffer for FULL
+        ema_full_drop = config.HEDGE_THRESHOLD_FULL - config.UNHEDGE_THRESHOLD_BUFFER - 1.0
+        self.engine._ema_stress = ema_full_drop
+        d2 = self.engine.evaluate(ema_full_drop, self.breakdown, self.context, config.FULL_HEDGE_RATIO)
+        self.assertEqual(d2.action, HedgeAction.PARTIAL_HEDGE)
+        self.assertEqual(d2.hedge_ratio, config.PARTIAL_HEDGE_RATIO)
+        
+        # Now drop EMA below PARTIAL buffer -> DEHEDGE
+        ema_partial_drop = config.HEDGE_THRESHOLD_PARTIAL - config.UNHEDGE_THRESHOLD_BUFFER - 1.0
+        self.engine._ema_stress = ema_partial_drop
+        d3 = self.engine.evaluate(ema_partial_drop, self.breakdown, self.context, config.PARTIAL_HEDGE_RATIO)
+        self.assertEqual(d3.action, HedgeAction.DEHEDGE)
+        self.assertEqual(d3.hedge_ratio, 0.0)
 
-    def test_forced_decision(self):
-        self.dummy_trend.debug_information["force_decision"] = AresDecision.EMERGENCY_EXIT
-        result = self.engine.evaluate(self.dummy_trend, self.dummy_regime, self.dummy_risk)
+    def test_dominant_cluster_extraction(self):
+        self.breakdown.directional_cluster = ClusterOutput(score=10.0)
+        self.breakdown.financial_cluster = ClusterOutput(score=99.0, dominant_factor="pnl_factor", primary_reason="Large Loss")
         
-        self.assertEqual(result.decision, AresDecision.EMERGENCY_EXIT)
+        d = self.engine.evaluate(100.0, self.breakdown, self.context, 0.0)
+        self.assertEqual(d.dominant_cluster, "Financial")
+        self.assertEqual(d.dominant_factor, "pnl_factor")
+        self.assertEqual(d.reason, "Large Loss")
 
-    def test_reset(self):
-        self.engine.evaluate(None, self.dummy_regime, self.dummy_risk)
-        self.assertEqual(len(self.engine._warnings), 1)
-        
-        self.engine.reset()
-        self.assertEqual(len(self.engine._warnings), 0)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

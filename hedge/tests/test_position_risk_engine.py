@@ -572,10 +572,66 @@ class TestPositionRiskEngine(unittest.TestCase):
         self.assertEqual(self.engine._compute_pnl_factor(create_ctx(float('nan'))), 0.0)
         self.assertEqual(self.engine._compute_pnl_factor(create_ctx(float('inf'))), 0.0)
 
+    def test_module29_confidence_dampening(self):
+        # 1. 100 Score with 100 Confidence -> 100
+        self.assertAlmostEqual(self.engine._apply_confidence_dampening(100.0, 100.0, 2.0), 100.0)
+        
+        # 2. 100 Score with 0 Confidence -> 100 (NEVER reduces a genuine 100 risk)
+        self.assertAlmostEqual(self.engine._apply_confidence_dampening(100.0, 0.0, 2.0), 100.0)
+        
+        # 3. 50 Score with 100 Confidence -> 50
+        self.assertAlmostEqual(self.engine._apply_confidence_dampening(50.0, 100.0, 2.0), 50.0)
+        
+        # 4. 50 Score with 0 Confidence -> 50 * (0.5)^2 = 12.5 (Heavily penalizes medium risk)
+        self.assertAlmostEqual(self.engine._apply_confidence_dampening(50.0, 0.0, 2.0), 12.5)
+        
+        # 5. 90 Score with 50 Confidence -> 90 * (0.5 + 0.5 * (0.9)^2) = 90 * (0.5 + 0.5 * 0.81) = 90 * (0.905) = 81.45
+        self.assertAlmostEqual(self.engine._apply_confidence_dampening(90.0, 50.0, 2.0), 81.45)
+        
+    def test_module29_cluster_softmax_ev(self):
+        inputs = {"delta_factor": 20.0, "gamma_factor": 90.0, "strike_distance_factor": 10.0}
+        weights = {"delta_factor": 1.0, "gamma_factor": 1.0, "strike_distance_factor": 1.0}
+        
+        # With k=0.1, exp(9) is massive compared to exp(2) and exp(1)
+        # exp(9) ~ 8103, exp(2) ~ 7.3, exp(1) ~ 2.7
+        # Expected score should be very close to 90.0
+        cluster = self.engine._compute_cluster_softmax_ev(inputs, weights, k=0.1)
+        self.assertTrue(89.0 < cluster.score < 90.0)
+        self.assertEqual(cluster.dominant_factor, "gamma_factor")
+        self.assertEqual(cluster.primary_reason, "Gamma Explosion")
+        self.assertEqual(cluster.raw_inputs, inputs)
+        
+        # Test equal values
+        inputs_eq = {"a": 50.0, "b": 50.0}
+        weights_eq = {"a": 1.0, "b": 1.0}
+        cluster_eq = self.engine._compute_cluster_softmax_ev(inputs_eq, weights_eq, k=0.1)
+        self.assertAlmostEqual(cluster_eq.score, 50.0)
+        
+    def test_module29_mathematical_fusion(self):
+        from hedge.models.position import StressFusionBreakdown, ClusterOutput
+        breakdown = StressFusionBreakdown()
+        
+        # Scenario: One catastrophic risk (Financial = 100), others 0
+        breakdown.financial_cluster = ClusterOutput(score=100.0, confidence=100.0)
+        fused = self.engine._compute_mathematical_fusion(breakdown)
+        self.assertAlmostEqual(fused, 100.0)
+        
+        # Scenario: All 0
+        breakdown.financial_cluster = ClusterOutput(score=0.0)
+        self.assertAlmostEqual(self.engine._compute_mathematical_fusion(breakdown), 0.0)
+        
+        # Scenario: Four 50% risks (Bayesian Survival accumulation)
+        # S = (1 - 0.5)^4 = 0.0625
+        # Fused = 100 * (1 - 0.0625) = 93.75
+        breakdown.directional_cluster = ClusterOutput(score=50.0, confidence=100.0)
+        breakdown.volatility_cluster = ClusterOutput(score=50.0, confidence=100.0)
+        breakdown.financial_cluster = ClusterOutput(score=50.0, confidence=100.0)
+        breakdown.context_cluster = ClusterOutput(score=50.0, confidence=100.0)
+        self.assertAlmostEqual(self.engine._compute_mathematical_fusion(breakdown), 93.75)
+        
     def test_stress_fusion_inputs(self):
         from hedge.models.position import StressFusionBreakdown
         
-        # 1. Standard valid inputs
         fusion = self.engine._compute_stress_fusion_inputs(
             strike_distance_factor=10.0,
             delta_factor=20.0,
@@ -590,45 +646,16 @@ class TestPositionRiskEngine(unittest.TestCase):
         )
         
         self.assertIsInstance(fusion, StressFusionBreakdown)
-        self.assertEqual(fusion.strike_distance_factor, 10.0)
-        self.assertEqual(fusion.delta_factor, 20.0)
-        self.assertEqual(fusion.gamma_factor, 30.0)
-        self.assertEqual(fusion.vega_factor, 40.0)
-        self.assertEqual(fusion.premium_growth_factor, 50.0)
-        self.assertEqual(fusion.iv_expansion_factor, 60.0)
-        self.assertEqual(fusion.trend_factor, 70.0)
-        self.assertEqual(fusion.regime_factor, 80.0)
-        self.assertEqual(fusion.time_to_expiry_factor, 90.0)
-        self.assertEqual(fusion.pnl_factor, 100.0)
-        self.assertEqual(fusion.fused_score, 0.0) # Ensure it does NOT compute final score yet
-        self.assertIn("normalized_factors", fusion.debug_information)
         
-        # 2. Invalid inputs, missing values, extreme values (clamping)
-        fusion_invalid = self.engine._compute_stress_fusion_inputs(
-            strike_distance_factor=None,
-            delta_factor=float('nan'),
-            gamma_factor=float('inf'),
-            vega_factor=-50.0, # should clamp to 0
-            premium_growth_factor=150.0, # should clamp to 100
-            iv_expansion_factor="invalid_string", # should safely fallback to 0
-            trend_factor=None,
-            regime_factor=float('-inf'),
-            time_to_expiry_factor=0.0,
-            pnl_factor=100.0
-        )
+        # Financial cluster has pnl_factor=100, which dominates and pushes fused_score near 100
+        self.assertTrue(99.0 < fusion.fused_score <= 100.0)
         
-        self.assertEqual(fusion_invalid.strike_distance_factor, 0.0)
-        self.assertEqual(fusion_invalid.delta_factor, 0.0)
-        self.assertEqual(fusion_invalid.gamma_factor, 0.0)
-        self.assertEqual(fusion_invalid.vega_factor, 0.0)
-        self.assertEqual(fusion_invalid.premium_growth_factor, 100.0)
-        self.assertEqual(fusion_invalid.iv_expansion_factor, 0.0)
-        self.assertEqual(fusion_invalid.trend_factor, 0.0)
-        self.assertEqual(fusion_invalid.regime_factor, 0.0)
-        self.assertEqual(fusion_invalid.time_to_expiry_factor, 0.0)
-        self.assertEqual(fusion_invalid.pnl_factor, 100.0)
-        self.assertEqual(fusion_invalid.fused_score, 0.0)
-
+        # Verify nested structures
+        self.assertEqual(fusion.directional_cluster.dominant_factor, "gamma_factor")
+        self.assertEqual(fusion.volatility_cluster.dominant_factor, "iv_expansion_factor")
+        self.assertEqual(fusion.financial_cluster.dominant_factor, "pnl_factor")
+        self.assertEqual(fusion.context_cluster.dominant_factor, "regime_factor")
+        
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)

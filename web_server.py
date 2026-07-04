@@ -755,20 +755,28 @@ def backup_history():
 
 @app.route('/api/restore_history', methods=['POST'])
 def restore_history():
-    """Restores the cloud trade history from the Secondary Cloud Backup."""
+    """Restores the cloud trade history from the Secondary Cloud Backup or Local File."""
     try:
         import db_manager
+        import os, json
         
         # Load from the indestructible secondary backup
         backup_data = db_manager.load_backup_data()
         
         if not backup_data or not backup_data.get('trades'):
-            return jsonify({"success": False, "message": "Secondary backup is empty or could not be loaded."}), 400
+            app_logger.warning("Secondary backup empty. Attempting local restore...")
+            local_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trade_history.json")
+            if os.path.exists(local_file):
+                with open(local_file, 'r') as f:
+                    backup_data = json.load(f)
+                    
+        if not backup_data or not backup_data.get('trades'):
+            return jsonify({"success": False, "message": "Secondary backup and local backup are both empty or could not be loaded."}), 400
             
         # Overwrite the primary database with the backup
         success = db_manager.save_all_data(backup_data)
         if success:
-            return jsonify({"success": True, "message": f"Successfully restored {len(backup_data['trades'])} trades to Primary Cloud DB."})
+            return jsonify({"success": True, "message": f"Successfully restored {len(backup_data.get('trades', []))} trades to Primary Cloud DB."})
         else:
             return jsonify({"success": False, "message": "Failed to overwrite Primary Cloud DB."}), 500
     except Exception as e:

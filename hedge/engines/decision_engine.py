@@ -1,143 +1,128 @@
-import uuid
-import time
 import logging
-from typing import Dict, Any, List
-from datetime import datetime, timezone
+from typing import Dict, Any, List, Tuple
+import math
 
-from hedge.engines.base_engine import AbstractBaseEngine
-from hedge.models.trend import TrendResult
-from hedge.models.regime import MarketRegimeResult
-from hedge.models.position import PositionRiskResult
-from hedge.models.decision import DecisionResult, AresDecision
-from hedge.models.shared import AnalyzerHealth
+from hedge.models.decision import HedgeDecision, HedgeAction
+from hedge.models.position import StressFusionBreakdown
+from hedge.context.position_context import PositionContext
+from config import (
+    DECISION_EMA_ALPHA,
+    HEDGE_THRESHOLD_PREPARE,
+    HEDGE_THRESHOLD_PARTIAL,
+    HEDGE_THRESHOLD_FULL,
+    HEDGE_THRESHOLD_EMERGENCY,
+    UNHEDGE_THRESHOLD_BUFFER,
+    PARTIAL_HEDGE_RATIO,
+    FULL_HEDGE_RATIO
+)
 
-logger = logging.getLogger("ARES.DecisionEngine")
+logger = logging.getLogger(__name__)
 
-class DecisionEngine(AbstractBaseEngine):
-    def __init__(self, replay_mode: bool = False):
-        self.replay_mode = replay_mode
-        self._warnings: List[str] = []
-        self._last_execution_time = 0.0
+class DecisionEngine:
+    def __init__(self):
+        self._ema_stress: float = None
 
-    def initialize(self) -> None:
-        logger.info("Initialized DecisionEngine.")
-        self.reset()
-
-    def evaluate(self, trend_result: TrendResult, regime_result: MarketRegimeResult, risk_result: PositionRiskResult) -> DecisionResult:
-        started_at = time.time()
-        evaluation_id = str(uuid.uuid4())
-        timestamp = datetime.now(timezone.utc).isoformat()
-        
-        self._warnings.clear()
-        
-        # 1. Validate Inputs
-        is_valid = self._validate_inputs(trend_result, regime_result, risk_result)
-        if not is_valid:
-            logger.warning("Invalid inputs provided to DecisionEngine. Reverting to HOLD.")
-            return self._build_emergency_hold_result(evaluation_id, timestamp, started_at)
-            
-        # 2. Assess Consensus
-        consensus = self._assess_consensus(trend_result, regime_result, risk_result)
-        
-        # 3. Compute Decision
-        decision = self._compute_decision(consensus, trend_result, regime_result, risk_result)
-        
-        # 4. Compute Metrics
-        confidence = self._compute_confidence(decision, trend_result, regime_result, risk_result)
-        urgency = self._compute_urgency(decision, risk_result)
-        
-        # 5. Build Result
-        result = self._build_decision_result(
-            evaluation_id=evaluation_id,
-            timestamp=timestamp,
-            started_at=started_at,
-            decision=decision,
-            confidence=confidence,
-            urgency=urgency,
-            explanation=f"Computed decision {decision.name} based on consensus."
-        )
-        
-        return result
-
-    # --- Placeholder Logic Methods ---
-    
-    def _validate_inputs(self, trend: TrendResult, regime: MarketRegimeResult, risk: PositionRiskResult) -> bool:
-        if trend is None or regime is None or risk is None:
-            self._warnings.append("Missing one or more required inputs.")
-            return False
-        return True
-
-    def _assess_consensus(self, trend: TrendResult, regime: MarketRegimeResult, risk: PositionRiskResult) -> Dict[str, Any]:
-        return {}
-
-    def _compute_decision(self, consensus: Dict[str, Any], trend: TrendResult, regime: MarketRegimeResult, risk: PositionRiskResult) -> AresDecision:
-        # Default placeholder logic
-        # Testing might inject debug flags
-        if trend and "force_decision" in trend.debug_information:
-            return trend.debug_information["force_decision"]
-        return AresDecision.HOLD
-
-    def _compute_confidence(self, decision: AresDecision, trend: TrendResult, regime: MarketRegimeResult, risk: PositionRiskResult) -> float:
-        return 0.0
-
-    def _compute_urgency(self, decision: AresDecision, risk: PositionRiskResult) -> float:
-        return 0.0
-        
-    def _build_decision_result(self, evaluation_id: str, timestamp: str, started_at: float, 
-                               decision: AresDecision, confidence: float, urgency: float, explanation: str) -> DecisionResult:
-        completed_at = time.time()
-        execution_time_ms = (completed_at - started_at) * 1000.0
-        self._last_execution_time = execution_time_ms
-        
-        return DecisionResult(
-            evaluation_id=evaluation_id,
-            decision=decision,
-            confidence=confidence,
-            urgency=urgency,
-            explanation=explanation,
-            timestamp=timestamp,
-            started_at=started_at,
-            completed_at=completed_at,
-            execution_time_ms=execution_time_ms,
-            supporting_evidence=[],
-            debug_information={"warnings": list(self._warnings)}
-        )
-
-    def _build_emergency_hold_result(self, evaluation_id: str, timestamp: str, started_at: float) -> DecisionResult:
-        completed_at = time.time()
-        execution_time_ms = (completed_at - started_at) * 1000.0
-        self._last_execution_time = execution_time_ms
-        
-        return DecisionResult(
-            evaluation_id=evaluation_id,
-            decision=AresDecision.HOLD,
-            confidence=0.0,
-            urgency=0.0,
-            explanation="EMERGENCY HOLD due to invalid inputs.",
-            timestamp=timestamp,
-            started_at=started_at,
-            completed_at=completed_at,
-            execution_time_ms=execution_time_ms,
-            supporting_evidence=[],
-            debug_information={"warnings": list(self._warnings)}
-        )
-
-    # ---------------------------------
-
-    def reset(self) -> None:
-        self._warnings.clear()
-        self._last_execution_time = 0.0
-
-    def health(self) -> AnalyzerHealth:
-        return AnalyzerHealth(
-            loaded_evaluators=1,
-            failed_evaluators=0,
-            warnings=list(self._warnings),
-            replay_mode=self.replay_mode,
-            last_execution_time=self._last_execution_time
-        )
-        
-    def metadata(self) -> Dict[str, Any]:
-        return {
-            "name": "DecisionEngine"
+    def _determine_dominant_cluster(self, breakdown: StressFusionBreakdown) -> Tuple[str, str, str]:
+        clusters = {
+            "Directional": breakdown.directional_cluster,
+            "Volatility": breakdown.volatility_cluster,
+            "Financial": breakdown.financial_cluster,
+            "Context": breakdown.context_cluster
         }
+        
+        highest_score = -1.0
+        dominant_cluster_name = "Unknown"
+        dominant_factor = "Unknown"
+        primary_reason = "No Danger"
+        
+        for name, cluster in clusters.items():
+            if cluster.score > highest_score:
+                highest_score = cluster.score
+                dominant_cluster_name = name
+                dominant_factor = cluster.dominant_factor
+                primary_reason = cluster.primary_reason
+                
+        return dominant_cluster_name, dominant_factor, primary_reason
+
+    def evaluate(self, fused_score: float, breakdown: StressFusionBreakdown, 
+                 context: PositionContext, current_hedge_ratio: float) -> HedgeDecision:
+                 
+        if self._ema_stress is None:
+            self._ema_stress = fused_score
+        else:
+            self._ema_stress = (DECISION_EMA_ALPHA * fused_score) + ((1.0 - DECISION_EMA_ALPHA) * self._ema_stress)
+            
+        ema = self._ema_stress
+        buffer = UNHEDGE_THRESHOLD_BUFFER
+        
+        action = HedgeAction.NO_ACTION
+        target_ratio = current_hedge_ratio
+        
+        # State transitions with Hysteresis
+        if current_hedge_ratio == 0.0:
+            # Scaling up
+            if ema >= HEDGE_THRESHOLD_EMERGENCY:
+                action = HedgeAction.EMERGENCY_HEDGE
+                target_ratio = FULL_HEDGE_RATIO
+            elif ema >= HEDGE_THRESHOLD_FULL:
+                action = HedgeAction.FULL_HEDGE
+                target_ratio = FULL_HEDGE_RATIO
+            elif ema >= HEDGE_THRESHOLD_PARTIAL:
+                action = HedgeAction.PARTIAL_HEDGE
+                target_ratio = PARTIAL_HEDGE_RATIO
+            elif ema >= HEDGE_THRESHOLD_PREPARE:
+                action = HedgeAction.PREPARE_HEDGE
+                target_ratio = 0.0
+            else:
+                action = HedgeAction.MONITOR
+                target_ratio = 0.0
+        else:
+            # We are already hedged, scaling down or up requires hysteresis
+            if ema >= HEDGE_THRESHOLD_EMERGENCY:
+                action = HedgeAction.EMERGENCY_HEDGE
+                target_ratio = FULL_HEDGE_RATIO
+            elif ema >= HEDGE_THRESHOLD_FULL:
+                if current_hedge_ratio < FULL_HEDGE_RATIO:
+                    action = HedgeAction.FULL_HEDGE
+                    target_ratio = FULL_HEDGE_RATIO
+                else:
+                    action = HedgeAction.MONITOR
+                    target_ratio = current_hedge_ratio
+            elif ema >= HEDGE_THRESHOLD_PARTIAL:
+                if current_hedge_ratio < PARTIAL_HEDGE_RATIO:
+                    action = HedgeAction.PARTIAL_HEDGE
+                    target_ratio = PARTIAL_HEDGE_RATIO
+                elif current_hedge_ratio >= FULL_HEDGE_RATIO and ema < (HEDGE_THRESHOLD_FULL - buffer):
+                    action = HedgeAction.PARTIAL_HEDGE
+                    target_ratio = PARTIAL_HEDGE_RATIO
+                else:
+                    action = HedgeAction.MONITOR
+                    target_ratio = current_hedge_ratio
+            else:
+                # Below partial
+                if ema < (HEDGE_THRESHOLD_PARTIAL - buffer):
+                    action = HedgeAction.DEHEDGE
+                    target_ratio = 0.0
+                elif current_hedge_ratio > 0.0:
+                    action = HedgeAction.MONITOR
+                    target_ratio = current_hedge_ratio
+                
+        dominant_cluster_name, dominant_factor, primary_reason = self._determine_dominant_cluster(breakdown)
+        
+        urgency = min(1.0, max(0.0, ema / 100.0))
+        
+        decision = HedgeDecision(
+            action=action,
+            urgency=urgency,
+            hedge_ratio=target_ratio,
+            reason=primary_reason,
+            dominant_cluster=dominant_cluster_name,
+            dominant_factor=dominant_factor,
+            ema_stress=ema,
+            raw_stress=fused_score
+        )
+        
+        return decision
+
+    def reset_state(self):
+        self._ema_stress = None
