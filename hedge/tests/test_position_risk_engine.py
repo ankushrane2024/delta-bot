@@ -407,6 +407,64 @@ class TestPositionRiskEngine(unittest.TestCase):
         trend_invalid = create_trend(TrendDirection.LONG, float('nan'), 100.0, 100.0)
         self.assertEqual(self.engine._compute_trend_factor(trend_invalid, is_call=True), 0.0)
 
+    def test_regime_factor(self):
+        from hedge.models.enums import MarketRegime
+        from hedge.models.regime import MarketRegimeResult
+        import uuid
+        
+        def create_regime(reg, conf):
+            return MarketRegimeResult(
+                evaluation_id=str(uuid.uuid4()),
+                current_regime=reg,
+                previous_regime=None,
+                confidence=conf,
+                transition_reason="",
+                transition_allowed=True,
+                regime_duration=0.0,
+                regime_strength=0.0,
+                stability_score=0.0,
+                timestamp="test"
+            )
+            
+        # 1. Base scores for each regime at 100% confidence
+        r_safe = create_regime(MarketRegime.SAFE_RANGE, 100.0)
+        self.assertEqual(self.engine._compute_regime_factor(r_safe), 0.0)
+        
+        r_weak = create_regime(MarketRegime.WEAK_RANGE, 100.0)
+        self.assertEqual(self.engine._compute_regime_factor(r_weak), 10.0)
+        
+        r_trans = create_regime(MarketRegime.TRANSITION, 100.0)
+        self.assertEqual(self.engine._compute_regime_factor(r_trans), 30.0)
+        
+        r_early = create_regime(MarketRegime.EARLY_TREND, 100.0)
+        self.assertEqual(self.engine._compute_regime_factor(r_early), 60.0)
+        
+        r_conf = create_regime(MarketRegime.CONFIRMED_TREND, 100.0)
+        self.assertEqual(self.engine._compute_regime_factor(r_conf), 85.0)
+        
+        r_accel = create_regime(MarketRegime.ACCELERATION, 100.0)
+        self.assertEqual(self.engine._compute_regime_factor(r_accel), 100.0)
+        
+        r_exh = create_regime(MarketRegime.TREND_EXHAUSTION, 100.0)
+        self.assertEqual(self.engine._compute_regime_factor(r_exh), 40.0)
+        
+        # 2. Dampening via confidence
+        # CONFIRMED_TREND base is 85.0, 50% confidence -> 42.5
+        r_conf_low = create_regime(MarketRegime.CONFIRMED_TREND, 50.0)
+        self.assertEqual(self.engine._compute_regime_factor(r_conf_low), 42.5)
+        
+        # 3. Invalid Inputs
+        self.assertEqual(self.engine._compute_regime_factor(None), 0.0)
+        
+        r_invalid_regime = create_regime(None, 100.0)
+        self.assertEqual(self.engine._compute_regime_factor(r_invalid_regime), 0.0)
+        
+        r_invalid_conf = create_regime(MarketRegime.CONFIRMED_TREND, float('nan'))
+        self.assertEqual(self.engine._compute_regime_factor(r_invalid_conf), 0.0)
+        
+        r_invalid_conf_2 = create_regime(MarketRegime.CONFIRMED_TREND, None)
+        self.assertEqual(self.engine._compute_regime_factor(r_invalid_conf_2), 0.0)
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)

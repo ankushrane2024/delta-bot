@@ -396,6 +396,49 @@ class PositionRiskEngine(AbstractBaseEngine):
             logger.warning(msg)
             return 0.0
 
+    def _compute_regime_factor(self, regime: MarketRegimeResult) -> float:
+        try:
+            if regime is None:
+                return 0.0
+                
+            from hedge.models.enums import MarketRegime
+            import config
+            
+            # Map MarketRegime to statically configured base scores
+            base_score_map = {
+                MarketRegime.SAFE_RANGE: getattr(config, 'REGIME_BASE_SCORE_SAFE_RANGE', 0.0),
+                MarketRegime.WEAK_RANGE: getattr(config, 'REGIME_BASE_SCORE_WEAK_RANGE', 10.0),
+                MarketRegime.TRANSITION: getattr(config, 'REGIME_BASE_SCORE_TRANSITION', 30.0),
+                MarketRegime.EARLY_TREND: getattr(config, 'REGIME_BASE_SCORE_EARLY_TREND', 60.0),
+                MarketRegime.CONFIRMED_TREND: getattr(config, 'REGIME_BASE_SCORE_CONFIRMED_TREND', 85.0),
+                MarketRegime.ACCELERATION: getattr(config, 'REGIME_BASE_SCORE_ACCELERATION', 100.0),
+                MarketRegime.TREND_EXHAUSTION: getattr(config, 'REGIME_BASE_SCORE_TREND_EXHAUSTION', 40.0),
+            }
+            
+            current_regime = getattr(regime, 'current_regime', None)
+            
+            if current_regime not in base_score_map:
+                return 0.0
+                
+            base_score = float(base_score_map[current_regime])
+            
+            # Dampen score by regime confidence
+            confidence = getattr(regime, 'confidence', 0.0)
+            if confidence is None or math.isnan(confidence):
+                confidence = 0.0
+                
+            # Clamp confidence
+            confidence = max(0.0, min(100.0, float(confidence)))
+            
+            score = base_score * (confidence / 100.0)
+            return max(0.0, min(100.0, score))
+            
+        except Exception as e:
+            msg = f"Exception in _compute_regime_factor: {str(e)}"
+            self._warnings.append(msg)
+            logger.warning(msg)
+            return 0.0
+
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
         delta_factor = self._compute_delta_factor(ctx.call_delta)
@@ -421,6 +464,7 @@ class PositionRiskEngine(AbstractBaseEngine):
             
         iv_expansion_factor = self._compute_iv_expansion_factor(ctx.call_iv, entry_iv)
         trend_factor = self._compute_trend_factor(trend, is_call=True)
+        regime_factor = self._compute_regime_factor(regime)
         
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
@@ -429,12 +473,12 @@ class PositionRiskEngine(AbstractBaseEngine):
             vega_factor=vega_factor,
             premium_growth_factor=premium_growth_factor,
             trend_factor=trend_factor,
-            regime_factor=0.0,
+            regime_factor=regime_factor,
             iv_factor=0.0, # Kept for backward compatibility if needed, but not populated actively with vega anymore
             iv_expansion_factor=iv_expansion_factor,
             pnl_factor=0.0,
             final_call_stress=0.0,
-            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, premium growth, IV expansion, and trend factors implemented."
+            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, premium growth, IV expansion, trend, and regime factors implemented."
         )
 
     def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:
