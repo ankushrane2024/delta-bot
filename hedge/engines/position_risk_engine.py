@@ -261,23 +261,75 @@ class PositionRiskEngine(AbstractBaseEngine):
             logger.warning(msg)
             return 0.0
 
+    def _compute_premium_growth_factor(self, current_premium: float, entry_premium: float) -> float:
+        try:
+            if current_premium is None or math.isnan(current_premium) or math.isinf(current_premium):
+                return 0.0
+            if entry_premium is None or math.isnan(entry_premium) or math.isinf(entry_premium) or entry_premium <= 0:
+                return 0.0
+                
+            # Growth ratio = max(0, (current / entry) - 1.0)
+            growth = max(0.0, (float(current_premium) / float(entry_premium)) - 1.0)
+            
+            if growth < 1e-9:
+                return 0.0
+                
+            from config import PREMIUM_GROWTH_REFERENCE_K, PREMIUM_GROWTH_STEEPNESS_N
+            k = float(PREMIUM_GROWTH_REFERENCE_K)
+            n = float(PREMIUM_GROWTH_STEEPNESS_N)
+            
+            if k <= 0:
+                k = 1.0 # Safe fallback
+                
+            # Hill Equation (Dose-Response Curve)
+            # Score = 100 * (growth^n) / (k^n + growth^n)
+            # Perfectly flat at zero, highly configurable acceleration, strictly bounded to 100.
+            growth_pow = math.pow(growth, n)
+            k_pow = math.pow(k, n)
+            
+            score = 100.0 * (growth_pow / (k_pow + growth_pow))
+            return max(0.0, min(100.0, score))
+            
+        except Exception as e:
+            msg = f"Exception in _compute_premium_growth_factor: {str(e)}"
+            self._warnings.append(msg)
+            logger.warning(msg)
+            return 0.0
+
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
         delta_factor = self._compute_delta_factor(ctx.call_delta)
         gamma_factor = self._compute_gamma_factor(ctx.call_gamma)
         vega_factor = self._compute_vega_factor(ctx.call_vega)
         
+        # Deduce entry premium
+        # Try metadata first
+        entry_premium = ctx.metadata.get('call_entry_price', None)
+        if entry_premium is None:
+            # Reverse engineer from PnL if metadata is missing
+            from config import LOT_TO_BTC
+            # Assuming equal legs, lots per leg = total_lots / 2
+            lots_per_leg = max(1, ctx.total_lots / 2.0)
+            if LOT_TO_BTC > 0 and lots_per_leg > 0:
+                # PnL = (Entry - Current) * Lots * LOT_TO_BTC
+                # Entry = Current + PnL / (Lots * LOT_TO_BTC)
+                entry_premium = ctx.call_mark_price + (ctx.call_leg_pnl / (lots_per_leg * LOT_TO_BTC))
+            else:
+                entry_premium = ctx.call_mark_price # default to current, 0 growth
+                
+        premium_growth_factor = self._compute_premium_growth_factor(ctx.call_mark_price, entry_premium)
+        
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
             delta_factor=delta_factor,
             gamma_factor=gamma_factor,
-            premium_growth_factor=0.0,
+            premium_growth_factor=premium_growth_factor,
             trend_factor=0.0,
             regime_factor=0.0,
             iv_factor=vega_factor,
             pnl_factor=0.0,
             final_call_stress=0.0,
-            explanation="Call stress components evaluated. Strike distance, delta, gamma, and vega factors implemented."
+            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, and premium growth factors implemented."
         )
 
     def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:

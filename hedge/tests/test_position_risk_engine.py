@@ -262,6 +262,47 @@ class TestPositionRiskEngine(unittest.TestCase):
         score_invalid3 = self.engine._compute_vega_factor(float('inf'))
         self.assertEqual(score_invalid3, 0.0)
 
+    def test_premium_growth_factor(self):
+        # Hill Equation: Score = 100 * (growth^3) / (1.0^3 + growth^3)
+        # 1. No premium increase
+        score_0 = self.engine._compute_premium_growth_factor(100.0, 100.0) # growth = 0
+        self.assertEqual(score_0, 0.0)
+        
+        score_decay = self.engine._compute_premium_growth_factor(80.0, 100.0) # decay, growth = 0
+        self.assertEqual(score_decay, 0.0)
+        
+        # 2. 10% increase (growth = 0.1) -> 100 * 0.001 / 1.001 = 0.0999
+        score_10 = self.engine._compute_premium_growth_factor(110.0, 100.0)
+        self.assertAlmostEqual(score_10, 0.100, places=2)
+        
+        # 3. 25% increase (growth = 0.25) -> 100 * 0.015625 / 1.015625 = 1.538
+        score_25 = self.engine._compute_premium_growth_factor(125.0, 100.0)
+        self.assertAlmostEqual(score_25, 1.538, places=2)
+        
+        # 4. 50% increase (growth = 0.5) -> 100 * 0.125 / 1.125 = 11.111
+        score_50 = self.engine._compute_premium_growth_factor(150.0, 100.0)
+        self.assertAlmostEqual(score_50, 11.111, places=2)
+        
+        # 5. 100% increase (growth = 1.0) -> 100 * 1 / 2 = 50.0
+        score_100 = self.engine._compute_premium_growth_factor(200.0, 100.0)
+        self.assertAlmostEqual(score_100, 50.0, places=2)
+        
+        # 6. 200% increase (growth = 2.0) -> 100 * 8 / 9 = 88.888
+        score_200 = self.engine._compute_premium_growth_factor(300.0, 100.0)
+        self.assertAlmostEqual(score_200, 88.889, places=2)
+        
+        # 7. Extreme premium explosion (growth = 10.0) -> 100 * 1000 / 1001 = 99.9
+        score_extreme = self.engine._compute_premium_growth_factor(1100.0, 100.0)
+        self.assertAlmostEqual(score_extreme, 99.900, places=2)
+        
+        # 8. Invalid inputs
+        self.assertEqual(self.engine._compute_premium_growth_factor(None, 100.0), 0.0)
+        self.assertEqual(self.engine._compute_premium_growth_factor(100.0, None), 0.0)
+        self.assertEqual(self.engine._compute_premium_growth_factor(float('nan'), 100.0), 0.0)
+        self.assertEqual(self.engine._compute_premium_growth_factor(100.0, 0.0), 0.0)
+        self.assertEqual(self.engine._compute_premium_growth_factor(100.0, -50.0), 0.0)
+        self.assertEqual(self.engine._compute_premium_growth_factor(float('inf'), 100.0), 0.0)
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)

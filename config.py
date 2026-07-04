@@ -117,3 +117,7 @@ GAMMA_SENSITIVITY_K = float(os.getenv("GAMMA_SENSITIVITY_K", 0.05))
 
 # --- Vega Factor Parameters (Module 21) ---
 VEGA_REFERENCE = float(os.getenv("VEGA_REFERENCE", 10.0))  # Vega value at which stress reaches 50%
+
+# --- Premium Growth Factor Parameters (Module 22) ---
+PREMIUM_GROWTH_REFERENCE_K = float(os.getenv("PREMIUM_GROWTH_REFERENCE_K", 1.0)) # 1.0 = 100% premium growth -> 50 stress
+PREMIUM_GROWTH_STEEPNESS_N = float(os.getenv("PREMIUM_GROWTH_STEEPNESS_N", 3.0)) # Hill coefficient for acceleration
