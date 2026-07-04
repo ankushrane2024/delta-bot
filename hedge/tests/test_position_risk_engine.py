@@ -136,23 +136,23 @@ class TestPositionRiskEngine(unittest.TestCase):
         self.assertAlmostEqual(score_0, 0.0)
         
         score_10 = self.engine._compute_delta_factor(0.10)
-        self.assertAlmostEqual(score_10, 1.0)
+        self.assertAlmostEqual(score_10, 1.1448, places=2)
         
         score_25 = self.engine._compute_delta_factor(0.25)
-        self.assertAlmostEqual(score_25, 6.25)
+        self.assertAlmostEqual(score_25, 7.0097, places=2)
         
         score_50 = self.engine._compute_delta_factor(0.50)
-        self.assertAlmostEqual(score_50, 25.0)
+        self.assertAlmostEqual(score_50, 50.0)
         
         score_75 = self.engine._compute_delta_factor(0.75)
-        self.assertAlmostEqual(score_75, 56.25)
+        self.assertAlmostEqual(score_75, 92.9903, places=2)
         
         score_100 = self.engine._compute_delta_factor(1.00)
         self.assertAlmostEqual(score_100, 100.0)
         
         # 2. Absolute value mapping (short options have negative delta)
         score_neg = self.engine._compute_delta_factor(-0.50)
-        self.assertAlmostEqual(score_neg, 25.0)
+        self.assertAlmostEqual(score_neg, 50.0)
         
         # 3. Output clamped
         score_extreme = self.engine._compute_delta_factor(1.50)

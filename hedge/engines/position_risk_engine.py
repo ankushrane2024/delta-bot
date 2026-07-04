@@ -159,12 +159,26 @@ class PositionRiskEngine(AbstractBaseEngine):
                 
             abs_delta = abs(float(call_delta))
             
-            # Clamp delta between 0.0 and 1.0 (assuming standard delta format)
+            # Clamp delta between 0.0 and 1.0
             abs_delta = max(0.0, min(1.0, abs_delta))
             
-            # Map non-linearly: score = 100 * (delta ^ 2)
-            # This ensures low delta = very low stress, high delta = rapidly approaches max
-            score = 100.0 * (abs_delta ** 2)
+            # Normalized Sigmoid to model short-option directional risk:
+            # - Very small delta stays near 0
+            # - Accelerates aggressively around 0.4 - 0.6
+            # - Rapidly approaches 100 as delta gets high
+            steepness = 10.0
+            midpoint = 0.5
+            
+            def sigmoid(x: float) -> float:
+                return 1.0 / (1.0 + math.exp(-steepness * (x - midpoint)))
+                
+            min_val = sigmoid(0.0)
+            max_val = sigmoid(1.0)
+            
+            raw_score = sigmoid(abs_delta)
+            
+            # Normalize to strictly 0-100 range
+            score = 100.0 * (raw_score - min_val) / (max_val - min_val)
             
             return max(0.0, min(100.0, score))
         except Exception as e:
