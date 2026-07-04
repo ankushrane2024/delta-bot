@@ -111,3 +111,6 @@ DVOL_PERCENTILE_MAX = 90              # Maximum DVOL percentile to trade
 # --- Delta Factor Parameters (Module 19) ---
 DELTA_SIGMOID_CENTER = float(os.getenv("DELTA_SIGMOID_CENTER", 0.5))
 DELTA_SIGMOID_STEEPNESS = float(os.getenv("DELTA_SIGMOID_STEEPNESS", 10.0))
+
+# --- Gamma Factor Parameters (Module 20) ---
+GAMMA_SENSITIVITY_K = float(os.getenv("GAMMA_SENSITIVITY_K", 0.05))

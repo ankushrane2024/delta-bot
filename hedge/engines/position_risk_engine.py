@@ -188,21 +188,56 @@ class PositionRiskEngine(AbstractBaseEngine):
             logger.warning(msg)
             return 0.0
 
+    def _compute_gamma_factor(self, call_gamma: float) -> float:
+        try:
+            if call_gamma is None or math.isnan(call_gamma) or math.isinf(call_gamma):
+                msg = f"Invalid inputs for gamma_factor: call_gamma={call_gamma}"
+                self._warnings.append(msg)
+                logger.warning(msg)
+                return 0.0
+                
+            abs_gamma = abs(float(call_gamma))
+            
+            # Gamma is dormant when far OTM, and spikes aggressively towards infinity near expiration (Pin Risk).
+            # The Inverse Exponential Decay (Arrhenius curve) naturally maps [0, infinity) -> [0, 100].
+            if abs_gamma < 1e-9:
+                return 0.0
+                
+            from config import GAMMA_SENSITIVITY_K
+            k = GAMMA_SENSITIVITY_K
+            
+            # Score = 100 * e^(-k / gamma)
+            exponent = -k / abs_gamma
+            
+            # Prevent underflow/overflow
+            if exponent < -50:
+                return 0.0
+            
+            score = 100.0 * math.exp(exponent)
+            return max(0.0, min(100.0, score))
+            
+        except Exception as e:
+            msg = f"Exception in _compute_gamma_factor: {str(e)}"
+            self._warnings.append(msg)
+            logger.warning(msg)
+            return 0.0
+
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
         delta_factor = self._compute_delta_factor(ctx.call_delta)
+        gamma_factor = self._compute_gamma_factor(ctx.call_gamma)
         
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
             delta_factor=delta_factor,
-            gamma_factor=0.0,
+            gamma_factor=gamma_factor,
             premium_growth_factor=0.0,
             trend_factor=0.0,
             regime_factor=0.0,
             iv_factor=0.0,
             pnl_factor=0.0,
             final_call_stress=0.0,
-            explanation="Call stress components evaluated. Strike distance and delta factors implemented."
+            explanation="Call stress components evaluated. Strike distance, delta, and gamma factors implemented."
         )
 
     def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:

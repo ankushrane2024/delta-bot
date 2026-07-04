@@ -168,6 +168,48 @@ class TestPositionRiskEngine(unittest.TestCase):
         score_invalid3 = self.engine._compute_delta_factor(float('inf'))
         self.assertAlmostEqual(score_invalid3, 0.0)
 
+    def test_gamma_factor(self):
+        import math
+        from config import GAMMA_SENSITIVITY_K
+        
+        # 1. Dormant Gamma (Safely OTM)
+        score_0 = self.engine._compute_gamma_factor(0.0)
+        self.assertEqual(score_0, 0.0)
+        
+        score_very_low = self.engine._compute_gamma_factor(0.001)
+        self.assertAlmostEqual(score_very_low, 0.0) # practically zero
+        
+        score_low = self.engine._compute_gamma_factor(GAMMA_SENSITIVITY_K / 5)
+        self.assertTrue(0.0 < score_low < 1.0) # Very flat initially
+        
+        # 2. Gamma approaching ATM (Accelerating)
+        score_mid = self.engine._compute_gamma_factor(GAMMA_SENSITIVITY_K)
+        # Should be exactly 100 * exp(-1) ≈ 36.78
+        self.assertAlmostEqual(score_mid, 36.7879, places=2)
+        
+        # 3. High Gamma (Pin Risk)
+        score_high = self.engine._compute_gamma_factor(GAMMA_SENSITIVITY_K * 2)
+        # 100 * exp(-0.5) ≈ 60.65
+        self.assertAlmostEqual(score_high, 60.653, places=2)
+        
+        # 4. Extreme Gamma
+        score_extreme = self.engine._compute_gamma_factor(1.0)
+        self.assertTrue(90.0 < score_extreme <= 100.0)
+        
+        # 5. Absolute value handling
+        score_neg = self.engine._compute_gamma_factor(-GAMMA_SENSITIVITY_K)
+        self.assertAlmostEqual(score_neg, 36.7879, places=2)
+        
+        # 6. Invalid inputs
+        score_invalid1 = self.engine._compute_gamma_factor(None)
+        self.assertEqual(score_invalid1, 0.0)
+        
+        score_invalid2 = self.engine._compute_gamma_factor(float('nan'))
+        self.assertEqual(score_invalid2, 0.0)
+        
+        score_invalid3 = self.engine._compute_gamma_factor(float('inf'))
+        self.assertEqual(score_invalid3, 0.0)
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)
