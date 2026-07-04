@@ -166,8 +166,9 @@ class PositionRiskEngine(AbstractBaseEngine):
             # - Very small delta stays near 0
             # - Accelerates aggressively around 0.4 - 0.6
             # - Rapidly approaches 100 as delta gets high
-            steepness = 10.0
-            midpoint = 0.5
+            from config import DELTA_SIGMOID_STEEPNESS, DELTA_SIGMOID_CENTER
+            steepness = DELTA_SIGMOID_STEEPNESS
+            midpoint = DELTA_SIGMOID_CENTER
             
             def sigmoid(x: float) -> float:
                 return 1.0 / (1.0 + math.exp(-steepness * (x - midpoint)))
