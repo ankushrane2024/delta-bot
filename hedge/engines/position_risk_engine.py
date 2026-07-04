@@ -335,6 +335,67 @@ class PositionRiskEngine(AbstractBaseEngine):
             logger.warning(msg)
             return 0.0
 
+    def _compute_trend_factor(self, trend: TrendResult, is_call: bool = True) -> float:
+        try:
+            if trend is None:
+                return 0.0
+                
+            from hedge.models.enums import TrendDirection
+            
+            # 1. Check Directional Threat
+            # A BULLISH (LONG) trend threatens a Short Call.
+            # A BEARISH (SHORT) trend threatens a Short Put.
+            dangerous_direction = TrendDirection.LONG if is_call else TrendDirection.SHORT
+            
+            if trend.trend_direction != dangerous_direction:
+                # Trend is either neutral or moving away from the short strike (safe)
+                return 0.0
+                
+            strength = trend.trend_strength
+            if strength is None or math.isnan(strength) or math.isinf(strength):
+                return 0.0
+                
+            confidence = getattr(trend, 'trend_confidence', 0.0)
+            if confidence is None or math.isnan(confidence):
+                confidence = 0.0
+                
+            continuation = getattr(trend, 'continuation_probability', 0.0)
+            if continuation is None or math.isnan(continuation):
+                continuation = 0.0
+                
+            # Clamp inputs
+            strength = max(0.0, min(100.0, float(strength)))
+            confidence = max(0.0, min(100.0, float(confidence)))
+            continuation = max(0.0, min(100.0, float(continuation)))
+            
+            # 2. Normalized Sigmoid for Trend Strength
+            from config import TREND_SIGMOID_CENTER, TREND_SIGMOID_STEEPNESS
+            midpoint = float(TREND_SIGMOID_CENTER)
+            steepness = float(TREND_SIGMOID_STEEPNESS)
+            
+            def sigmoid(x: float) -> float:
+                return 1.0 / (1.0 + math.exp(-steepness * (x - midpoint)))
+                
+            min_val = sigmoid(0.0)
+            max_val = sigmoid(100.0)
+            raw_score = sigmoid(strength)
+            
+            # Normalize strength to 0-100 range
+            normalized_strength = 100.0 * (raw_score - min_val) / (max_val - min_val)
+            
+            # 3. Dampen score based on confidence and continuation
+            # A strong trend with low confidence/continuation is less stressful.
+            dampener = (confidence + continuation) / 200.0
+            
+            score = normalized_strength * dampener
+            return max(0.0, min(100.0, score))
+            
+        except Exception as e:
+            msg = f"Exception in _compute_trend_factor: {str(e)}"
+            self._warnings.append(msg)
+            logger.warning(msg)
+            return 0.0
+
     def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
         delta_factor = self._compute_delta_factor(ctx.call_delta)
@@ -359,6 +420,7 @@ class PositionRiskEngine(AbstractBaseEngine):
             entry_iv = ctx.call_iv # fallback to current IV (no expansion)
             
         iv_expansion_factor = self._compute_iv_expansion_factor(ctx.call_iv, entry_iv)
+        trend_factor = self._compute_trend_factor(trend, is_call=True)
         
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
@@ -366,13 +428,13 @@ class PositionRiskEngine(AbstractBaseEngine):
             gamma_factor=gamma_factor,
             vega_factor=vega_factor,
             premium_growth_factor=premium_growth_factor,
-            trend_factor=0.0,
+            trend_factor=trend_factor,
             regime_factor=0.0,
             iv_factor=0.0, # Kept for backward compatibility if needed, but not populated actively with vega anymore
             iv_expansion_factor=iv_expansion_factor,
             pnl_factor=0.0,
             final_call_stress=0.0,
-            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, premium growth, and IV expansion factors implemented."
+            explanation="Call stress components evaluated. Strike distance, delta, gamma, vega, premium growth, IV expansion, and trend factors implemented."
         )
 
     def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:

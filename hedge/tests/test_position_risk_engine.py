@@ -343,6 +343,70 @@ class TestPositionRiskEngine(unittest.TestCase):
         self.assertEqual(self.engine._compute_iv_expansion_factor(40.0, -10.0), 0.0)
         self.assertEqual(self.engine._compute_iv_expansion_factor(float('inf'), 40.0), 0.0)
 
+    def test_trend_factor(self):
+        from hedge.models.enums import TrendDirection
+        from hedge.models.trend import TrendResult
+        import uuid
+        
+        def create_trend(direction, strength, confidence, continuation):
+            return TrendResult(
+                evaluation_id=str(uuid.uuid4()),
+                trend_direction=direction,
+                trend_strength=strength,
+                trend_confidence=confidence,
+                trend_persistence=50.0,
+                trend_acceleration=0.0,
+                continuation_probability=continuation,
+                reversal_probability=0.0,
+                whipsaw_probability=0.0,
+                signal_reliability=100.0,
+                timestamp="test",
+                started_at=0.0,
+                completed_at=0.0,
+                execution_time_ms=0.0,
+                explanation="test"
+            )
+            
+        # 1. No trend / Safe direction
+        trend_none = create_trend(TrendDirection.NONE, 80.0, 100.0, 100.0)
+        self.assertEqual(self.engine._compute_trend_factor(trend_none, is_call=True), 0.0)
+        
+        trend_safe = create_trend(TrendDirection.SHORT, 100.0, 100.0, 100.0)
+        self.assertEqual(self.engine._compute_trend_factor(trend_safe, is_call=True), 0.0)
+        
+        # 2. Weak trend (Bullish, Strength 30, max conf/cont)
+        # sigmoid(30) with center=60, steepness=0.1 -> raw = 0.0474, normalized ~ 4.589
+        trend_weak = create_trend(TrendDirection.LONG, 30.0, 100.0, 100.0)
+        score_weak = self.engine._compute_trend_factor(trend_weak, is_call=True)
+        self.assertAlmostEqual(score_weak, 4.589, places=2)
+        
+        # 3. Medium trend (Bullish, Strength 60, max conf/cont) -> exactly 50.8 on raw sigmoid curve
+        trend_med = create_trend(TrendDirection.LONG, 60.0, 100.0, 100.0)
+        score_med = self.engine._compute_trend_factor(trend_med, is_call=True)
+        self.assertAlmostEqual(score_med, 50.79, places=1)
+        
+        # 4. Strong trend (Bullish, Strength 80, max conf/cont) -> normalized ~ 89.67
+        trend_strong = create_trend(TrendDirection.LONG, 80.0, 100.0, 100.0)
+        score_strong = self.engine._compute_trend_factor(trend_strong, is_call=True)
+        self.assertAlmostEqual(score_strong, 89.67, places=1)
+        
+        # 5. Extreme trend (Bullish, Strength 100, max conf/cont) -> normalized = 100.0
+        trend_extreme = create_trend(TrendDirection.LONG, 100.0, 100.0, 100.0)
+        score_extreme = self.engine._compute_trend_factor(trend_extreme, is_call=True)
+        self.assertAlmostEqual(score_extreme, 100.0, places=2)
+        
+        # 6. Low confidence & Low continuation dampens score
+        trend_dampened = create_trend(TrendDirection.LONG, 100.0, 50.0, 50.0)
+        # max score 100 * dampener ((50+50)/200 = 0.5) = 50.0
+        score_dampened = self.engine._compute_trend_factor(trend_dampened, is_call=True)
+        self.assertAlmostEqual(score_dampened, 50.0, places=2)
+        
+        # 7. Invalid TrendResult
+        self.assertEqual(self.engine._compute_trend_factor(None, is_call=True), 0.0)
+        
+        trend_invalid = create_trend(TrendDirection.LONG, float('nan'), 100.0, 100.0)
+        self.assertEqual(self.engine._compute_trend_factor(trend_invalid, is_call=True), 0.0)
+
     def test_evaluate_invalid_context(self):
         context = PositionContext(total_lots=500, is_valid=False, futures_price=65000.0, short_call_strike=70000.0)
         result = self.engine.evaluate(self.dummy_regime, self.dummy_trend, context)

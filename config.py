@@ -125,3 +125,7 @@ PREMIUM_GROWTH_STEEPNESS_N = float(os.getenv("PREMIUM_GROWTH_STEEPNESS_N", 3.0))
 # --- IV Expansion Factor Parameters (Module 23) ---
 IV_EXPANSION_REFERENCE = float(os.getenv("IV_EXPANSION_REFERENCE", 1.0)) # 1.0 = 100% IV increase -> 50 stress
 IV_EXPANSION_SHAPE_N = float(os.getenv("IV_EXPANSION_SHAPE_N", 3.0)) # Weibull shape parameter (Cubed Exponential)
+
+# --- Trend Factor Parameters (Module 24) ---
+TREND_SIGMOID_CENTER = float(os.getenv("TREND_SIGMOID_CENTER", 60.0))
+TREND_SIGMOID_STEEPNESS = float(os.getenv("TREND_SIGMOID_STEEPNESS", 0.1))
