@@ -723,7 +723,7 @@
         </div>
 
         <!-- TWO COLUMN GRID FOR OVERVIEW AND HEDGING -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+        <div style="display: flex; flex-direction: column; max-width: 800px; margin: 0 auto; gap: 24px;">
             
             <!-- Section 1: Live Trade Overview -->
             <div class="glass-panel">
@@ -761,7 +761,7 @@
             </div>
 
             <!-- Section 2: Smart Hedging Status -->
-            <div class="glass-panel" id="hedge-panel">
+            <div class="glass-panel" id="hedge-panel" style="display: none !important;">
                 <h2>🛡️ Smart Hedging Status</h2>
                 <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 20px;">
                     <div class="stat-row-modern">
@@ -862,7 +862,7 @@
         <!-- Section 3: Active Positions -->
         <div class="glass-panel" id="active-positions-container" style="padding-bottom: 30px; transition: all 0.5s ease;">
             <h2>📈 Active Positions</h2>
-            <div id="positions-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-top: 20px;">
+            <div id="positions-cards" style="display: flex; flex-direction: column; max-width: 800px; margin: 0 auto; gap: 20px; margin-top: 20px;">
                 <div style="text-align: center; padding: 50px; background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px dashed rgba(255,255,255,0.1); grid-column: 1 / -1;">
                     <div style="font-size: 3.5rem; margin-bottom: 15px;">📭</div>
                     <div style="font-weight: 700; color: #94a3b8; font-size: 1.2rem;">No Active Positions</div>
@@ -893,7 +893,7 @@
                         <div style="font-weight: 600; color: #fff; margin-bottom: 5px;">Smart Hedging</div>
                         <div style="font-size: 0.85rem; color: var(--text-secondary);">Dynamically hedge Delta risk when IV spikes</div>
                     </div>
-                    <button id="hedge-pill"
+                    <button id="hedge-pill" style="display: none !important;"
                         onclick="toggleSmartHedging()"
                         style="min-width: 72px; padding: 7px 16px; border-radius: 20px; border: 1.5px solid var(--success); background: var(--success); color: #fff; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.25s; letter-spacing: 0.5px; box-shadow: 0 0 10px rgba(16,185,129,0.4);">
                         ON
