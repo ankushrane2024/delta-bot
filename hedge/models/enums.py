@@ -43,7 +43,23 @@ class HedgeSide(Enum):
     LONG = auto()
     SHORT = auto()
 
-class ExecutionStatus(Enum):
+class ExecutionState(Enum):
+    CREATED = auto()
+    VALIDATED = auto()
+    QUEUED = auto()
+    SUBMITTED = auto()
+    ACKNOWLEDGED = auto()
+    PARTIALLY_FILLED = auto()
+    FILLED = auto()
+    CANCEL_PENDING = auto()
+    CANCELLED = auto()
+    REPLACED = auto()
+    REJECTED = auto()
+    FAILED = auto()
+    EXPIRED = auto()
+    RECOVERED = auto()
+
+class ExecutionStatus(Enum): # Keeping for backwards compatibility if needed, though we should transition to ExecutionState.
     PENDING = auto()
     VALIDATED = auto()
     READY = auto()

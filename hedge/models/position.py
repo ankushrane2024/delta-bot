@@ -46,6 +46,7 @@ class CallStressBreakdown:
     pnl_factor: float = 0.0
     final_call_stress: float = 0.0
     explanation: str = ""
+    fusion_breakdown: Any = None
 
 @dataclass
 class ClusterOutput:

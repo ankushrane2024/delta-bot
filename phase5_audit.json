@@ -1,0 +1,8 @@
+{
+    "ticks_processed": 10000,
+    "avg_latency_ms": 1.048,
+    "start_threads": 2,
+    "end_threads": 2,
+    "thread_leak": 0,
+    "memory_leak_top_diff_kb": 20155.75
+}

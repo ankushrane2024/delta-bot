@@ -1,0 +1,343 @@
+{
+    "2026-06-29": {
+        "date": "2026-06-29",
+        "mode": "PAPER",
+        "summary": {
+            "total_trades": 2,
+            "win_rate": 100,
+            "net_pnl_usd": 281.5171524885677,
+            "net_pnl_inr": 23365.92365655112,
+            "max_drawdown": 0,
+            "market_regime": "Transition",
+            "regime_filter_enabled": false
+        },
+        "trades": [
+            {
+                "entry_time": "2026-06-29T09:00:03.485078+05:30",
+                "exit_time": "2026-06-29T10:30:03.273571+05:30",
+                "call_strike": "C-BTC-61600-300626",
+                "put_strike": "P-BTC-58200-300626",
+                "call_entry_price": 205.59334703001593,
+                "put_entry_price": 208.67985150177287,
+                "call_exit_price": 110.09277467,
+                "put_exit_price": 219.51147832,
+                "entry_premium": 207.1365992658944,
+                "exit_reason": "Profit Target Hit (30%)",
+                "pnl_usd": 124.28638006237338,
+                "mode": "PAPER"
+            },
+            {
+                "entry_time": "2026-06-29T10:31:41.788060+05:30",
+                "exit_time": "2026-06-29T13:36:30.155462+05:30",
+                "call_strike": "C-BTC-60800-300626",
+                "put_strike": "P-BTC-58400-300626",
+                "call_entry_price": 260.61765327367306,
+                "put_entry_price": 263.16013673906133,
+                "call_exit_price": 254.50807995,
+                "put_exit_price": 162.4223281,
+                "entry_premium": 261.8888950063672,
+                "exit_reason": "Profit Target Hit (30%)",
+                "pnl_usd": 157.23077242619433,
+                "mode": "PAPER"
+            }
+        ],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 0,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 31.76,
+            "iv": 0.4922875109261579,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-06-29.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-06-29.xlsx"
+    },
+    "2026-06-28": {
+        "date": "2026-06-28",
+        "mode": "PAPER",
+        "summary": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "net_pnl_usd": 0,
+            "net_pnl_inr": 0,
+            "max_drawdown": 3.89,
+            "market_regime": "Sideways",
+            "regime_filter_enabled": false
+        },
+        "trades": [],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 0,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 10.28,
+            "iv": 0.5149607176113864,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-06-28.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-06-28.xlsx"
+    },
+    "2026-05-25": {
+        "date": "2026-05-25",
+        "mode": "PAPER",
+        "summary": {
+            "total_trades": 4,
+            "win_rate": 100,
+            "net_pnl_usd": 46.05135055563546,
+            "net_pnl_inr": 3822.262096117743,
+            "max_drawdown": 58.69,
+            "market_regime": "Unknown",
+            "regime_filter_enabled": false
+        },
+        "trades": [
+            {
+                "entry_time": "2026-05-25T22:29:03.703942+05:30",
+                "exit_time": "2026-05-25T22:29:08.244501+05:30",
+                "call_strike": "C-BTC-78600-260526",
+                "put_strike": "P-BTC-77000-260526",
+                "call_entry_price": 86.16159992864198,
+                "put_entry_price": 97.43516016358964,
+                "call_exit_price": 86.16159992864198,
+                "put_exit_price": 97.43516016358964,
+                "entry_premium": 18.359676009223165,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 18.087813769223164,
+                "mode": "PAPER"
+            },
+            {
+                "entry_time": "2026-05-25T22:32:41.507541+05:30",
+                "exit_time": "2026-05-25T22:32:45.291124+05:30",
+                "call_strike": "C-BTC-78600-260526",
+                "put_strike": "P-BTC-77000-260526",
+                "call_entry_price": 93.58507857754148,
+                "put_entry_price": 88.44500606158498,
+                "call_exit_price": 96.56591974,
+                "put_exit_price": 85.1226367,
+                "entry_premium": 18.20300846391265,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 0.034152819912648624,
+                "mode": "PAPER"
+            },
+            {
+                "entry_time": "2026-05-25T22:40:17.423707+05:30",
+                "exit_time": "2026-05-25T22:40:21.827394+05:30",
+                "call_strike": "C-BTC-78600-260526",
+                "put_strike": "P-BTC-77000-260526",
+                "call_entry_price": 89.13674788440676,
+                "put_entry_price": 94.64925927096023,
+                "call_exit_price": 87.67965089,
+                "put_exit_price": 94.33618993,
+                "entry_premium": 18.3786007155367,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 18.107595165536697,
+                "mode": "PAPER"
+            },
+            {
+                "entry_time": "2026-05-25T22:56:15.395202+05:30",
+                "exit_time": "2026-05-25T22:56:16.318519+05:30",
+                "call_strike": "C-BTC-78400-260526",
+                "put_strike": "P-BTC-76800-260526",
+                "call_entry_price": 98.1068114717429,
+                "put_entry_price": 87.86699094788658,
+                "call_exit_price": 98.1068114717429,
+                "put_exit_price": 86.40383125,
+                "entry_premium": 18.59738024196295,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 9.821788800962949,
+                "mode": "PAPER"
+            }
+        ],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 0,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 0,
+            "iv": 0.4130171852031455,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-05-25.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-05-25.xlsx"
+    },
+    "2026-05-24": {
+        "date": "2026-05-24",
+        "mode": "PAPER",
+        "summary": {
+            "total_trades": 4,
+            "win_rate": 100,
+            "net_pnl_usd": 303.4301022337173,
+            "net_pnl_inr": 25184.698485398538,
+            "max_drawdown": 58.24,
+            "market_regime": "Unknown",
+            "regime_filter_enabled": false
+        },
+        "trades": [
+            {
+                "entry_time": "2026-05-24T13:23:16.968422+05:30",
+                "exit_time": "2026-05-24T13:23:20",
+                "call_strike": "C-BTC-77600-250526",
+                "put_strike": "P-BTC-75600-250526",
+                "call_entry_price": 0,
+                "put_entry_price": 0,
+                "call_exit_price": 0,
+                "put_exit_price": 0,
+                "entry_premium": 37070.90576769917,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 184.63285569917207,
+                "mode": "PAPER"
+            },
+            {
+                "entry_time": "2026-05-24T13:30:36.413475+05:30",
+                "exit_time": "2026-05-24T13:30:40.278676+05:30",
+                "call_strike": "C-BTC-77600-250526",
+                "put_strike": "P-BTC-75600-250526",
+                "call_entry_price": 0,
+                "put_entry_price": 0,
+                "call_exit_price": 0,
+                "put_exit_price": 0,
+                "entry_premium": 35.270256004116774,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 0.1219392121167715,
+                "mode": "PAPER"
+            },
+            {
+                "entry_time": "2026-05-24T13:41:18.178736+05:30",
+                "exit_time": "2026-05-24T13:41:22.015811+05:30",
+                "call_strike": "C-BTC-77600-250526",
+                "put_strike": "P-BTC-75800-250526",
+                "call_entry_price": 194.10978294723654,
+                "put_entry_price": 199.94062895374898,
+                "call_exit_price": 192.87253053,
+                "put_exit_price": 199.59255602,
+                "entry_premium": 39.40504119009855,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 0.15853253509855136,
+                "mode": "PAPER"
+            },
+            {
+                "entry_time": "2026-05-24T14:03:28.523679+05:30",
+                "exit_time": "2026-05-24T14:03:32.948985+05:30",
+                "call_strike": "C-BTC-84000-260626",
+                "put_strike": "P-BTC-76000-290526",
+                "call_entry_price": 888.8215265768865,
+                "put_entry_price": 299.062693556413,
+                "call_exit_price": 888.8215265768865,
+                "put_exit_price": 299.062693556413,
+                "entry_premium": 118.78842201332995,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 118.51677478732995,
+                "mode": "PAPER"
+            }
+        ],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 0,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 0,
+            "iv": 0.4112325079030144,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-05-24.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-05-24.xlsx"
+    },
+    "2026-05-23": {
+        "date": "2026-05-23",
+        "summary": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "net_pnl_usd": 0,
+            "net_pnl_inr": 0,
+            "max_drawdown": 0,
+            "market_regime": "Unknown",
+            "regime_filter_enabled": false
+        },
+        "trades": [],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 0,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 0,
+            "iv": 0.36327410218749995,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-05-23.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-05-23.xlsx"
+    },
+    "2026-05-19": {
+        "date": "2026-05-19",
+        "summary": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "net_pnl_usd": 0,
+            "net_pnl_inr": 0,
+            "max_drawdown": 0,
+            "market_regime": "Unknown",
+            "regime_filter_enabled": false
+        },
+        "trades": [],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 0,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 0,
+            "iv": 0,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-05-19.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-05-19.xlsx"
+    },
+    "2026-05-17": {
+        "date": "2026-05-17",
+        "summary": {
+            "total_trades": 2,
+            "win_rate": 50,
+            "net_pnl_usd": 10.5,
+            "net_pnl_inr": 871.5,
+            "max_drawdown": 1.2,
+            "market_regime": "Ranging",
+            "regime_filter_enabled": true
+        },
+        "trades": [
+            {
+                "entry_time": "2026-05-17T08:30:00",
+                "exit_time": "2026-05-17T11:15:00",
+                "call_strike": "BTC-18MAY26-68000-C",
+                "put_strike": "BTC-18MAY26-64000-P",
+                "entry_premium": 2.15,
+                "exit_reason": "Stop Loss Hit",
+                "pnl_usd": -5.2
+            },
+            {
+                "entry_time": "2026-05-17T14:30:00",
+                "exit_time": "2026-05-17T17:05:00",
+                "call_strike": "BTC-18MAY26-69000-C",
+                "put_strike": "BTC-18MAY26-63000-P",
+                "entry_premium": 1.85,
+                "exit_reason": "Profit Target Hit",
+                "pnl_usd": 15.7
+            }
+        ],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 1,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 18.5,
+            "iv": 0.452,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-05-17.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-05-17.xlsx"
+    }
+}

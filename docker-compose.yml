@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  ares-bot:
+    build: .
+    image: ares-bot:latest
+    container_name: ares-bot
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      - SQLITE_DB_PATH=/app/data/shadow_validation.db
+      - LOG_DIR=/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "./healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+    # Profiles to support different modes without multiple compose files
+    profiles:
+      - dev
+      - replay
+      - shadow
+      - paper
+      - live

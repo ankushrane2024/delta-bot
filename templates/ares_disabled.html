@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARES Disabled</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            background-color: #0B1220;
+            color: #FFFFFF;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            background-image: radial-gradient(circle at 50% 50%, rgba(255, 82, 82, 0.05), transparent 40%);
+        }
+        .container {
+            background-color: rgba(17, 24, 39, 0.7);
+            border: 1px solid #1F2937;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            max-width: 400px;
+        }
+        .icon-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            color: #6B7280;
+        }
+        h1 {
+            font-size: 20px;
+            margin: 0 0 12px 0;
+            color: #E5E7EB;
+        }
+        p {
+            font-size: 14px;
+            color: #9CA3AF;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #1F2937;
+            color: #E5E7EB;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-back:hover {
+            background-color: #374151;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon-container">
+            <i data-lucide="shield-off" style="width: 48px; height: 48px;"></i>
+        </div>
+        <h1>ARES Mission Control is Offline</h1>
+        <p>The ARES subsystem is currently disabled via the <strong>ENABLE_ARES</strong> feature flag. The legacy trading system continues to operate normally.</p>
+        <a href="/" class="btn-back">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i> Return to Dashboard
+        </a>
+    </div>
+    <script>
+      lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 import math
 
 from hedge.models.decision import HedgeDecision, HedgeAction
@@ -20,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 class DecisionEngine:
     def __init__(self):
-        self._ema_stress: float = None
+        self._warnings: List[str] = []
+        self._ema_stress: Optional[float] = None
+        self._last_ema_time: Optional[float] = None
 
     def _determine_dominant_cluster(self, breakdown: StressFusionBreakdown) -> Tuple[str, str, str]:
         clusters = {
@@ -45,12 +47,18 @@ class DecisionEngine:
         return dominant_cluster_name, dominant_factor, primary_reason
 
     def evaluate(self, fused_score: float, breakdown: StressFusionBreakdown, 
-                 context: PositionContext, current_hedge_ratio: float) -> HedgeDecision:
+                 context: PositionContext, current_hedge_ratio: float, current_time: float = 0.0) -> HedgeDecision:
                  
         if self._ema_stress is None:
             self._ema_stress = fused_score
+            self._last_ema_time = current_time
         else:
-            self._ema_stress = (DECISION_EMA_ALPHA * fused_score) + ((1.0 - DECISION_EMA_ALPHA) * self._ema_stress)
+            dt = max(0.0, current_time - self._last_ema_time)
+            # Tau of 60 seconds. Decay constant.
+            tau = 60.0
+            alpha = 1.0 - math.exp(-dt / tau)
+            self._ema_stress = (alpha * fused_score) + ((1.0 - alpha) * self._ema_stress)
+            self._last_ema_time = current_time
             
         ema = self._ema_stress
         buffer = UNHEDGE_THRESHOLD_BUFFER

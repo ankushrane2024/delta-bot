@@ -10,13 +10,16 @@ from hedge.models.sizing import HedgeSizingResult
 
 logger = logging.getLogger(__name__)
 
+import hashlib
+
 class HedgeManager:
     def __init__(self):
         self._warnings: List[str] = []
 
     def evaluate(self, decision: HedgeDecision, sizing: HedgeSizingResult,
                  context: PositionContext, existing_hedge_qty: float,
-                 pending_orders: List[Dict[str, Any]]) -> Optional[HedgePlan]:
+                 pending_orders: List[Dict[str, Any]],
+                 tick_number: int = 0, portfolio_hash: str = "") -> Optional[HedgePlan]:
         
         self._warnings.clear()
         
@@ -54,7 +57,12 @@ class HedgeManager:
         if decision.action == HedgeAction.PARTIAL_HEDGE and decision.urgency < 0.6:
             execution_style = "LIMIT_POST_ONLY"
 
+        # 6. Generate Deterministic ID
+        id_str = f"{portfolio_hash}_{tick_number}_{decision.action.name}_{sizing.additional_quantity}"
+        hedge_id = hashlib.sha256(id_str.encode()).hexdigest()[:16]
+
         plan = HedgePlan(
+            hedge_id=hedge_id,
             action=decision.action.name,
             side=sizing.hedge_side,
             quantity=sizing.additional_quantity,

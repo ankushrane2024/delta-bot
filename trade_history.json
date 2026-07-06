@@ -1,5 +1,5 @@
 {
-    "max_equity": 100,
+    "max_equity": 50000,
     "trades": [
         {
             "entry_time": "2026-05-17T08:30:00",

@@ -6,29 +6,44 @@ from datetime import datetime, timezone
 
 from hedge.engines.base_engine import AbstractBaseEngine
 from hedge.engines.execution_provider import AbstractExecutionProvider
-from hedge.models.hedge import HedgePlan, HedgeSide
+from hedge.engines.state_machine import ExecutionStateMachine
+from hedge.models.hedge import HedgePlan
 from hedge.models.enums import AresDecision, ExecutionStatus
-from hedge.models.execution import ExecutionResult, ExecutionOrder
+from hedge.models.execution import ExecutionResult, ExecutionOrder, ExecutionState
 from hedge.models.shared import AnalyzerHealth
 
 logger = logging.getLogger("ARES.ExecutionEngine")
 
+from hedge.models.events import EventBus
+
 class ExecutionEngine(AbstractBaseEngine):
-    def __init__(self, provider: AbstractExecutionProvider = None, replay_mode: bool = False):
+    def __init__(self, provider: AbstractExecutionProvider = None, event_bus: EventBus = None, replay_mode: bool = False):
         self.provider = provider
+        if event_bus is None:
+            raise ValueError("ExecutionEngine requires an event_bus.")
+        self.event_bus = event_bus
         self.replay_mode = replay_mode
         self._warnings: List[str] = []
         self._last_execution_time = 0.0
+        
+        # Instantiate State Machine with the provider
+        self.state_machine = ExecutionStateMachine(
+            provider=self.provider,
+            event_bus=self.event_bus,
+            replay_mode=self.replay_mode
+        )
 
     def initialize(self) -> None:
         logger.info("Initialized ExecutionEngine.")
         if self.provider:
             self.provider.initialize()
+            # On boot, recover state via the State Machine
+            self.state_machine.recover()
         self.reset()
 
     def evaluate(self, hedge_plan: Optional[HedgePlan]) -> Optional[ExecutionResult]:
         """
-        Takes a HedgePlan and executes it.
+        Takes a HedgePlan and executes it through the ExecutionStateMachine.
         Returns None if no plan was provided or if action is HOLD.
         """
         started_at = time.time()
@@ -41,101 +56,38 @@ class ExecutionEngine(AbstractBaseEngine):
         if hedge_plan is None:
             return None
             
-        if hedge_plan.hedge_action == AresDecision.HOLD:
+        if hedge_plan.action == AresDecision.HOLD:
             return None
             
-        is_valid = self._validate_plan(hedge_plan)
-        if not is_valid:
-            logger.warning(f"Invalid HedgePlan {hedge_plan.hedge_id}. Rejecting execution.")
-            return self._finalize_result(
-                execution_id=execution_id,
-                hedge_plan=hedge_plan,
-                status=ExecutionStatus.FAILED,
-                exec_plan={},
-                orders=[],
-                valid=False,
-                timestamp=timestamp,
-                started_at=started_at,
-                explanation="HedgePlan validation failed."
-            )
+        # 2. State Machine handles Validation, Queuing, Submission, Retry, and Provider Hand-off.
+        order: ExecutionOrder = self.state_machine.submit_plan(hedge_plan)
+        
+        # Determine internal backwards compatible status
+        status = ExecutionStatus.FAILED
+        if order.state in [ExecutionState.FILLED]:
+            status = ExecutionStatus.FILLED
+        elif order.state in [ExecutionState.PARTIALLY_FILLED]:
+            status = ExecutionStatus.PARTIALLY_FILLED
+        elif order.state in [ExecutionState.ACKNOWLEDGED, ExecutionState.SUBMITTED, ExecutionState.QUEUED]:
+            status = ExecutionStatus.SUBMITTED
+        elif order.state in [ExecutionState.REJECTED, ExecutionState.CANCELLED]:
+            status = ExecutionStatus.CANCELLED
             
-        # 2. Build Internal Execution Plan (e.g. order legs, timing)
-        exec_plan = self._prepare_execution(hedge_plan)
-        
-        # 3. Build order primitives
-        raw_orders = self._build_orders(exec_plan, hedge_plan)
-        
-        # 4. Execute orders (Placeholder routing)
-        created_orders = self._execute(raw_orders)
-        
-        # 5. Determine overall status
-        status = self._determine_status(created_orders)
-        
-        # 6. Finalize
+        # Compile Result
         result = self._finalize_result(
             execution_id=execution_id,
             hedge_plan=hedge_plan,
             status=status,
-            exec_plan=exec_plan,
-            orders=created_orders,
-            valid=True,
+            exec_plan={"strategy": "MARKET_TAKER"},
+            orders=[order],
+            valid=(order.state != ExecutionState.REJECTED),
             timestamp=timestamp,
             started_at=started_at,
-            explanation=f"Execution pipeline completed with status {status.name}."
+            explanation=f"State Machine managed order {order.client_order_id} -> {order.state.name}"
         )
         
         logger.debug(f"ExecutionEngine evaluated in {result.execution_time_ms:.2f}ms. ID: {execution_id}")
         return result
-
-    # --- Pipeline Stages ---
-    
-    def _validate_plan(self, plan: HedgePlan) -> bool:
-        is_valid = True
-        if plan.hedge_quantity <= 0:
-            self._warnings.append("Hedge quantity is zero or negative.")
-            is_valid = False
-        if plan.hedge_side == HedgeSide.NONE:
-            self._warnings.append("Hedge side is NONE.")
-            is_valid = False
-        return is_valid
-
-    def _prepare_execution(self, plan: HedgePlan) -> Dict[str, Any]:
-        return {
-            "strategy": "MARKET_TAKER",
-            "legs": 1,
-            "timeout_ms": 5000
-        }
-
-    def _build_orders(self, exec_plan: Dict[str, Any], hedge_plan: HedgePlan) -> List[Dict[str, Any]]:
-        return [{
-            "symbol": "BTCUSD",
-            "side": hedge_plan.hedge_side.name,
-            "quantity": hedge_plan.hedge_quantity,
-            "type": "MARKET"
-        }]
-
-    def _execute(self, raw_orders: List[Dict[str, Any]]) -> List[ExecutionOrder]:
-        # If provider exists, we would call it here. For now it's a placeholder.
-        orders = []
-        for i, ro in enumerate(raw_orders):
-            orders.append(ExecutionOrder(
-                order_id=str(uuid.uuid4()),
-                symbol=ro.get("symbol", ""),
-                side=ro.get("side", ""),
-                quantity=ro.get("quantity", 0.0),
-                order_type=ro.get("type", "MARKET"),
-                status="FILLED",
-                filled_quantity=ro.get("quantity", 0.0)
-            ))
-        return orders
-        
-    def _determine_status(self, orders: List[ExecutionOrder]) -> ExecutionStatus:
-        if not orders:
-            return ExecutionStatus.PENDING
-        all_filled = all(o.status == "FILLED" for o in orders)
-        if all_filled:
-            return ExecutionStatus.FILLED
-        return ExecutionStatus.PARTIALLY_FILLED
 
     def _finalize_result(self, execution_id: str, hedge_plan: HedgePlan, status: ExecutionStatus, 
                          exec_plan: Dict[str, Any], orders: List[ExecutionOrder], valid: bool, 
@@ -143,6 +95,12 @@ class ExecutionEngine(AbstractBaseEngine):
         
         completed_at = time.time()
         execution_time_ms = (completed_at - started_at) * 1000.0
+        if hedge_plan.action == AresDecision.HOLD:
+            return ExecutionResult(
+                status=ExecutionStatus.SKIPPED,
+                executed_quantity=0.0,
+                message="Plan action is HOLD."
+            )
         self._last_execution_time = execution_time_ms
         
         return ExecutionResult(
@@ -159,8 +117,6 @@ class ExecutionEngine(AbstractBaseEngine):
             explanation=explanation,
             debug_information={"warnings": list(self._warnings)}
         )
-
-    # ---------------------------------
 
     def reset(self) -> None:
         self._warnings.clear()
@@ -182,5 +138,6 @@ class ExecutionEngine(AbstractBaseEngine):
     def metadata(self) -> Dict[str, Any]:
         return {
             "name": "ExecutionEngine",
-            "provider": self.provider.__class__.__name__ if self.provider else "None"
+            "provider": self.provider.__class__.__name__ if self.provider else "None",
+            "state_machine": "ExecutionStateMachine"
         }

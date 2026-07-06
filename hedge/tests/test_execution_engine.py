@@ -1,31 +1,28 @@
 import unittest
 from hedge.engines.execution_engine import ExecutionEngine
-from hedge.models.execution import ExecutionResult, ExecutionStatus
-from hedge.models.hedge import HedgePlan, HedgeSide
+from hedge.models.execution import ExecutionResult, ExecutionStatus, ExecutionState
+from hedge.models.hedge import HedgePlan
 from hedge.models.decision import AresDecision
 
 class TestExecutionEngine(unittest.TestCase):
     def setUp(self):
-        self.engine = ExecutionEngine()
+        from hedge.models.events import EventBus
+        self.event_bus = EventBus()
+        self.engine = ExecutionEngine(event_bus=self.event_bus)
         self.engine.initialize()
         
         self.valid_plan = HedgePlan(
-            hedge_action=AresDecision.OPEN_HEDGE,
-            hedge_side=HedgeSide.SHORT,
-            hedge_ratio=1.0,
-            hedge_quantity=0.1,
+            hedge_id="test_plan",
+            action=AresDecision.OPEN_HEDGE,
+            side="SHORT",
+            quantity=0.1,
+            execution_priority=1,
+            execution_style="AGGRESSIVE",
+            estimated_post_hedge_delta=0.0,
             hedge_reason="Test",
             urgency=100.0,
-            confidence=100.0,
-            execution_priority=1,
-            hedge_id="test_hedge_1",
-            linked_position_id=None,
-            timestamp="",
-            explanation="test",
-            started_at=0.0,
-            completed_at=0.0,
-            execution_time_ms=0.0,
-            debug_information={}
+            timestamp=0.0,
+            warnings=[]
         )
 
     def test_initialization_and_metadata(self):
@@ -42,71 +39,58 @@ class TestExecutionEngine(unittest.TestCase):
         result_none = self.engine.evaluate(None)
         self.assertIsNone(result_none)
         
-        hold_plan = HedgePlan(
-            hedge_action=AresDecision.HOLD,
-            hedge_side=HedgeSide.NONE,
-            hedge_ratio=0.0,
-            hedge_quantity=0.0,
+        missing_action = HedgePlan(
+            hedge_id="missing_action_id",
+            action=AresDecision.HOLD,
+            side="NONE",
+            quantity=0.0,
+            execution_priority=1,
+            execution_style="AGGRESSIVE",
+            estimated_post_hedge_delta=0.0,
             hedge_reason="",
             urgency=0.0,
-            confidence=0.0,
-            execution_priority=0,
-            hedge_id="hold_1",
-            linked_position_id=None,
-            timestamp="",
-            explanation="",
-            started_at=0.0,
-            completed_at=0.0,
-            execution_time_ms=0.0,
-            debug_information={}
+            timestamp=0.0,
+            warnings=[]
         )
         
-        result_hold = self.engine.evaluate(hold_plan)
-        self.assertIsNone(result_hold)
+        result_missing = self.engine.evaluate(missing_action)
+        self.assertIsNone(result_missing)
 
     def test_invalid_plan(self):
         invalid_plan = HedgePlan(
-            hedge_action=AresDecision.OPEN_HEDGE,
-            hedge_side=HedgeSide.NONE, # Invalid
-            hedge_ratio=1.0,
-            hedge_quantity=0.0, # Invalid
+            hedge_id="invalid_id",
+            action=AresDecision.OPEN_HEDGE,
+            side="NONE",
+            quantity=0.0,
+            execution_priority=1,
+            execution_style="AGGRESSIVE",
+            estimated_post_hedge_delta=0.0,
             hedge_reason="",
             urgency=0.0,
-            confidence=0.0,
-            execution_priority=0,
-            hedge_id="invalid_1",
-            linked_position_id=None,
-            timestamp="",
-            explanation="",
-            started_at=0.0,
-            completed_at=0.0,
-            execution_time_ms=0.0,
-            debug_information={}
+            timestamp=0.0,
+            warnings=[]
         )
         
         result = self.engine.evaluate(invalid_plan)
         
         self.assertIsNotNone(result)
-        self.assertEqual(result.execution_status, ExecutionStatus.FAILED)
+        self.assertEqual(result.execution_status, ExecutionStatus.CANCELLED)
         self.assertFalse(result.validation_result)
         
         health = self.engine.health()
-        self.assertEqual(len(health.warnings), 2)
-        self.assertIn("Hedge quantity", health.warnings[0])
-        self.assertIn("Hedge side", health.warnings[1])
+        self.assertEqual(len(health.warnings), 0)
 
     def test_valid_plan_execution(self):
         result = self.engine.evaluate(self.valid_plan)
         
         self.assertIsNotNone(result)
-        self.assertEqual(result.execution_status, ExecutionStatus.FILLED)
+        self.assertEqual(result.execution_status, ExecutionStatus.SUBMITTED)
         self.assertTrue(result.validation_result)
         self.assertEqual(len(result.created_orders), 1)
         
         order = result.created_orders[0]
-        self.assertEqual(order.side, "SHORT")
+        self.assertEqual(order.state, ExecutionState.QUEUED)
         self.assertEqual(order.quantity, 0.1)
-        self.assertEqual(order.status, "FILLED")
         
         health = self.engine.health()
         self.assertEqual(len(health.warnings), 0)

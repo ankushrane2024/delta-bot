@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional, List
 
 @dataclass
 class HedgePlan:
+    hedge_id: str
     action: str
     side: str
     quantity: float
@@ -26,7 +27,3 @@ class HedgePlan:
             def __init__(self, name):
                 self.name = name
         return MockEnum(self.side)
-        
-    @property
-    def hedge_id(self) -> str:
-        return "mock_id"

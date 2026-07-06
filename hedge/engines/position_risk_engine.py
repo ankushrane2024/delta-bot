@@ -85,7 +85,11 @@ class PositionRiskEngine(AbstractBaseEngine):
             completed_at=completed_at,
             execution_time_ms=execution_time_ms,
             explanation="Position risk assessed successfully.",
-            debug_information={"warnings": list(self._warnings), "total_lots": position_context.total_lots}
+            debug_information={
+                "warnings": list(self._warnings), 
+                "total_lots": position_context.total_lots,
+                "call_stress_breakdown": call_stress_breakdown
+            }
         )
         
         logger.debug(f"PositionRiskEngine evaluated in {execution_time_ms:.2f}ms. ID: {evaluation_id}")
@@ -747,7 +751,8 @@ class PositionRiskEngine(AbstractBaseEngine):
             iv_expansion_factor=iv_expansion_factor,
             pnl_factor=pnl_factor,
             final_call_stress=fusion_breakdown.fused_score,
-            explanation="Call stress components evaluated and fused via Bayesian Survival (Hierarchical Clusters)."
+            explanation="Call stress components evaluated and fused via Bayesian Survival (Hierarchical Clusters).",
+            fusion_breakdown=fusion_breakdown
         )
 
 

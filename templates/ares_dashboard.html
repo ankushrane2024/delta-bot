@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARES Mission Control</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- AG Grid -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+    
+    <!-- Apache ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/ares.css">
+</head>
+<body class="dark-theme">
+
+    <!-- Top Status Ribbon -->
+    <header class="ribbon glass-panel">
+        <div class="ribbon-brand">
+            <i data-lucide="activity" class="brand-icon"></i>
+            ARES <span>MISSION CONTROL</span>
+        </div>
+        
+        <div class="ribbon-metrics">
+            <div class="metric-item">
+                <span class="metric-label">MODE</span>
+                <span class="metric-val" id="metric-mode">--</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-label">EXCHANGE</span>
+                <span class="metric-val" id="metric-exch">
+                    <span class="status-dot" id="stat-rest"></span> --
+                </span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-label">BTC PRICE</span>
+                <span class="metric-val font-mono" id="metric-btc">--</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-label">PORTFOLIO</span>
+                <span class="metric-val font-mono" id="metric-port">--</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-label">TODAY'S PNL</span>
+                <span class="metric-val font-mono" id="metric-pnl">--</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-label">NET DELTA</span>
+                <span class="metric-val font-mono" id="metric-delta">--</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-label">MARGIN</span>
+                <span class="metric-val font-mono" id="metric-margin">--</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-label">RISK LEVEL</span>
+                <span class="metric-val" id="metric-risk">--</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-label">LATENCY</span>
+                <span class="metric-val font-mono" id="pipe-lat">--</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-label">SYSTEM</span>
+                <span class="metric-val" id="metric-sys">
+                    <i data-lucide="cpu" class="sm-icon"></i> <span id="sys-cpu">--</span>%
+                    <i data-lucide="memory-stick" class="sm-icon" style="margin-left:6px;"></i> <span id="sys-ram">--</span>%
+                </span>
+            </div>
+        </div>
+        
+        <a href="/" class="btn-exit">
+            <i data-lucide="log-out"></i>
+        </a>
+    </header>
+
+    <div class="main-layout">
+        <div class="content-col">
+            
+            <!-- Row 1: Portfolio & Insight -->
+            <div class="grid-row-1">
+                <!-- Portfolio Card -->
+                <div class="panel glass-panel">
+                    <div class="panel-header">
+                        <div class="panel-title"><i data-lucide="pie-chart"></i> Portfolio Overview</div>
+                    </div>
+                    <div class="portfolio-grid">
+                        <div class="greeks-box">
+                            <div class="greek-item">
+                                <span class="greek-label">NET DELTA</span>
+                                <span class="greek-val font-mono" id="greek-delta">--</span>
+                            </div>
+                            <div class="greek-item">
+                                <span class="greek-label">NET GAMMA</span>
+                                <span class="greek-val font-mono" id="greek-gamma">--</span>
+                            </div>
+                            <div class="greek-item">
+                                <span class="greek-label">NET VEGA</span>
+                                <span class="greek-val font-mono" id="greek-vega">--</span>
+                            </div>
+                            <div class="greek-item">
+                                <span class="greek-label">NET THETA</span>
+                                <span class="greek-val font-mono" id="greek-theta">--</span>
+                            </div>
+                            <div class="greek-item" style="grid-column: span 2;">
+                                <span class="greek-label">NET EXPOSURE</span>
+                                <span class="greek-val font-mono text-primary" id="greek-exposure">--</span>
+                            </div>
+                        </div>
+                        <div class="heat-gauge-container">
+                            <div class="metric-label" style="text-align: center; margin-bottom: 8px;">HEAT GAUGE</div>
+                            <div id="chart-heat" class="echart-container" style="height: 120px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Insight Card -->
+                <div class="panel glass-panel">
+                    <div class="panel-header">
+                        <div class="panel-title"><i data-lucide="brain-circuit"></i> AI Insight & Reasoning</div>
+                    </div>
+                    <div class="insight-content" id="ai-insight-content">
+                        <div class="insight-shimmer">Analyzing market context...</div>
+                        <div id="ai-insight-text" style="display: none; line-height: 1.5; color: var(--text-secondary);">
+                            No recent decisions. Waiting for market conditions to shift.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Decision Timeline -->
+            <div class="panel glass-panel">
+                <div class="panel-header">
+                    <div class="panel-title"><i data-lucide="git-merge"></i> Live AI Decision Pipeline</div>
+                </div>
+                <div class="timeline-container">
+                    <div class="timeline-track"></div>
+                    <div class="timeline-node" id="node-tick">
+                        <div class="node-icon"><i data-lucide="clock"></i></div>
+                        <div class="node-label">TICK</div>
+                        <div class="node-val font-mono" id="val-tick">--</div>
+                    </div>
+                    <div class="timeline-node" id="node-ctx">
+                        <div class="node-icon"><i data-lucide="bar-chart-2"></i></div>
+                        <div class="node-label">CONTEXT</div>
+                        <div class="node-val" id="val-ctx">--</div>
+                    </div>
+                    <div class="timeline-node" id="node-trend">
+                        <div class="node-icon"><i data-lucide="trending-up"></i></div>
+                        <div class="node-label">TREND</div>
+                        <div class="node-val" id="val-trend">--</div>
+                    </div>
+                    <div class="timeline-node" id="node-regime">
+                        <div class="node-icon"><i data-lucide="layers"></i></div>
+                        <div class="node-label">REGIME</div>
+                        <div class="node-val" id="val-regime">--</div>
+                    </div>
+                    <div class="timeline-node" id="node-risk">
+                        <div class="node-icon"><i data-lucide="shield-alert"></i></div>
+                        <div class="node-label">RISK</div>
+                        <div class="node-val" id="val-risk">--</div>
+                    </div>
+                    <div class="timeline-node" id="node-dec">
+                        <div class="node-icon"><i data-lucide="cpu"></i></div>
+                        <div class="node-label">DECISION</div>
+                        <div class="node-val" id="val-dec">--</div>
+                    </div>
+                    <div class="timeline-node" id="node-size">
+                        <div class="node-icon"><i data-lucide="sliders"></i></div>
+                        <div class="node-label">SIZING</div>
+                        <div class="node-val font-mono" id="val-size">--</div>
+                    </div>
+                    <div class="timeline-node" id="node-exec">
+                        <div class="node-icon"><i data-lucide="send"></i></div>
+                        <div class="node-label">EXECUTION</div>
+                        <div class="node-val" id="val-exec">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 3: Live Orders Grid -->
+            <div class="panel glass-panel" style="flex: 1; min-height: 250px;">
+                <div class="panel-header">
+                    <div class="panel-title"><i data-lucide="list"></i> Live Orders</div>
+                    <div class="panel-actions">
+                        <input type="text" id="order-search" class="input-dark" placeholder="Search orders..." oninput="onFilterTextBoxChanged()">
+                    </div>
+                </div>
+                <!-- AG Grid Container -->
+                <div id="orders-grid" class="ag-theme-alpine-dark" style="height: calc(100% - 40px); width: 100%;"></div>
+            </div>
+
+            <!-- Row 4: Interactive Charts -->
+            <div class="charts-row">
+                <div class="panel glass-panel chart-panel">
+                    <div class="panel-title chart-title">Portfolio Value</div>
+                    <div id="chart-port" class="echart-container"></div>
+                </div>
+                <div class="panel glass-panel chart-panel">
+                    <div class="panel-title chart-title">PnL & Delta Tracking</div>
+                    <div id="chart-pnl" class="echart-container"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Sidebar: Provider Health -->
+        <div class="sidebar-col">
+            <div class="panel glass-panel provider-panel" style="flex: 1;">
+                <div class="panel-header">
+                    <div class="panel-title"><i data-lucide="server"></i> Provider Health</div>
+                </div>
+                
+                <div class="health-list">
+                    <div class="health-item">
+                        <div class="health-info">
+                            <span class="health-name">REST API</span>
+                            <span class="health-desc">Authentication & Requests</span>
+                        </div>
+                        <div class="health-status"><span class="status-dot" id="stat-rest-sb"></span></div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-info">
+                            <span class="health-name">WebSocket</span>
+                            <span class="health-desc">Live Market Data Feed</span>
+                        </div>
+                        <div class="health-status"><span class="status-dot" id="stat-ws-sb"></span></div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-info">
+                            <span class="health-name">EventBus</span>
+                            <span class="health-desc">Internal Pub/Sub Core</span>
+                        </div>
+                        <div class="health-status"><span class="status-dot" id="stat-eb"></span></div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-info">
+                            <span class="health-name">Circuit Breaker</span>
+                            <span class="health-desc">Safety Interlock</span>
+                        </div>
+                        <div class="health-status"><span class="status-dot dot-green" id="stat-cb"></span></div>
+                    </div>
+                </div>
+
+                <div class="panel-header" style="margin-top: 24px;">
+                    <div class="panel-title"><i data-lucide="activity-square"></i> System Metrics</div>
+                </div>
+                <div class="metrics-list">
+                    <div class="metric-row">
+                        <span>Reconnects</span>
+                        <span class="font-mono" id="stat-recon">0</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Heartbeat</span>
+                        <span class="font-mono" id="stat-hb">--</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Catalog</span>
+                        <span class="font-mono" id="stat-cat">--</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Threads</span>
+                        <span class="font-mono" id="stat-threads">--</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Portfolio Hash</span>
+                        <span class="font-mono text-muted hash-text" id="stat-hash">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Panel: Live Log Console -->
+    <div class="logs-console">
+        <div class="logs-header">
+            <div class="logs-title"><i data-lucide="terminal"></i> System Terminal</div>
+            <div class="logs-actions">
+                <input type="text" id="log-filter" class="input-dark input-sm" placeholder="Filter logs...">
+                <button class="btn-icon" onclick="toggleLogScroll()" title="Toggle Auto-Scroll">
+                    <i data-lucide="pause-circle" id="icon-scroll"></i>
+                </button>
+                <button class="btn-icon" onclick="copyLogs()" title="Copy Logs">
+                    <i data-lucide="copy"></i>
+                </button>
+                <button class="btn-icon" onclick="downloadLogs()" title="Download Logs">
+                    <i data-lucide="download"></i>
+                </button>
+            </div>
+        </div>
+        <div class="logs-body font-mono" id="logs-body">
+            <!-- Populated via AJAX -->
+        </div>
+    </div>
+
+    <!-- External Script -->
+    <script src="/static/js/ares.js"></script>
+    
+    <!-- Initialize Lucide Icons -->
+    <script>
+      lucide.createIcons();
+    </script>
+</body>
+</html>

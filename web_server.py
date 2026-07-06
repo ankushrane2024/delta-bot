@@ -7,6 +7,7 @@ app = Flask(__name__, template_folder='templates')
 
 # Global reference to the engine
 bot_engine = None
+ares_runner = None
 
 def init_web_server(engine):
     global bot_engine
@@ -844,4 +845,160 @@ def run_backtest():
         tb = traceback.format_exc()
         app_logger.error(f"Web [backtest]: Backtester error: {e}\n{tb}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+# ====================================================
+# ARES INTEGRATION ROUTES (SAFE MODE)
+# ====================================================
+
+@app.route('/ares/dashboard')
+def ares_dashboard():
+    if not ares_runner:
+        return render_template('ares_disabled.html')
+    return render_template('ares_dashboard.html')
+
+@app.route('/ares/health')
+def ares_health():
+    if not ares_runner:
+        return jsonify({'status': 'DISABLED', 'ares_enabled': False})
+    return jsonify({'status': 'UP', 'ares_enabled': True, 'mode': ares_runner.config.mode})
+
+@app.route('/ares/status')
+def ares_status():
+    if not ares_runner:
+        return jsonify({'error': 'ARES not initialized'}), 500
+    
+    # Extract high-level summary
+    # BOT MODE, Exchange Status, BTC Price, Portfolio Value, Today\'s PnL, Total Delta, Current Risk, Active Hedge, Margin Used, CPU, RAM, EventBus
+    try:
+        analytics = ares_runner.analytics.get_metrics()
+    except Exception:
+        analytics = {}
+        
+    try:
+        health = ares_runner.health_monitor.get_health()
+        health_details = ares_runner.health_monitor.check_all()
+    except Exception:
+        health = 'UNKNOWN'
+        health_details = {}
+        
+    try:
+        portfolio_hash = ares_runner.pipeline_validator.validator.analytics.metrics.get('portfolio_hash', 'N/A')
+    except:
+        portfolio_hash = 'N/A'
+        
+    res = {
+        'bot_mode': ares_runner.config.mode,
+        'exchange_status': 'CONNECTED' if getattr(ares_runner.orchestrator.execution_provider, 'is_connected', False) else 'DISCONNECTED',
+        'btc_price': ares_runner.orchestrator.market_data_provider.get_latest_data().get('spot_price', 0),
+        'portfolio_value': analytics.get('portfolio_value', 0),
+        'pnl': analytics.get('pnl', 0),
+        'total_delta': analytics.get('net_delta', 0),
+        'current_risk': analytics.get('risk_level', 'LOW'),
+        'active_hedge': 'ACTIVE' if analytics.get('hedge_active', False) else 'NONE',
+        'margin_used': analytics.get('margin_used', 0),
+        'cpu': getattr(health_details.get('CPU', {}), 'status', 'UNKNOWN'),
+        'ram': getattr(health_details.get('RAM', {}), 'status', 'UNKNOWN'),
+        'event_bus': 'ONLINE',
+        'health_status': health,
+        'portfolio_hash': portfolio_hash
+    }
+    return jsonify(res)
+
+@app.route('/ares/orders')
+def ares_orders():
+    if not ares_runner:
+        return jsonify({'error': 'ARES not initialized'}), 500
+    if not ares_runner.store:
+        return jsonify({'error': 'Store not initialized'}), 500
+        
+    orders = getattr(ares_runner.store, 'get_execution_orders', lambda: [])()
+    res = []
+    for order in orders:
+        res.append({
+            'client_order_id': getattr(order, 'client_order_id', ''),
+            'symbol': getattr(order, 'symbol', ''),
+            'side': order.side.name if hasattr(order, 'side') else '',
+            'quantity': getattr(order, 'quantity', 0),
+            'price': getattr(order, 'price', 0),
+            'state': order.state.name if hasattr(order, 'state') else ''
+        })
+    return jsonify(res)
+
+@app.route('/ares/risk')
+def ares_risk():
+    if not ares_runner:
+        return jsonify({'error': 'ARES not initialized'}), 500
+    metrics = getattr(ares_runner.orchestrator.risk_engine, 'last_risk_evaluation', {})
+    return jsonify(metrics)
+
+@app.route('/ares/portfolio')
+def ares_portfolio():
+    if not ares_runner:
+        return jsonify({'error': 'ARES not initialized'}), 500
+    positions = getattr(ares_runner.orchestrator.execution_provider, 'get_positions', lambda: [])()
+    if not positions and hasattr(ares_runner.orchestrator.execution_provider, 'fetch_position'):
+        pos = ares_runner.orchestrator.execution_provider.fetch_position()
+        positions = [pos] if pos else []
+    res = []
+    for pos in positions:
+        if isinstance(pos, dict):
+            res.append(pos)
+        else:
+            res.append({
+                'symbol': getattr(pos, 'symbol', 'BTCUSD'),
+                'quantity': getattr(pos, 'quantity', 0),
+                'average_entry_price': getattr(pos, 'average_entry_price', 0),
+                'unrealized_pnl': getattr(pos, 'unrealized_pnl', 0)
+            })
+    return jsonify(res)
+
+@app.route('/ares/analytics')
+def ares_analytics():
+    if not ares_runner:
+        return jsonify({'error': 'ARES not initialized'}), 500
+    metrics = getattr(ares_runner.analytics, 'get_summary', lambda: {})()
+    return jsonify(metrics)
+
+@app.route('/ares/system')
+def ares_system():
+    import threading
+    res = {'active_threads': threading.active_count()}
+    try:
+        import psutil
+        res['cpu_percent'] = psutil.cpu_percent()
+        res['memory_percent'] = psutil.virtual_memory().percent
+    except ImportError:
+        res['cpu_percent'] = 0.0
+        res['memory_percent'] = 0.0
+    return jsonify(res)
+
+@app.route('/ares/provider')
+def ares_provider():
+    if not ares_runner:
+        return jsonify({'error': 'ARES not initialized'}), 500
+    prov = ares_runner.orchestrator.execution_provider
+    res = {
+        'connected': getattr(prov, 'is_connected', False),
+        'type': prov.__class__.__name__
+    }
+    return jsonify(res)
+
+@app.route('/ares/logs')
+def ares_logs():
+    # Read the last 50 lines from the ARES log or system log
+    logs = []
+    try:
+        with open('ares.log', 'r') as f:
+            lines = f.readlines()
+            logs = [line.strip() for line in lines[-50:]]
+    except Exception:
+        try:
+            with open('trading_bot.log', 'r') as f:
+                lines = f.readlines()
+                logs = [line.strip() for line in lines[-50:]]
+        except Exception:
+            logs = ['No logs found.']
+    return jsonify({'logs': logs})
 

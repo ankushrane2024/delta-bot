@@ -19,14 +19,15 @@ class TestDecisionEngine(unittest.TestCase):
         self.breakdown.context_cluster = ClusterOutput(score=10.0)
 
     def test_ema_smoothing(self):
+        import math
         # First eval sets EMA exactly to the incoming score
-        decision1 = self.engine.evaluate(50.0, self.breakdown, self.context, 0.0)
+        decision1 = self.engine.evaluate(50.0, self.breakdown, self.context, 0.0, current_time=0.0)
         self.assertAlmostEqual(decision1.ema_stress, 50.0)
         
-        # Second eval applies EMA alpha
-        # config.DECISION_EMA_ALPHA is defaulted to 0.3
-        decision2 = self.engine.evaluate(100.0, self.breakdown, self.context, 0.0)
-        expected_ema = (config.DECISION_EMA_ALPHA * 100.0) + ((1.0 - config.DECISION_EMA_ALPHA) * 50.0)
+        # Second eval applies EMA alpha with dt = 60
+        decision2 = self.engine.evaluate(100.0, self.breakdown, self.context, 0.0, current_time=60.0)
+        alpha = 1.0 - math.exp(-60.0 / 60.0)
+        expected_ema = (alpha * 100.0) + ((1.0 - alpha) * 50.0)
         self.assertAlmostEqual(decision2.ema_stress, expected_ema)
 
     def test_scaling_up_transitions(self):
