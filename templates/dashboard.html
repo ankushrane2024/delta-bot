@@ -872,32 +872,25 @@
         </div>
 
         <!-- Section 4: Controls Panel (Moved to top) -->
-        <div class="glass-panel" style="border: 1px solid rgba(168, 85, 247, 0.2); background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(168, 85, 247, 0.05) 100%);">
-            <h2>⚙️ Manual Controls</h2>
+        <div class="glass-panel" style="border: 1px solid rgba(0, 210, 255, 0.2); background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(0, 210, 255, 0.05) 100%);">
+            <h2>⚙️ Core Systems & Modules</h2>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 16px; margin-top: 20px; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(0,0,0,0.15); border-radius: 12px; border: 1px solid rgba(0, 210, 255, 0.15); box-shadow: inset 0 0 20px rgba(0, 210, 255, 0.02);">
                     <div>
-                        <div style="font-weight: 600; color: #fff; margin-bottom: 5px;">Market Regime Filter (ADX)</div>
-                        <div style="font-size: 0.85rem; color: var(--text-secondary);">Skips trades when market is Trending (ADX > 25)</div>
+                        <div style="font-weight: 800; font-size: 1.1rem; color: #00d2ff; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;">⚡ ARES X AI Integration</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">Autonomous hedge and risk management engine</div>
                     </div>
-                    <button id="regime-pill"
-                        onclick="toggleRegimeFilter()"
-                        style="min-width: 72px; padding: 7px 16px; border-radius: 20px; border: 1.5px solid #334155; background: #334155; color: #94a3b8; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.25s; letter-spacing: 0.5px;">
-                        OFF
-                    </button>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                    <div>
-                        <div style="font-weight: 600; color: #fff; margin-bottom: 5px;">Smart Hedging</div>
-                        <div style="font-size: 0.85rem; color: var(--text-secondary);">Dynamically hedge Delta risk when IV spikes</div>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.8rem; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Status:</span>
+                            <span id="legacy-ares-status-badge" style="padding: 4px 10px; background: rgba(255, 255, 255, 0.1); border-radius: 6px; font-size: 0.8rem; font-weight: 700; color: #94a3b8;">STANDBY</span>
+                        </div>
+                        <button onclick="window.location.href='/ares/dashboard'"
+                            style="padding: 8px 18px; border-radius: 8px; border: 1px solid #00d2ff; background: rgba(0, 210, 255, 0.1); color: #00d2ff; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;">
+                            Command Center <span style="font-size: 1.2rem; line-height: 1;">→</span>
+                        </button>
                     </div>
-                    <button id="hedge-pill" style="display: none !important;"
-                        onclick="toggleSmartHedging()"
-                        style="min-width: 72px; padding: 7px 16px; border-radius: 20px; border: 1.5px solid var(--success); background: var(--success); color: #fff; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.25s; letter-spacing: 0.5px; box-shadow: 0 0 10px rgba(16,185,129,0.4);">
-                        ON
-                    </button>
                 </div>
             </div>
 
@@ -1862,6 +1855,24 @@
                 // Update Smart Hedging Panel
                 if (data.hedge_status) {
                     const hBadge = document.getElementById('hedge-active-badge');
+                    
+                    // --- ARES X Integration Bridge ---
+                    const aresBadge = document.getElementById('legacy-ares-status-badge');
+                    if (aresBadge) {
+                        if (data.hedge_status.hedge_active) {
+                            aresBadge.textContent = 'ACTIVE';
+                            aresBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+                            aresBadge.style.color = '#10b981';
+                            aresBadge.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+                        } else {
+                            aresBadge.textContent = 'STANDBY';
+                            aresBadge.style.background = 'rgba(255, 255, 255, 0.1)';
+                            aresBadge.style.color = '#94a3b8';
+                            aresBadge.style.border = 'none';
+                        }
+                    }
+                    // ---------------------------------
+
                     if (hBadge) {
                         if (data.hedge_status.hedge_active) {
                             hBadge.textContent = '🛡️ ACTIVE';
