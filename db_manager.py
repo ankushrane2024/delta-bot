@@ -29,12 +29,13 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # Cloud DB Config — HARDCODED ID survives Render restarts & code deploys.
 # Self-healer auto-creates a new blob if this one ever expires (404).
 # ---------------------------------------------------------------------------
+_MASTER_DIR_BLOB_ID = "019f3706-5b11-7821-a3ed-50ded7ac7725"  # Permanent Master Directory
 _FALLBACK_BLOB_ID = "019f2c26-6318-711f-9349-99ce26627ac1"  # Merged 17 trades
 _BACKUP_BLOB_ID = "019f2c26-6684-755f-8953-2e096f1d4673"   # Secondary Backup Blob
 _LAST_BACKUP_TIME_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".last_backup_time")
 _blob_id = _FALLBACK_BLOB_ID
 _connected = False
-_keep_alive_thread = None
+_keep_alive_started = False
 
 def _get_master_dir() -> dict:
     """Fetches the Master Directory blob that contains pointers to the true active databases."""
@@ -177,7 +178,7 @@ def _keep_alive_loop():
 
 
 def _start_keep_alive():
-    """Start the keep-alive background thread (only once)."""
+    """Starts the keep-alive background thread if not already running."""
     global _keep_alive_started
     if not _keep_alive_started:
         _keep_alive_started = True
