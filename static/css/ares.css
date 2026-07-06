@@ -248,3 +248,6 @@ body {
 .log-warn { color: var(--c-yellow); }
 .log-err { color: var(--c-red); }
 .log-sys { color: var(--c-cyan); }
+. w a r n i n g   {   c o l o r :   # F F B 3 0 0   ! i m p o r t a n t ;   }  
+ . g r a y   {   c o l o r :   # 9 E 9 E 9 E   ! i m p o r t a n t ;   }  
+ 

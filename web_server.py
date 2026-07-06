@@ -908,6 +908,49 @@ def ares_status():
             if action and hasattr(action, 'name') and action.name != 'HOLD':
                 hedge_active = True
 
+    # --- Module 49: Live Protection Efficiency KPIs ---
+    option_mtm = 0.0
+    hedge_mtm = 0.0
+    combined_mtm = 0.0
+    protection_pct = 0.0
+    
+    if bot_engine and getattr(bot_engine, 'execution', None):
+        # 1. Option MTM
+        for sym, data in bot_engine.execution.active_positions.items():
+            entry_p = data.get('entry_price', 0)
+            size = data.get('size', 0)
+            
+            # Find current price
+            current_p = entry_p
+            try:
+                ws_data = bot_engine.api_client.get_realtime_ticker(sym)
+                if ws_data:
+                    current_p = float(ws_data.get('spot_price') or ws_data.get('greeks', {}).get('spot') or entry_p)
+            except:
+                pass
+                
+            btc_qty = size * 0.001
+            # Option is sold, so profit = entry - current
+            option_mtm += (entry_p - current_p) * btc_qty
+            
+        # 2. Hedge MTM
+        hedge_size = bot_engine.execution.hedge_size_btc
+        if abs(hedge_size) > 0:
+            hedge_entry = bot_engine.execution.hedge_entry_price
+            current_btc = ares_runner.orchestrator.market_data_provider.get_latest_data().get('spot_price', 0)
+            if current_btc > 0 and hedge_entry > 0:
+                if hedge_size > 0: # Long hedge
+                    hedge_mtm = (current_btc - hedge_entry) * hedge_size
+                else: # Short hedge
+                    hedge_mtm = (hedge_entry - current_btc) * abs(hedge_size)
+                    
+        # 3. Combined MTM & Protection
+        combined_mtm = option_mtm + hedge_mtm
+        
+        if option_mtm < 0 and hedge_mtm > 0:
+            protection_pct = round((abs(hedge_mtm) / abs(option_mtm)) * 100, 2)
+            if protection_pct > 100.0: protection_pct = 100.0
+
     res = {
         'bot_mode': ares_runner.config.mode,
         'exchange_status': 'CONNECTED' if getattr(ares_runner.orchestrator.execution_provider, 'is_connected', False) else 'DISCONNECTED',
@@ -927,7 +970,11 @@ def ares_status():
         'avg_latency': analytics.get('average_latency_ms', 0),
         'max_drawdown': analytics.get('max_drawdown', 0),
         'pipeline_latency': getattr(tick_result, 'pipeline_latency', 0) if tick_result else 0,
-        'provider_health': getattr(tick_result, 'provider_health', 'N/A') if tick_result else 'N/A'
+        'provider_health': getattr(tick_result, 'provider_health', 'N/A') if tick_result else 'N/A',
+        'option_mtm': round(option_mtm, 2),
+        'hedge_mtm': round(hedge_mtm, 2),
+        'combined_mtm': round(combined_mtm, 2),
+        'protection_pct': protection_pct
     }
     return jsonify(res)
 

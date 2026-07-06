@@ -160,9 +160,28 @@ class PerformanceTracker:
         net_pnl = pnl + hedge_pnl
         pct_profit_captured = round((net_pnl / premium_collected * 100), 2) if premium_collected else 0.0
 
+        # --- Module 49: Protection Efficiency KPIs ---
+        unprotected_loss = pnl if pnl < 0 else 0.0
+        hedge_gain = hedge_pnl if hedge_pnl > 0 else 0.0
+        protection_efficiency = 0.0
+        if unprotected_loss < 0 and hedge_gain > 0:
+            protection_efficiency = round((abs(hedge_gain) / abs(unprotected_loss)) * 100, 2)
+            # Cap at 100% for visualization purposes, though mathematically it can be >100%
+            if protection_efficiency > 100.0:
+                protection_efficiency = 100.0
+                
+        # Inject ARES specifics if available
+        ares_decision = hedge_status.get('ares_decision', 'NONE') if hedge_status else 'NONE'
+        ares_risk_score = hedge_status.get('ares_risk_score', 0.0) if hedge_status else 0.0
+
         trade_record = {
             "date": today,
             "mode": mode,
+            "unprotected_loss": unprotected_loss,
+            "hedge_gain": hedge_gain,
+            "protection_efficiency": protection_efficiency,
+            "ares_decision": ares_decision,
+            "ares_risk_score": ares_risk_score,
             "entry_time": entry_time,
             "exit_time": get_ist_now().isoformat(),
             "call_symbol": call_symbol,

@@ -62,7 +62,8 @@ class DeltaTradingEngine:
         self.pnl_chart_data = []  # Live P&L chart snapshots: [{t, pnl, hedge_pnl}]
         
         self.market_regime_filter_enabled = False
-        self.smart_hedging_enabled = True  # Hedging toggle
+        self.smart_hedge_provider = getattr(config, 'SMART_HEDGE_PROVIDER', 'ARES')
+        self.smart_hedging_enabled = True if self.smart_hedge_provider == 'LEGACY' else False
         self.current_market_regime = "Unknown"
         self.current_adx_value = 0.0
         self.adx_history = []
@@ -296,6 +297,9 @@ class DeltaTradingEngine:
 
         self.execution.save_state()
 
+        # Claim Hedge Ownership Lock before taking action
+        self.execution.acquire_hedge_lock(self.smart_hedge_provider)
+
         # Reset the watchdog timer on new trade entry so WebSocket has time to fetch the new symbols
         self.api_client.last_price_update_time = time.time()
 
@@ -303,10 +307,11 @@ class DeltaTradingEngine:
         notifier.notify_entry(call_opt['symbol'], put_opt['symbol'], per_entry_size, total_premium_for_this_entry)
 
         # Smart Hedging Pipeline — Step 1
-        # Cache entry premiums immediately for premium-direction fallback
-        self.smart_hedging.set_entry_premiums(self.execution.active_positions)
-        threading.Thread(target=self.smart_hedging.run_post_entry_hedge,
-                         args=(self.execution.active_positions,), daemon=True).start()
+        if self.smart_hedging_enabled:
+            # Cache entry premiums immediately for premium-direction fallback
+            self.smart_hedging.set_entry_premiums(self.execution.active_positions)
+            threading.Thread(target=self.smart_hedging.run_post_entry_hedge,
+                             args=(self.execution.active_positions,), daemon=True).start()
 
 
     def run_exit_cycle(self):

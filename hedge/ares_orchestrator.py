@@ -17,7 +17,7 @@ from hedge.engines.sizing_engine import HedgeSizingEngine
 from hedge.engines.hedge_manager import HedgeManager
 from hedge.engines.state_machine import ExecutionStateMachine
 from hedge.engines.portfolio_synchronizer import PortfolioSynchronizer
-from hedge.engines.adapters import PositionContextAdapter
+from hedge.engines.data_adapters import PositionContextAdapter
 
 # Models
 from hedge.models.position import StressFusionBreakdown
@@ -43,13 +43,15 @@ class AresOrchestrator:
         execution_provider: AbstractExecutionProvider,
         clock: Clock,
         event_bus: EventBus,
-        execution_store: Optional[ExecutionStore] = None
+        execution_store: Optional[ExecutionStore] = None,
+        **kwargs
     ):
         self.market_data_provider = market_data_provider
         self.execution_provider = execution_provider
         self.clock = clock
         self.event_bus = event_bus
         self.execution_store = execution_store or InMemoryExecutionStore()
+        self.option_bridge = kwargs.get('option_bridge')
         
         # Determine if we are running in deterministic replay mode
         self.replay_mode = "ReplayClock" in clock.__class__.__name__
@@ -107,9 +109,12 @@ class AresOrchestrator:
                 logger.debug("No market data available yet. Skipping tick.")
                 return
 
-            # 2. Portfolio Synchronization
-            self.portfolio_sync.reconcile_with_provider()
-            snapshot = self.portfolio_sync.current_snapshot
+            # 2. Portfolio Synchronization (Live from Bridge)
+            if self.option_bridge:
+                snapshot = self.option_bridge.get_portfolio_snapshot()
+            else:
+                self.portfolio_sync.reconcile_with_provider()
+                snapshot = self.portfolio_sync.current_snapshot
 
             # Extract market attributes
             trend_context = MarketContext(
@@ -130,19 +135,23 @@ class AresOrchestrator:
             regime_result = self.regime_engine.evaluate(trend_result)
 
             # 5. Create Position Context (Adapter)
-            pos_context = PositionContextAdapter.from_snapshot(snapshot)
-        
-            # Inject live market data overrides into context for accurate risk computation
-            pos_context.futures_price = market_data.get("spot_price", pos_context.futures_price)
-            pos_context.short_call_strike = market_data.get("spot_price", pos_context.futures_price) # Mock ATM
-            pos_context.short_put_strike = market_data.get("spot_price", pos_context.futures_price)
-            pos_context.call_iv = market_data.get("iv", pos_context.call_iv)
-            pos_context.put_iv = market_data.get("iv", pos_context.put_iv)
-            call_greeks = market_data.get("call_greeks", {})
-            pos_context.options_delta = call_greeks.get("delta", pos_context.options_delta)
-            pos_context.call_delta = call_greeks.get("delta", pos_context.call_delta)
-            pos_context.call_gamma = call_greeks.get("gamma", pos_context.call_gamma)
-            pos_context.call_vega = call_greeks.get("vega", pos_context.call_vega)
+            if self.option_bridge:
+                # Build context from LIVE legacy position
+                pos_context = PositionContextAdapter.from_snapshot(snapshot)
+                # Bridge automatically injects live Option MTM, Greeks, and Delta
+            else:
+                pos_context = PositionContextAdapter.from_snapshot(snapshot)
+                # Inject live market data overrides for mock
+                pos_context.futures_price = market_data.get("spot_price", pos_context.futures_price)
+                pos_context.short_call_strike = market_data.get("spot_price", pos_context.futures_price) # Mock ATM
+                pos_context.short_put_strike = market_data.get("spot_price", pos_context.futures_price)
+                pos_context.call_iv = market_data.get("iv", pos_context.call_iv)
+                pos_context.put_iv = market_data.get("iv", pos_context.put_iv)
+                call_greeks = market_data.get("call_greeks", {})
+                pos_context.options_delta = call_greeks.get("delta", pos_context.options_delta)
+                pos_context.call_delta = call_greeks.get("delta", pos_context.call_delta)
+                pos_context.call_gamma = call_greeks.get("gamma", pos_context.call_gamma)
+                pos_context.call_vega = call_greeks.get("vega", pos_context.call_vega)
 
             # 6. Position Risk Engine
             risk_result = self.risk_engine.evaluate(regime_result, trend_result, pos_context)

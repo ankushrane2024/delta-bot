@@ -7,7 +7,7 @@ from hedge.models.core_interfaces import ReplayClock, InMemoryExecutionStore
 from hedge.engines.replay_provider import ReplayDataProvider, ReplayMarketData
 from hedge.engines.execution_provider import PaperExecutionProvider
 from hedge.engines.portfolio_synchronizer import PortfolioSynchronizer
-from hedge.engines.adapters import PositionContextAdapter
+from hedge.engines.data_adapters import PositionContextAdapter
 from hedge.engines.position_risk_engine import PositionRiskEngine
 from hedge.engines.decision_engine import DecisionEngine
 from hedge.engines.sizing_engine import HedgeSizingEngine

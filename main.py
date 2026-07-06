@@ -62,10 +62,13 @@ def main():
         if os.environ.get('ENABLE_ARES', 'true').lower() == 'true':
             try:
                 from hedge.deployment.service_runner import ServiceRunner
-                ares_runner = ServiceRunner(mode_override='PAPER')
+                from hedge.engines.adapters.option_bridge import OptionBridge
+                
+                bridge = OptionBridge(engine.execution)
+                ares_runner = ServiceRunner(mode_override='PAPER', option_bridge=bridge)
                 ares_thread = threading.Thread(target=ares_runner.run, daemon=True)
                 ares_thread.start()
-                app_logger.info("ARES ServiceRunner initialized in background thread in PAPER mode.")
+                app_logger.info("ARES ServiceRunner initialized in background thread in PAPER mode with OptionBridge.")
             except Exception as e:
                 app_logger.error(f"Failed to initialize ARES ServiceRunner: {e}")
                 ares_runner = None

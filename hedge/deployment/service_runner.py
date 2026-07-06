@@ -40,13 +40,14 @@ class ServiceRunner:
     Owns startup, DI, mode selection, shutdown, signal handling, and background services.
     The AresOrchestrator is completely unaware of this wrapper.
     """
-    def __init__(self, mode_override: str = None):
+    def __init__(self, mode_override: str = None, option_bridge=None):
         self.running = False
         self.config = AresConfig.load(mode_override=mode_override)
         initialize_all_loggers(self.config.log_dir, self.config)
         self.clock = SystemClock()
         self.event_bus = EventBus()
         self.store = None
+        self.option_bridge = option_bridge
 
     def _signal_handler(self, sig, frame):
         logger.info(f"Received termination signal ({sig}). Initiating graceful shutdown...")
@@ -56,7 +57,10 @@ class ServiceRunner:
         market_data = PaperMarketDataProvider(self.clock)
         
         # Select provider based on mode
-        if self.config.mode in ["SHADOW", "REPLAY"]:
+        if self.option_bridge:
+            provider = self.option_bridge
+            logger.info("ServiceRunner: Using OptionBridge as ExecutionProvider.")
+        elif self.config.mode in ["SHADOW", "REPLAY"]:
             # Setup Shadow Mode
             live_provider = PaperExecutionProvider(clock=self.clock) # Primary Paper provider
             simulator = ShadowExecutionSimulator(event_bus=self.event_bus, clock=self.clock)
@@ -73,7 +77,8 @@ class ServiceRunner:
             market_data_provider=market_data,
             execution_provider=provider,
             clock=self.clock,
-            event_bus=self.event_bus
+            event_bus=self.event_bus,
+            option_bridge=self.option_bridge
         )
         
         # Setup validation components
@@ -107,9 +112,9 @@ class ServiceRunner:
         # 2. Setup DI
         self.setup_orchestrator_and_validator()
         
-        # Verify provider is PaperExecutionProvider for safety
-        if not isinstance(self.orchestrator.execution_provider, PaperExecutionProvider) and self.config.mode == "PAPER":
-            logger.critical("CRITICAL: Execution provider is NOT PaperExecutionProvider in PAPER mode. Aborting.")
+        # Verify provider is PaperExecutionProvider or OptionBridge for safety
+        if not (isinstance(self.orchestrator.execution_provider, PaperExecutionProvider) or self.option_bridge) and self.config.mode == "PAPER":
+            logger.critical("CRITICAL: Execution provider is NOT PaperExecutionProvider/OptionBridge in PAPER mode. Aborting.")
             raise RuntimeError("Live provider detected while in PAPER mode.")
         
         # 3. Idempotent Recovery

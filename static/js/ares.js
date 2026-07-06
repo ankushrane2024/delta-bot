@@ -134,13 +134,22 @@ function fmtNum(val) {
 function updateCenterpiece(d) {
     document.getElementById('val-port').innerText = fmtUSD(d.portfolio_value);
     
-    const pnl = Number(d.pnl || 0);
-    const pEl = document.getElementById('val-pnl');
-    pEl.innerText = (pnl >= 0 ? '+' : '') + fmtUSD(pnl);
-    pEl.className = 'cm-val-sub ' + (pnl >= 0 ? 'green' : 'red');
+    document.getElementById('val-port').innerText = fmtUSD(d.combined_mtm || d.pnl);
     
-    document.getElementById('val-margin').innerText = fmtUSD(d.margin_used);
-    document.getElementById('val-delta').innerText = fmtNum(d.total_delta);
+    const opt_mtm = Number(d.option_mtm || 0);
+    const oEl = document.getElementById('val-option-mtm');
+    oEl.innerText = (opt_mtm >= 0 ? '+' : '') + fmtUSD(opt_mtm);
+    oEl.className = 'cm-val-sub ' + (opt_mtm >= 0 ? 'green' : 'red');
+    
+    const hedge_mtm = Number(d.hedge_mtm || 0);
+    const hEl = document.getElementById('val-hedge-mtm');
+    hEl.innerText = (hedge_mtm >= 0 ? '+' : '') + fmtUSD(hedge_mtm);
+    hEl.className = 'cm-val-sub ' + (hedge_mtm >= 0 ? 'green' : 'red');
+
+    const prot = Number(d.protection_pct || 0);
+    const pEl = document.getElementById('val-protection');
+    pEl.innerText = prot.toFixed(2) + '%';
+    pEl.className = 'cm-val-sub ' + (prot >= 100 ? 'green' : (prot > 0 ? 'warning' : 'gray'));
     
     document.getElementById('val-btc').innerText = fmtUSD(d.btc_price);
     

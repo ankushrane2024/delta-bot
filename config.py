@@ -168,3 +168,6 @@ MIN_ORDER_QTY = float(os.getenv("MIN_ORDER_QTY", 1.0))
 QTY_STEP_SIZE = float(os.getenv("QTY_STEP_SIZE", 1.0))
 MAX_ORDER_QTY = float(os.getenv("MAX_ORDER_QTY", 10000.0))
 
+
+# --- Hedge Provider Override ---
+SMART_HEDGE_PROVIDER = os.getenv('SMART_HEDGE_PROVIDER', 'ARES')

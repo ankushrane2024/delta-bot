@@ -18,6 +18,31 @@ class ExecutionHandler:
         self.hedge_size_btc = 0.0  # Actual BTC size of current hedge
         self.hedge_order_id = None  # Last hedge order ID
         self.hedge_entry_price = 0.0
+        self.hedge_owner = "NONE"
+
+    def acquire_hedge_lock(self, owner: str) -> bool:
+        """Atomically acquires the hedge lock. Fails if already held by another."""
+        if self.hedge_owner == "NONE" or self.hedge_owner == owner:
+            self.hedge_owner = owner
+            app_logger.info(f"Execution: Hedge lock acquired by {owner}")
+            return True
+        app_logger.error(f"Execution: Hedge lock acquisition failed for {owner}. Currently held by {self.hedge_owner}")
+        return False
+
+    def release_hedge_lock(self, owner: str):
+        """Releases the hedge lock if the owner matches."""
+        if self.hedge_owner == owner:
+            self.hedge_owner = "NONE"
+            app_logger.info(f"Execution: Hedge lock released by {owner}")
+
+    def get_portfolio_snapshot(self) -> dict:
+        """Returns a snapshot of the current positions for the ARES OptionBridge."""
+        return {
+            "active_options": self.active_positions,
+            "hedge_position": self.hedge_position,
+            "hedge_size_btc": self.hedge_size_btc,
+            "hedge_owner": self.hedge_owner
+        }
 
     def save_state(self):
         """Persists the current paper trading active positions to the cloud database."""
@@ -88,6 +113,8 @@ class ExecutionHandler:
     def close_all(self, reason="Manual"):
         """Closes all active options positions and hedges."""
         app_logger.info(f"Execution: Closing all positions due to {reason}")
+        self.release_hedge_lock(self.hedge_owner) # Release lock regardless of owner
+
         
         for symbol, data in list(self.active_positions.items()):
             if self.mode == 'LIVE':
