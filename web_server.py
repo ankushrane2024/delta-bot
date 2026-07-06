@@ -41,8 +41,7 @@ def get_status():
     positions = []
     
     # Get trade status from engine for position cards
-    partial_profit_hit = getattr(bot_engine, 'partial_profit_hit', False)
-    trailing_sl_active = getattr(bot_engine, 'trailing_sl_active', False)
+    trail_state = bot_engine.risk_manager.get_trailing_state()
     total_entry_premium = getattr(bot_engine, 'total_entry_premium', 0)
     
     # Compute time remaining to 17:00 IST
@@ -187,10 +186,8 @@ def get_status():
         leg_pnl_pct_capital = (leg_pnl_usd / leg_capital_used * 100) if leg_capital_used > 0 else 0.0
         
         # Trade status label
-        if trailing_sl_active:
-            trade_status = "Trailing SL Active"
-        elif partial_profit_hit:
-            trade_status = "Partial Profit Booked"
+        if trail_state['trailing_confirmed'] and trail_state['current_trailing_sl'] is not None:
+            trade_status = f"Locked +{trail_state['current_trailing_sl']}% SL"
         elif len(bot_engine.execution.active_positions) > 0:
             trade_status = "Running"
         else:

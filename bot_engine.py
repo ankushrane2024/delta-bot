@@ -42,8 +42,6 @@ class DeltaTradingEngine:
         self.re_entry_count = 0
         self.daily_loss_hits = 0
         self.total_entry_premium = 0
-        self.partial_profit_hit = False
-        self.trailing_sl_active = False
         self.last_hedge_check_time = None
         self.daily_start_equity = 0
         self.latest_rule_report = None
@@ -841,7 +839,9 @@ class DeltaTradingEngine:
                         
                         # Detailed debug logging required for profit verification
                         hedge_log = f" | Hedge PnL: +${self.smart_hedging.get_live_hedge_pnl():.2f}" if self.smart_hedging.hedge_active else ""
-                        app_logger.info(f"Engine [DEBUG] Profit Check: entry_total={collected_premium:.4f} | current_total={current_option_value:.4f} | pnl_pct={pnl_pct*100:.2f}% | target={config.EXIT_PROFIT_TARGET*100:.2f}% | time_in_trade={time_in_trade_seconds:.1f}s{hedge_log}")
+                        trail_state = self.risk_manager.get_trailing_state()
+                        trail_log = f" | TrailSL={trail_state['current_trailing_sl']}% | Peak={trail_state['highest_profit_pct']}%" if trail_state['trailing_confirmed'] else ""
+                        app_logger.info(f"Engine [DEBUG] Profit Check: entry_total={collected_premium:.4f} | current_total={current_option_value:.4f} | pnl_pct={pnl_pct*100:.2f}% | time_in_trade={time_in_trade_seconds:.1f}s{hedge_log}{trail_log}")
                         
                         # Update Max/Min Excursion Tracking
                         # STRICTLY use options_profit / collected_premium — not pnl_pct
@@ -870,21 +870,14 @@ class DeltaTradingEngine:
                                 "total": round(options_profit + hedge_pnl_now, 4)
                             })
 
-                        if self.trailing_sl_active and pnl_pct <= 0.0:
-                            action = "TRAILING_SL_EXIT"
-                            
-                        # Prevent premature profit target execution (Race Condition / Price Stability Guard)
+                        # Prevent premature exit (Race Condition / Price Stability Guard)
                         if time_in_trade_seconds < getattr(config, 'MIN_HOLD_SECONDS', 30):
-                            if action in ["TAKE_PROFIT_ALL", "PARTIAL_PROFIT"]:
-                                app_logger.info(f"Engine [DEBUG] Suppressing {action} because time_in_trade ({time_in_trade_seconds:.1f}s) < {getattr(config, 'MIN_HOLD_SECONDS', 30)}s")
-                                action = None
-                            
-                            # Hard-suppress ALL exits (including Stop Loss and Trailing SL) for the first 15 seconds to survive initial spread crossing
+                            # Hard-suppress ALL exits for the first 15 seconds to survive initial spread crossing
                             if action is not None and time_in_trade_seconds < 15:
                                 app_logger.warning(f"Engine [DEBUG] Hard-Suppressing {action} because time_in_trade ({time_in_trade_seconds:.1f}s) < 15s (spread stabilization)")
                                 action = None
                         
-                        if action in ["STOP_LOSS_ALL", "TAKE_PROFIT_ALL", "TRAILING_SL_EXIT"]:
+                        if action in ["STOP_LOSS_ALL", "TRAILING_SL_EXIT"]:
                             # Apply slippage and execution delay in PAPER mode
                             if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
                                 is_sl = (action == "STOP_LOSS_ALL")
@@ -909,31 +902,18 @@ class DeltaTradingEngine:
                             app_logger.warning(f"Engine: Combined {sl_pct}% Stop Loss Hit!")
                             self._log_and_reset_trade(profit, f"Stop Loss Hit (-{sl_pct}%)")
                             self.execution.close_all(reason=f"Stop Loss Hit (-{sl_pct}%)")
-                            notifier.notify_stop_loss(profit, False) # RECOST is completely disabled
-                        
-                        elif action == "TAKE_PROFIT_ALL":
-                            pt_pct = int(config.EXIT_PROFIT_TARGET * 100)
-                            app_logger.info(f"Engine: Profit Target Hit ({pt_pct}%)!")
-                            self._log_and_reset_trade(profit, f"Profit Target Hit ({pt_pct}%)")
-                            self.execution.close_all(reason=f"Profit Target Hit ({pt_pct}%)")
-                            notifier.notify_full_exit(f"Profit Target ({pt_pct}%)", profit)
+                            self.risk_manager.reset_trailing_state()
+                            notifier.notify_stop_loss(profit, False)
                             
                         elif action == "TRAILING_SL_EXIT":
-                            app_logger.info("Engine: Trailing Stop Loss Hit (Breakeven)!")
-                            self._log_and_reset_trade(profit, "Trailing SL Hit")
-                            self.execution.close_all(reason="Trailing SL Hit")
-                            notifier.notify_full_exit("Trailing SL Hit (Breakeven)", profit)
-                        
-                        elif action == "PARTIAL_PROFIT" and not self.partial_profit_hit:
-                            app_logger.info("Engine: Partial Profit Triggered (50%)")
-                            self.execution.partial_close(percentage=0.5)
-                            self.partial_profit_hit = True
-                            notifier.notify_partial_profit(profit)
-  
-                        elif action == "TRAILING_SL_TRIGGERED" and not self.trailing_sl_active:
-                            app_logger.info("Engine: Trailing SL to BE active")
-                            self.trailing_sl_active = True
-                            notifier.notify_trailing_sl()
+                            trail_state = self.risk_manager.get_trailing_state()
+                            locked_sl = trail_state['current_trailing_sl']
+                            peak = trail_state['highest_profit_pct']
+                            app_logger.info(f"Engine: Dynamic Trailing SL Hit! Locked at +{locked_sl}% | Peak was +{peak}%")
+                            self._log_and_reset_trade(profit, f"Trailing SL Hit (+{locked_sl}%)")
+                            self.execution.close_all(reason=f"Trailing SL Hit (+{locked_sl}%)")
+                            self.risk_manager.reset_trailing_state()
+                            notifier.notify_full_exit(f"Trailing SL Hit (+{locked_sl}% locked, peak {peak}%)", profit)
  
                     # ── Smart Hedge Management ──────────────────────────────────────
                     # CRITICAL FIX: Hedge check runs INDEPENDENTLY of all_prices_available.
@@ -984,8 +964,7 @@ class DeltaTradingEngine:
         self.re_entry_count = 0
         self.daily_loss_hits = 0
         self.total_entry_premium = 0
-        self.partial_profit_hit = False
-        self.trailing_sl_active = False
+        self.risk_manager.reset_trailing_state()
         self.smart_hedging.hedge_stopped_out = False
         self.last_hedge_check_time = None
         self.hedging_triggered_today = False
@@ -1126,8 +1105,7 @@ class DeltaTradingEngine:
             self.current_trade_info = {"calls": [], "puts": []}
             self.pnl_chart_data = []  # Clear chart for next trade
             self.total_entry_premium = 0
-            self.partial_profit_hit = False
-            self.trailing_sl_active = False
+            self.risk_manager.reset_trailing_state()
             self.last_hedge_check_time = None
             self.hedging_triggered_today = False
             self._trade_start_ts = None

@@ -69,14 +69,26 @@ DVOL_PREMIUM_RANGES = {
     "high": {"threshold": 999, "min": 110, "max": 240},   # DVOL > 55%
 }
 
-# --- Stop Loss & Profit Booking (Section 6) ---
-SL_PERCENT = 1.30              # 130% of collected premium → triggers full exit (tighter)
-PARTIAL_PROFIT_TRIGGER = 0.20  # 20% profit reached -> trigger partial close
-PARTIAL_PROFIT_SIZE = 0.50     # Close 50% of position size on partial profit
-TRAILING_SL_TRIGGER = 0.15    # After 15% profit -> activate trailing SL to breakeven
-TRAILING_SL_LEVEL = 0.0       # Trailing SL level: breakeven (0% profit)
-EXIT_PROFIT_TARGET = 0.30     # 30% total profit -> full exit
-MIN_HOLD_SECONDS = 30         # Minimum seconds to hold before any profit target exit is allowed
+# --- Stop Loss & Dynamic Profit Lock (Section 6) ---
+SL_PERCENT = 1.30              # 130% of collected premium → triggers full exit (unchanged)
+MIN_HOLD_SECONDS = 30          # Minimum seconds to hold before any exit is allowed
+
+# --- ARES Dynamic Profit Lock ---
+# Trailing confirmation: wait for profit to stabilize above 15% before locking
+TRAILING_CONFIRM_THRESHOLD = 0.15    # 15%: Begin confirmation window
+TRAILING_CONFIRM_TARGET = 0.19       # 19%: Confirmation complete, lock SL at +5%
+CAPITAL_PROTECTION_SL = 0.05         # Lock SL at +5% once 19% is reached
+
+# Progressive profit lock tiers: (profit_threshold, sl_level)
+PROFIT_LOCK_TIERS = [
+    (0.20, 0.12),  # 20% profit → SL = 12%
+    (0.25, 0.17),  # 25% profit → SL = 17%
+    (0.28, 0.23),  # 28% profit → SL = 23%
+]
+
+# Dynamic trailing after 28%: SL = Peak Profit - 5%
+DYNAMIC_TRAIL_THRESHOLD = 0.28
+DYNAMIC_TRAIL_GAP = 0.05
 
 # --- Hedging Parameters ---
 HEDGE_SYMBOL = "BTCUSD"           # BTC Perpetual futures contract symbol
