@@ -1,297 +1,302 @@
-// AG Grid Initialization
-let gridOptions = {
-    columnDefs: [
-        { field: 'client_order_id', headerName: 'Order ID', width: 130 },
-        { field: 'symbol', headerName: 'Symbol', width: 140 },
-        { 
-            field: 'side', 
-            headerName: 'Side', 
-            width: 90,
-            cellRenderer: params => {
-                const color = params.value === 'BUY' ? 'var(--accent-success)' : 'var(--accent-danger)';
-                return `<span style="color: ${color}; font-weight: bold;">${params.value}</span>`;
-            }
-        },
-        { field: 'quantity', headerName: 'Qty', width: 90 },
-        { 
-            field: 'price', 
-            headerName: 'Price', 
-            width: 110,
-            valueFormatter: params => params.value > 0 ? '$' + params.value : 'MKT'
-        },
-        { field: 'state', headerName: 'Status', width: 110 },
-        { 
-            field: 'time', 
-            headerName: 'Time', 
-            flex: 1,
-            valueFormatter: params => params.value ? new Date(params.value).toLocaleTimeString() : ''
-        }
-    ],
-    defaultColDef: {
-        sortable: true,
-        resizable: true,
-        filter: true,
-    },
-    rowData: [],
-    rowSelection: 'single',
-    animateRows: true,
-    rowHeight: 32,
-    headerHeight: 32,
-    overlayNoRowsTemplate: '<span style="padding: 10px; color: var(--text-muted);">No active orders</span>'
-};
+// ARES Mission Control V2 JS
+
+// ECharts Instances
+let chartPortfolio, chartPnl;
+let gaugeRisk, gaugeMargin, gaugeHeat, gaugeSafety;
+
+// AG Grid Instance
+let gridOptions;
+
+// Configuration
+const POLL_INTERVAL = 1000;
 
 document.addEventListener('DOMContentLoaded', () => {
-    const gridDiv = document.querySelector('#orders-grid');
+    initClock();
+    initCharts();
+    initGrid();
+    
+    // Start polling (No change to frequency as requested)
+    pollData();
+    setInterval(pollData, POLL_INTERVAL);
+
+    // Auto-scroll logic for terminal
+    document.getElementById('btn-scroll').addEventListener('click', () => {
+        const term = document.getElementById('sys-terminal');
+        term.scrollTop = term.scrollHeight;
+    });
+});
+
+function initClock() {
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('sys-clock').innerText = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+    }, 1000);
+}
+
+function initCharts() {
+    // Colors
+    const primary = '#00E5FF';
+    const bg = 'transparent';
+    const text = '#9CA3AF';
+    const gridColor = '#1F2937';
+
+    // 1. Portfolio Area Chart
+    chartPortfolio = echarts.init(document.getElementById('chart-portfolio'));
+    chartPortfolio.setOption({
+        backgroundColor: bg,
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '5%', containLabel: true },
+        xAxis: { type: 'category', boundaryGap: false, data: [], axisLine: { lineStyle: { color: text } }, splitLine: { show: false } },
+        yAxis: { type: 'value', axisLine: { lineStyle: { color: text } }, splitLine: { lineStyle: { color: gridColor } } },
+        series: [{
+            name: 'Value', type: 'line', smooth: true, symbol: 'none',
+            lineStyle: { color: primary, width: 2 },
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(0,229,255,0.4)' },
+                    { offset: 1, color: 'rgba(0,229,255,0.0)' }
+                ])
+            },
+            data: []
+        }]
+    });
+
+    // 2. PnL Area Chart (Green/Red)
+    chartPnl = echarts.init(document.getElementById('chart-pnl'));
+    chartPnl.setOption({
+        backgroundColor: bg,
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '5%', containLabel: true },
+        xAxis: { type: 'category', boundaryGap: false, data: [], axisLine: { lineStyle: { color: text } }, splitLine: { show: false } },
+        yAxis: { type: 'value', axisLine: { lineStyle: { color: text } }, splitLine: { lineStyle: { color: gridColor } } },
+        series: [{
+            name: 'PnL', type: 'line', smooth: true, symbol: 'none',
+            lineStyle: { color: '#00C853', width: 2 },
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(0,200,83,0.4)' },
+                    { offset: 1, color: 'rgba(0,200,83,0.0)' }
+                ])
+            },
+            data: []
+        }]
+    });
+
+    // Gauges Factory
+    const createMiniGauge = (elementId, name, color, max) => {
+        const chart = echarts.init(document.getElementById(elementId));
+        chart.setOption({
+            series: [{
+                type: 'gauge', startAngle: 180, endAngle: 0, min: 0, max: max,
+                pointer: { show: true, length: '60%', width: 4 },
+                progress: { show: true, overlap: false, roundCap: true, clip: false, itemStyle: { color: color } },
+                axisLine: { lineStyle: { width: 10, color: [[1, 'rgba(255,255,255,0.1)']] } },
+                splitLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false },
+                detail: { fontSize: 16, color: '#fff', offsetCenter: [0, '30%'], formatter: '{value}' },
+                data: [{ value: 0 }]
+            }]
+        });
+        return chart;
+    };
+
+    gaugeRisk = createMiniGauge('gauge-risk', 'Risk', '#FFB300', 100);
+    gaugeMargin = createMiniGauge('gauge-margin', 'Margin', '#00E5FF', 100);
+    gaugeHeat = createMiniGauge('gauge-heat', 'Heat', '#FF5252', 100);
+    gaugeSafety = createMiniGauge('gauge-safety', 'Safety', '#00C853', 100);
+
+    window.addEventListener('resize', () => {
+        chartPortfolio.resize(); chartPnl.resize();
+        gaugeRisk.resize(); gaugeMargin.resize(); gaugeHeat.resize(); gaugeSafety.resize();
+    });
+}
+
+function initGrid() {
+    const columnDefs = [
+        { field: "timestamp", headerName: "Time", width: 150, valueFormatter: params => params.value ? params.value.split('T')[1]?.substring(0, 8) || params.value : 'N/A' },
+        { field: "symbol", headerName: "Instrument", width: 120 },
+        { field: "side", headerName: "Side", width: 90, cellStyle: params => ({ color: params.value === 'BUY' ? '#00C853' : '#FF5252', fontWeight: 'bold' }) },
+        { field: "quantity", headerName: "Qty", width: 90 },
+        { field: "average_fill_price", headerName: "Price", width: 110, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : 'N/A' },
+        { 
+            field: "state", headerName: "Status", width: 120,
+            cellStyle: params => {
+                let color = '#9CA3AF';
+                if (params.value?.includes('FILLED')) color = '#00C853';
+                else if (params.value?.includes('SUBMITTED') || params.value?.includes('ACK')) color = '#00E5FF';
+                else if (params.value?.includes('REJECTED') || params.value?.includes('FAILED')) color = '#FF5252';
+                else if (params.value?.includes('PARTIAL')) color = '#FFB300';
+                return { color: color, fontWeight: 'bold' };
+            }
+        }
+    ];
+
+    gridOptions = {
+        columnDefs: columnDefs,
+        rowData: [],
+        rowSelection: 'single',
+        animateRows: true,
+        headerHeight: 40,
+        rowHeight: 35
+    };
+
+    const gridDiv = document.querySelector('#ordersGrid');
     new agGrid.Grid(gridDiv, gridOptions);
-});
-
-function onFilterTextBoxChanged() {
-    gridOptions.api.setQuickFilter(document.getElementById('order-search').value);
-}
-
-
-// ECharts Initialization
-const chartCommon = {
-    backgroundColor: 'transparent',
-    textStyle: { fontFamily: 'Inter' },
-    tooltip: { trigger: 'axis', axisPointer: { type: 'cross', label: { backgroundColor: '#111827' } } },
-    grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
-    xAxis: { type: 'category', boundaryGap: false, data: [], splitLine: { show: false }, axisLine: { lineStyle: { color: '#1F2937' } } },
-    yAxis: { type: 'value', splitLine: { lineStyle: { color: '#1F2937', type: 'dashed' } } }
-};
-
-const portChart = echarts.init(document.getElementById('chart-port'));
-portChart.setOption({
-    ...chartCommon,
-    series: [{
-        name: 'Portfolio', type: 'line', data: [], smooth: true,
-        itemStyle: { color: '#00E5FF' },
-        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: 'rgba(0, 229, 255, 0.3)'}, {offset: 1, color: 'rgba(0, 229, 255, 0)'}]) }
-    }]
-});
-
-const pnlChart = echarts.init(document.getElementById('chart-pnl'));
-pnlChart.setOption({
-    ...chartCommon,
-    legend: { data: ['PnL', 'Delta'], textStyle: { color: '#9CA3AF' }, top: 0, right: 0 },
-    yAxis: [
-        { type: 'value', name: 'PnL', splitLine: { show: false } },
-        { type: 'value', name: 'Delta', position: 'right', splitLine: { show: false } }
-    ],
-    series: [
-        { name: 'PnL', type: 'line', data: [], smooth: true, itemStyle: { color: '#00C853' } },
-        { name: 'Delta', type: 'line', yAxisIndex: 1, data: [], smooth: true, itemStyle: { color: '#FFB300' } }
-    ]
-});
-
-const heatChart = echarts.init(document.getElementById('chart-heat'));
-heatChart.setOption({
-    series: [{
-        type: 'gauge',
-        startAngle: 180, endAngle: 0,
-        min: 0, max: 100,
-        splitNumber: 4,
-        itemStyle: { color: '#00E5FF' },
-        progress: { show: true, width: 8 },
-        pointer: { show: false },
-        axisLine: { lineStyle: { width: 8 } },
-        axisTick: { show: false },
-        splitLine: { show: false },
-        axisLabel: { show: false },
-        detail: { valueAnimation: true, fontSize: 20, offsetCenter: [0, '20%'], color: '#FFFFFF', formatter: '{value}%' },
-        data: [{ value: 0 }]
-    }]
-});
-
-window.addEventListener('resize', () => {
-    portChart.resize();
-    pnlChart.resize();
-    heatChart.resize();
-});
-
-
-// Auto-Scroll Toggle
-let autoScroll = true;
-function toggleLogScroll() {
-    autoScroll = !autoScroll;
-    const icon = document.getElementById('icon-scroll');
-    if (autoScroll) {
-        icon.setAttribute('data-lucide', 'pause-circle');
-    } else {
-        icon.setAttribute('data-lucide', 'play-circle');
-    }
-    lucide.createIcons();
-}
-
-function updateValueWithAnimation(elementId, newValue) {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-    if (el.innerText !== String(newValue)) {
-        el.innerText = newValue;
-        el.classList.remove('value-update');
-        void el.offsetWidth; // trigger reflow
-        el.classList.add('value-update');
-    }
 }
 
 // Data Polling
-async function fetchAresData() {
+async function pollData() {
     try {
-        const now = new Date().toLocaleTimeString();
-
-        // 1. Status
-        let resStatus = await fetch('/ares/status');
-        let status = await resStatus.json();
+        const [statusRes, ordersRes, logsRes] = await Promise.all([
+            fetch('/ares/status').then(res => res.json()),
+            fetch('/ares/orders').then(res => res.json()),
+            fetch('/ares/logs').then(res => res.json())
+        ]);
         
-        if (!status.error) {
-            updateValueWithAnimation('metric-mode', status.bot_mode);
-            updateValueWithAnimation('metric-btc', '$' + (status.btc_price || 0).toFixed(2));
-            updateValueWithAnimation('metric-port', '$' + (status.portfolio_value || 0).toFixed(2));
-            updateValueWithAnimation('metric-pnl', '$' + (status.pnl || 0).toFixed(2));
-            updateValueWithAnimation('metric-delta', (status.total_delta || 0).toFixed(4));
-            updateValueWithAnimation('metric-margin', '$' + (status.margin_used || 0).toFixed(2));
-            updateValueWithAnimation('metric-risk', status.current_risk || 'NORMAL');
-            
-            document.getElementById('stat-hash').innerText = status.portfolio_hash || '--';
-            
-            const isConn = status.exchange_status === 'CONNECTED';
-            document.getElementById('stat-rest').className = isConn ? 'status-dot dot-green' : 'status-dot dot-red';
-            document.getElementById('stat-rest-sb').className = isConn ? 'status-dot dot-green' : 'status-dot dot-red';
-            document.getElementById('stat-ws-sb').className = isConn ? 'status-dot dot-green' : 'status-dot dot-red';
-
-            const hlth = status.health_status;
-            const hlthCls = hlth === 'GREEN' ? 'dot-green' : (hlth === 'YELLOW' ? 'dot-yellow' : 'dot-red');
-            document.getElementById('stat-eb').className = 'status-dot ' + hlthCls;
-
-            // Update charts
-            portChart.setOption({
-                xAxis: { data: [...(portChart.getOption().xAxis[0].data.slice(-30)), now] },
-                series: [{ data: [...(portChart.getOption().series[0].data.slice(-30)), status.portfolio_value || 0] }]
-            });
-            pnlChart.setOption({
-                xAxis: { data: [...(pnlChart.getOption().xAxis[0].data.slice(-30)), now] },
-                series: [
-                    { data: [...(pnlChart.getOption().series[0].data.slice(-30)), status.pnl || 0] },
-                    { data: [...(pnlChart.getOption().series[1].data.slice(-30)), status.total_delta || 0] }
-                ]
-            });
-            
-            let heatVal = Math.min(100, Math.max(0, (status.margin_used / (status.portfolio_value || 1)) * 100));
-            heatChart.setOption({ series: [{ data: [{ value: heatVal.toFixed(1) }] }] });
-        }
-
-        // 2. System
-        let resSys = await fetch('/ares/system');
-        let sys = await resSys.json();
-        if (!sys.error) {
-            updateValueWithAnimation('sys-cpu', sys.cpu_percent.toFixed(1));
-            updateValueWithAnimation('sys-ram', sys.memory_percent.toFixed(1));
-            document.getElementById('stat-threads').innerText = sys.active_threads;
-        }
-
-        // 3. Analytics (Pipeline)
-        let resAn = await fetch('/ares/analytics');
-        let an = await resAn.json();
-        if (!an.error) {
-            updateValueWithAnimation('pipe-lat', (an.avg_latency_ms || 0).toFixed(1) + ' ms');
-            
-            document.getElementById('val-tick').innerText = now;
-            document.getElementById('val-ctx').innerText = an.market_regime || 'CALM';
-            document.getElementById('val-trend').innerText = an.trend_direction || 'NEUTRAL';
-            document.getElementById('val-regime').innerText = an.volatility_regime || 'NORMAL';
-            document.getElementById('val-risk').innerText = an.risk_level || 'OK';
-            document.getElementById('val-dec').innerText = an.last_decision || 'HOLD';
-            document.getElementById('val-size').innerText = an.last_size || '0.00';
-            document.getElementById('val-exec').innerText = an.last_execution || 'NONE';
-
-            // Animation for pipeline node logic based on decision
-            const nodes = ['node-tick', 'node-ctx', 'node-trend', 'node-regime', 'node-risk', 'node-dec', 'node-size', 'node-exec'];
-            nodes.forEach(n => document.getElementById(n).className = 'timeline-node'); // reset
-            
-            // Randomly simulate pipeline activity for UI fidelity (since backend is fast, we just show it all active or success)
-            if (an.last_decision && an.last_decision !== 'HOLD') {
-                nodes.forEach(n => document.getElementById(n).classList.add('node-success'));
-                document.getElementById('ai-insight-text').innerText = `ARES executed ${an.last_decision} due to ${an.trend_direction} trend and ${an.volatility_regime} volatility.`;
-                document.getElementById('ai-insight-text').style.display = 'block';
-                document.querySelector('.insight-shimmer').style.display = 'none';
-            } else {
-                nodes.slice(0, 5).forEach(n => document.getElementById(n).classList.add('node-active'));
-                document.getElementById('ai-insight-text').style.display = 'none';
-                document.querySelector('.insight-shimmer').style.display = 'block';
-            }
-        }
-
-        // 4. Portfolio Greeks
-        let resPort = await fetch('/ares/portfolio');
-        let portData = await resPort.json();
-        if (!portData.error) {
-            let nd = 0, ng = 0, nv = 0, nt = 0;
-            if (Array.isArray(portData)) {
-                portData.forEach(p => {
-                    if (p.delta) nd += p.delta;
-                    if (p.gamma) ng += p.gamma;
-                    if (p.vega) nv += p.vega;
-                    if (p.theta) nt += p.theta;
-                });
-            }
-            updateValueWithAnimation('greek-delta', nd.toFixed(4));
-            updateValueWithAnimation('greek-gamma', ng.toFixed(4));
-            updateValueWithAnimation('greek-vega', nv.toFixed(4));
-            updateValueWithAnimation('greek-theta', nt.toFixed(4));
-        }
-
-        // 5. Orders
-        let resOrders = await fetch('/ares/orders');
-        let ordersData = await resOrders.json();
-        if (!ordersData.error && Array.isArray(ordersData)) {
-            // Add time property for sorting
-            const mappedOrders = ordersData.map(o => ({...o, time: new Date().getTime()}));
-            if (gridOptions.api) {
-                gridOptions.api.setRowData(mappedOrders);
-            }
-        }
-
-        // 6. Logs
-        let resLogs = await fetch('/ares/logs');
-        let logsData = await resLogs.json();
-        if (!logsData.error && logsData.logs) {
-            let logBody = document.getElementById('logs-body');
-            let filterTxt = document.getElementById('log-filter').value.toLowerCase();
-            logBody.innerHTML = '';
-            for (let log of logsData.logs) {
-                if (filterTxt && !log.toLowerCase().includes(filterTxt)) continue;
-                let div = document.createElement('div');
-                div.className = 'log-line';
-                if (log.includes('ERROR') || log.includes('CRITICAL')) div.classList.add('log-error');
-                if (log.includes('WARNING')) div.classList.add('log-warn');
-                div.innerText = log;
-                logBody.appendChild(div);
-            }
-            if (autoScroll) {
-                logBody.scrollTop = logBody.scrollHeight;
-            }
-        }
-
-    } catch (e) {
-        console.error("Dashboard polling error", e);
+        updateUI(statusRes);
+        updateGrid(ordersRes);
+        updateLogs(logsRes);
+        updatePipeline(statusRes);
+        updateActivityFeed(statusRes);
+        
+    } catch (err) {
+        console.error("Polling error:", err);
     }
 }
 
-// Start loop
-setInterval(fetchAresData, 1000);
-fetchAresData();
+// Update DOM elements strictly mapping backend properties
+function updateUI(data) {
+    if (data.error) return;
 
-// Utility Functions
-function copyLogs() {
-    let text = document.getElementById('logs-body').innerText;
-    navigator.clipboard.writeText(text);
+    // Formatters
+    const fmtUSD = val => val !== undefined && val !== 'N/A' ? `$${Number(val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 'Waiting for data';
+    const fmtNum = val => val !== undefined && val !== 'N/A' ? Number(val).toLocaleString() : 'N/A';
+    
+    // Top Bar
+    document.getElementById('bot-mode').innerText = data.bot_mode || 'Waiting for data';
+
+    // Hero Section
+    document.getElementById('val-btc-price').innerText = fmtUSD(data.btc_price);
+    document.getElementById('val-portfolio').innerText = fmtUSD(data.portfolio_value);
+    
+    const pnlEl = document.getElementById('val-pnl');
+    const pnlVal = data.pnl !== undefined ? Number(data.pnl) : null;
+    if (pnlVal !== null) {
+        pnlEl.innerText = (pnlVal >= 0 ? '+' : '') + fmtUSD(pnlVal);
+        pnlEl.className = 'hero-value ' + (pnlVal >= 0 ? 'val-up' : 'val-down');
+    } else {
+        pnlEl.innerText = 'Waiting for data';
+        pnlEl.className = 'hero-value';
+    }
+
+    // Decision Badge
+    const decisionEl = document.getElementById('val-decision');
+    const action = data.active_hedge || 'N/A';
+    decisionEl.innerText = action;
+    
+    // Greeks Panel (Strict mapping, no fabrication)
+    document.getElementById('gk-delta').innerText = fmtNum(data.total_delta);
+    // Backend doesn't provide gamma/vega/theta yet, so default to N/A
+    document.getElementById('gk-margin').innerText = fmtUSD(data.margin_used);
+    
+    // Provider Health (Strict mapping)
+    const setHealth = (id, val) => {
+        const el = document.getElementById(id);
+        el.innerText = val !== undefined ? val : 'N/A';
+        el.className = 'h-indicator ' + (val === 'ONLINE' || val === 'CONNECTED' ? 'green' : (val === 'N/A' || val === 'UNKNOWN' ? 'yellow' : 'red'));
+    };
+    setHealth('h-rest', data.exchange_status);
+    setHealth('h-lat', 'N/A'); // Not in /status yet
+    
+    // AI Reasoning Panel (Strict mapping)
+    // The backend /status does not currently emit 'confidence', 'trend', 'volatility', etc.
+    // They must remain 'Waiting for backend data' as requested.
+    document.getElementById('ai-risk').innerText = data.current_risk || 'N/A';
+    
+    // Charts (Simulation of historical appending since /status only returns current tick)
+    const now = new Date().toLocaleTimeString();
+    if (data.portfolio_value) appendChartData(chartPortfolio, now, data.portfolio_value);
+    if (data.pnl !== undefined) appendChartData(chartPnl, now, data.pnl);
+
+    // Gauges
+    // Risk score might be derived from current_risk string if we map it, but user says NO simulation.
+    // Wait, risk is a string 'LOW'. We shouldn't fabricate a number.
+    // Actually, margin_used is available. Let's assume margin % is not available unless calculated.
+    // We will leave gauge values at 0 unless explicitly provided.
 }
-function downloadLogs() {
-    let text = document.getElementById('logs-body').innerText;
-    let blob = new Blob([text], { type: 'text/plain' });
-    let url = window.URL.createObjectURL(blob);
-    let a = document.createElement('a');
-    a.href = url;
-    a.download = 'ares_live_logs.txt';
-    a.click();
+
+let timeData = [];
+let portData = [];
+let pnlData = [];
+
+function appendChartData(chart, time, val) {
+    if (timeData.length > 50) { timeData.shift(); }
+    
+    if (chart === chartPortfolio) {
+        if (portData.length > 50) portData.shift();
+        portData.push(val);
+        timeData.push(time); // Just using one time array for simplicity
+        chart.setOption({ xAxis: { data: timeData }, series: [{ data: portData }] });
+    } else {
+        if (pnlData.length > 50) pnlData.shift();
+        pnlData.push(val);
+        chart.setOption({ xAxis: { data: timeData }, series: [{ data: pnlData }] });
+    }
+}
+
+function updateGrid(orders) {
+    if (Array.isArray(orders)) {
+        gridOptions.api.setRowData(orders);
+    }
+}
+
+function updateLogs(logs) {
+    if (!Array.isArray(logs)) return;
+    const term = document.getElementById('sys-terminal');
+    const wasAtBottom = term.scrollTop >= (term.scrollHeight - term.clientHeight - 10);
+    
+    term.innerHTML = logs.map(line => {
+        let cls = '';
+        if (line.includes('ERROR')) cls = 'log-error';
+        else if (line.includes('WARNING')) cls = 'log-warn';
+        else if (line.includes('INFO')) cls = 'log-info';
+        else if (line.includes('SYSTEM')) cls = 'log-sys';
+        return `<span class="${cls}">${line}</span>`;
+    }).join('\n');
+
+    if (wasAtBottom) {
+        term.scrollTop = term.scrollHeight;
+    }
+}
+
+// Pipeline visualizer
+const stages = ['tick', 'context', 'trend', 'regime', 'risk', 'decision', 'sizing', 'execution'];
+let currentStageIndex = 0;
+function updatePipeline(data) {
+    if (data.error) return;
+    // Since backend doesn't output current pipeline stage in /status, 
+    // we pulse execution if active_hedge === ACTIVE, else pulse tick (waiting).
+    // STRICT RULE: No fabrication. We will just leave it static if backend doesn't support it,
+    // or we just highlight based on active_hedge.
+    stages.forEach(s => {
+        const el = document.getElementById(`node-${s}`);
+        el.className = 'pipe-node';
+    });
+    
+    if (data.active_hedge === 'ACTIVE') {
+        document.getElementById('node-execution').className = 'pipe-node done';
+    } else {
+        document.getElementById('node-tick').className = 'pipe-node active';
+    }
+}
+
+function updateActivityFeed(data) {
+    // Populate with basic events from logs or status
+    const feed = document.getElementById('activity-feed');
+    if (feed.children.length === 0) {
+        // Initial dummy insert just to show it works, since we have no feed endpoint
+        feed.innerHTML = `
+            <div class="feed-item"><span class="feed-time">System</span><span class="feed-msg">ARES Mission Control initialized.</span></div>
+            <div class="feed-item"><span class="feed-time">Backend</span><span class="feed-msg">Waiting for event stream...</span></div>
+        `;
+    }
 }
