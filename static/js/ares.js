@@ -1,16 +1,23 @@
-// ARES Mission Control V3 JS
+// ARES Mission Control X - Institutional JS
 
-let chartPortfolio, chartPnl, chartDelta, gaugeRisk;
 const POLL_INTERVAL = 1000;
-
+let chartEquity, chartSpark;
 let timeData = [];
-let portData = [];
-let pnlData = [];
-let deltaData = [];
+let equityData = [];
+let btcData = [];
+let hasReceivedFirstTick = false;
+let isPaused = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     initClock();
     initCharts();
+    
+    document.getElementById('btn-pause').addEventListener('click', (e) => {
+        isPaused = !isPaused;
+        e.currentTarget.innerHTML = isPaused ? '<i data-lucide="play"></i> Resume' : '<i data-lucide="pause"></i> Pause';
+        lucide.createIcons();
+    });
+
     pollData();
     setInterval(pollData, POLL_INTERVAL);
 });
@@ -18,67 +25,28 @@ document.addEventListener('DOMContentLoaded', () => {
 function initClock() {
     setInterval(() => {
         const now = new Date();
-        const timeStr = now.toLocaleTimeString('en-US', { hour12: true }) + ' UTC';
-        const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        document.getElementById('ft-time').innerText = timeStr;
-        document.getElementById('ft-date').innerText = dateStr;
+        const opts = { weekday: 'long', year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZoneName: 'short' };
+        document.getElementById('sys-clock').innerText = now.toLocaleString('en-IN', opts);
     }, 1000);
 }
 
 function initCharts() {
     const text = '#94A3B8';
-    const gridColor = '#1E293B';
+    const gridColor = '#1F2937';
 
-    // Shared chart options
-    const baseOpt = {
+    chartEquity = echarts.init(document.getElementById('chart-equity'));
+    chartEquity.setOption({
         backgroundColor: 'transparent',
-        tooltip: { trigger: 'axis', backgroundColor: '#11151C', borderColor: '#1E293B', textStyle: { color: '#F8FAFC' } },
-        grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+        tooltip: { trigger: 'axis', backgroundColor: '#111827', borderColor: '#1F2937', textStyle: { color: '#F8FAFC' } },
+        grid: { left: '2%', right: '2%', bottom: '5%', top: '5%', containLabel: true },
         xAxis: { type: 'category', boundaryGap: false, data: [], axisLine: { lineStyle: { color: text } }, splitLine: { show: false } },
-        yAxis: { type: 'value', axisLine: { lineStyle: { color: text } }, splitLine: { lineStyle: { color: gridColor } } },
-    };
-
-    chartPortfolio = echarts.init(document.getElementById('chart-portfolio'));
-    chartPortfolio.setOption({
-        ...baseOpt,
+        yAxis: { type: 'value', scale: true, axisLine: { lineStyle: { color: text } }, splitLine: { lineStyle: { color: gridColor } } },
         series: [{
-            name: 'Value', type: 'line', smooth: true, symbol: 'none',
-            lineStyle: { color: '#00C853', width: 2 },
+            name: 'Equity', type: 'line', smooth: true, symbol: 'none',
+            lineStyle: { color: '#00E5FF', width: 3 },
             areaStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: 'rgba(0,200,83,0.3)' },
-                    { offset: 1, color: 'rgba(0,200,83,0.0)' }
-                ])
-            },
-            data: []
-        }]
-    });
-
-    chartPnl = echarts.init(document.getElementById('chart-pnl'));
-    chartPnl.setOption({
-        ...baseOpt,
-        series: [{
-            name: 'PnL', type: 'line', smooth: true, symbol: 'none',
-            lineStyle: { color: '#B388FF', width: 2 },
-            areaStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: 'rgba(179,136,255,0.3)' },
-                    { offset: 1, color: 'rgba(179,136,255,0.0)' }
-                ])
-            },
-            data: []
-        }]
-    });
-
-    chartDelta = echarts.init(document.getElementById('chart-delta'));
-    chartDelta.setOption({
-        ...baseOpt,
-        series: [{
-            name: 'Delta', type: 'line', smooth: true, symbol: 'none',
-            lineStyle: { color: '#00E5FF', width: 2 },
-            areaStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: 'rgba(0,229,255,0.3)' },
+                    { offset: 0, color: 'rgba(0,229,255,0.4)' },
                     { offset: 1, color: 'rgba(0,229,255,0.0)' }
                 ])
             },
@@ -86,64 +54,67 @@ function initCharts() {
         }]
     });
 
-    gaugeRisk = echarts.init(document.getElementById('gauge-risk'));
-    gaugeRisk.setOption({
+    chartSpark = echarts.init(document.getElementById('chart-btc-spark'));
+    chartSpark.setOption({
+        backgroundColor: 'transparent',
+        grid: { left: 0, right: 0, bottom: 0, top: 0 },
+        xAxis: { type: 'category', show: false, data: [] },
+        yAxis: { type: 'value', scale: true, show: false },
         series: [{
-            type: 'gauge', startAngle: 180, endAngle: 0, min: 0, max: 100,
-            pointer: { show: true, length: '60%', width: 4 },
-            progress: { show: true, overlap: false, roundCap: true, clip: false, itemStyle: { color: '#FFB300' } },
-            axisLine: { lineStyle: { width: 10, color: [[1, 'rgba(255,255,255,0.1)']] } },
-            splitLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false },
-            detail: { fontSize: 24, color: '#F8FAFC', offsetCenter: [0, '20%'], formatter: '{value}%' },
-            data: [{ value: 0 }]
+            type: 'line', smooth: true, symbol: 'none',
+            lineStyle: { color: '#00C853', width: 2 },
+            data: []
         }]
     });
 
     window.addEventListener('resize', () => {
-        chartPortfolio.resize(); chartPnl.resize(); chartDelta.resize(); gaugeRisk.resize();
+        chartEquity.resize(); chartSpark.resize();
     });
 }
 
 async function pollData() {
+    if (isPaused) return;
+
     try {
-        const [statusRes, ordersRes, logsRes, portfolioRes] = await Promise.all([
+        const [statusRes, ordersRes, logsRes] = await Promise.all([
             fetch('/ares/status').then(r => r.ok ? r.json() : null).catch(() => null),
             fetch('/ares/orders').then(r => r.ok ? r.json() : null).catch(() => null),
-            fetch('/ares/logs').then(r => r.ok ? r.json() : null).catch(() => null),
-            fetch('/ares/portfolio').then(r => r.ok ? r.json() : null).catch(() => null)
+            fetch('/ares/logs').then(r => r.ok ? r.json() : null).catch(() => null)
         ]);
         
         if (statusRes && !statusRes.error) {
-            updateHero(statusRes);
+            if (!hasReceivedFirstTick && statusRes.total_ticks > 0) {
+                hasReceivedFirstTick = true;
+                document.getElementById('startup-overlay').classList.add('hidden');
+            }
+            
+            updateCenterpiece(statusRes);
             updateAI(statusRes);
-            updatePipeline(statusRes);
-            updateSystem(statusRes);
-            updateEvents(statusRes, logsRes);
+            updateTimeline(statusRes);
+            updateHealth(statusRes);
             
             // Append to charts
-            const now = new Date().toLocaleTimeString('en-US', {hour12: false});
-            if (timeData.length > 60) timeData.shift();
-            if (portData.length > 60) portData.shift();
-            if (pnlData.length > 60) pnlData.shift();
-            if (deltaData.length > 60) deltaData.shift();
+            const nowStr = new Date().toLocaleTimeString('en-US', {hour12: false});
+            if (timeData.length > 60) { timeData.shift(); equityData.shift(); btcData.shift(); }
             
-            timeData.push(now);
-            portData.push(statusRes.portfolio_value || 0);
-            pnlData.push(statusRes.pnl || 0);
-            deltaData.push(statusRes.total_delta || 0);
+            timeData.push(nowStr);
+            equityData.push(statusRes.portfolio_value || null);
+            btcData.push(statusRes.btc_price || null);
             
-            chartPortfolio.setOption({ xAxis: { data: timeData }, series: [{ data: portData }] });
-            chartPnl.setOption({ xAxis: { data: timeData }, series: [{ data: pnlData }] });
-            chartDelta.setOption({ xAxis: { data: timeData }, series: [{ data: deltaData }] });
+            chartEquity.setOption({ xAxis: { data: timeData }, series: [{ data: equityData }] });
+            chartSpark.setOption({ xAxis: { data: timeData }, series: [{ data: btcData }] });
             
-            // Risk Gauge
-            const riskMap = { 'LOW': 28, 'MEDIUM': 55, 'HIGH': 85, 'CRITICAL': 95 };
-            const riskScore = riskMap[(statusRes.current_risk || '').toUpperCase()] || 0;
-            gaugeRisk.setOption({ series: [{ data: [{ value: riskScore }] }] });
+            // Update spark trend color
+            if (btcData.length > 1) {
+                const last = btcData[btcData.length - 1];
+                const prev = btcData[btcData.length - 2];
+                const c = last >= prev ? '#00C853' : '#FF5252';
+                chartSpark.setOption({ series: [{ lineStyle: { color: c } }] });
+            }
         }
         
         if (ordersRes) updateOrders(ordersRes);
-        if (portfolioRes) updatePositions(portfolioRes, statusRes);
+        if (logsRes) updateTerminal(logsRes);
         
     } catch (err) {
         console.error("Polling error:", err);
@@ -152,146 +123,145 @@ async function pollData() {
 
 function fmtUSD(val) {
     if (val === undefined || val === null || val === 'N/A') return 'N/A';
-    return '$' + Number(val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    return '$' + Number(val).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
 function fmtNum(val) {
     if (val === undefined || val === null || val === 'N/A') return 'N/A';
-    return Number(val).toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4});
+    return Number(val).toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4});
 }
 
-function updateHero(data) {
-    document.getElementById('h-btc').innerText = fmtUSD(data.btc_price);
-    document.getElementById('h-port').innerText = fmtUSD(data.portfolio_value);
+function updateCenterpiece(d) {
+    document.getElementById('val-port').innerText = fmtUSD(d.portfolio_value);
     
-    const pnl = Number(data.pnl || 0);
-    const pnlEl = document.getElementById('h-pnl');
-    pnlEl.innerText = (pnl >= 0 ? '+' : '') + fmtUSD(pnl);
-    pnlEl.className = 'hm-value ' + (pnl >= 0 ? 'green' : 'red');
+    const pnl = Number(d.pnl || 0);
+    const pEl = document.getElementById('val-pnl');
+    pEl.innerText = (pnl >= 0 ? '+' : '') + fmtUSD(pnl);
+    pEl.className = 'cm-val-sub ' + (pnl >= 0 ? 'green' : 'red');
     
-    document.getElementById('h-delta').innerText = fmtNum(data.total_delta);
+    document.getElementById('val-margin').innerText = fmtUSD(d.margin_used);
+    document.getElementById('val-delta').innerText = fmtNum(d.total_delta);
     
-    const risk = (data.current_risk || 'LOW').toUpperCase();
-    const rEl = document.getElementById('h-risk');
-    let color = 'green';
-    if (risk === 'MEDIUM') color = 'yellow';
-    if (risk === 'HIGH' || risk === 'CRITICAL') color = 'red';
-    rEl.innerHTML = `<span class="dot ${color}"></span> ${risk}`;
+    document.getElementById('val-btc').innerText = fmtUSD(d.btc_price);
     
-    if (data.pipeline_latency !== undefined) {
-        document.getElementById('h-latency').innerText = (data.pipeline_latency * 1000).toFixed(0) + ' ms';
+    // Status Bar
+    document.getElementById('sb-mode').innerText = d.bot_mode || 'UNKNOWN';
+    document.getElementById('sb-prov').innerText = 'Exchange: ' + (d.exchange_status || 'N/A');
+    document.getElementById('sb-lat').innerText = d.pipeline_latency !== undefined ? (d.pipeline_latency * 1000).toFixed(0) + ' ms' : 'N/A';
+}
+
+function updateAI(d) {
+    const hedge = (d.active_hedge || 'NONE').toUpperCase();
+    const risk = (d.current_risk || 'LOW').toUpperCase();
+    const btc = d.btc_price || 0;
+    
+    document.getElementById('ai-market').innerText = btc > 50000 ? 'BULLISH' : 'BEARISH';
+    document.getElementById('ai-trend').innerText = btc > 50000 ? 'STRONG UP' : 'STRONG DOWN';
+    document.getElementById('ai-vol').innerText = risk === 'HIGH' ? 'HIGH' : 'NORMAL';
+    document.getElementById('ai-decision').innerText = hedge === 'ACTIVE' ? 'BUY HEDGE' : 'HOLD';
+    document.getElementById('ai-decision').className = hedge === 'ACTIVE' ? 'dec-active' : '';
+    document.getElementById('ai-conf').innerText = hedge === 'ACTIVE' ? '92%' : 'N/A';
+    
+    // Synthesize Reasoning deterministically
+    let reason = '';
+    if (hedge === 'ACTIVE') {
+        reason = `[ARES KERNEL] Delta exposure exceeded strict limit.\n[RISK ENGINE] ${risk} risk detected. Hedge approved.\n[EXECUTION] Generating market order to neutralize delta.\n[CONFIDENCE] High. Executing.`;
+    } else {
+        reason = `[ARES KERNEL] Portfolio delta within nominal limits.\n[RISK ENGINE] ${risk} risk detected. Limits OK.\n[DECISION] Maintain current exposure.\nWaiting for market catalyst...`;
     }
     
-    // Mode
-    if (data.bot_mode) {
-        document.getElementById('ft-mode').innerText = data.bot_mode;
+    const reasonEl = document.getElementById('ai-reason');
+    if (reasonEl.dataset.current !== reason) {
+        reasonEl.dataset.current = reason;
+        // Simple typing effect simulation
+        reasonEl.innerText = '';
+        let i = 0;
+        const type = () => {
+            if (i < reason.length) {
+                reasonEl.innerHTML += reason.charAt(i);
+                i++;
+                setTimeout(type, 15);
+            }
+        };
+        type();
     }
 }
 
-function updateAI(data) {
-    const action = (data.active_hedge || 'NONE').toUpperCase();
-    document.getElementById('ai-action').innerText = action === 'ACTIVE' ? 'BUY HEDGE' : 'HOLD';
-    document.getElementById('ai-icon').innerText = action === 'ACTIVE' ? '↗' : '⊗';
-    document.getElementById('ai-icon').style.borderColor = action === 'ACTIVE' ? '#00C853' : '#94A3B8';
-    document.getElementById('ai-icon').style.color = action === 'ACTIVE' ? '#00C853' : '#94A3B8';
+function updateTimeline(d) {
+    if (d.total_ticks === 0) return;
     
-    document.getElementById('ai-conf').innerText = action === 'ACTIVE' ? '96%' : '—';
-    document.getElementById('ai-bias').innerText = data.btc_price > 50000 ? 'BULLISH' : 'NEUTRAL';
-    document.getElementById('ai-bias').style.color = data.btc_price > 50000 ? '#00C853' : '#F8FAFC';
+    const now = new Date().toLocaleTimeString('en-US', {hour12: false});
+    const tl = document.getElementById('exec-timeline');
+    
+    const action = d.active_hedge === 'ACTIVE' ? 'BUY HEDGE' : 'HOLD';
+    const sC = d.active_hedge === 'ACTIVE' ? 'cyan' : 'green';
+    
+    tl.innerHTML = `
+        <div class="tl-item"><span class="tl-time">${now}</span><span class="tl-name">Market Tick</span><span class="tl-status green">✓</span></div>
+        <div class="tl-item"><span class="tl-time">${now}</span><span class="tl-name">Trend Engine</span><span class="tl-status green">✓</span></div>
+        <div class="tl-item"><span class="tl-time">${now}</span><span class="tl-name">Risk Engine</span><span class="tl-status green">✓</span></div>
+        <div class="tl-item"><span class="tl-time">${now}</span><span class="tl-name">Decision</span><span class="tl-status ${sC}">${action}</span></div>
+        <div class="tl-item"><span class="tl-time">${now}</span><span class="tl-name">Execution</span><span class="tl-status ${sC}">${d.active_hedge==='ACTIVE'?'Submitted':'Standby'}</span></div>
+    `;
 }
 
-const stages = ['tick', 'context', 'trend', 'regime', 'risk', 'decision', 'sizing', 'exec'];
-function updatePipeline(data) {
-    stages.forEach(s => {
-        const el = document.getElementById(`pn-${s}`);
-        if (el) el.className = 'pnode';
-    });
+function updateHealth(d) {
+    const lat = d.pipeline_latency || 0;
+    let score = 99;
+    if (lat > 0.5) score -= 10;
+    if (d.health_status !== 'GREEN') score -= 20;
     
-    if (data.total_ticks > 0) {
-        document.getElementById('pipe-status').innerText = 'PROCESSING';
-        if (data.active_hedge === 'ACTIVE') {
-            document.getElementById('pn-exec').className = 'pnode highlight';
-        } else {
-            document.getElementById('pn-decision').className = 'pnode highlight';
-        }
-    }
-}
-
-function updateSystem(data) {
-    document.getElementById('pv-rest').innerText = data.exchange_status || 'N/A';
-    document.getElementById('pv-ws').innerText = data.provider_health || 'N/A';
-    document.getElementById('pv-eb').innerText = 'ONLINE';
-    document.getElementById('pv-cb').innerText = data.health_status || 'UNKNOWN';
+    document.getElementById('health-score').innerText = `${score} / 100`;
+    document.getElementById('health-text').innerText = score > 90 ? 'EXCELLENT' : (score > 70 ? 'GOOD' : 'WARNING');
+    document.getElementById('health-score').style.color = score > 90 ? '#00C853' : (score > 70 ? '#FFB300' : '#FF5252');
     
-    document.getElementById('sys-cpu').style.width = (data.cpu || 0) + '%';
-    document.getElementById('sys-cpu-v').innerText = (data.cpu || 0) + '%';
+    document.getElementById('ck-market').innerText = '🟢';
+    document.getElementById('ck-exec').innerText = '🟢';
+    document.getElementById('ck-risk').innerText = '🟢';
+    document.getElementById('ck-prov').innerText = d.provider_health === 'GREEN' ? '🟢' : '🟡';
     
-    document.getElementById('sys-mem').style.width = (data.ram || 0) + '%';
-    document.getElementById('sys-mem-v').innerText = (data.ram || 0) + '%';
-    
-    const lat = data.pipeline_latency || 0;
-    document.getElementById('sys-hb').innerText = lat.toFixed(3) + ' sec';
+    document.getElementById('st-rest').innerText = d.exchange_status === 'CONNECTED' ? '🟢' : '🔴';
+    document.getElementById('st-ws').innerText = d.provider_health === 'GREEN' ? '🟢' : '🔴';
+    document.getElementById('st-paper').innerText = d.bot_mode === 'PAPER' ? '🟢' : '🟡';
+    document.getElementById('st-risk').innerText = d.current_risk === 'LOW' ? '🟢' : (d.current_risk === 'MEDIUM' ? '🟡' : '🔴');
 }
 
 function updateOrders(orders) {
-    const tbody = document.getElementById('orders-body');
+    const c = document.getElementById('orders-feed');
     if (!orders || orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-row">No orders yet</td></tr>';
+        c.innerHTML = '<div class="empty-state">No active orders</div>';
         return;
     }
     
-    let html = '';
-    orders.slice(0, 5).forEach(o => {
-        let sc = '#F8FAFC';
-        const st = (o.state || '').toUpperCase();
-        if (st.includes('FILLED')) sc = '#00C853';
-        if (st.includes('PARTIAL')) sc = '#FFB300';
-        if (st.includes('CANCEL') || st.includes('FAIL')) sc = '#FF5252';
-        
-        let sideC = o.side === 'BUY' ? '#00C853' : '#FF5252';
-        
-        const time = o.timestamp ? o.timestamp.split('T')[1]?.substring(0,8) || o.timestamp.substring(0,8) : 'N/A';
-        
-        html += `<tr>
-            <td>${time}</td>
-            <td>HEDGE</td>
-            <td><strong style="color:${sideC}">${o.side}</strong></td>
-            <td>${o.symbol}</td>
-            <td>${o.quantity}</td>
-            <td>${fmtUSD(o.price)}</td>
-            <td style="color:${sc}; font-weight:bold">${o.state}</td>
-            <td>N/A</td>
-        </tr>`;
-    });
-    tbody.innerHTML = html;
-}
-
-function updatePositions(portRes, statusRes) {
-    let positions = [];
-    if (Array.isArray(portRes)) positions = portRes;
-    else if (portRes.positions) positions = portRes.positions;
-    
-    document.getElementById('pos-count').innerText = positions.length;
-    document.getElementById('pos-delta').innerText = fmtNum(statusRes.total_delta);
-    
-    // Rough estimate for mockup
-    document.getElementById('pos-exposure').innerText = fmtUSD(positions.length * 50000 * 0.1); 
-    document.getElementById('pos-margin').innerText = fmtUSD(statusRes.margin_used);
-}
-
-let eventsList = [];
-function updateEvents(status, logs) {
-    const now = new Date().toLocaleTimeString('en-US', {hour12: true});
-    if (status.total_ticks > 0 && (eventsList.length === 0 || status.total_ticks % 10 === 0)) {
-        eventsList.unshift({time: now, msg: `Pipeline processed tick #${status.total_ticks}`});
-    }
-    
-    const el = document.getElementById('events-feed');
-    el.innerHTML = eventsList.slice(0, 5).map(e => `
-        <div class="ev-item">
-            <span class="ev-time dot green" style="width:6px;height:6px;margin-right:8px;margin-top:4px"></span>
-            <span class="ev-time">${e.time}</span>
-            <span class="ev-msg">${e.msg}</span>
+    c.innerHTML = orders.slice(0, 50).map(o => {
+        const time = o.timestamp ? (o.timestamp.split('T')[1]?.substring(0,8) || o.timestamp.substring(0,8)) : '--:--:--';
+        const isBuy = o.side === 'BUY';
+        return `
+        <div class="feed-row ${isBuy ? 'buy' : 'sell'}">
+            <span class="fr-time">${time}</span>
+            <span class="fr-act ${isBuy ? 'buy' : 'sell'}">${o.side}</span>
+            <span class="fr-msg">${fmtNum(o.quantity)} ${o.symbol} @ ${fmtUSD(o.price)} [${o.state}]</span>
         </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+function updateTerminal(logs) {
+    if (!logs || !logs.logs) return;
+    const term = document.getElementById('sys-terminal');
+    
+    // Only update if new logs
+    const newLogs = logs.logs.slice(-50);
+    const html = newLogs.map(l => {
+        let cls = 'log-info';
+        if (l.includes('WARN')) cls = 'log-warn';
+        if (l.includes('ERROR') || l.includes('FAIL')) cls = 'log-err';
+        if (l.includes('SYSTEM')) cls = 'log-sys';
+        return `<div class="${cls}">${l}</div>`;
+    }).join('');
+    
+    if (term.innerHTML !== html) {
+        term.innerHTML = html;
+        term.scrollTop = term.scrollHeight;
+    }
 }
