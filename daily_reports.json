@@ -1,4 +1,30 @@
 {
+    "2026-07-06": {
+        "date": "2026-07-06",
+        "mode": "PAPER",
+        "summary": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "net_pnl_usd": 0,
+            "net_pnl_inr": 0,
+            "max_drawdown": 79.85,
+            "market_regime": "Sideways",
+            "regime_filter_enabled": false
+        },
+        "trades": [],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 0,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 16.94,
+            "iv": 0.46311017833759627,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-07-06.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-07-06.xlsx"
+    },
     "2026-06-29": {
         "date": "2026-06-29",
         "mode": "PAPER",

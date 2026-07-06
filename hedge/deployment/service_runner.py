@@ -137,6 +137,11 @@ class ServiceRunner:
                     self.pipeline_validator.tick()
                 else:
                     self.orchestrator.tick()
+                    # In PAPER mode, orchestrator returns nothing directly, but we can capture latency 
+                    # and increment ticks for the dashboard manually since ShadowPipelineValidator is bypassed.
+                    if self.analytics:
+                        with self.analytics._lock:
+                            self.analytics.live_stats["total_ticks"] += 1
                 time.sleep(1) # Simulated tick delay
         except Exception as e:
             logger.error(f"Fatal error in main loop: {e}", exc_info=True)

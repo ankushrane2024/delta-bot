@@ -171,3 +171,10 @@
 {"timestamp": "2026-07-06 14:30:01,443", "level": "INFO", "logger": "startup", "message": "Startup check passed: api_credentials"}
 {"timestamp": "2026-07-06 14:30:01,715", "level": "INFO", "logger": "startup", "message": "Startup check passed: rest_connectivity"}
 {"timestamp": "2026-07-06 14:30:01,716", "level": "INFO", "logger": "startup", "message": "All startup checks PASSED."}
+{"timestamp": "2026-07-06 17:30:48,235", "level": "INFO", "logger": "startup", "message": "Starting exhaustive pre-flight verification..."}
+{"timestamp": "2026-07-06 17:30:48,235", "level": "INFO", "logger": "startup", "message": "Startup check passed: configuration"}
+{"timestamp": "2026-07-06 17:30:48,236", "level": "INFO", "logger": "startup", "message": "Startup check passed: log_permissions"}
+{"timestamp": "2026-07-06 17:30:48,242", "level": "INFO", "logger": "startup", "message": "Startup check passed: sqlite_permissions"}
+{"timestamp": "2026-07-06 17:30:48,242", "level": "INFO", "logger": "startup", "message": "Startup check passed: api_credentials"}
+{"timestamp": "2026-07-06 17:30:49,387", "level": "INFO", "logger": "startup", "message": "Startup check passed: rest_connectivity"}
+{"timestamp": "2026-07-06 17:30:49,388", "level": "INFO", "logger": "startup", "message": "All startup checks PASSED."}
