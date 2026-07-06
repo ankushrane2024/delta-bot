@@ -5989,3 +5989,58 @@ Rule 11: Exit Time - [PASS]
 2026-07-06 17:30:59 IST - BotCore - INFO - WS Connection Opened
 2026-07-06 17:30:59 IST - BotCore - INFO - WS: Subscribed to ['BTCUSD']
 2026-07-06 17:30:59 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-06 17:50:43 IST - BotCore - INFO - Execution: Hedge lock acquired by ARES
+2026-07-06 17:50:43 IST - BotCore - INFO - Execution: Placing PAPER Strangle. Size: 1.0
+2026-07-06 17:50:43 IST - BotCore - INFO - Execution [PAPER]: Simulating execution delay of 438ms...
+2026-07-06 17:50:43 IST - BotCore - INFO - Execution [PAPER]: Simulating sell of BTC-C-50000 @ 1005.5934 (slippage: +5.59)
+2026-07-06 17:50:43 IST - BotCore - INFO - Execution [PAPER]: Simulating sell of BTC-P-50000 @ 1004.0246 (slippage: +4.02)
+2026-07-06 17:50:43 IST - BotCore - WARNING - DB: Failed to save active positions (HTTP 404)
+2026-07-06 17:50:43 IST - BotCore - INFO - Execution: Closing all positions due to Stress Test Close (Scenario: Partial Fills)
+2026-07-06 17:50:43 IST - BotCore - INFO - Execution: Hedge lock released by ARES
+2026-07-06 17:50:43 IST - BotCore - INFO - Execution [PAPER]: Simulating close of BTC-C-50000
+2026-07-06 17:50:43 IST - BotCore - INFO - Execution [PAPER]: Simulating close of BTC-P-50000
+2026-07-06 17:50:44 IST - BotCore - WARNING - DB: Failed to save active positions (HTTP 404)
+2026-07-06 17:50:44 IST - BotCore - INFO - Execution: Hedge lock acquired by ARES
+2026-07-06 17:50:44 IST - BotCore - INFO - Execution: Placing PAPER Strangle. Size: 1.0
+2026-07-06 17:50:44 IST - BotCore - INFO - Execution [PAPER]: Simulating execution delay of 356ms...
+2026-07-06 17:50:44 IST - BotCore - INFO - Execution [PAPER]: Simulating sell of BTC-C-50001 @ 1002.7507 (slippage: +2.75)
+2026-07-06 17:50:44 IST - BotCore - INFO - Execution [PAPER]: Simulating sell of BTC-P-49999 @ 1005.6266 (slippage: +5.63)
+2026-07-06 17:50:45 IST - BotCore - WARNING - DB: Failed to save active positions (HTTP 404)
+2026-07-06 17:50:45 IST - BotCore - INFO - Execution: Closing all positions due to Stress Test Close (Scenario: Sideways)
+2026-07-06 17:50:45 IST - BotCore - INFO - Execution: Hedge lock released by ARES
+2026-07-06 17:50:45 IST - BotCore - INFO - Execution [PAPER]: Simulating close of BTC-C-50001
+2026-07-06 17:50:45 IST - BotCore - INFO - Execution [PAPER]: Simulating close of BTC-P-49999
+2026-07-06 17:50:45 IST - BotCore - WARNING - DB: Failed to save active positions (HTTP 404)
+2026-07-06 17:50:45 IST - BotCore - INFO - Execution: Hedge lock acquired by ARES
+2026-07-06 17:50:45 IST - BotCore - INFO - Execution: Placing PAPER Strangle. Size: 1.0
+2026-07-06 17:50:45 IST - BotCore - INFO - Execution [PAPER]: Simulating execution delay of 499ms...
+2026-07-06 17:50:46 IST - BotCore - INFO - Execution [PAPER]: Simulating sell of BTC-C-50002 @ 1003.7449 (slippage: +3.74)
+2026-07-06 17:50:46 IST - BotCore - INFO - Execution [PAPER]: Simulating sell of BTC-P-49998 @ 1004.1574 (slippage: +4.16)
+2026-07-06 17:50:46 IST - BotCore - WARNING - DB: Failed to save active positions (HTTP 404)
+2026-07-06 17:50:46 IST - BotCore - INFO - Execution: Closing all positions due to Stress Test Close (Scenario: Trending Up)
+2026-07-06 17:50:46 IST - BotCore - INFO - Execution: Hedge lock released by ARES
+2026-07-06 17:50:46 IST - BotCore - INFO - Execution [PAPER]: Simulating close of BTC-C-50002
+2026-07-06 17:50:46 IST - BotCore - INFO - Execution [PAPER]: Simulating close of BTC-P-49998
+2026-07-06 17:50:47 IST - BotCore - WARNING - DB: Failed to save active positions (HTTP 404)
+2026-07-06 17:50:47 IST - BotCore - INFO - Execution: Hedge lock acquired by ARES
+2026-07-06 17:50:47 IST - BotCore - INFO - Execution: Placing PAPER Strangle. Size: 1.0
+2026-07-06 17:50:47 IST - BotCore - INFO - Execution [PAPER]: Simulating execution delay of 488ms...
+2026-07-06 17:50:47 IST - BotCore - INFO - Execution [PAPER]: Simulating sell of BTC-C-50003 @ 1005.2427 (slippage: +5.24)
+2026-07-06 17:50:47 IST - BotCore - INFO - Execution [PAPER]: Simulating sell of BTC-P-49997 @ 1006.7390 (slippage: +6.74)
+2026-07-06 17:50:48 IST - BotCore - WARNING - DB: Failed to save active positions (HTTP 404)
+2026-07-06 17:50:48 IST - BotCore - INFO - Execution: Closing all positions due to Stress Test Close (Scenario: Sideways)
+2026-07-06 17:50:48 IST - BotCore - INFO - Execution: Hedge lock released by ARES
+2026-07-06 17:50:48 IST - BotCore - INFO - Execution [PAPER]: Simulating close of BTC-C-50003
+2026-07-06 17:50:48 IST - BotCore - INFO - Execution [PAPER]: Simulating close of BTC-P-49997
+2026-07-06 17:50:48 IST - BotCore - WARNING - DB: Failed to save active positions (HTTP 404)
+2026-07-06 17:50:48 IST - BotCore - INFO - Execution: Hedge lock acquired by ARES
+2026-07-06 17:50:48 IST - BotCore - INFO - Execution: Placing PAPER Strangle. Size: 1.0
+2026-07-06 17:50:48 IST - BotCore - INFO - Execution [PAPER]: Simulating execution delay of 283ms...
+2026-07-06 17:50:49 IST - BotCore - INFO - Execution [PAPER]: Simulating sell of BTC-C-50004 @ 1002.1424 (slippage: +2.14)
+2026-07-06 17:50:49 IST - BotCore - INFO - Execution [PAPER]: Simulating sell of BTC-P-49996 @ 1002.8431 (slippage: +2.84)
+2026-07-06 17:50:49 IST - BotCore - WARNING - DB: Failed to save active positions (HTTP 429)
+2026-07-06 17:50:49 IST - BotCore - INFO - Execution: Closing all positions due to Stress Test Close (Scenario: Trending Down)
+2026-07-06 17:50:49 IST - BotCore - INFO - Execution: Hedge lock released by ARES
+2026-07-06 17:50:49 IST - BotCore - INFO - Execution [PAPER]: Simulating close of BTC-C-50004
+2026-07-06 17:50:49 IST - BotCore - INFO - Execution [PAPER]: Simulating close of BTC-P-49996
+2026-07-06 17:50:50 IST - BotCore - WARNING - DB: Failed to save active positions (HTTP 429)
