@@ -869,6 +869,9 @@
                     <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:rgba(255,255,255,0.5);">
                         <div style="width:24px; height:3px; background: #38bdf8; border-radius:2px; border-top: 2px dashed #38bdf8; background:none;"></div> Total (with Hedge)
                     </div>
+                    <div id="sl-line-legend" style="display:none; align-items:center; gap:6px; font-size:0.8rem; color:rgba(245,158,11,0.8);">
+                        <div style="width:24px; height:0; border-top: 2px dashed #f59e0b;"></div> <span id="sl-line-legend-text">🔒 Locked SL</span>
+                    </div>
                 </div>
             </div>
             <div style="position:relative; height: 260px;">
@@ -2745,6 +2748,18 @@
                             pointHoverRadius: 4,
                             tension: 0.35,
                             fill: false
+                        },
+                        {
+                            label: '🔒 Locked SL Level',
+                            data: [],
+                            borderColor: '#f59e0b',
+                            borderWidth: 2,
+                            borderDash: [8, 4],
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            tension: 0,
+                            fill: false,
+                            order: 10
                         }
                     ]
                 },
@@ -2825,6 +2840,27 @@
                 pnlChart.data.labels = labels;
                 pnlChart.data.datasets[0].data = optPnl;
                 pnlChart.data.datasets[1].data = totPnl;
+
+                // === SL Line: Calculate dollar value of locked SL % ===
+                const cts = data.trail_state || {};
+                const entryPrem = data.total_entry_premium || 0;
+                const slLegend = document.getElementById('sl-line-legend');
+                const slLegendText = document.getElementById('sl-line-legend-text');
+                if (cts.trailing_confirmed && cts.current_trailing_sl !== null && entryPrem > 0) {
+                    // current_trailing_sl is already in % (e.g. 5.0 means +5%)
+                    const slDollarValue = entryPrem * (cts.current_trailing_sl / 100);
+                    // Fill entire array with the same value to make a horizontal line
+                    pnlChart.data.datasets[2].data = labels.map(() => slDollarValue);
+                    pnlChart.data.datasets[2].borderColor = '#f59e0b';
+                    pnlChart.data.datasets[2].label = `\ud83d\udd12 SL @ +${cts.current_trailing_sl}% ($${slDollarValue.toFixed(4)})`;
+                    // Show legend
+                    slLegend.style.display = 'flex';
+                    slLegendText.textContent = `\ud83d\udd12 SL @ +${cts.current_trailing_sl}%`;
+                } else {
+                    pnlChart.data.datasets[2].data = [];
+                    slLegend.style.display = 'none';
+                }
+
                 pnlChart.update('none');
 
                 // Update summary stats — use ALL data points for true peak/trough

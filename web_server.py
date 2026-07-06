@@ -798,10 +798,15 @@ def get_pnl_chart():
     if not has_trade or len(chart_data) == 0:
         return jsonify({"active": False, "points": []})
 
+    trail_state = bot_engine.risk_manager.get_trailing_state()
+    total_entry_premium = getattr(bot_engine, 'total_entry_premium', 0)
+
     return jsonify({
         "active": True,
         "points": chart_data,
-        "total_points": len(chart_data)
+        "total_points": len(chart_data),
+        "trail_state": trail_state,
+        "total_entry_premium": round(total_entry_premium, 6)
     })
 
 @app.route('/api/backtest', methods=['POST'])
