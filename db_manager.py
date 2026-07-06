@@ -31,50 +31,75 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ---------------------------------------------------------------------------
 _FALLBACK_BLOB_ID = "019f2c26-6318-711f-9349-99ce26627ac1"  # Merged 17 trades
 _BACKUP_BLOB_ID = "019f2c26-6684-755f-8953-2e096f1d4673"   # Secondary Backup Blob
-_BLOB_ID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".blob_id_cache")
-_BACKUP_BLOB_ID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".backup_blob_id_cache")
 _LAST_BACKUP_TIME_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".last_backup_time")
 _blob_id = _FALLBACK_BLOB_ID
 _connected = False
-_keep_alive_started = False
+_keep_alive_thread = None
 
+def _get_master_dir() -> dict:
+    """Fetches the Master Directory blob that contains pointers to the true active databases."""
+    try:
+        url = f"https://jsonblob.com/api/jsonBlob/{_MASTER_DIR_BLOB_ID}"
+        res = requests.get(url, headers={'Accept': 'application/json'}, timeout=5, verify=False)
+        if res.status_code == 200:
+            return res.json()
+    except Exception as e:
+        app_logger.error(f"DB: Failed to fetch Master Directory: {e}")
+    return {}
+
+def _update_master_dir(updates: dict):
+    """Updates the Master Directory blob with new database pointers."""
+    try:
+        current = _get_master_dir()
+        current.update(updates)
+        url = f"https://jsonblob.com/api/jsonBlob/{_MASTER_DIR_BLOB_ID}"
+        res = requests.put(url, json=current, headers={'Content-Type': 'application/json', 'Accept': 'application/json'}, timeout=5, verify=False)
+        if res.status_code in [200, 201]:
+            app_logger.info("DB: Successfully updated Master Directory Blob.")
+    except Exception as e:
+        app_logger.error(f"DB: Failed to update Master Directory: {e}")
 
 def _get_active_blob_id() -> str:
-    """Returns the active blob ID: validated env var > hardcoded fallback.
-
-    IMPORTANT: If JSONBLOB_ID env var is set but points to an old/empty blob
-    (from a previous session), we fall back to the hardcoded blob ID.
-    This prevents stale Render env vars from breaking trade history.
     """
+    Returns the active JSONBLOB_ID.
+    Priority:
+    1. Environment Variable JSONBLOB_ID (if valid)
+    2. Master Directory's 'trade_history_blob'
+    3. Hardcoded Fallback ID (17 trades)
+    """
+    global _blob_id
+
+    # 1. Environment Variable override
     env_id = os.environ.get("JSONBLOB_ID")
     if env_id and env_id != _FALLBACK_BLOB_ID:
-        # Quick sanity check — verify the env var blob actually has our data
         try:
             test_url = f"https://jsonblob.com/api/jsonBlob/{env_id}"
-            test_res = requests.get(test_url, headers={'Accept': 'application/json'},
-                                    timeout=5, verify=False)
+            test_res = requests.get(test_url, headers={'Accept': 'application/json'}, timeout=5, verify=False)
             if test_res.status_code == 200:
-                test_data = test_res.json()
-                if len(test_data.get("trades", [])) > 0:
-                    app_logger.info(f"DB: Using JSONBLOB_ID env var blob (has {len(test_data['trades'])} trades).")
-                    return env_id
-                else:
-                    app_logger.warning(f"DB: JSONBLOB_ID env var blob has 0 trades — falling back to hardcoded blob.")
-            else:
-                app_logger.warning(f"DB: JSONBLOB_ID env var blob returned HTTP {test_res.status_code} — falling back to hardcoded blob.")
-        except Exception as e:
-            app_logger.warning(f"DB: Could not validate JSONBLOB_ID env var: {e} — falling back to hardcoded blob.")
+                _blob_id = env_id
+                return _blob_id
+        except Exception:
+            pass
 
-    return _FALLBACK_BLOB_ID
-
+    # 2. Master Directory override (Bulletproof Render persistence)
+    master_dir = _get_master_dir()
+    if 'trade_history_blob' in master_dir:
+        master_id = master_dir['trade_history_blob']
+        if master_id != _blob_id:
+            _blob_id = master_id
+            app_logger.info(f"DB: Using Master Directory Blob ID: {_blob_id}")
+            return _blob_id
+            
+    # 3. Fallback
+    _blob_id = _FALLBACK_BLOB_ID
+    return _blob_id
 
 def _write_blob_id_cache(blob_id: str):
-    """Persist the active blob ID to a cache file (survives process restarts)."""
-    try:
-        with open(_BLOB_ID_FILE, 'w') as f:
-            f.write(blob_id)
-    except Exception as e:
-        app_logger.warning(f"DB: Could not write blob ID cache: {e}")
+    """Writes the newly generated blob ID to the Master Directory so it survives Render restarts."""
+    global _blob_id
+    _blob_id = blob_id
+    _update_master_dir({"trade_history_blob": blob_id})
+    app_logger.info(f"DB: Hardcoded new Blob ID {blob_id} into Master Directory.")
 
 
 def _self_heal(local_backup: dict = None):
@@ -176,22 +201,17 @@ def _get_cloud_url():
     return f"https://jsonblob.com/api/jsonBlob/{_blob_id}"
 
 def _get_active_backup_blob_id() -> str:
-    if os.path.exists(_BACKUP_BLOB_ID_FILE):
-        try:
-            with open(_BACKUP_BLOB_ID_FILE, 'r') as f:
-                return f.read().strip()
-        except Exception:
-            pass
-    return _BACKUP_BLOB_ID
+    """Returns the ID for the secondary backup blob from the Master Directory."""
+    master_dir = _get_master_dir()
+    return master_dir.get("backup_blob", _BACKUP_BLOB_ID)
 
 def _write_backup_blob_id(blob_id: str):
-    try:
-        with open(_BACKUP_BLOB_ID_FILE, 'w') as f:
-            f.write(blob_id)
-    except Exception:
-        pass
+    """Saves a newly generated backup blob ID to the Master Directory."""
+    _update_master_dir({"backup_blob": blob_id})
 
 def _write_last_backup_time():
+    """Updates the local timestamp cache for the last backup."""
+    # We still use local cache for this timestamp since it's non-critical if lost.
     try:
         from utils import get_ist_now
         now_str = get_ist_now().strftime("%d %b, %H:%M IST")
