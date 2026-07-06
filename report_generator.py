@@ -8,7 +8,7 @@ from reportlab.lib import colors
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
-USD_INR_RATE = 83.0  # Fixed exchange rate as default
+USD_INR_RATE = 95.5  # Updated July 2026 exchange rate
 
 def generate_pdf_report(data, filepath):
     """Generates a premium, beautiful PDF report for daily trading."""

@@ -176,7 +176,7 @@ def get_status():
         # where BTC_Quantity = Number_of_Lots * LOT_TO_BTC (0.001 BTC per lot)
         btc_quantity = size * LOT_TO_BTC
         leg_pnl_usd = (entry_price - current_price) * btc_quantity
-        leg_pnl_inr = leg_pnl_usd * 84.0  # approx INR conversion
+        leg_pnl_inr = leg_pnl_usd * 95.5  # Updated July 2026 INR rate
         
         # P&L Percentage (1 lot = 0.001 BTC)
         leg_entry_premium_total = entry_price * btc_quantity
@@ -223,7 +223,7 @@ def get_status():
     # Total P&L and Capital Used across all legs + Hedge
     options_pnl_usd = sum(pos['leg_pnl_usd'] for pos in positions) if positions else 0.0
     total_pnl_usd = round(options_pnl_usd + hedge_pnl_usd, 2)
-    total_pnl_inr = round(total_pnl_usd * 84.0, 2)
+    total_pnl_inr = round(total_pnl_usd * 95.5, 2)
     
     total_pnl_pct_premium = (total_pnl_usd / total_entry_premium * 100) if total_entry_premium > 0 else 0.0
     total_capital_used = round(sum(pos['leg_capital_used'] for pos in positions), 2) if positions else 0.0
@@ -267,7 +267,8 @@ def get_status():
         'size_multiplier': round(getattr(bot_engine, 'size_multiplier', 1.0), 2),
         'consecutive_loss_count': getattr(bot_engine, 'consecutive_loss_count', 0),
         'next_day_paused': getattr(bot_engine, 'next_day_paused', False),
-        'reduced_size_trades_remaining': getattr(bot_engine, 'reduced_size_trades_remaining', 0)
+        'reduced_size_trades_remaining': getattr(bot_engine, 'reduced_size_trades_remaining', 0),
+        'trail_state': trail_state
     })
 
 @app.route('/api/start', methods=['POST'])

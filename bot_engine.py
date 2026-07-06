@@ -429,7 +429,7 @@ class DeltaTradingEngine:
             exit_premium_total  = (simulated_call_exit + simulated_put_exit) * btc_quantity
 
             simulated_pnl = entry_premium_total - exit_premium_total
-            pnl_inr       = simulated_pnl * 83.0   # USD → INR approx
+            pnl_inr       = simulated_pnl * 95.5   # USD → INR (July 2026 rate)
 
             app_logger.info(
                 f"Engine [TEST]: PAPER Exit simulated. "
