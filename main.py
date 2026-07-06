@@ -59,7 +59,7 @@ def main():
         pinger_thread.start()
         
         # 5. Initialize ARES ServiceRunner
-        if os.environ.get('ENABLE_ARES', 'false').lower() == 'true':
+        if os.environ.get('ENABLE_ARES', 'true').lower() == 'true':
             try:
                 from hedge.deployment.service_runner import ServiceRunner
                 ares_runner = ServiceRunner(mode_override='PAPER')
