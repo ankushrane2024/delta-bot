@@ -49,6 +49,19 @@ class DecisionEngine:
     def evaluate(self, fused_score: float, breakdown: StressFusionBreakdown, 
                  context: PositionContext, current_hedge_ratio: float, current_time: float = 0.0) -> HedgeDecision:
                  
+        if context.total_lots == 0:
+            self._ema_stress = 0.0
+            self._last_ema_time = current_time
+            return HedgeDecision(
+                action=HedgeAction.HOLD,
+                target_hedge_ratio=0.0,
+                confidence=100.0,
+                primary_reason="No active option positions.",
+                dominant_factor="None",
+                ema_stress=0.0,
+                debug_information={"total_lots": 0}
+            )
+
         if self._ema_stress is None:
             self._ema_stress = fused_score
             self._last_ema_time = current_time
