@@ -4078,3 +4078,178 @@ Rule 11: Exit Time - [PASS]
 2026-07-06 14:17:27 IST - BotCore - INFO - Filters: ForexFactory calendar cache updated.
 2026-07-06 14:18:23 IST - BotCore - INFO - Keep-alive pinger started. Target URL: http://localhost:5000
 2026-07-06 14:18:25 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-06 14:26:02 IST - BotCore - INFO - API: Time synced. Offset: -5s
+2026-07-06 14:26:03 IST - BotCore - INFO - DB: Connected to Cloud DB (Blob: ...26627ac1)
+2026-07-06 14:26:03 IST - BotCore - INFO - DB: Keep-alive thread started (pings every 12h).
+2026-07-06 14:26:04 IST - BotCore - ERROR - DB: Blob 404 on load. Triggering self-heal...
+2026-07-06 14:26:04 IST - BotCore - WARNING - DB: Blob 404 detected — Self-healer triggered. Creating new blob...
+2026-07-06 14:26:04 IST - BotCore - INFO - DB: Self-healer attempting to restore from Secondary Cloud Backup...
+2026-07-06 14:26:05 IST - BotCore - INFO - DB: Self-healer loaded 17 trades from Secondary Cloud Backup.
+2026-07-06 14:26:06 IST - BotCore - INFO - DB: Self-healer created new blob: ...2b76380c with 17 trades restored.
+2026-07-06 14:26:06 IST - BotCore - INFO - DB: Self-heal load success! 17 trades restored.
+2026-07-06 14:26:06 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, 30% Full Target
+Rule 5: Partial Profit - [PASS]
+   Expected: 50% Size at 20% Profit
+Rule 6: Trailing Stop Loss - [PASS]
+   Expected: Breakeven after 15% Profit
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: Smart Hedging - [PASS]
+   Expected: Premium-based: 12% Bleed (50%), 25% Bleed (100%), Delta-Weighted
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-06 14:26:06 IST - BotCore - INFO - Engine: Starting Delta BTC Options Bot in SHADOW mode with Capital: $50000.0
+2026-07-06 14:26:06 IST - BotCore - INFO - Telegram polling loop started.
+2026-07-06 14:26:06 IST - BotCore - INFO - Telegram interactive bot thread started.
+2026-07-06 14:26:06 IST - BotCore - INFO - ARES ServiceRunner initialized in background thread in PAPER mode.
+2026-07-06 14:26:06 IST - BotCore - INFO - Starting Web Dashboard on port 5001
+2026-07-06 14:26:07 IST - BotCore - INFO - Telegram: Skipped 0 old messages. Waiting for new commands.
+2026-07-06 14:26:07 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)
+2026-07-06 14:26:07 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)
+2026-07-06 14:26:07 IST - BotCore - INFO - Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)
+2026-07-06 14:26:07 IST - BotCore - INFO - Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)
+2026-07-06 14:26:07 IST - BotCore - INFO - Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)
+2026-07-06 14:26:07 IST - BotCore - INFO - Engine: Starting 24/7 background Option Chain Monitor...
+2026-07-06 14:26:07 IST - BotCore - INFO - WS Connection Opened
+2026-07-06 14:26:07 IST - BotCore - INFO - WS: Subscribed to ['BTCUSD']
+2026-07-06 14:26:08 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-06 14:26:12 IST - BotCore - INFO - Filters: ForexFactory calendar cache updated.
+2026-07-06 14:29:24 IST - BotCore - INFO - API: Time synced. Offset: -4s
+2026-07-06 14:29:24 IST - BotCore - INFO - DB: Connected to Cloud DB (Blob: ...26627ac1)
+2026-07-06 14:29:24 IST - BotCore - INFO - DB: Keep-alive thread started (pings every 12h).
+2026-07-06 14:29:25 IST - BotCore - ERROR - DB: Blob 404 on load. Triggering self-heal...
+2026-07-06 14:29:25 IST - BotCore - WARNING - DB: Blob 404 detected — Self-healer triggered. Creating new blob...
+2026-07-06 14:29:25 IST - BotCore - INFO - DB: Self-healer attempting to restore from Secondary Cloud Backup...
+2026-07-06 14:29:26 IST - BotCore - INFO - DB: Self-healer loaded 17 trades from Secondary Cloud Backup.
+2026-07-06 14:29:27 IST - BotCore - INFO - DB: Self-healer created new blob: ...2d431ac6 with 17 trades restored.
+2026-07-06 14:29:28 IST - BotCore - INFO - DB: Self-heal load success! 17 trades restored.
+2026-07-06 14:29:28 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, 30% Full Target
+Rule 5: Partial Profit - [PASS]
+   Expected: 50% Size at 20% Profit
+Rule 6: Trailing Stop Loss - [PASS]
+   Expected: Breakeven after 15% Profit
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: Smart Hedging - [PASS]
+   Expected: Premium-based: 12% Bleed (50%), 25% Bleed (100%), Delta-Weighted
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-06 14:29:28 IST - BotCore - INFO - Engine: Starting Delta BTC Options Bot in SHADOW mode with Capital: $50000.0
+2026-07-06 14:29:28 IST - BotCore - INFO - Telegram polling loop started.
+2026-07-06 14:29:28 IST - BotCore - INFO - Telegram interactive bot thread started.
+2026-07-06 14:29:28 IST - BotCore - INFO - ARES is disabled via ENABLE_ARES flag.
+2026-07-06 14:29:28 IST - BotCore - INFO - Starting Web Dashboard on port 5000
+2026-07-06 14:29:53 IST - BotCore - INFO - API: Time synced. Offset: -2s
+2026-07-06 14:29:53 IST - BotCore - INFO - DB: Connected to Cloud DB (Blob: ...26627ac1)
+2026-07-06 14:29:53 IST - BotCore - INFO - DB: Keep-alive thread started (pings every 12h).
+2026-07-06 14:29:54 IST - BotCore - ERROR - DB: Blob 404 on load. Triggering self-heal...
+2026-07-06 14:29:54 IST - BotCore - WARNING - DB: Blob 404 detected — Self-healer triggered. Creating new blob...
+2026-07-06 14:29:54 IST - BotCore - INFO - DB: Self-healer attempting to restore from Secondary Cloud Backup...
+2026-07-06 14:29:54 IST - BotCore - INFO - DB: Self-healer loaded 17 trades from Secondary Cloud Backup.
+2026-07-06 14:29:55 IST - BotCore - INFO - DB: Self-healer created new blob: ...8ec1c345 with 17 trades restored.
+2026-07-06 14:29:56 IST - BotCore - INFO - DB: Self-heal load success! 17 trades restored.
+2026-07-06 14:29:56 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, 30% Full Target
+Rule 5: Partial Profit - [PASS]
+   Expected: 50% Size at 20% Profit
+Rule 6: Trailing Stop Loss - [PASS]
+   Expected: Breakeven after 15% Profit
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: Smart Hedging - [PASS]
+   Expected: Premium-based: 12% Bleed (50%), 25% Bleed (100%), Delta-Weighted
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-06 14:29:56 IST - BotCore - INFO - Engine: Starting Delta BTC Options Bot in SHADOW mode with Capital: $50000.0
+2026-07-06 14:29:56 IST - BotCore - INFO - Telegram polling loop started.
+2026-07-06 14:29:56 IST - BotCore - INFO - Telegram interactive bot thread started.
+2026-07-06 14:29:56 IST - BotCore - INFO - ARES is disabled via ENABLE_ARES flag.
+2026-07-06 14:29:56 IST - BotCore - INFO - Starting Web Dashboard on port 5000
+2026-07-06 14:29:57 IST - BotCore - INFO - Telegram: Skipped 0 old messages. Waiting for new commands.
+2026-07-06 14:29:57 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)
+2026-07-06 14:29:57 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)
+2026-07-06 14:29:57 IST - BotCore - INFO - Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)
+2026-07-06 14:29:57 IST - BotCore - INFO - Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)
+2026-07-06 14:29:57 IST - BotCore - INFO - Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)
+2026-07-06 14:29:57 IST - BotCore - INFO - Engine: Starting 24/7 background Option Chain Monitor...
+2026-07-06 14:29:58 IST - BotCore - INFO - API: Time synced. Offset: -7s
+2026-07-06 14:29:58 IST - BotCore - INFO - DB: Connected to Cloud DB (Blob: ...26627ac1)
+2026-07-06 14:29:58 IST - BotCore - INFO - DB: Keep-alive thread started (pings every 12h).
+2026-07-06 14:29:59 IST - BotCore - ERROR - DB: Blob 404 on load. Triggering self-heal...
+2026-07-06 14:29:59 IST - BotCore - WARNING - DB: Blob 404 detected — Self-healer triggered. Creating new blob...
+2026-07-06 14:29:59 IST - BotCore - INFO - DB: Self-healer attempting to restore from Secondary Cloud Backup...
+2026-07-06 14:29:59 IST - BotCore - INFO - DB: Self-healer loaded 17 trades from Secondary Cloud Backup.
+2026-07-06 14:30:00 IST - BotCore - INFO - DB: Self-healer created new blob: ...31b74ca0 with 17 trades restored.
+2026-07-06 14:30:01 IST - BotCore - INFO - DB: Self-heal load success! 17 trades restored.
+2026-07-06 14:30:01 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, 30% Full Target
+Rule 5: Partial Profit - [PASS]
+   Expected: 50% Size at 20% Profit
+Rule 6: Trailing Stop Loss - [PASS]
+   Expected: Breakeven after 15% Profit
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: Smart Hedging - [PASS]
+   Expected: Premium-based: 12% Bleed (50%), 25% Bleed (100%), Delta-Weighted
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-06 14:30:01 IST - BotCore - INFO - Engine: Starting Delta BTC Options Bot in SHADOW mode with Capital: $50000.0
+2026-07-06 14:30:01 IST - BotCore - INFO - Telegram polling loop started.
+2026-07-06 14:30:01 IST - BotCore - INFO - Telegram interactive bot thread started.
+2026-07-06 14:30:01 IST - BotCore - INFO - ARES ServiceRunner initialized in background thread in PAPER mode.
+2026-07-06 14:30:01 IST - BotCore - INFO - Starting Web Dashboard on port 5000
+2026-07-06 14:30:01 IST - BotCore - INFO - Telegram: Skipped 0 old messages. Waiting for new commands.
+2026-07-06 14:30:02 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)
+2026-07-06 14:30:02 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)
+2026-07-06 14:30:02 IST - BotCore - INFO - Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)
+2026-07-06 14:30:02 IST - BotCore - INFO - Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)
+2026-07-06 14:30:02 IST - BotCore - INFO - Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)
+2026-07-06 14:30:02 IST - BotCore - INFO - Engine: Starting 24/7 background Option Chain Monitor...
+2026-07-06 14:30:02 IST - BotCore - INFO - WS Connection Opened
+2026-07-06 14:30:02 IST - BotCore - INFO - WS: Subscribed to ['BTCUSD']

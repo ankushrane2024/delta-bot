@@ -537,3 +537,63 @@ ound thread."}
 {"timestamp": "2026-07-06 14:04:42,776", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:04:42] \"GET /ares/provider HTTP/1.1\" 200 -"}
 {"timestamp": "2026-07-06 14:04:42,779", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:04:42] \"GET /ares/system HTTP/1.1\" 200 -"}
 {"timestamp": "2026-07-06 14:04:42,791", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:04:42] \"GET /ares/logs HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-06 14:26:06,889", "level": "INFO", "logger": "system", "message": "Booting ARES Service in PAPER mode..."}
+{"timestamp": "2026-07-06 14:26:06,889", "level": "INFO", "logger": "BotCore", "message": "ARES ServiceRunner initialized in background thread in PAPER mode."}
+{"timestamp": "2026-07-06 14:26:06,890", "level": "INFO", "logger": "BotCore", "message": "Starting Web Dashboard on port 5001"}
+{"timestamp": "2026-07-06 14:26:06,898", "level": "INFO", "logger": "werkzeug", "message": "\u001b[31m\u001b[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\u001b[0m\n * Running on all addresses (0.0.0.0)\n * Running on http://127.0.0.1:5001\n * Running on http://192.168.1.33:5001"}
+{"timestamp": "2026-07-06 14:26:06,898", "level": "INFO", "logger": "werkzeug", "message": "\u001b[33mPress CTRL+C to quit\u001b[0m"}
+{"timestamp": "2026-07-06 14:26:07,511", "level": "INFO", "logger": "BotCore", "message": "Telegram: Skipped 0 old messages. Waiting for new commands."}
+{"timestamp": "2026-07-06 14:26:07,512", "level": "ERROR", "logger": "ErrorLog", "message": "Telegram failed: {\"ok\":false,\"error_code\":404,\"description\":\"Not Found\"}"}
+{"timestamp": "2026-07-06 14:26:07,930", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-06 14:26:07,930", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-06 14:26:07,930", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-06 14:26:07,930", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-06 14:26:07,930", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-06 14:26:07,931", "level": "INFO", "logger": "BotCore", "message": "Engine: Starting 24/7 background Option Chain Monitor..."}
+{"timestamp": "2026-07-06 14:26:07,976", "level": "INFO", "logger": "websocket", "message": "Websocket connected"}
+{"timestamp": "2026-07-06 14:26:07,976", "level": "INFO", "logger": "BotCore", "message": "WS Connection Opened"}
+{"timestamp": "2026-07-06 14:26:07,977", "level": "INFO", "logger": "BotCore", "message": "WS: Subscribed to ['BTCUSD']"}
+{"timestamp": "2026-07-06 14:26:08,557", "level": "INFO", "logger": "system", "message": "Internal dashboard API disabled. Using host Flask application."}
+{"timestamp": "2026-07-06 14:26:08,557", "level": "INFO", "logger": "hedge.engines.shadow.shadow_pipeline_validator", "message": "Starting ShadowPipelineValidator..."}
+{"timestamp": "2026-07-06 14:26:08,557", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "Starting Ares Orchestrator..."}
+{"timestamp": "2026-07-06 14:26:08,557", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Initiating Execution State Machine Recovery..."}
+{"timestamp": "2026-07-06 14:26:08,557", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Execution State Machine Recovery Complete."}
+{"timestamp": "2026-07-06 14:26:08,557", "level": "INFO", "logger": "system", "message": "ARES Main Loop started."}
+{"timestamp": "2026-07-06 14:26:08,557", "level": "WARNING", "logger": "ARES.TrendEngine", "message": "TrendEngine executed with ZERO injected analyzers. Reverting to SAFE defaults."}
+{"timestamp": "2026-07-06 14:26:08,661", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
+{"timestamp": "2026-07-06 14:26:09,558", "level": "WARNING", "logger": "ARES.TrendEngine", "message": "TrendEngine executed with ZERO injected analyzers. Reverting to SAFE defaults."}
+{"timestamp": "2026-07-06 14:26:10,559", "level": "WARNING", "logger": "ARES.TrendEngine", "message": "TrendEngine executed with ZERO injected analyzers. Reverting to SAFE defaults."}
+{"timestamp": "2026-07-06 14:26:11,560", "level": "WARNING", "logger": "ARES.TrendEngine", "message": "TrendEngine executed with ZERO injected analyzers. Reverting to SAFE defaults."}
+{"timestamp": "2026-07-06 14:26:12,548", "level": "INFO", "logger": "BotCore", "message": "Filters: ForexFactory calendar cache updated."}
+{"timestamp": "2026-07-06 14:26:12,550", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:26:12] \"GET /api/status HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-06 14:26:12,555", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:26:12] \"GET /ares/dashboard HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-06 14:26:12,556", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:26:12] \"GET /ares/health HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-06 14:26:12,558", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:26:12] \"GET /ares/status HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-06 14:26:12,560", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:26:12] \"GET /ares/orders HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-06 14:26:12,560", "level": "WARNING", "logger": "ARES.TrendEngine", "message": "TrendEngine executed with ZERO injected analyzers. Reverting to SAFE defaults."}
+{"timestamp": "2026-07-06 14:26:12,561", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:26:12] \"GET /ares/provider HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-06 14:26:12,564", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:26:12] \"GET /ares/system HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-06 14:26:12,575", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [06/Jul/2026 14:26:12] \"GET /ares/logs HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-06 14:30:01,436", "level": "INFO", "logger": "system", "message": "Booting ARES Service in PAPER mode..."}
+{"timestamp": "2026-07-06 14:30:01,437", "level": "INFO", "logger": "BotCore", "message": "ARES ServiceRunner initialized in background thread in PAPER mode."}
+{"timestamp": "2026-07-06 14:30:01,437", "level": "INFO", "logger": "BotCore", "message": "Starting Web Dashboard on port 5000"}
+{"timestamp": "2026-07-06 14:30:01,444", "level": "INFO", "logger": "werkzeug", "message": "\u001b[31m\u001b[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\u001b[0m\n * Running on all addresses (0.0.0.0)\n * Running on http://127.0.0.1:5000\n * Running on http://192.168.1.33:5000"}
+{"timestamp": "2026-07-06 14:30:01,445", "level": "INFO", "logger": "werkzeug", "message": "\u001b[33mPress CTRL+C to quit\u001b[0m"}
+{"timestamp": "2026-07-06 14:30:01,719", "level": "INFO", "logger": "system", "message": "Internal dashboard API disabled. Using host Flask application."}
+{"timestamp": "2026-07-06 14:30:01,719", "level": "INFO", "logger": "hedge.engines.shadow.shadow_pipeline_validator", "message": "Starting ShadowPipelineValidator..."}
+{"timestamp": "2026-07-06 14:30:01,719", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "Starting Ares Orchestrator..."}
+{"timestamp": "2026-07-06 14:30:01,719", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Initiating Execution State Machine Recovery..."}
+{"timestamp": "2026-07-06 14:30:01,719", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Execution State Machine Recovery Complete."}
+{"timestamp": "2026-07-06 14:30:01,719", "level": "INFO", "logger": "system", "message": "ARES Main Loop started."}
+{"timestamp": "2026-07-06 14:30:01,719", "level": "WARNING", "logger": "ARES.TrendEngine", "message": "TrendEngine executed with ZERO injected analyzers. Reverting to SAFE defaults."}
+{"timestamp": "2026-07-06 14:30:01,907", "level": "ERROR", "logger": "ErrorLog", "message": "Telegram failed: {\"ok\":false,\"error_code\":404,\"description\":\"Not Found\"}"}
+{"timestamp": "2026-07-06 14:30:01,937", "level": "INFO", "logger": "BotCore", "message": "Telegram: Skipped 0 old messages. Waiting for new commands."}
+{"timestamp": "2026-07-06 14:30:02,249", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-06 14:30:02,249", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-06 14:30:02,249", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-06 14:30:02,249", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-06 14:30:02,250", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-06 14:30:02,250", "level": "INFO", "logger": "BotCore", "message": "Engine: Starting 24/7 background Option Chain Monitor..."}
+{"timestamp": "2026-07-06 14:30:02,348", "level": "INFO", "logger": "websocket", "message": "Websocket connected"}
+{"timestamp": "2026-07-06 14:30:02,348", "level": "INFO", "logger": "BotCore", "message": "WS Connection Opened"}
+{"timestamp": "2026-07-06 14:30:02,348", "level": "INFO", "logger": "BotCore", "message": "WS: Subscribed to ['BTCUSD']"}

@@ -36,7 +36,7 @@ class TestCrashRecovery(unittest.TestCase):
         mock_provider.submit_order.assert_not_called()
         
         # Verify reconciliation was triggered
-        mock_orchestrator.portfolio_synchronizer.reconcile_with_provider.assert_called_once()
+        mock_orchestrator.portfolio_sync.reconcile_with_provider.assert_called_once()
         
 if __name__ == '__main__':
     unittest.main()

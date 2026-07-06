@@ -42,19 +42,23 @@ class ServiceRunner:
         logger.info(f"Received termination signal ({sig}). Initiating graceful shutdown...")
         self.running = False
 
-    def setup_orchestrator_and_validator(self):
-        # Setup mock market data (for now, unless implementing live Delta data)
-        mock_market_data = Mock()
-        mock_market_data.get_latest_data.return_value = {
+class PaperMarketDataProvider:
+    def __init__(self, clock):
+        self.clock = clock
+    def get_latest_data(self):
+        return {
             "spot_price": 50000.0, "funding": 0.01, "timestamp": self.clock.now(),
             "open_interest": 1000.0, "volume": 5000.0, "iv": 0.6,
             "call_greeks": {"delta": 0.5, "gamma": 0.05, "vega": 10.0}
         }
+
+    def setup_orchestrator_and_validator(self):
+        market_data = PaperMarketDataProvider(self.clock)
         
         # Select provider based on mode
         if self.config.mode in ["SHADOW", "REPLAY"]:
             # Setup Shadow Mode
-            live_provider = PaperExecutionProvider(clock=self.clock) # Mock live
+            live_provider = PaperExecutionProvider(clock=self.clock) # Primary Paper provider
             simulator = ShadowExecutionSimulator(event_bus=self.event_bus, clock=self.clock)
             provider = ShadowExecutionProvider(live_provider=live_provider, simulator=simulator)
         elif self.config.mode == "PAPER":
@@ -66,7 +70,7 @@ class ServiceRunner:
             provider = PaperExecutionProvider(clock=self.clock)
 
         self.orchestrator = AresOrchestrator(
-            market_data_provider=mock_market_data,
+            market_data_provider=market_data,
             execution_provider=provider,
             clock=self.clock,
             event_bus=self.event_bus

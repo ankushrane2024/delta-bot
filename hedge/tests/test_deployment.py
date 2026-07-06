@@ -94,7 +94,8 @@ class TestDeployment(unittest.TestCase):
         
         self.assertTrue(result)
         self.assertTrue(rm.recovery_success)
-        mock_orch.portfolio_synchronizer.reconcile_with_provider.assert_called_once()
+        # Should trigger portfolio reconciliation
+        mock_orch.portfolio_sync.reconcile_with_provider.assert_called_once()
         
     def test_recovery_manager_fails_no_connectivity(self):
         mock_orch = Mock()

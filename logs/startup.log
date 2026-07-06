@@ -157,3 +157,17 @@
 {"timestamp": "2026-07-06 14:04:31,520", "level": "INFO", "logger": "startup", "message": "Startup check passed: api_credentials"}
 {"timestamp": "2026-07-06 14:04:33,121", "level": "INFO", "logger": "startup", "message": "Startup check passed: rest_connectivity"}
 {"timestamp": "2026-07-06 14:04:33,122", "level": "INFO", "logger": "startup", "message": "All startup checks PASSED."}
+{"timestamp": "2026-07-06 14:26:06,890", "level": "INFO", "logger": "startup", "message": "Starting exhaustive pre-flight verification..."}
+{"timestamp": "2026-07-06 14:26:06,890", "level": "INFO", "logger": "startup", "message": "Startup check passed: configuration"}
+{"timestamp": "2026-07-06 14:26:06,891", "level": "INFO", "logger": "startup", "message": "Startup check passed: log_permissions"}
+{"timestamp": "2026-07-06 14:26:06,897", "level": "INFO", "logger": "startup", "message": "Startup check passed: sqlite_permissions"}
+{"timestamp": "2026-07-06 14:26:06,897", "level": "INFO", "logger": "startup", "message": "Startup check passed: api_credentials"}
+{"timestamp": "2026-07-06 14:26:08,553", "level": "INFO", "logger": "startup", "message": "Startup check passed: rest_connectivity"}
+{"timestamp": "2026-07-06 14:26:08,554", "level": "INFO", "logger": "startup", "message": "All startup checks PASSED."}
+{"timestamp": "2026-07-06 14:30:01,437", "level": "INFO", "logger": "startup", "message": "Starting exhaustive pre-flight verification..."}
+{"timestamp": "2026-07-06 14:30:01,437", "level": "INFO", "logger": "startup", "message": "Startup check passed: configuration"}
+{"timestamp": "2026-07-06 14:30:01,438", "level": "INFO", "logger": "startup", "message": "Startup check passed: log_permissions"}
+{"timestamp": "2026-07-06 14:30:01,443", "level": "INFO", "logger": "startup", "message": "Startup check passed: sqlite_permissions"}
+{"timestamp": "2026-07-06 14:30:01,443", "level": "INFO", "logger": "startup", "message": "Startup check passed: api_credentials"}
+{"timestamp": "2026-07-06 14:30:01,715", "level": "INFO", "logger": "startup", "message": "Startup check passed: rest_connectivity"}
+{"timestamp": "2026-07-06 14:30:01,716", "level": "INFO", "logger": "startup", "message": "All startup checks PASSED."}
