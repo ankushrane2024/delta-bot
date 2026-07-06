@@ -24,20 +24,20 @@ def verify_all_rules():
         {
             "id": 4,
             "name": "Stop Loss & Target",
-            "expected": "Single-Leg 130% SL, 30% Full Target",
-            "check": config.SL_PERCENT == 1.30 and config.EXIT_PROFIT_TARGET == 0.30
+            "expected": "Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)",
+            "check": config.SL_PERCENT == 1.30 and hasattr(config, 'PROFIT_LOCK_TIERS')
         },
         {
             "id": 5,
             "name": "Partial Profit",
-            "expected": "50% Size at 20% Profit",
-            "check": config.PARTIAL_PROFIT_TRIGGER == 0.20 and config.PARTIAL_PROFIT_SIZE == 0.50
+            "expected": "Disabled (Replaced by DPL)",
+            "check": not hasattr(config, 'PARTIAL_PROFIT_TRIGGER')
         },
         {
             "id": 6,
-            "name": "Trailing Stop Loss",
-            "expected": "Breakeven after 15% Profit",
-            "check": config.TRAILING_SL_TRIGGER == 0.15 and config.TRAILING_SL_LEVEL == 0.0
+            "name": "Dynamic Trailing SL",
+            "expected": "Lock +5% at 15% Profit, then ratchets",
+            "check": config.TRAILING_CONFIRM_TARGET == 0.15 and config.CAPITAL_PROTECTION_SL == 0.05
         },
         {
             "id": 7,
