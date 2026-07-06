@@ -178,8 +178,13 @@ function updateHero(data) {
     if (risk === 'HIGH' || risk === 'CRITICAL') color = 'red';
     rEl.innerHTML = `<span class="dot ${color}"></span> ${risk}`;
     
-    if (data.avg_latency !== undefined) {
-        document.getElementById('h-latency').innerText = data.avg_latency.toFixed(0) + ' ms';
+    if (data.pipeline_latency !== undefined) {
+        document.getElementById('h-latency').innerText = (data.pipeline_latency * 1000).toFixed(0) + ' ms';
+    }
+    
+    // Mode
+    if (data.bot_mode) {
+        document.getElementById('ft-mode').innerText = data.bot_mode;
     }
 }
 
@@ -213,8 +218,10 @@ function updatePipeline(data) {
 }
 
 function updateSystem(data) {
-    document.getElementById('pv-rest').innerText = data.avg_latency ? data.avg_latency.toFixed(0) + ' ms' : 'N/A';
-    document.getElementById('pv-eb').innerText = '0 ms';
+    document.getElementById('pv-rest').innerText = data.exchange_status || 'N/A';
+    document.getElementById('pv-ws').innerText = data.provider_health || 'N/A';
+    document.getElementById('pv-eb').innerText = 'ONLINE';
+    document.getElementById('pv-cb').innerText = data.health_status || 'UNKNOWN';
     
     document.getElementById('sys-cpu').style.width = (data.cpu || 0) + '%';
     document.getElementById('sys-cpu-v').innerText = (data.cpu || 0) + '%';
@@ -222,8 +229,8 @@ function updateSystem(data) {
     document.getElementById('sys-mem').style.width = (data.ram || 0) + '%';
     document.getElementById('sys-mem-v').innerText = (data.ram || 0) + '%';
     
-    const lat = data.avg_latency || 0;
-    document.getElementById('sys-hb').innerText = (lat / 1000).toFixed(2) + ' sec';
+    const lat = data.pipeline_latency || 0;
+    document.getElementById('sys-hb').innerText = lat.toFixed(3) + ' sec';
 }
 
 function updateOrders(orders) {
