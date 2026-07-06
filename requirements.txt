@@ -9,4 +9,5 @@ flask
 python-telegram-bot
 reportlab
 openpyxl
-matplotlibpsutil
+matplotlib
+psutil
