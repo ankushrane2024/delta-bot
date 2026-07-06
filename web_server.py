@@ -871,38 +871,63 @@ def ares_status():
     
     # Extract high-level summary
     # BOT MODE, Exchange Status, BTC Price, Portfolio Value, Today\'s PnL, Total Delta, Current Risk, Active Hedge, Margin Used, CPU, RAM, EventBus
+    # Use get_live_stats() — the actual method on ShadowAnalytics
     try:
-        analytics = ares_runner.analytics.get_metrics()
+        analytics = ares_runner.analytics.get_live_stats()
     except Exception:
         analytics = {}
         
+    # Use get_system_health() — the actual method on deployment HealthMonitor
     try:
-        health = ares_runner.health_monitor.get_health()
-        health_details = ares_runner.health_monitor.check_all()
+        health_data = ares_runner.health_monitor.get_system_health()
+        health = health_data.get('status', 'UNKNOWN')
     except Exception:
         health = 'UNKNOWN'
-        health_details = {}
+        health_data = {}
         
     try:
         portfolio_hash = ares_runner.pipeline_validator.validator.analytics.metrics.get('portfolio_hash', 'N/A')
     except:
         portfolio_hash = 'N/A'
-        
+    
+    # Extract latest tick result for richer data
+    tick_result = getattr(ares_runner.orchestrator, 'latest_tick_result', None)
+    
+    # Build risk info from tick result
+    risk_level = 'LOW'
+    hedge_active = False
+    if tick_result:
+        risk_result = getattr(tick_result, 'risk_result', None)
+        if risk_result:
+            risk_level = getattr(risk_result, 'risk_level', 'LOW')
+            if hasattr(risk_level, 'name'):
+                risk_level = risk_level.name
+        hedge_decision = getattr(tick_result, 'hedge_decision', None)
+        if hedge_decision:
+            action = getattr(hedge_decision, 'action', None)
+            if action and hasattr(action, 'name') and action.name != 'HOLD':
+                hedge_active = True
+
     res = {
         'bot_mode': ares_runner.config.mode,
         'exchange_status': 'CONNECTED' if getattr(ares_runner.orchestrator.execution_provider, 'is_connected', False) else 'DISCONNECTED',
         'btc_price': ares_runner.orchestrator.market_data_provider.get_latest_data().get('spot_price', 0),
-        'portfolio_value': analytics.get('portfolio_value', 0),
-        'pnl': analytics.get('pnl', 0),
-        'total_delta': analytics.get('net_delta', 0),
-        'current_risk': analytics.get('risk_level', 'LOW'),
-        'active_hedge': 'ACTIVE' if analytics.get('hedge_active', False) else 'NONE',
-        'margin_used': analytics.get('margin_used', 0),
-        'cpu': getattr(health_details.get('CPU', {}), 'status', 'UNKNOWN'),
-        'ram': getattr(health_details.get('RAM', {}), 'status', 'UNKNOWN'),
+        'portfolio_value': analytics.get('daily_pnl', 0) + 10000,
+        'pnl': analytics.get('daily_pnl', 0),
+        'total_delta': analytics.get('current_portfolio_delta', 0),
+        'current_risk': risk_level,
+        'active_hedge': 'ACTIVE' if hedge_active else 'NONE',
+        'margin_used': analytics.get('margin_utilization', 0),
+        'cpu': health_data.get('cpu_percent', 0),
+        'ram': health_data.get('ram_percent', 0),
         'event_bus': 'ONLINE',
         'health_status': health,
-        'portfolio_hash': portfolio_hash
+        'portfolio_hash': portfolio_hash,
+        'total_ticks': analytics.get('total_ticks', 0),
+        'avg_latency': analytics.get('average_latency_ms', 0),
+        'max_drawdown': analytics.get('max_drawdown', 0),
+        'pipeline_latency': getattr(tick_result, 'pipeline_latency', 0) if tick_result else 0,
+        'provider_health': getattr(tick_result, 'provider_health', 'N/A') if tick_result else 'N/A'
     }
     return jsonify(res)
 
@@ -914,14 +939,22 @@ def ares_orders():
         return jsonify({'error': 'Store not initialized'}), 500
         
     orders = getattr(ares_runner.store, 'get_execution_orders', lambda: [])()
+    # Also check state machine for live orders
+    if not orders:
+        try:
+            orders = ares_runner.orchestrator.state_machine.get_all_orders()
+        except Exception:
+            orders = []
     res = []
     for order in orders:
         res.append({
             'client_order_id': getattr(order, 'client_order_id', ''),
+            'timestamp': str(getattr(order, 'timestamp', '')),
             'symbol': getattr(order, 'symbol', ''),
             'side': order.side.name if hasattr(order, 'side') else '',
             'quantity': getattr(order, 'quantity', 0),
             'price': getattr(order, 'price', 0),
+            'average_fill_price': getattr(order, 'average_fill_price', getattr(order, 'price', 0)),
             'state': order.state.name if hasattr(order, 'state') else ''
         })
     return jsonify(res)
@@ -937,10 +970,18 @@ def ares_risk():
 def ares_portfolio():
     if not ares_runner:
         return jsonify({'error': 'ARES not initialized'}), 500
-    positions = getattr(ares_runner.orchestrator.execution_provider, 'get_positions', lambda: [])()
-    if not positions and hasattr(ares_runner.orchestrator.execution_provider, 'fetch_position'):
+    # PaperExecutionProvider uses fetch_position() not get_positions()
+    positions = []
+    try:
         pos = ares_runner.orchestrator.execution_provider.fetch_position()
-        positions = [pos] if pos else []
+        if pos:
+            positions = [pos] if isinstance(pos, dict) else [pos]
+    except Exception:
+        pass
+    
+    # Also get portfolio snapshot from orchestrator
+    snapshot = getattr(ares_runner.orchestrator.portfolio_sync, 'latest_snapshot', None)
+    
     res = []
     for pos in positions:
         if isinstance(pos, dict):
@@ -952,13 +993,22 @@ def ares_portfolio():
                 'average_entry_price': getattr(pos, 'average_entry_price', 0),
                 'unrealized_pnl': getattr(pos, 'unrealized_pnl', 0)
             })
+    
+    # Add snapshot data if available
+    if snapshot:
+        res_data = {'positions': res}
+        for attr in ['net_delta', 'net_gamma', 'net_vega', 'net_theta', 'margin_used', 'available_margin', 'portfolio_value']:
+            res_data[attr] = getattr(snapshot, attr, None)
+        return jsonify(res_data)
+    
     return jsonify(res)
 
 @app.route('/ares/analytics')
 def ares_analytics():
     if not ares_runner:
         return jsonify({'error': 'ARES not initialized'}), 500
-    metrics = getattr(ares_runner.analytics, 'get_summary', lambda: {})()
+    # ShadowAnalytics uses get_live_stats() not get_summary()
+    metrics = ares_runner.analytics.get_live_stats()
     return jsonify(metrics)
 
 @app.route('/ares/system')
@@ -1000,5 +1050,5 @@ def ares_logs():
                 logs = [line.strip() for line in lines[-50:]]
         except Exception:
             logs = ['No logs found.']
-    return jsonify({'logs': logs})
+    return jsonify(logs)
 

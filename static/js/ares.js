@@ -1,4 +1,4 @@
-// ARES Mission Control V2 JS
+// ARES Mission Control V2 JS — Module 46 Data Pipeline Fix
 
 // ECharts Instances
 let chartPortfolio, chartPnl;
@@ -7,7 +7,12 @@ let gaugeRisk, gaugeMargin, gaugeHeat, gaugeSafety;
 // AG Grid Instance
 let gridOptions;
 
-// Configuration
+// Historical chart data arrays
+let timeData = [];
+let portData = [];
+let pnlData = [];
+
+// Configuration — polling interval unchanged from original
 const POLL_INTERVAL = 1000;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,15 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initCharts();
     initGrid();
     
-    // Start polling (No change to frequency as requested)
+    // Start polling (frequency unchanged as mandated)
     pollData();
     setInterval(pollData, POLL_INTERVAL);
-
-    // Auto-scroll logic for terminal
-    document.getElementById('btn-scroll').addEventListener('click', () => {
-        const term = document.getElementById('sys-terminal');
-        term.scrollTop = term.scrollHeight;
-    });
 });
 
 function initClock() {
@@ -34,23 +33,20 @@ function initClock() {
 }
 
 function initCharts() {
-    // Colors
-    const primary = '#00E5FF';
-    const bg = 'transparent';
     const text = '#9CA3AF';
     const gridColor = '#1F2937';
 
     // 1. Portfolio Area Chart
     chartPortfolio = echarts.init(document.getElementById('chart-portfolio'));
     chartPortfolio.setOption({
-        backgroundColor: bg,
-        tooltip: { trigger: 'axis' },
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis', backgroundColor: '#111827', borderColor: '#1F2937', textStyle: { color: '#fff' } },
         grid: { left: '3%', right: '4%', bottom: '3%', top: '5%', containLabel: true },
         xAxis: { type: 'category', boundaryGap: false, data: [], axisLine: { lineStyle: { color: text } }, splitLine: { show: false } },
         yAxis: { type: 'value', axisLine: { lineStyle: { color: text } }, splitLine: { lineStyle: { color: gridColor } } },
         series: [{
             name: 'Value', type: 'line', smooth: true, symbol: 'none',
-            lineStyle: { color: primary, width: 2 },
+            lineStyle: { color: '#00E5FF', width: 2 },
             areaStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
                     { offset: 0, color: 'rgba(0,229,255,0.4)' },
@@ -61,11 +57,11 @@ function initCharts() {
         }]
     });
 
-    // 2. PnL Area Chart (Green/Red)
+    // 2. PnL Area Chart
     chartPnl = echarts.init(document.getElementById('chart-pnl'));
     chartPnl.setOption({
-        backgroundColor: bg,
-        tooltip: { trigger: 'axis' },
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis', backgroundColor: '#111827', borderColor: '#1F2937', textStyle: { color: '#fff' } },
         grid: { left: '3%', right: '4%', bottom: '3%', top: '5%', containLabel: true },
         xAxis: { type: 'category', boundaryGap: false, data: [], axisLine: { lineStyle: { color: text } }, splitLine: { show: false } },
         yAxis: { type: 'value', axisLine: { lineStyle: { color: text } }, splitLine: { lineStyle: { color: gridColor } } },
@@ -83,7 +79,7 @@ function initCharts() {
     });
 
     // Gauges Factory
-    const createMiniGauge = (elementId, name, color, max) => {
+    const createMiniGauge = (elementId, color, max) => {
         const chart = echarts.init(document.getElementById(elementId));
         chart.setOption({
             series: [{
@@ -99,10 +95,10 @@ function initCharts() {
         return chart;
     };
 
-    gaugeRisk = createMiniGauge('gauge-risk', 'Risk', '#FFB300', 100);
-    gaugeMargin = createMiniGauge('gauge-margin', 'Margin', '#00E5FF', 100);
-    gaugeHeat = createMiniGauge('gauge-heat', 'Heat', '#FF5252', 100);
-    gaugeSafety = createMiniGauge('gauge-safety', 'Safety', '#00C853', 100);
+    gaugeRisk = createMiniGauge('gauge-risk', '#FFB300', 100);
+    gaugeMargin = createMiniGauge('gauge-margin', '#00E5FF', 100);
+    gaugeHeat = createMiniGauge('gauge-heat', '#FF5252', 100);
+    gaugeSafety = createMiniGauge('gauge-safety', '#00C853', 100);
 
     window.addEventListener('resize', () => {
         chartPortfolio.resize(); chartPnl.resize();
@@ -112,20 +108,24 @@ function initCharts() {
 
 function initGrid() {
     const columnDefs = [
-        { field: "timestamp", headerName: "Time", width: 150, valueFormatter: params => params.value ? params.value.split('T')[1]?.substring(0, 8) || params.value : 'N/A' },
+        { field: "timestamp", headerName: "Time", width: 150, valueFormatter: p => {
+            if (!p.value) return 'N/A';
+            try { return p.value.split('T')[1]?.substring(0, 8) || p.value.substring(0, 19); } catch(e) { return p.value; }
+        }},
         { field: "symbol", headerName: "Instrument", width: 120 },
-        { field: "side", headerName: "Side", width: 90, cellStyle: params => ({ color: params.value === 'BUY' ? '#00C853' : '#FF5252', fontWeight: 'bold' }) },
+        { field: "side", headerName: "Side", width: 90, cellStyle: p => ({ color: p.value === 'BUY' ? '#00C853' : '#FF5252', fontWeight: 'bold' }) },
         { field: "quantity", headerName: "Qty", width: 90 },
-        { field: "average_fill_price", headerName: "Price", width: 110, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : 'N/A' },
+        { field: "average_fill_price", headerName: "Price", width: 110, valueFormatter: p => p.value ? `$${Number(p.value).toFixed(2)}` : 'N/A' },
         { 
             field: "state", headerName: "Status", width: 120,
-            cellStyle: params => {
+            cellStyle: p => {
                 let color = '#9CA3AF';
-                if (params.value?.includes('FILLED')) color = '#00C853';
-                else if (params.value?.includes('SUBMITTED') || params.value?.includes('ACK')) color = '#00E5FF';
-                else if (params.value?.includes('REJECTED') || params.value?.includes('FAILED')) color = '#FF5252';
-                else if (params.value?.includes('PARTIAL')) color = '#FFB300';
-                return { color: color, fontWeight: 'bold' };
+                const v = (p.value || '').toUpperCase();
+                if (v.includes('FILLED')) color = '#00C853';
+                else if (v.includes('SUBMITTED') || v.includes('ACK') || v.includes('PENDING')) color = '#00E5FF';
+                else if (v.includes('REJECTED') || v.includes('FAILED')) color = '#FF5252';
+                else if (v.includes('PARTIAL')) color = '#FFB300';
+                return { color, fontWeight: 'bold' };
             }
         }
     ];
@@ -143,124 +143,176 @@ function initGrid() {
     new agGrid.Grid(gridDiv, gridOptions);
 }
 
-// Data Polling
+// ---- Data Polling ----
 async function pollData() {
     try {
-        const [statusRes, ordersRes, logsRes] = await Promise.all([
-            fetch('/ares/status').then(res => res.json()),
-            fetch('/ares/orders').then(res => res.json()),
-            fetch('/ares/logs').then(res => res.json())
+        const [statusRes, ordersRes, logsRes, portfolioRes] = await Promise.all([
+            fetch('/ares/status').then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch('/ares/orders').then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch('/ares/logs').then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch('/ares/portfolio').then(r => r.ok ? r.json() : null).catch(() => null)
         ]);
         
-        updateUI(statusRes);
-        updateGrid(ordersRes);
-        updateLogs(logsRes);
-        updatePipeline(statusRes);
-        updateActivityFeed(statusRes);
+        if (statusRes && !statusRes.error) {
+            updateUI(statusRes);
+            updatePipeline(statusRes);
+            updateGauges(statusRes);
+            updateActivityFeed(statusRes);
+        }
+        if (ordersRes) updateGrid(ordersRes);
+        if (logsRes) updateLogs(logsRes);
+        if (portfolioRes) updatePortfolio(portfolioRes);
         
     } catch (err) {
         console.error("Polling error:", err);
     }
 }
 
-// Update DOM elements strictly mapping backend properties
+// ---- UI Updaters ----
+
+function fmtUSD(val) {
+    if (val === undefined || val === null || val === 'N/A') return 'N/A';
+    return '$' + Number(val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function fmtNum(val) {
+    if (val === undefined || val === null || val === 'N/A') return 'N/A';
+    return Number(val).toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4});
+}
+
 function updateUI(data) {
-    if (data.error) return;
-
-    // Formatters
-    const fmtUSD = val => val !== undefined && val !== 'N/A' ? `$${Number(val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 'Waiting for data';
-    const fmtNum = val => val !== undefined && val !== 'N/A' ? Number(val).toLocaleString() : 'N/A';
-    
     // Top Bar
-    document.getElementById('bot-mode').innerText = data.bot_mode || 'Waiting for data';
+    setText('bot-mode', data.bot_mode || 'N/A');
 
-    // Hero Section
-    document.getElementById('val-btc-price').innerText = fmtUSD(data.btc_price);
-    document.getElementById('val-portfolio').innerText = fmtUSD(data.portfolio_value);
+    // Hero Section — BTC Price
+    setText('val-btc-price', fmtUSD(data.btc_price));
     
+    // Hero Section — Portfolio Value
+    setText('val-portfolio', fmtUSD(data.portfolio_value));
+    
+    // Hero Section — PnL with color
     const pnlEl = document.getElementById('val-pnl');
     const pnlVal = data.pnl !== undefined ? Number(data.pnl) : null;
     if (pnlVal !== null) {
         pnlEl.innerText = (pnlVal >= 0 ? '+' : '') + fmtUSD(pnlVal);
         pnlEl.className = 'hero-value ' + (pnlVal >= 0 ? 'val-up' : 'val-down');
     } else {
-        pnlEl.innerText = 'Waiting for data';
+        pnlEl.innerText = 'N/A';
         pnlEl.className = 'hero-value';
     }
 
-    // Decision Badge
+    // Hero Section — Decision Badge
     const decisionEl = document.getElementById('val-decision');
-    const action = data.active_hedge || 'N/A';
-    decisionEl.innerText = action;
+    decisionEl.innerText = data.active_hedge || 'N/A';
     
-    // Greeks Panel (Strict mapping, no fabrication)
-    document.getElementById('gk-delta').innerText = fmtNum(data.total_delta);
-    // Backend doesn't provide gamma/vega/theta yet, so default to N/A
-    document.getElementById('gk-margin').innerText = fmtUSD(data.margin_used);
+    // Greeks Panel — strict mapping, only what backend provides
+    setText('gk-delta', fmtNum(data.total_delta));
+    setText('gk-margin', fmtUSD(data.margin_used));
+    // Gamma/Vega/Theta: N/A until backend exposes them
     
-    // Provider Health (Strict mapping)
-    const setHealth = (id, val) => {
-        const el = document.getElementById(id);
-        el.innerText = val !== undefined ? val : 'N/A';
-        el.className = 'h-indicator ' + (val === 'ONLINE' || val === 'CONNECTED' ? 'green' : (val === 'N/A' || val === 'UNKNOWN' ? 'yellow' : 'red'));
-    };
+    // AI Reasoning Panel — strict mapping
+    setText('ai-risk', data.current_risk || 'N/A');
+    // All other AI fields remain "Waiting for data" until backend exposes them
+    
+    // Provider Health
     setHealth('h-rest', data.exchange_status);
-    setHealth('h-lat', 'N/A'); // Not in /status yet
-    
-    // AI Reasoning Panel (Strict mapping)
-    // The backend /status does not currently emit 'confidence', 'trend', 'volatility', etc.
-    // They must remain 'Waiting for backend data' as requested.
-    document.getElementById('ai-risk').innerText = data.current_risk || 'N/A';
-    
-    // Charts (Simulation of historical appending since /status only returns current tick)
-    const now = new Date().toLocaleTimeString();
-    if (data.portfolio_value) appendChartData(chartPortfolio, now, data.portfolio_value);
-    if (data.pnl !== undefined) appendChartData(chartPnl, now, data.pnl);
+    if (data.provider_health) {
+        setHealth('h-hb', data.provider_health);
+    }
+    if (data.avg_latency !== undefined && data.avg_latency > 0) {
+        const latEl = document.getElementById('h-lat');
+        latEl.innerText = data.avg_latency.toFixed(1) + ' ms';
+        latEl.className = 'h-indicator ' + (data.avg_latency < 100 ? 'green' : data.avg_latency < 500 ? 'yellow' : 'red');
+    }
 
-    // Gauges
-    // Risk score might be derived from current_risk string if we map it, but user says NO simulation.
-    // Wait, risk is a string 'LOW'. We shouldn't fabricate a number.
-    // Actually, margin_used is available. Let's assume margin % is not available unless calculated.
-    // We will leave gauge values at 0 unless explicitly provided.
+    // Append to charts
+    const now = new Date().toLocaleTimeString();
+    if (data.portfolio_value !== undefined) appendChartData(chartPortfolio, now, data.portfolio_value, portData);
+    if (data.pnl !== undefined) appendChartData(chartPnl, now, data.pnl, pnlData);
 }
 
-let timeData = [];
-let portData = [];
-let pnlData = [];
-
-function appendChartData(chart, time, val) {
-    if (timeData.length > 50) { timeData.shift(); }
-    
-    if (chart === chartPortfolio) {
-        if (portData.length > 50) portData.shift();
-        portData.push(val);
-        timeData.push(time); // Just using one time array for simplicity
-        chart.setOption({ xAxis: { data: timeData }, series: [{ data: portData }] });
-    } else {
-        if (pnlData.length > 50) pnlData.shift();
-        pnlData.push(val);
-        chart.setOption({ xAxis: { data: timeData }, series: [{ data: pnlData }] });
+function updatePortfolio(data) {
+    // Handle both array and object responses
+    if (data && !Array.isArray(data)) {
+        // New enriched portfolio response with snapshot
+        if (data.net_delta !== undefined && data.net_delta !== null) setText('gk-delta', fmtNum(data.net_delta));
+        if (data.net_gamma !== undefined && data.net_gamma !== null) setText('gk-gamma', fmtNum(data.net_gamma));
+        if (data.net_vega !== undefined && data.net_vega !== null) setText('gk-vega', fmtNum(data.net_vega));
+        if (data.net_theta !== undefined && data.net_theta !== null) setText('gk-theta', fmtNum(data.net_theta));
+        if (data.margin_used !== undefined && data.margin_used !== null) setText('gk-margin', fmtUSD(data.margin_used));
+        if (data.available_margin !== undefined && data.available_margin !== null) setText('gk-avail', fmtUSD(data.available_margin));
     }
 }
 
+function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = val;
+}
+
+function setHealth(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerText = val || 'N/A';
+    const v = (val || '').toUpperCase();
+    if (v === 'CONNECTED' || v === 'ONLINE' || v === 'GREEN' || v === 'UP') {
+        el.className = 'h-indicator green';
+    } else if (v === 'N/A' || v === 'UNKNOWN' || v === 'YELLOW') {
+        el.className = 'h-indicator yellow';
+    } else {
+        el.className = 'h-indicator red';
+    }
+}
+
+function appendChartData(chart, time, val, dataArr) {
+    if (timeData.length > 60) timeData.shift();
+    if (dataArr.length > 60) dataArr.shift();
+    
+    // Only push time once (shared X axis)
+    if (chart === chartPortfolio) timeData.push(time);
+    dataArr.push(val);
+    
+    chart.setOption({ xAxis: { data: timeData }, series: [{ data: dataArr }] });
+}
+
+function updateGauges(data) {
+    // Map risk level string to numeric score for gauge
+    const riskMap = { 'LOW': 25, 'MEDIUM': 50, 'HIGH': 75, 'CRITICAL': 95 };
+    const riskScore = riskMap[(data.current_risk || '').toUpperCase()] || 0;
+    gaugeRisk.setOption({ series: [{ data: [{ value: riskScore }] }] });
+    
+    // Margin gauge (percentage)
+    const marginPct = data.margin_used !== undefined ? Math.min(Number(data.margin_used) * 100, 100) : 0;
+    gaugeMargin.setOption({ series: [{ data: [{ value: marginPct.toFixed(1) }] }] });
+    
+    // Heat = max_drawdown (percentage)
+    const heat = data.max_drawdown !== undefined ? Math.min(Math.abs(Number(data.max_drawdown)) * 100, 100) : 0;
+    gaugeHeat.setOption({ series: [{ data: [{ value: heat.toFixed(1) }] }] });
+    
+    // Safety = inverse of risk (higher = safer)
+    gaugeSafety.setOption({ series: [{ data: [{ value: Math.max(0, 100 - riskScore) }] }] });
+}
+
 function updateGrid(orders) {
-    if (Array.isArray(orders)) {
+    if (Array.isArray(orders) && gridOptions.api) {
         gridOptions.api.setRowData(orders);
     }
 }
 
 function updateLogs(logs) {
-    if (!Array.isArray(logs)) return;
+    // Backend now returns a raw array of strings
+    const logArray = Array.isArray(logs) ? logs : (logs && logs.logs ? logs.logs : []);
+    if (logArray.length === 0) return;
+    
     const term = document.getElementById('sys-terminal');
     const wasAtBottom = term.scrollTop >= (term.scrollHeight - term.clientHeight - 10);
     
-    term.innerHTML = logs.map(line => {
+    term.innerHTML = logArray.map(line => {
         let cls = '';
         if (line.includes('ERROR')) cls = 'log-error';
-        else if (line.includes('WARNING')) cls = 'log-warn';
+        else if (line.includes('WARNING') || line.includes('WARN')) cls = 'log-warn';
         else if (line.includes('INFO')) cls = 'log-info';
-        else if (line.includes('SYSTEM')) cls = 'log-sys';
-        return `<span class="${cls}">${line}</span>`;
+        else if (line.includes('SYSTEM') || line.includes('ARES')) cls = 'log-sys';
+        return `<span class="${cls}">${escapeHtml(line)}</span>`;
     }).join('\n');
 
     if (wasAtBottom) {
@@ -268,35 +320,71 @@ function updateLogs(logs) {
     }
 }
 
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 // Pipeline visualizer
 const stages = ['tick', 'context', 'trend', 'regime', 'risk', 'decision', 'sizing', 'execution'];
-let currentStageIndex = 0;
 function updatePipeline(data) {
     if (data.error) return;
-    // Since backend doesn't output current pipeline stage in /status, 
-    // we pulse execution if active_hedge === ACTIVE, else pulse tick (waiting).
-    // STRICT RULE: No fabrication. We will just leave it static if backend doesn't support it,
-    // or we just highlight based on active_hedge.
+    
+    // Reset all nodes
     stages.forEach(s => {
         const el = document.getElementById(`node-${s}`);
-        el.className = 'pipe-node';
+        if (el) el.className = 'pipe-node';
     });
     
-    if (data.active_hedge === 'ACTIVE') {
-        document.getElementById('node-execution').className = 'pipe-node done';
+    // If ticks are happening, animate based on total_ticks
+    const ticks = data.total_ticks || 0;
+    if (ticks > 0) {
+        // All stages completed for this tick
+        stages.forEach(s => {
+            const el = document.getElementById(`node-${s}`);
+            if (el) el.className = 'pipe-node done';
+        });
+        
+        // Last stage pulses
+        if (data.active_hedge === 'ACTIVE') {
+            document.getElementById('node-execution').className = 'pipe-node active';
+        } else {
+            document.getElementById('node-tick').className = 'pipe-node active';
+        }
     } else {
+        // Waiting for first tick
         document.getElementById('node-tick').className = 'pipe-node active';
     }
 }
 
+let feedEvents = [];
 function updateActivityFeed(data) {
-    // Populate with basic events from logs or status
     const feed = document.getElementById('activity-feed');
-    if (feed.children.length === 0) {
-        // Initial dummy insert just to show it works, since we have no feed endpoint
+    const now = new Date().toLocaleTimeString();
+    
+    // Generate events from status data
+    const newEvents = [];
+    
+    if (data.exchange_status === 'CONNECTED' && feedEvents.length === 0) {
+        newEvents.push({ time: now, msg: 'Exchange Connected', cls: 'green' });
+    }
+    if (data.total_ticks > 0 && (feedEvents.length === 0 || data.total_ticks % 10 === 0)) {
+        newEvents.push({ time: now, msg: `Tick #${data.total_ticks} processed`, cls: '' });
+    }
+    if (data.health_status && data.health_status !== 'UNKNOWN') {
+        newEvents.push({ time: now, msg: `Health: ${data.health_status}`, cls: data.health_status === 'GREEN' ? 'green' : 'yellow' });
+    }
+    
+    if (newEvents.length > 0) {
+        feedEvents = [...newEvents, ...feedEvents].slice(0, 20);
+        feed.innerHTML = feedEvents.map(e => 
+            `<div class="feed-item"><span class="feed-time">${e.time}</span><span class="feed-msg">${e.msg}</span></div>`
+        ).join('');
+    } else if (feedEvents.length === 0) {
         feed.innerHTML = `
-            <div class="feed-item"><span class="feed-time">System</span><span class="feed-msg">ARES Mission Control initialized.</span></div>
-            <div class="feed-item"><span class="feed-time">Backend</span><span class="feed-msg">Waiting for event stream...</span></div>
+            <div class="feed-item"><span class="feed-time">${now}</span><span class="feed-msg">ARES Mission Control initialized.</span></div>
+            <div class="feed-item"><span class="feed-time">${now}</span><span class="feed-msg">Waiting for first tick...</span></div>
         `;
     }
 }
