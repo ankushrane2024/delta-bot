@@ -116,6 +116,11 @@ class AresOrchestrator:
                 self.portfolio_sync.reconcile_with_provider()
                 snapshot = self.portfolio_sync.current_snapshot
 
+            # IDLE MODE: If no options are open and no hedge is active, skip ARES processing
+            if not snapshot.positions and snapshot.hedge_size_btc == 0:
+                self.latest_tick_result = None
+                return
+
             # Extract market attributes
             trend_context = MarketContext(
                 current_price=market_data.get("spot_price", 0.0),
