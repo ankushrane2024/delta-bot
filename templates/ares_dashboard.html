@@ -3,214 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARES Mission Control V2</title>
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
-    <!-- ECharts -->
+    <title>ARES Mission Control v1.0.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-    <!-- AG Grid -->
-    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="/static/css/ares.css">
 </head>
 <body>
-    <div class="ares-layout">
-        <!-- Top Nav -->
-        <header class="top-nav">
-            <div class="nav-left">
-                <i data-lucide="shield-check" class="brand-icon"></i>
-                <h1>ARES MISSION CONTROL</h1>
-                <span class="status-badge" id="bot-mode">Waiting for data</span>
+    <div class="app-layout">
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo">⚡</div>
+                <div class="brand-text">
+                    <span class="brand-name">ARES</span>
+                    <span class="brand-sub">MISSION CONTROL</span>
+                </div>
             </div>
-            <div class="nav-right">
-                <a href="/" class="btn-legacy">Back to Legacy Dashboard</a>
-                <span class="clock" id="sys-clock">00:00:00 UTC</span>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active"><i data-lucide="layout-dashboard"></i> DASHBOARD</a>
+                <a href="#" class="nav-item"><i data-lucide="brain"></i> AI INSIGHTS</a>
+                <a href="#" class="nav-item"><i data-lucide="list-ordered"></i> LIVE ORDERS</a>
+                <a href="#" class="nav-item"><i data-lucide="briefcase"></i> POSITIONS</a>
+                <a href="#" class="nav-item"><i data-lucide="shield-alert"></i> RISK ENGINE</a>
+                <a href="#" class="nav-item"><i data-lucide="bar-chart-3"></i> PERFORMANCE</a>
+                <div class="nav-divider"></div>
+                <a href="#" class="nav-item"><i data-lucide="heart-pulse"></i> SYSTEM HEALTH</a>
+                <a href="#" class="nav-item"><i data-lucide="scroll-text"></i> LOGS & EVENTS</a>
+                <a href="/" class="nav-item"><i data-lucide="settings"></i> SETTINGS</a>
+            </nav>
+            <div class="sidebar-status">
+                <div class="engine-label">ENGINE STATUS</div>
+                <div class="engine-badge" id="sb-engine"><span class="dot green"></span> LIVE</div>
+                <div class="engine-sub">All Systems Operational</div>
+                <div class="status-row"><span>UPTIME</span><span id="sb-uptime">00:00:00</span></div>
+                <div class="status-row"><span>LAST UPDATE</span><span id="sb-lastupdate">—</span></div>
             </div>
-        </header>
+        </aside>
 
-        <!-- Hero Section -->
-        <div class="hero-strip">
-            <div class="hero-card">
-                <div class="hero-label">BTC PRICE</div>
-                <div class="hero-value" id="val-btc-price">Waiting for data</div>
-                <div class="hero-sub" id="val-btc-change">N/A</div>
-            </div>
-            <div class="hero-card">
-                <div class="hero-label">PORTFOLIO VALUE</div>
-                <div class="hero-value" id="val-portfolio">Waiting for data</div>
-                <div class="hero-sub">USD</div>
-            </div>
-            <div class="hero-card">
-                <div class="hero-label">TODAY'S PNL</div>
-                <div class="hero-value" id="val-pnl">Waiting for data</div>
-                <div class="hero-sub">USD</div>
-            </div>
-            <div class="hero-card decision-card">
-                <div class="hero-label">CURRENT DECISION</div>
-                <div class="hero-value badge-decision" id="val-decision">Waiting for data</div>
-            </div>
-        </div>
-
-        <!-- Main Content Grid -->
-        <div class="main-grid">
-            
-            <!-- Left Column: AI & Portfolio -->
-            <div class="left-col">
-                <!-- AI Decision Center -->
-                <div class="panel panel-ai">
-                    <div class="panel-header">
-                        <i data-lucide="cpu"></i> ARES THINKING
-                    </div>
-                    <div class="ai-grid">
-                        <div class="ai-item"><span class="ai-lbl">Market Bias</span><span class="ai-val" id="ai-bias">Waiting for data</span></div>
-                        <div class="ai-item"><span class="ai-lbl">Trend</span><span class="ai-val" id="ai-trend">Waiting for data</span></div>
-                        <div class="ai-item"><span class="ai-lbl">Volatility</span><span class="ai-val" id="ai-vol">Waiting for data</span></div>
-                        <div class="ai-item"><span class="ai-lbl">Risk</span><span class="ai-val" id="ai-risk">Waiting for data</span></div>
-                        <div class="ai-item"><span class="ai-lbl">Confidence</span><span class="ai-val" id="ai-conf">Waiting for data</span></div>
-                        <div class="ai-item"><span class="ai-lbl">Reason</span><span class="ai-val" id="ai-reason">Waiting for data</span></div>
-                        <div class="ai-item"><span class="ai-lbl">Next Action</span><span class="ai-val" id="ai-action">Waiting for data</span></div>
-                        <div class="ai-item"><span class="ai-lbl">ETA</span><span class="ai-val" id="ai-eta">N/A</span></div>
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- TOP HERO STRIP -->
+            <div class="hero-strip">
+                <div class="hero-metric">
+                    <div class="hm-icon btc"><i data-lucide="bitcoin"></i></div>
+                    <div class="hm-body">
+                        <div class="hm-label">BTC PRICE</div>
+                        <div class="hm-value" id="h-btc">$0.00</div>
+                        <div class="hm-sub green" id="h-btc-chg">Waiting...</div>
                     </div>
                 </div>
-
-                <!-- Portfolio & Greeks -->
-                <div class="panel panel-portfolio">
-                    <div class="panel-header">
-                        <i data-lucide="briefcase"></i> PORTFOLIO EXPOSURE
-                    </div>
-                    <div class="greek-grid">
-                        <div class="greek-item">
-                            <span class="g-lbl">NET DELTA</span>
-                            <span class="g-val" id="gk-delta">Waiting for data</span>
-                        </div>
-                        <div class="greek-item">
-                            <span class="g-lbl">NET GAMMA</span>
-                            <span class="g-val" id="gk-gamma">N/A</span>
-                        </div>
-                        <div class="greek-item">
-                            <span class="g-lbl">NET VEGA</span>
-                            <span class="g-val" id="gk-vega">N/A</span>
-                        </div>
-                        <div class="greek-item">
-                            <span class="g-lbl">NET THETA</span>
-                            <span class="g-val" id="gk-theta">N/A</span>
-                        </div>
-                        <div class="greek-item">
-                            <span class="g-lbl">MARGIN USED</span>
-                            <span class="g-val" id="gk-margin">Waiting for data</span>
-                        </div>
-                        <div class="greek-item">
-                            <span class="g-lbl">AVAILABLE MARGIN</span>
-                            <span class="g-val" id="gk-avail">N/A</span>
-                        </div>
+                <div class="hero-metric">
+                    <div class="hm-body">
+                        <div class="hm-label">PORTFOLIO VALUE</div>
+                        <div class="hm-value" id="h-port">$0.00</div>
+                        <div class="hm-sub green" id="h-port-chg">—</div>
                     </div>
                 </div>
-                
-                <!-- Decision Pipeline -->
-                <div class="panel panel-pipeline">
-                    <div class="panel-header">
-                        <i data-lucide="git-commit"></i> DECISION PIPELINE
+                <div class="hero-metric">
+                    <div class="hm-body">
+                        <div class="hm-label">TODAY'S PNL</div>
+                        <div class="hm-value green" id="h-pnl">$0.00</div>
+                        <div class="hm-sub green" id="h-pnl-chg">—</div>
                     </div>
-                    <div class="pipeline-flow">
-                        <div class="pipe-node" id="node-tick">Tick</div><div class="pipe-arrow">→</div>
-                        <div class="pipe-node" id="node-context">Context</div><div class="pipe-arrow">→</div>
-                        <div class="pipe-node" id="node-trend">Trend</div><div class="pipe-arrow">→</div>
-                        <div class="pipe-node" id="node-regime">Regime</div><div class="pipe-arrow">→</div>
-                        <div class="pipe-node" id="node-risk">Risk</div><div class="pipe-arrow">→</div>
-                        <div class="pipe-node" id="node-decision">Decision</div><div class="pipe-arrow">→</div>
-                        <div class="pipe-node" id="node-sizing">Sizing</div><div class="pipe-arrow">→</div>
-                        <div class="pipe-node" id="node-execution">Execution</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hm-body">
+                        <div class="hm-label">NET DELTA</div>
+                        <div class="hm-value" id="h-delta">0.0000</div>
+                        <div class="hm-sub" id="h-delta-dir">Neutral</div>
+                    </div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hm-body">
+                        <div class="hm-label">RISK LEVEL</div>
+                        <div class="hm-value risk-badge" id="h-risk"><span class="dot green"></span> LOW</div>
+                        <div class="hm-sub">Optimal</div>
+                    </div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hm-body">
+                        <div class="hm-label">LATENCY</div>
+                        <div class="hm-value cyan" id="h-latency">0 ms</div>
+                        <div class="hm-sub">Excellent</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Center Column: Charts -->
-            <div class="center-col">
-                <div class="panel chart-panel">
-                    <div class="panel-header">
-                        <i data-lucide="line-chart"></i> PORTFOLIO VALUE (LIVE)
+            <!-- ROW 2: AI Decision + Pipeline + Provider Health -->
+            <div class="row-2">
+                <div class="panel ai-decision-panel">
+                    <div class="panel-title">AI ENGINE DECISION</div>
+                    <div class="ai-content">
+                        <div class="ai-left">
+                            <div class="ai-action-icon" id="ai-icon">⊗</div>
+                            <div class="ai-action-text" id="ai-action">HOLD</div>
+                            <div class="ai-confidence-label">CONFIDENCE</div>
+                            <div class="ai-confidence-val" id="ai-conf">—</div>
+                            <div class="ai-eta-label">NEXT ACTION ETA:</div>
+                            <div class="ai-eta-val" id="ai-eta">—</div>
+                        </div>
+                        <div class="ai-right">
+                            <div class="ai-row"><span class="ai-key">MARKET BIAS</span><span class="ai-val" id="ai-bias">—</span></div>
+                            <div class="ai-row"><span class="ai-key">VOLATILITY</span><span class="ai-val" id="ai-vol">—</span></div>
+                            <div class="ai-row"><span class="ai-key">REGIME</span><span class="ai-val" id="ai-regime">—</span></div>
+                            <div class="ai-row"><span class="ai-key">REASON</span><span class="ai-val small" id="ai-reason">Waiting for data</span></div>
+                        </div>
                     </div>
-                    <div id="chart-portfolio" class="echart-container"></div>
                 </div>
-                <div class="panel chart-panel">
-                    <div class="panel-header">
-                        <i data-lucide="activity"></i> PERFORMANCE PNL
+                <div class="panel pipeline-panel">
+                    <div class="panel-title">LIVE DECISION PIPELINE</div>
+                    <div class="pipeline-nodes">
+                        <div class="pnode" id="pn-tick"><div class="pnode-icon"><i data-lucide="radio"></i></div><div class="pnode-label">TICK</div><div class="pnode-sub">Real-time Data</div></div>
+                        <div class="pnode-connector"></div>
+                        <div class="pnode" id="pn-context"><div class="pnode-icon"><i data-lucide="layers"></i></div><div class="pnode-label">CONTEXT</div><div class="pnode-sub">Market Context</div></div>
+                        <div class="pnode-connector"></div>
+                        <div class="pnode" id="pn-trend"><div class="pnode-icon"><i data-lucide="trending-up"></i></div><div class="pnode-label">TREND</div><div class="pnode-sub">Direction</div></div>
+                        <div class="pnode-connector"></div>
+                        <div class="pnode" id="pn-regime"><div class="pnode-icon"><i data-lucide="gauge"></i></div><div class="pnode-label">REGIME</div><div class="pnode-sub">Market State</div></div>
+                        <div class="pnode-connector"></div>
+                        <div class="pnode" id="pn-risk"><div class="pnode-icon"><i data-lucide="shield"></i></div><div class="pnode-label">RISK</div><div class="pnode-sub">Risk Check</div></div>
+                        <div class="pnode-connector"></div>
+                        <div class="pnode highlight" id="pn-decision"><div class="pnode-icon"><i data-lucide="brain"></i></div><div class="pnode-label">DECISION</div><div class="pnode-sub">AI Decision</div></div>
+                        <div class="pnode-connector"></div>
+                        <div class="pnode" id="pn-sizing"><div class="pnode-icon"><i data-lucide="calculator"></i></div><div class="pnode-label">SIZING</div><div class="pnode-sub">Position Size</div></div>
+                        <div class="pnode-connector"></div>
+                        <div class="pnode" id="pn-exec"><div class="pnode-icon"><i data-lucide="send"></i></div><div class="pnode-label">EXECUTION</div><div class="pnode-sub">Place Order</div></div>
                     </div>
-                    <div id="chart-pnl" class="echart-container"></div>
+                    <div class="pipeline-status"><span class="dot cyan"></span> PIPELINE STATUS: <span id="pipe-status">IDLE</span></div>
+                </div>
+                <div class="panel provider-panel">
+                    <div class="panel-title"><i data-lucide="server"></i> PROVIDER HEALTH</div>
+                    <div class="prov-row"><span class="prov-icon green"><i data-lucide="globe"></i></span><div class="prov-info"><div class="prov-name">REST API</div><div class="prov-val" id="pv-rest">—</div></div></div>
+                    <div class="prov-row"><span class="prov-icon green"><i data-lucide="radio-tower"></i></span><div class="prov-info"><div class="prov-name">WebSocket</div><div class="prov-val" id="pv-ws">N/A</div></div></div>
+                    <div class="prov-row"><span class="prov-icon green"><i data-lucide="activity"></i></span><div class="prov-info"><div class="prov-name">EventBus</div><div class="prov-val" id="pv-eb">—</div></div></div>
+                    <div class="prov-row"><span class="prov-icon yellow"><i data-lucide="lock"></i></span><div class="prov-info"><div class="prov-name">Circuit Breaker</div><div class="prov-val" id="pv-cb">—</div></div></div>
                 </div>
             </div>
 
-            <!-- Right Column: Gauges & Feed -->
-            <div class="right-col">
-                <div class="panel panel-gauges">
-                    <div class="panel-header">
-                        <i data-lucide="gauge"></i> RISK OVERVIEW
-                    </div>
-                    <div class="gauge-grid">
-                        <div class="gauge-card">
-                            <div id="gauge-risk" class="mini-gauge"></div>
-                            <span>Risk Score</span>
-                        </div>
-                        <div class="gauge-card">
-                            <div id="gauge-margin" class="mini-gauge"></div>
-                            <span>Margin Used</span>
-                        </div>
-                        <div class="gauge-card">
-                            <div id="gauge-heat" class="mini-gauge"></div>
-                            <span>Portfolio Heat</span>
-                        </div>
-                        <div class="gauge-card">
-                            <div id="gauge-safety" class="mini-gauge"></div>
-                            <span>Liq. Safety</span>
-                        </div>
-                    </div>
+            <!-- ROW 3: Charts -->
+            <div class="row-3">
+                <div class="panel chart-card">
+                    <div class="panel-title">PORTFOLIO VALUE</div>
+                    <div id="chart-portfolio" class="chart-box"></div>
                 </div>
-                
-                <div class="panel panel-provider">
-                    <div class="panel-header">
-                        <i data-lucide="server"></i> PROVIDER HEALTH
-                    </div>
-                    <div class="health-grid">
-                        <div class="h-item"><span>REST</span><span id="h-rest" class="h-indicator">Waiting for data</span></div>
-                        <div class="h-item"><span>WebSocket</span><span id="h-ws" class="h-indicator">N/A</span></div>
-                        <div class="h-item"><span>Heartbeat</span><span id="h-hb" class="h-indicator">N/A</span></div>
-                        <div class="h-item"><span>Reconnects</span><span id="h-rec" class="h-indicator">N/A</span></div>
-                        <div class="h-item"><span>Queue Depth</span><span id="h-q" class="h-indicator">N/A</span></div>
-                        <div class="h-item"><span>Latency</span><span id="h-lat" class="h-indicator">Waiting for data</span></div>
-                    </div>
+                <div class="panel chart-card">
+                    <div class="panel-title">PNL PERFORMANCE</div>
+                    <div id="chart-pnl" class="chart-box"></div>
                 </div>
+                <div class="panel chart-card">
+                    <div class="panel-title">NET DELTA EXPOSURE</div>
+                    <div id="chart-delta" class="chart-box"></div>
+                </div>
+                <div class="panel sys-metrics-panel">
+                    <div class="panel-title">SYSTEM METRICS</div>
+                    <div class="sys-metric"><span>CPU USAGE</span><div class="prog-bar"><div class="prog-fill cyan" id="sys-cpu" style="width:0%"></div></div><span class="sys-pct" id="sys-cpu-v">0%</span></div>
+                    <div class="sys-metric"><span>MEMORY USAGE</span><div class="prog-bar"><div class="prog-fill purple" id="sys-mem" style="width:0%"></div></div><span class="sys-pct" id="sys-mem-v">0%</span></div>
+                    <div class="sys-metric"><span>DISK USAGE</span><div class="prog-bar"><div class="prog-fill green" id="sys-disk" style="width:0%"></div></div><span class="sys-pct" id="sys-disk-v">0%</span></div>
+                    <div class="sys-metric"><span>NETWORK</span><div class="prog-bar"><div class="prog-fill orange" id="sys-net" style="width:0%"></div></div><span class="sys-pct" id="sys-net-v">0%</span></div>
+                    <div class="sys-heartbeat"><span>HEARTBEAT</span><span class="hb-val" id="sys-hb">— sec</span><span class="hb-sub">Last Pulse</span></div>
+                </div>
+            </div>
 
-                <div class="panel panel-feed">
-                    <div class="panel-header">
-                        <i data-lucide="rss"></i> LIVE ACTIVITY FEED
-                    </div>
-                    <div class="feed-list" id="activity-feed">
-                        <!-- JS injected -->
-                    </div>
+            <!-- ROW 4: Orders + Risk + Positions + Events -->
+            <div class="row-4">
+                <div class="panel orders-panel">
+                    <div class="panel-title-row"><span class="panel-title"><i data-lucide="list"></i> LIVE ORDERS</span><a href="#" class="view-all">VIEW ALL</a></div>
+                    <table class="orders-table">
+                        <thead><tr><th>TIME</th><th>TYPE</th><th>INSTRUMENT</th><th>QTY</th><th>PRICE</th><th>STATUS</th><th>FILLED</th><th>PNL</th></tr></thead>
+                        <tbody id="orders-body"><tr><td colspan="8" class="empty-row">No orders yet</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="panel risk-gauge-panel">
+                    <div class="panel-title">RISK OVERVIEW</div>
+                    <div id="gauge-risk" class="gauge-container"></div>
+                    <div class="risk-label" id="risk-label">RISK USAGE</div>
+                    <div class="risk-sub" id="risk-sub">Optimal</div>
+                </div>
+                <div class="panel position-panel">
+                    <div class="panel-title">POSITION SUMMARY</div>
+                    <div class="pos-row"><span class="pos-icon"><i data-lucide="layers"></i></span><span class="pos-key">TOTAL POSITIONS</span><span class="pos-val" id="pos-count">0</span></div>
+                    <div class="pos-row"><span class="pos-icon"><i data-lucide="triangle"></i></span><span class="pos-key">TOTAL DELTA</span><span class="pos-val" id="pos-delta">0.0000</span></div>
+                    <div class="pos-row"><span class="pos-icon"><i data-lucide="dollar-sign"></i></span><span class="pos-key">GROSS EXPOSURE</span><span class="pos-val" id="pos-exposure">$0.00</span></div>
+                    <div class="pos-row"><span class="pos-icon"><i data-lucide="percent"></i></span><span class="pos-key">MARGIN USED</span><span class="pos-val" id="pos-margin">$0.00</span></div>
+                    <div class="pos-row"><span class="pos-icon"><i data-lucide="wallet"></i></span><span class="pos-key">AVAILABLE MARGIN</span><span class="pos-val" id="pos-avail">N/A</span></div>
+                </div>
+                <div class="panel events-panel">
+                    <div class="panel-title">RECENT EVENTS</div>
+                    <div class="events-list" id="events-feed"></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Bottom Row: Orders & Terminal -->
-        <div class="bottom-grid">
-            <div class="panel panel-orders">
-                <div class="panel-header">
-                    <i data-lucide="list"></i> EXECUTION ORDERS
-                </div>
-                <div id="ordersGrid" class="ag-theme-alpine-dark custom-ag-grid"></div>
-            </div>
-            <div class="panel panel-terminal">
-                <div class="panel-header">
-                    <i data-lucide="terminal"></i> SYSTEM LOGS
-                </div>
-                <pre class="log-terminal" id="sys-terminal"></pre>
-            </div>
-        </div>
+            <!-- FOOTER -->
+            <footer class="app-footer">
+                <span class="footer-brand">⚡ ARES MISSION CONTROL v1.0.0 · Designed & Developed by <strong>Ankush Rane</strong></span>
+                <span class="footer-info">MODE: <strong id="ft-mode">PAPER TRADING</strong></span>
+                <span class="footer-info">TIME: <strong id="ft-time">—</strong></span>
+                <span class="footer-info">DATE: <strong id="ft-date">—</strong></span>
+                <span class="footer-live"><span class="dot green"></span> LIVE</span>
+            </footer>
+        </main>
     </div>
     <script src="/static/js/ares.js"></script>
-    <script>
-        lucide.createIcons();
-    </script>
+    <script>lucide.createIcons();</script>
 </body>
 </html>
