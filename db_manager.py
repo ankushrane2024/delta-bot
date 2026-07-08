@@ -209,6 +209,12 @@ def load_all_data() -> dict:
                     dr = json.load(f)
                     local_data['daily_reports'] = dr.get("reports", [])
                     
+            # Auto-create Gist if missing and we have PAT
+            if GITHUB_PAT and not GITHUB_GIST_ID:
+                app_logger.info("DB: Bootstrapping new Gist from local data...")
+                content_str = json.dumps(local_data, indent=4)
+                _create_gist(content_str, "{}")
+                    
             return local_data
         except Exception as e:
             app_logger.error(f"DB: Local load failed: {e}")
