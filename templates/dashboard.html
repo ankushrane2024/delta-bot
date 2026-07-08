@@ -2861,6 +2861,9 @@
                     slLegend.style.display = 'none';
                 }
 
+                pnlChart.data.datasets[0].pointRadius = pts.length === 1 ? 4 : 0;
+                pnlChart.data.datasets[1].pointRadius = pts.length === 1 ? 4 : 0;
+
                 pnlChart.update('none');
 
                 // Update summary stats — use ALL data points for true peak/trough
