@@ -291,3 +291,25 @@ def trigger_cloud_sync():
 
 def is_connected() -> bool:
     return bool(GITHUB_GIST_ID and GITHUB_PAT)
+
+def save_backup_data(data: dict) -> bool:
+    """Saves a backup copy of the state to the Gist."""
+    with _sync_lock:
+        if not _connected: _connect()
+        try:
+            content = json.dumps(data, indent=4)
+            return _update_gist({"backup_state.json": {"content": content}})
+        except Exception as e:
+            app_logger.error(f"DB: Failed to save backup: {e}")
+            return False
+
+def load_backup_data() -> dict:
+    """Loads the backup copy from the Gist."""
+    with _sync_lock:
+        if not _connected: _connect()
+        try:
+            data = _fetch_gist_file("backup_state.json")
+            return data if data else {}
+        except Exception as e:
+            app_logger.error(f"DB: Failed to load backup: {e}")
+            return {}
