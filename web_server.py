@@ -362,6 +362,19 @@ def toggle_regime():
     
     return jsonify({'status': 'success', 'enabled': bot_engine.market_regime_filter_enabled})
 
+@app.route('/api/test_gist', methods=['GET'])
+def test_gist():
+    import db_manager
+    import requests
+    import os
+    pat = os.environ.get("GITHUB_PAT")
+    if not pat: return "NO PAT"
+    try:
+        res = requests.get("https://api.github.com/gists", headers={"Authorization": f"token {pat}"})
+        return f"Status: {res.status_code} Body: {res.text}"
+    except Exception as e:
+        return str(e)
+
 @app.route('/api/toggle_hedge', methods=['POST'])
 def toggle_hedge():
     if not bot_engine:
