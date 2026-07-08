@@ -275,8 +275,14 @@ def get_status():
 def start_bot():
     if not bot_engine:
         return jsonify({'error': 'Engine not initialized'}), 500
-    
+        
+    if bot_engine.is_running:
+        return jsonify({'status': 'success', 'message': 'Engine is already running.'})
+        
     bot_engine.is_running = True
+    import threading
+    threading.Thread(target=bot_engine.start, daemon=True).start()
+    
     app_logger.info("Web: Engine started via dashboard.")
     return jsonify({'status': 'success'})
 

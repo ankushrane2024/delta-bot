@@ -91,6 +91,9 @@ class DeltaTradingEngine:
         app_logger.info(f"Engine: Starting Delta BTC Options Bot in {BOT_MODE} mode with Capital: ${STARTING_CAPITAL}")
         notifier.notify_startup(BOT_MODE, STARTING_CAPITAL)
         
+        # Clear any existing schedule jobs in case of a restart
+        schedule.clear()
+        
         # Connect WebSockets for zero-latency feeds
         self.api_client.start_ws()
         
