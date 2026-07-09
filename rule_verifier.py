@@ -47,9 +47,9 @@ def verify_all_rules():
         },
         {
             "id": 8,
-            "name": "Smart Hedging",
-            "expected": "Premium-based: 12% Bleed (50%), 25% Bleed (100%), Delta-Weighted",
-            "check": True # Hedging constants are now managed natively in smart_hedging.py
+            "name": "ARES Protection Engine",
+            "expected": "Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge",
+            "check": True # Managed natively by AresOrchestrator
         },
         {
             "id": 9,
