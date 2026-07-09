@@ -955,9 +955,14 @@
                         <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Market Regime</span>
                         <span id="am-regime" style="font-size: 1.05rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">WAITING</span>
                     </div>
-                    <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Protection Efficiency</span>
-                        <span id="am-pct" style="font-size: 1.15rem; font-weight: 800; color: #10b981;">0%</span>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05); flex-grow: 1;">
+                        <span style="font-size: 0.7rem; color: #10b981; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Loss Covered</span>
+                        <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                            <span id="am-pct" style="font-size: 1.15rem; font-weight: 800; color: #10b981;">0%</span>
+                            <div style="flex-grow: 1; height: 6px; background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; border: 1px solid rgba(16, 185, 129, 0.2);">
+                                <div id="am-pct-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #059669, #34d399); transition: width 0.5s ease-in-out;"></div>
+                            </div>
+                        </div>
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05);">
                         <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Active Risk Score</span>
@@ -1942,6 +1947,11 @@
                                 // Fetch live telemetry for the card
                                 fetch('/ares/status').then(r => r.json()).then(aresData => {
                                     document.getElementById('am-pct').textContent = aresData.protection_pct + '%';
+                                    const pctBar = document.getElementById('am-pct-bar');
+                                    if(pctBar) {
+                                        let boundedPct = Math.min(aresData.protection_pct, 100);
+                                        pctBar.style.width = boundedPct + '%';
+                                    }
                                     document.getElementById('am-risk').textContent = parseFloat(aresData.risk_score || 0).toFixed(2);
                                     
                                     document.getElementById('am-size').textContent = (aresData.actual_hedge_size || 0).toFixed(4) + ' BTC';
