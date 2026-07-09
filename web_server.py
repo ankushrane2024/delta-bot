@@ -952,6 +952,10 @@ def ares_status():
     combined_mtm = 0.0
     protection_pct = 0.0
     
+    actual_hedge_size = 0.0
+    options_delta = analytics.get('current_portfolio_delta', 0.0)
+    delta_coverage_pct = 0.0
+    
     if bot_engine and getattr(bot_engine, 'execution', None):
         # 1. Option MTM
         for sym, data in bot_engine.execution.active_positions.items():
@@ -971,16 +975,21 @@ def ares_status():
             # Option is sold, so profit = entry - current
             option_mtm += (entry_p - current_p) * btc_qty
             
-        # 2. Hedge MTM
-        hedge_size = bot_engine.execution.hedge_size_btc
-        if abs(hedge_size) > 0:
+        # 2. Hedge MTM and Delta Coverage
+        actual_hedge_size = bot_engine.execution.hedge_size_btc
+        if abs(actual_hedge_size) > 0:
             hedge_entry = bot_engine.execution.hedge_entry_price
             current_btc = ares_runner.orchestrator.market_data_provider.get_latest_data().get('spot_price', 0)
             if current_btc > 0 and hedge_entry > 0:
-                if hedge_size > 0: # Long hedge
-                    hedge_mtm = (current_btc - hedge_entry) * hedge_size
+                if actual_hedge_size > 0: # Long hedge
+                    hedge_mtm = (current_btc - hedge_entry) * actual_hedge_size
                 else: # Short hedge
-                    hedge_mtm = (hedge_entry - current_btc) * abs(hedge_size)
+                    hedge_mtm = (hedge_entry - current_btc) * abs(actual_hedge_size)
+                    
+            if abs(options_delta) > 0.0001:
+                delta_coverage_pct = round((abs(actual_hedge_size) / abs(options_delta)) * 100, 2)
+            else:
+                delta_coverage_pct = 100.0
                     
         # 3. Combined MTM & Protection
         combined_mtm = option_mtm + hedge_mtm
@@ -1021,7 +1030,10 @@ def ares_status():
         'expected_future_loss': expected_loss,
         'recommended_hedge_size': recommended_size,
         'decision_reason': decision_reason,
-        'decision_action': decision_action
+        'decision_action': decision_action,
+        'actual_hedge_size': actual_hedge_size,
+        'options_delta': options_delta,
+        'delta_coverage_pct': delta_coverage_pct
     }
     return jsonify(res)
 

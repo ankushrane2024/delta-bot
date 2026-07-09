@@ -931,27 +931,45 @@
                     </div>
                 </div>
                 
-                <!-- ARES Metrics Card (Hidden by default, shown when active) -->
-                <div id="ares-metrics-card" style="display: none; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px;">
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Option MTM</span>
-                        <span id="am-opt" style="font-size: 1.1rem; font-weight: 700; color: #f43f5e;">$0.00</span>
+                <!-- ARES Advanced Metrics Card (Hidden by default) -->
+                <div id="ares-metrics-card" style="display: none; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 15px; padding: 18px; background: linear-gradient(145deg, rgba(16, 185, 129, 0.05) 0%, rgba(0, 0, 0, 0.4) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.1);">
+                    <!-- Row 1: Structural Data -->
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; padding-right: 10px;">
+                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Active Hedge Size</span>
+                        <span id="am-size" style="font-size: 1.15rem; font-weight: 800; color: #10b981;">0.0000 BTC</span>
                     </div>
-                    <div style="display: flex; flex-direction: column; align-items: center; border-left: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Hedge MTM</span>
-                        <span id="am-hdg" style="font-size: 1.1rem; font-weight: 700; color: #10b981;">$0.00</span>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Delta Coverage</span>
+                        <span id="am-cov" style="font-size: 1.15rem; font-weight: 800; color: #38bdf8;">0%</span>
                     </div>
-                    <div style="display: flex; flex-direction: column; align-items: center; border-left: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Net MTM</span>
-                        <span id="am-net" style="font-size: 1.1rem; font-weight: 700; color: #f8fafc;">$0.00</span>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Trend Strength</span>
+                        <span id="am-trend" style="font-size: 1.15rem; font-weight: 800; color: #fbbf24;">0.00</span>
                     </div>
-                    <div style="display: flex; flex-direction: column; align-items: center; border-left: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Protection</span>
-                        <span id="am-pct" style="font-size: 1.1rem; font-weight: 700; color: #38bdf8;">0%</span>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Market Regime</span>
+                        <span id="am-regime" style="font-size: 1.05rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">WAITING</span>
                     </div>
-                    <div style="display: flex; flex-direction: column; align-items: center; border-left: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Risk Score</span>
-                        <span id="am-risk" style="font-size: 1.1rem; font-weight: 700; color: #fbbf24;">0.00</span>
+                    
+                    <!-- Divider -->
+                    <div style="grid-column: 1 / -1; height: 1px; background: rgba(255,255,255,0.05); margin: 5px 0;"></div>
+                    
+                    <!-- Row 2: Financials -->
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; padding-right: 10px;">
+                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Option MTM</span>
+                        <span id="am-opt" style="font-size: 1.15rem; font-weight: 800; color: #f43f5e;">$0.00</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Hedge MTM</span>
+                        <span id="am-hdg" style="font-size: 1.15rem; font-weight: 800; color: #10b981;">$0.00</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Net Combined MTM</span>
+                        <span id="am-net" style="font-size: 1.15rem; font-weight: 800; color: #f8fafc;">$0.00</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 0.7rem; color: #10b981; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Protection Efficiency</span>
+                        <span id="am-pct" style="font-size: 1.15rem; font-weight: 800; color: #10b981;">0%</span>
                     </div>
                 </div>
             </div>
@@ -1935,7 +1953,17 @@
                                     document.getElementById('am-hdg').textContent = '$' + aresData.hedge_mtm;
                                     document.getElementById('am-net').textContent = '$' + aresData.combined_mtm;
                                     document.getElementById('am-pct').textContent = aresData.protection_pct + '%';
-                                    document.getElementById('am-risk').textContent = parseFloat(aresData.risk_score || 0).toFixed(2);
+                                    
+                                    document.getElementById('am-size').textContent = (aresData.actual_hedge_size || 0).toFixed(4) + ' BTC';
+                                    document.getElementById('am-cov').textContent = (aresData.delta_coverage_pct || 0) + '%';
+                                    document.getElementById('am-trend').textContent = parseFloat(aresData.trend_strength || 0).toFixed(2);
+                                    
+                                    const reg = aresData.market_regime || 'WAITING';
+                                    const regEl = document.getElementById('am-regime');
+                                    regEl.textContent = reg.replace(/_/g, ' ');
+                                    if(reg.includes('CRASH') || reg.includes('EXTREME')) { regEl.style.color = '#f43f5e'; }
+                                    else if(reg.includes('TREND')) { regEl.style.color = '#fbbf24'; }
+                                    else { regEl.style.color = '#38bdf8'; }
                                 }).catch(e => console.error(e));
                             }
                         } else {
