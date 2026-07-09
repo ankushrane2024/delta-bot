@@ -1,62 +1,20 @@
-{"timestamp": "2026-07-06 13:43:44,495", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:43:44,496", "level": "ERROR", "logger": "recovery", "message": "Provider connectivity failed during recovery."}
-{"timestamp": "2026-07-06 13:44:48,526", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:44:48,526", "level": "ERROR", "logger": "recovery", "message": "Provider connectivity failed during recovery."}
-{"timestamp": "2026-07-06 13:46:01,140", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:46:01,141", "level": "ERROR", "logger": "recovery", "message": "Provider connectivity failed during recovery."}
-{"timestamp": "2026-07-06 13:46:15,375", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:46:15,375", "level": "ERROR", "logger": "recovery", "message": "Provider connectivity failed during recovery."}
-{"timestamp": "2026-07-06 13:46:28,504", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:46:28,504", "level": "ERROR", "logger": "recovery", "message": "Provider connectivity failed during recovery."}
-{"timestamp": "2026-07-06 13:46:51,895", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:46:51,895", "level": "ERROR", "logger": "recovery", "message": "Provider connectivity failed during recovery."}
-{"timestamp": "2026-07-06 13:47:43,643", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:47:43,643", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 13:47:43,643", "level": "ERROR", "logger": "recovery", "message": "Recovery sequence failed: 'AresOrchestrator' object has no attribute 'portfolio_synchronizer'"}
-{"timestamp": "2026-07-06 13:47:57,081", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:47:57,081", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 13:47:57,081", "level": "ERROR", "logger": "recovery", "message": "Recovery sequence failed: 'AresOrchestrator' object has no attribute 'portfolio_synchronizer'"}
-{"timestamp": "2026-07-06 13:48:36,815", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:48:36,815", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 13:48:36,815", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 13:48:36,815", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
-{"timestamp": "2026-07-06 13:49:03,497", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:49:03,497", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 13:49:03,497", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 13:49:03,498", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
-{"timestamp": "2026-07-06 13:50:51,779", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:50:51,779", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 13:50:51,779", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 13:50:51,779", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
-{"timestamp": "2026-07-06 13:51:20,024", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:51:20,024", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 13:51:20,025", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 13:51:20,025", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
-{"timestamp": "2026-07-06 13:51:59,462", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:51:59,462", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 13:51:59,463", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 13:51:59,463", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
-{"timestamp": "2026-07-06 13:52:30,029", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:52:30,029", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 13:52:30,029", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 13:52:30,030", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
-{"timestamp": "2026-07-06 13:53:12,134", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 13:53:12,134", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 13:53:12,134", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 13:53:12,134", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
-{"timestamp": "2026-07-06 14:04:33,124", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 14:04:33,124", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 14:04:33,125", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 14:04:33,125", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
-{"timestamp": "2026-07-06 14:26:08,556", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 14:26:08,556", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 14:26:08,557", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 14:26:08,557", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
-{"timestamp": "2026-07-06 14:30:01,718", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 14:30:01,718", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 14:30:01,719", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 14:30:01,719", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
-{"timestamp": "2026-07-06 17:30:49,391", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
-{"timestamp": "2026-07-06 17:30:49,391", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
-{"timestamp": "2026-07-06 17:30:49,391", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
-{"timestamp": "2026-07-06 17:30:49,391", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
+{"timestamp": "2026-07-09 22:36:45,275", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
+{"timestamp": "2026-07-09 22:36:45,276", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
+{"timestamp": "2026-07-09 22:36:45,276", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
+{"timestamp": "2026-07-09 22:36:45,276", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
+{"timestamp": "2026-07-09 22:37:38,009", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
+{"timestamp": "2026-07-09 22:37:38,009", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
+{"timestamp": "2026-07-09 22:37:38,010", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
+{"timestamp": "2026-07-09 22:37:38,010", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
+{"timestamp": "2026-07-09 22:39:25,769", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
+{"timestamp": "2026-07-09 22:39:25,770", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
+{"timestamp": "2026-07-09 22:39:25,770", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
+{"timestamp": "2026-07-09 22:39:25,770", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
+{"timestamp": "2026-07-09 22:41:53,486", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
+{"timestamp": "2026-07-09 22:41:53,486", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
+{"timestamp": "2026-07-09 22:41:53,486", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
+{"timestamp": "2026-07-09 22:41:53,486", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}
+{"timestamp": "2026-07-09 22:42:19,881", "level": "INFO", "logger": "recovery", "message": "Starting idempotent recovery sequence..."}
+{"timestamp": "2026-07-09 22:42:19,881", "level": "INFO", "logger": "recovery", "message": "Forcing PortfolioSynchronizer reconciliation..."}
+{"timestamp": "2026-07-09 22:42:19,881", "level": "INFO", "logger": "recovery", "message": "ExecutionStateMachine ready for open order recovery."}
+{"timestamp": "2026-07-09 22:42:19,881", "level": "INFO", "logger": "recovery", "message": "Recovery sequence completed successfully."}

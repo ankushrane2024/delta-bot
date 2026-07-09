@@ -21,18 +21,9 @@ from hedge.validation.validation_engine import ValidationEngine
 from hedge.validation.shadow_analytics import ShadowAnalytics
 from hedge.models.events import EventBus
 from hedge.models.core_interfaces import SystemClock
+from hedge.engines.adapters.legacy_market_feed import LegacyMarketFeedAdapter
 
 logger = logging.getLogger("system")
-
-class PaperMarketDataProvider:
-    def __init__(self, clock):
-        self.clock = clock
-    def get_latest_data(self):
-        return {
-            "spot_price": 50000.0, "funding": 0.01, "timestamp": self.clock.now(),
-            "open_interest": 1000.0, "volume": 5000.0, "iv": 0.6,
-            "call_greeks": {"delta": 0.5, "gamma": 0.05, "vega": 10.0}
-        }
 
 class ServiceRunner:
     """
@@ -54,7 +45,10 @@ class ServiceRunner:
         self.running = False
 
     def setup_orchestrator_and_validator(self):
-        market_data = PaperMarketDataProvider(self.clock)
+        if self.option_bridge and hasattr(self.option_bridge, 'engine'):
+            market_data = LegacyMarketFeedAdapter(self.option_bridge.engine, self.clock)
+        else:
+            raise RuntimeError("CRITICAL: OptionBridge or its engine is missing. Cannot boot ARES.")
         
         # Select provider based on mode
         if self.option_bridge:

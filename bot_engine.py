@@ -799,8 +799,13 @@ class DeltaTradingEngine:
                         # For short positions, options profit = collected_premium - current_option_value
                         options_profit = collected_premium - current_option_value
                         
-                        # Add Hedge Profit to represent True Total PnL
-                        hedge_pnl = self.smart_hedging.get_live_hedge_pnl() if getattr(self, 'smart_hedging', None) and self.smart_hedging.hedge_active else 0.0
+                        # Add Hedge Profit to represent True Total PnL (Support both Legacy and ARES)
+                        hedge_pnl = 0.0
+                        if getattr(self.execution, 'hedge_size_btc', 0) != 0:
+                            ws_data = self.api_client.get_realtime_ticker("BTCUSDT")
+                            live_p = float(ws_data['mark_price']) if ws_data and 'mark_price' in ws_data else self.execution.hedge_entry_price
+                            hedge_pnl = (live_p - self.execution.hedge_entry_price) * self.execution.hedge_size_btc
+                        
                         profit = options_profit + hedge_pnl
                         
                         pnl_pct = profit / collected_premium
@@ -1015,7 +1020,11 @@ class DeltaTradingEngine:
                     put_exit_price += data.get('entry_price', 0.0)
             
             # Calculate realized Hedge PnL if hedge is active before we close it
-            hedge_pnl = self.smart_hedging.get_live_hedge_pnl() if self.smart_hedging.hedge_active else 0.0
+            hedge_pnl = 0.0
+            if getattr(self.execution, 'hedge_size_btc', 0) != 0:
+                ws_data = self.api_client.get_realtime_ticker("BTCUSDT")
+                live_p = float(ws_data['mark_price']) if ws_data and 'mark_price' in ws_data else self.execution.hedge_entry_price
+                hedge_pnl = (live_p - self.execution.hedge_entry_price) * self.execution.hedge_size_btc
             
             # Update simulated equity and lot multiplier in PAPER mode
             if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':

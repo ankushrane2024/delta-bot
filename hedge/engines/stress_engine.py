@@ -92,7 +92,12 @@ class OptionStressEngine(AbstractBaseEngine):
         return 0.0
         
     def _compute_recovery_probability(self, trend: TrendResult, regime: MarketRegimeResult) -> float:
-        return 0.0
+        # A simple recovery model: higher reversal prob or lower trend strength = higher recovery prob.
+        if trend and hasattr(trend, 'reversal_probability') and trend.reversal_probability > 0:
+            return min(100.0, max(0.0, trend.reversal_probability * 100.0))
+        elif trend and hasattr(trend, 'trend_strength'):
+            return min(100.0, max(0.0, 100.0 - trend.trend_strength))
+        return 50.0
         
     def _compute_confidence(self, trend: TrendResult, regime: MarketRegimeResult, 
                             risk: PositionRiskResult, context: PositionContext) -> float:

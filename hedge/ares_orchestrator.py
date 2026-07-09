@@ -19,6 +19,11 @@ from hedge.engines.state_machine import ExecutionStateMachine
 from hedge.engines.portfolio_synchronizer import PortfolioSynchronizer
 from hedge.engines.data_adapters import PositionContextAdapter
 
+# Analyzers
+from hedge.analyzers.price_action_analyzer import PriceActionAnalyzer
+from hedge.analyzers.volatility_analyzer import VolatilityAnalyzer
+from hedge.analyzers.volume_analyzer import VolumeAnalyzer
+
 # Models
 from hedge.models.position import StressFusionBreakdown
 from hedge.context.market_context import MarketContext
@@ -58,7 +63,13 @@ class AresOrchestrator:
 
         # Initialize frozen mathematical engines
         self.regime_engine = MarketRegimeEngine()
-        self.trend_engine = TrendEngine()
+        
+        analyzers = {
+            "price_action": PriceActionAnalyzer(),
+            "volatility": VolatilityAnalyzer(),
+            "volume": VolumeAnalyzer()
+        }
+        self.trend_engine = TrendEngine(analyzers=analyzers)
         self.risk_engine = PositionRiskEngine(replay_mode=self.replay_mode)
         self.decision_engine = DecisionEngine()
         self.sizing_engine = HedgeSizingEngine()
@@ -117,7 +128,8 @@ class AresOrchestrator:
                 snapshot = self.portfolio_sync.current_snapshot
 
             # IDLE MODE: If no options are open and no hedge is active, skip ARES processing
-            if not snapshot.positions and snapshot.hedge_size_btc == 0:
+            has_options = snapshot.metadata.get("total_entry_premium", 0.0) > 0.0
+            if not has_options and snapshot.futures_position_qty == 0:
                 self.latest_tick_result = None
                 return
 

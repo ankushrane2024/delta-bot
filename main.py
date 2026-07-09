@@ -64,7 +64,7 @@ def main():
                 from hedge.deployment.service_runner import ServiceRunner
                 from hedge.engines.adapters.option_bridge import OptionBridge
                 
-                bridge = OptionBridge(engine.execution)
+                bridge = OptionBridge(engine)
                 ares_runner = ServiceRunner(mode_override='PAPER', option_bridge=bridge)
                 ares_thread = threading.Thread(target=ares_runner.run, daemon=True)
                 ares_thread.start()

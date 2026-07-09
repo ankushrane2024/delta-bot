@@ -19,4 +19,27 @@ class PositionContextAdapter:
         ctx.hedge_ratio = snapshot.hedge_ratio
         ctx.is_hedged = snapshot.futures_position_qty != 0
         ctx.timestamp = snapshot.timestamp
+        
+        # Unpack Live Metadata if available
+        if "total_entry_premium" in snapshot.metadata:
+            ctx.position_size = snapshot.metadata["total_entry_premium"]
+            ctx.wallet_balance = snapshot.metadata.get("current_equity", 0.0)
+            
+            call_meta = snapshot.metadata.get("call_leg", {})
+            put_meta = snapshot.metadata.get("put_leg", {})
+            
+            ctx.short_call_strike = call_meta.get("strike", 0.0)
+            ctx.call_mark_price = call_meta.get("current_price", 0.0)
+            ctx.call_delta = call_meta.get("delta", 0.0)
+            ctx.call_gamma = call_meta.get("gamma", 0.0)
+            ctx.call_vega = call_meta.get("vega", 0.0)
+            ctx.call_iv = call_meta.get("iv", 0.0)
+            
+            ctx.short_put_strike = put_meta.get("strike", 0.0)
+            ctx.put_mark_price = put_meta.get("current_price", 0.0)
+            ctx.put_delta = put_meta.get("delta", 0.0)
+            ctx.put_gamma = put_meta.get("gamma", 0.0)
+            ctx.put_vega = put_meta.get("vega", 0.0)
+            ctx.put_iv = put_meta.get("iv", 0.0)
+            
         return ctx

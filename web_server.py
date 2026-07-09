@@ -878,8 +878,6 @@ def ares_status():
     if not ares_runner:
         return jsonify({'error': 'ARES not initialized'}), 500
     
-    # Extract high-level summary
-    # BOT MODE, Exchange Status, BTC Price, Portfolio Value, Today\'s PnL, Total Delta, Current Risk, Active Hedge, Margin Used, CPU, RAM, EventBus
     # Use get_live_stats() — the actual method on ShadowAnalytics
     try:
         analytics = ares_runner.analytics.get_live_stats()
@@ -905,17 +903,48 @@ def ares_status():
     # Build risk info from tick result
     risk_level = 'LOW'
     hedge_active = False
+    # Build complete decision telemetry from tick result
+    trend_strength = 0.0
+    market_regime = 'WAITING'
+    recovery_prob = 0.0
+    confidence = 0.0
+    risk_score = 0.0
+    expected_loss = 0.0
+    recommended_size = 0.0
+    decision_reason = 'Initializing'
+    decision_action = 'WAITING'
+
     if tick_result:
+        trend_res = getattr(tick_result, 'trend_result', None)
+        if trend_res:
+            trend_strength = getattr(trend_res, 'trend_strength', 0.0)
+            
+        regime_res = getattr(tick_result, 'regime_result', None)
+        if regime_res and hasattr(regime_res, 'current_regime'):
+            market_regime = regime_res.current_regime.name
+            
         risk_result = getattr(tick_result, 'risk_result', None)
         if risk_result:
             risk_level = getattr(risk_result, 'risk_level', 'LOW')
             if hasattr(risk_level, 'name'):
                 risk_level = risk_level.name
+            risk_score = getattr(risk_result, 'overall_risk_score', 0.0)
+            recovery_prob = getattr(risk_result, 'recovery_probability', 0.0)
+            expected_loss = getattr(risk_result, 'call_stress', 0.0) + getattr(risk_result, 'put_stress', 0.0)
+            
         hedge_decision = getattr(tick_result, 'hedge_decision', None)
         if hedge_decision:
             action = getattr(hedge_decision, 'action', None)
-            if action and hasattr(action, 'name') and action.name != 'HOLD':
-                hedge_active = True
+            if action:
+                decision_action = action.name if hasattr(action, 'name') else str(action)
+                if decision_action != 'HOLD':
+                    hedge_active = True
+            decision_reason = getattr(hedge_decision, 'reason', 'No Reason')
+            confidence = getattr(hedge_decision, 'confidence', 0.0)
+            
+        sizing_res = getattr(tick_result, 'hedge_sizing', None)
+        if sizing_res:
+            recommended_size = getattr(sizing_res, 'target_delta', 0.0)
 
     # --- Module 49: Live Protection Efficiency KPIs ---
     option_mtm = 0.0
@@ -983,7 +1012,16 @@ def ares_status():
         'option_mtm': round(option_mtm, 2),
         'hedge_mtm': round(hedge_mtm, 2),
         'combined_mtm': round(combined_mtm, 2),
-        'protection_pct': protection_pct
+        'protection_pct': protection_pct,
+        'trend_strength': trend_strength,
+        'market_regime': market_regime,
+        'recovery_probability': recovery_prob,
+        'confidence': confidence,
+        'risk_score': risk_score,
+        'expected_future_loss': expected_loss,
+        'recommended_hedge_size': recommended_size,
+        'decision_reason': decision_reason,
+        'decision_action': decision_action
     }
     return jsonify(res)
 
