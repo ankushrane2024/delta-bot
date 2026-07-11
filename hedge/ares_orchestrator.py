@@ -191,6 +191,9 @@ class AresOrchestrator:
                 current_hedge_ratio=snapshot.hedge_ratio,
                 current_time=self.clock.now()
             )
+            
+            if decision.action.name != "HOLD" and risk_result.overall_risk_score > 10.0:
+                logger.info(f"ARES Decision: {decision.action.name} | Risk: {risk_result.overall_risk_score:.2f} | Reason: {decision.reason}")
 
             self.last_decision = decision
             sizing_result = None

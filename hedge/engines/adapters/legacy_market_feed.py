@@ -17,7 +17,7 @@ class LegacyMarketFeedAdapter(AbstractMarketDataProvider):
         Fetches real-time spot price, funding, and options greeks using the legacy api_client.
         """
         try:
-            underlying_sym = "BTCUSDT" # We assume BTC for this bot
+            underlying_sym = "BTCUSD" # Match the default WS subscription in api_client.py
             ticker = self.engine.api_client.get_realtime_ticker(underlying_sym)
             spot_price = float(ticker.get("mark_price", 0.0)) if ticker else 0.0
             
