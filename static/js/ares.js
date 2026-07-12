@@ -70,7 +70,7 @@ async function pollData() {
             
             updateCenterpiece(statusRes);
             updateAI(statusRes);
-            updateMathEngine(statusRes);
+            // Removed updateMathEngine per user request
             // updateTimeline(statusRes);
             // updateHealth(statusRes);
             
@@ -233,35 +233,7 @@ function updateHealth(d) {
     rsk.className = 'status-badge ' + (d.current_risk === 'LOW' ? 'green' : (d.current_risk === 'HIGH' ? 'red' : 'yellow'));
 }
 
-function updateMathEngine(d) {
-    if (!d.clusters) return;
-    const c = d.clusters;
-    
-    // Update bars
-    document.getElementById('bar-dir').style.width = `${c.directional}%`;
-    document.getElementById('val-dir').innerText = `${Math.round(c.directional)}%`;
-    
-    document.getElementById('bar-vol').style.width = `${c.volatility}%`;
-    document.getElementById('val-vol').innerText = `${Math.round(c.volatility)}%`;
-    
-    document.getElementById('bar-fin').style.width = `${c.financial}%`;
-    document.getElementById('val-fin').innerText = `${Math.round(c.financial)}%`;
-    
-    document.getElementById('bar-ctx').style.width = `${c.context}%`;
-    document.getElementById('val-ctx').innerText = `${Math.round(c.context)}%`;
-    
-    // Update final stress
-    const finalStress = c.final_stress;
-    const el = document.getElementById('val-final-stress');
-    el.innerText = `${Math.round(finalStress)}%`;
-    
-    // Set color based on ARES thresholds
-    el.className = '';
-    if (finalStress >= 85) el.classList.add('stress-crit');
-    else if (finalStress >= 70) el.classList.add('stress-high');
-    else if (finalStress >= 45) el.classList.add('stress-med');
-    else el.classList.add('stress-low');
-}
+// Removed updateMathEngine
 
 function updateOrders(orders) {
     const c = document.getElementById('orders-feed');
