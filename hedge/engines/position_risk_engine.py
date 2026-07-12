@@ -595,7 +595,7 @@ class PositionRiskEngine(AbstractBaseEngine):
         multiplier = c + (1.0 - c) * math.pow(s, power)
         return score * multiplier
 
-    def _compute_mathematical_fusion(self, breakdown: 'StressFusionBreakdown') -> float:
+    def _compute_mathematical_fusion(self, breakdown: 'StressFusionBreakdown', combined_pnl: float = 0.0) -> float:
         from config import CONFIDENCE_PENALTY_POWER
         
         survival = 1.0
@@ -611,7 +611,14 @@ class PositionRiskEngine(AbstractBaseEngine):
             p_ruin = effective_risk / 100.0
             survival *= (1.0 - p_ruin)
             
-        return 100.0 * (1.0 - survival)
+        final_stress = 100.0 * (1.0 - survival)
+        
+        if combined_pnl > 0.0:
+            # Dampen final stress by 50% if the combined position is in profit.
+            # This prevents Strike Proximity from triggering EMERGENCY_HEDGE on highly profitable trades.
+            final_stress *= 0.50
+            
+        return final_stress
 
     def _compute_stress_fusion_inputs(
         self,
@@ -708,11 +715,17 @@ class PositionRiskEngine(AbstractBaseEngine):
             fused_score=0.0, 
             debug_information=debug_info
         )
-        
-        breakdown.fused_score = self._compute_mathematical_fusion(breakdown)
         return breakdown
 
     def _compute_leg_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext, is_call: bool = True) -> CallStressBreakdown:
+        
+        # Calculate combined P&L for final stress dampening
+        call_pnl = ctx.metadata.get('call_pnl_usd', 0.0)
+        put_pnl = ctx.metadata.get('put_pnl_usd', 0.0)
+        if call_pnl is None or math.isnan(call_pnl) or math.isinf(call_pnl): call_pnl = 0.0
+        if put_pnl is None or math.isnan(put_pnl) or math.isinf(put_pnl): put_pnl = 0.0
+        combined_pnl = float(call_pnl) + float(put_pnl)
+        
         strike = ctx.short_call_strike if is_call else ctx.short_put_strike
         strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, strike) if is_call else self._compute_strike_distance_factor(ctx.futures_price, strike) # Actually, for put it's flipped. Let's do it properly:
         
@@ -786,6 +799,8 @@ class PositionRiskEngine(AbstractBaseEngine):
             pnl_factor=pnl_factor
         )
         
+        fusion_breakdown.fused_score = self._compute_mathematical_fusion(fusion_breakdown, combined_pnl)
+
         return CallStressBreakdown(
             strike_distance_factor=strike_dist_factor,
             delta_factor=delta_factor,
