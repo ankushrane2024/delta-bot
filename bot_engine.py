@@ -806,6 +806,35 @@ class DeltaTradingEngine:
                         # causing PnL to be inflated by 2-3x vs the actual premium collected.
                         position_lots = data.get('entry_size', data['size'])
                         current_total_value += current_price * position_lots * LOT_TO_BTC
+                        
+                    # HOT-RECOVERY: If bot restarted during an active trade, in-memory state was wiped.
+                    # Recover it from the active positions loaded from the cloud DB.
+                    if self.total_entry_premium == 0 and len(self.execution.active_positions) > 0:
+                        app_logger.warning("Engine: Hot-recovering transient trade state after restart...")
+                        recovered_premium = 0.0
+                        rcalls = []
+                        rputs = []
+                        for sym, data in self.execution.active_positions.items():
+                            ltype = data.get('leg_type', '').lower()
+                            if 'call' in ltype or 'c' in sym[-3:].lower():
+                                rcalls.append(sym)
+                            elif 'put' in ltype or 'p' in sym[-3:].lower():
+                                rputs.append(sym)
+                            
+                            if 'call' in ltype or 'put' in ltype or 'c' in sym[-3:].lower() or 'p' in sym[-3:].lower():
+                                entry_p = data.get('entry_price', 0)
+                                lots = data.get('entry_size', data['size'])
+                                recovered_premium += entry_p * lots * LOT_TO_BTC
+                        
+                        self.total_entry_premium = recovered_premium
+                        if not self.current_trade_info.get("calls") and rcalls:
+                            self.current_trade_info["calls"] = rcalls
+                            self.current_trade_info["puts"] = rputs
+                            self.current_trade_info["entry_time"] = get_ist_now().isoformat()
+                            ws_data = self.api_client.get_realtime_ticker("BTCUSD")
+                            if ws_data and 'spot_price' in ws_data:
+                                self.current_trade_info["btc_entry_price"] = float(ws_data['spot_price'])
+                    
                     profit = 0.0
                     pnl_pct = 0.0
                     
