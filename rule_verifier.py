@@ -47,9 +47,15 @@ def verify_all_rules():
         },
         {
             "id": 8,
-            "name": "ARES Protection Engine",
-            "expected": "Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge",
+            "name": "ARES Protection Engine (Dynamic Hedge)",
+            "expected": "Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.",
             "check": True # Managed natively by AresOrchestrator
+        },
+        {
+            "id": 81,
+            "name": "ARES Trend Reversal & De-Hedge Rule",
+            "expected": "Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.",
+            "check": True
         },
         {
             "id": 9,

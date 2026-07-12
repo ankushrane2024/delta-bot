@@ -45,7 +45,7 @@ class OptionBridge(AbstractExecutionProvider):
             return exchange_order
 
         # Call legacy execution
-        direction = "buy" if order.direction == "LONG" else "sell"
+        direction = "buy" if getattr(order, 'side', '') == "BUY" else "sell"
         result = self.execution.place_hedge_order(order.quantity, direction)
         
         if result and result.get('success'):
@@ -96,15 +96,18 @@ class OptionBridge(AbstractExecutionProvider):
             "hedge_owner": snapshot_raw['hedge_owner'],
             "total_entry_premium": self.engine.total_entry_premium,
             "current_equity": self.engine.risk_manager.current_equity,
+            "total_lots": 0,
             "call_leg": {},
             "put_leg": {}
         }
         
         total_pnl = 0.0
+        total_lots = 0
         
         for sym, opt in snapshot_raw['active_options'].items():
             leg = opt.get('leg_type', 'call')
             size = opt.get('size', 1.0)
+            total_lots += size
             
             # Use cached live metrics from legacy engine if available
             ticker = self.engine.api_client.get_realtime_ticker(sym)
@@ -116,8 +119,18 @@ class OptionBridge(AbstractExecutionProvider):
             pnl_btc = (live_price - entry_price) * side_mult * size * 0.001
             total_pnl += pnl_btc # Simplified for now, real PnL is tracked in engine
             
-            # Simple Delta
-            delta_val = 0.5 if leg == 'call' else -0.5
+            # Extract Live Greeks
+            greeks = ticker.get('greeks', {}) if ticker else {}
+            fallback_delta = 0.5 if leg == 'call' else -0.5
+            delta_val = float(greeks.get('delta', fallback_delta))
+            if delta_val == 0.0:
+                delta_val = fallback_delta
+                
+            gamma_val = float(greeks.get('gamma', 0.05))
+            vega_val = float(greeks.get('vega', 10.0))
+            theta_val = float(greeks.get('theta', -5.0))
+            
+            # Live Delta Calculation
             net_delta += size * delta_val * side_mult
             
             # Populate metadata for PositionContext
@@ -127,11 +140,13 @@ class OptionBridge(AbstractExecutionProvider):
                 "entry_price": entry_price,
                 "current_price": live_price,
                 "delta": delta_val,
-                "gamma": 0.05, # Mock fallback if not in ticker
-                "vega": 10.0,
-                "theta": -5.0,
-                "iv": 0.6
+                "gamma": gamma_val, 
+                "vega": vega_val,
+                "theta": theta_val,
+                "iv": float(greeks.get('iv', 0.6)) if 'iv' in greeks else 0.6
             }
+
+        live_metadata["total_lots"] = total_lots
 
         return PortfolioSnapshot(
             timestamp=datetime.utcnow().isoformat() + "Z",

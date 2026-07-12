@@ -51,10 +51,13 @@ class PositionRiskEngine(AbstractBaseEngine):
         hedge_urgency = self._compute_hedge_urgency(position_context, regime_result, trend_result)
         
         # 3. Stress Computation Framework
-        call_stress_breakdown = self._compute_call_stress_breakdown(trend_result, regime_result, position_context)
-        call_stress = self._compute_call_stress(call_stress_breakdown)
+        call_stress_breakdown = self._compute_leg_stress_breakdown(trend_result, regime_result, position_context, is_call=True)
+        call_stress = self._compute_leg_stress(call_stress_breakdown)
         
-        overall_risk_score = self._compute_overall_risk(call_side_risk, put_side_risk, portfolio_heat, hedge_urgency)
+        put_stress_breakdown = self._compute_leg_stress_breakdown(trend_result, regime_result, position_context, is_call=False)
+        put_stress = self._compute_leg_stress(put_stress_breakdown)
+        
+        overall_risk_score = max(call_stress, put_stress)
         confidence = self._compute_confidence(position_context)
         
         completed_at = time.time()
@@ -74,7 +77,7 @@ class PositionRiskEngine(AbstractBaseEngine):
             portfolio_heat=portfolio_heat,
             hedge_urgency=hedge_urgency,
             call_stress=call_stress,
-            put_stress=0.0,
+            put_stress=put_stress,
             portfolio_stress=0.0,
             stress_velocity=0.0,
             recovery_probability=0.0,
@@ -88,7 +91,8 @@ class PositionRiskEngine(AbstractBaseEngine):
             debug_information={
                 "warnings": list(self._warnings), 
                 "total_lots": position_context.total_lots,
-                "call_stress_breakdown": call_stress_breakdown
+                "call_stress_breakdown": call_stress_breakdown,
+                "put_stress_breakdown": put_stress_breakdown
             }
         )
         
@@ -696,34 +700,66 @@ class PositionRiskEngine(AbstractBaseEngine):
         breakdown.fused_score = self._compute_mathematical_fusion(breakdown)
         return breakdown
 
-    def _compute_call_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext) -> CallStressBreakdown:
-        strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, ctx.short_call_strike)
-        delta_factor = self._compute_delta_factor(ctx.call_delta)
-        gamma_factor = self._compute_gamma_factor(ctx.call_gamma)
-        vega_factor = self._compute_vega_factor(ctx.call_vega)
+    def _compute_leg_stress_breakdown(self, trend: TrendResult, regime: MarketRegimeResult, ctx: PositionContext, is_call: bool = True) -> CallStressBreakdown:
+        strike = ctx.short_call_strike if is_call else ctx.short_put_strike
+        strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, strike) if is_call else self._compute_strike_distance_factor(ctx.futures_price, strike) # Actually, for put it's flipped. Let's do it properly:
+        
+        if not is_call:
+             # For put, stress increases as futures_price drops BELOW strike.
+             # x = (strike - futures_price) / strike
+             if strike > 0:
+                 x = (strike - ctx.futures_price) / strike
+                 steepness = 100.0
+                 center_offset = 0.03
+                 try:
+                     exponent = -steepness * (x + center_offset)
+                     if exponent > 50: strike_dist_factor = 0.0
+                     elif exponent < -50: strike_dist_factor = 100.0
+                     else: strike_dist_factor = max(0.0, min(100.0, 100.0 / (1.0 + math.exp(exponent))))
+                 except OverflowError:
+                     strike_dist_factor = 100.0 if x > -center_offset else 0.0
+             else:
+                 strike_dist_factor = 0.0
+        else:
+             strike_dist_factor = self._compute_strike_distance_factor(ctx.futures_price, strike)
+             
+        delta = ctx.call_delta if is_call else ctx.put_delta
+        delta_factor = self._compute_delta_factor(delta)
+        
+        gamma = ctx.call_gamma if is_call else ctx.put_gamma
+        gamma_factor = self._compute_gamma_factor(gamma)
+        
+        vega = ctx.call_vega if is_call else ctx.put_vega
+        vega_factor = self._compute_vega_factor(vega)
         
         # Deduce entry premium
-        entry_premium = ctx.metadata.get('call_entry_price', None)
+        leg_prefix = "call" if is_call else "put"
+        entry_premium = ctx.metadata.get(f'{leg_prefix}_entry_price', None)
         if entry_premium is None:
             from config import LOT_TO_BTC
             lots_per_leg = max(1, ctx.total_lots / 2.0)
+            leg_mark = ctx.call_mark_price if is_call else ctx.put_mark_price
+            leg_pnl = ctx.call_leg_pnl if is_call else ctx.put_leg_pnl
+            
             if LOT_TO_BTC > 0 and lots_per_leg > 0:
-                entry_premium = ctx.call_mark_price + (ctx.call_leg_pnl / (lots_per_leg * LOT_TO_BTC))
+                entry_premium = leg_mark + (leg_pnl / (lots_per_leg * LOT_TO_BTC))
             else:
-                entry_premium = ctx.call_mark_price
+                entry_premium = leg_mark
                 
-        premium_growth_factor = self._compute_premium_growth_factor(ctx.call_mark_price, entry_premium)
+        mark_price = ctx.call_mark_price if is_call else ctx.put_mark_price
+        premium_growth_factor = self._compute_premium_growth_factor(mark_price, entry_premium)
         
         # Get entry IV
-        entry_iv = ctx.metadata.get('call_entry_iv', None)
+        entry_iv = ctx.metadata.get(f'{leg_prefix}_entry_iv', None)
+        current_iv = ctx.call_iv if is_call else ctx.put_iv
         if entry_iv is None:
-            entry_iv = ctx.call_iv # fallback to current IV (no expansion)
+            entry_iv = current_iv # fallback to current IV (no expansion)
             
-        iv_expansion_factor = self._compute_iv_expansion_factor(ctx.call_iv, entry_iv)
-        trend_factor = self._compute_trend_factor(trend, is_call=True)
+        iv_expansion_factor = self._compute_iv_expansion_factor(current_iv, entry_iv)
+        trend_factor = self._compute_trend_factor(trend, is_call=is_call)
         regime_factor = self._compute_regime_factor(regime)
         time_to_expiry_factor = self._compute_time_to_expiry_factor(ctx)
-        pnl_factor = self._compute_pnl_factor(ctx, is_call=True)
+        pnl_factor = self._compute_pnl_factor(ctx, is_call=is_call)
         
         fusion_breakdown = self._compute_stress_fusion_inputs(
             strike_distance_factor=strike_dist_factor,
@@ -747,16 +783,16 @@ class PositionRiskEngine(AbstractBaseEngine):
             trend_factor=trend_factor,
             regime_factor=regime_factor,
             time_to_expiry_factor=time_to_expiry_factor,
-            iv_factor=0.0, # Kept for backward compatibility if needed, but not populated actively with vega anymore
+            iv_factor=0.0,
             iv_expansion_factor=iv_expansion_factor,
             pnl_factor=pnl_factor,
             final_call_stress=fusion_breakdown.fused_score,
-            explanation="Call stress components evaluated and fused via Bayesian Survival (Hierarchical Clusters).",
+            explanation=f"{'Call' if is_call else 'Put'} stress components evaluated.",
             fusion_breakdown=fusion_breakdown
         )
 
 
-    def _compute_call_stress(self, breakdown: CallStressBreakdown) -> float:
+    def _compute_leg_stress(self, breakdown: CallStressBreakdown) -> float:
         return breakdown.final_call_stress
 
     def _compute_overall_risk(self, call_risk: float, put_risk: float, heat: float, urgency: float) -> float:

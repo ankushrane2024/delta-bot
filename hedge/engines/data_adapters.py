@@ -24,6 +24,7 @@ class PositionContextAdapter:
         if "total_entry_premium" in snapshot.metadata:
             ctx.position_size = snapshot.metadata["total_entry_premium"]
             ctx.wallet_balance = snapshot.metadata.get("current_equity", 0.0)
+            ctx.total_lots = snapshot.metadata.get("total_lots", 1)
             
             call_meta = snapshot.metadata.get("call_leg", {})
             put_meta = snapshot.metadata.get("put_leg", {})
