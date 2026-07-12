@@ -90,6 +90,7 @@ async function pollData() {
             
             updateCenterpiece(statusRes);
             updateAI(statusRes);
+            updateMathEngine(statusRes);
             // updateTimeline(statusRes);
             // updateHealth(statusRes);
             
@@ -236,20 +237,52 @@ function updateHealth(d) {
     let score = 99;
     if (lat > 0.5) score -= 10;
     if (d.health_status !== 'GREEN') score -= 20;
+    document.getElementById('sys-cpu').innerText = d.cpu ? d.cpu + '%' : '0%';
+    document.getElementById('sys-ram').innerText = d.ram ? d.ram + '%' : '0%';
+    document.getElementById('sys-lat').innerText = d.avg_latency ? d.avg_latency.toFixed(1) + 'ms' : '0ms';
     
-    document.getElementById('health-score').innerText = `${score} / 100`;
-    document.getElementById('health-text').innerText = score > 90 ? 'EXCELLENT' : (score > 70 ? 'GOOD' : 'WARNING');
-    document.getElementById('health-score').style.color = score > 90 ? '#00C853' : (score > 70 ? '#FFB300' : '#FF5252');
+    // Status badges
+    const mkt = document.getElementById('stat-mkt');
+    mkt.innerText = d.exchange_status || 'UNKNOWN';
+    mkt.className = 'status-badge ' + (d.exchange_status === 'CONNECTED' ? 'green' : 'red');
     
-    document.getElementById('ck-market').innerText = '🟢';
-    document.getElementById('ck-exec').innerText = '🟢';
-    document.getElementById('ck-risk').innerText = '🟢';
-    document.getElementById('ck-prov').innerText = d.provider_health === 'GREEN' ? '🟢' : '🟡';
+    const eng = document.getElementById('stat-eng');
+    eng.innerText = d.health_status || 'UNKNOWN';
+    eng.className = 'status-badge ' + (d.health_status === 'HEALTHY' ? 'green' : 'red');
     
-    document.getElementById('st-rest').innerText = d.exchange_status === 'CONNECTED' ? '🟢' : '🔴';
-    document.getElementById('st-ws').innerText = d.provider_health === 'GREEN' ? '🟢' : '🔴';
-    document.getElementById('st-paper').innerText = d.bot_mode === 'PAPER' ? '🟢' : '🟡';
-    document.getElementById('st-risk').innerText = d.current_risk === 'LOW' ? '🟢' : (d.current_risk === 'MEDIUM' ? '🟡' : '🔴');
+    const rsk = document.getElementById('stat-rsk');
+    rsk.innerText = d.current_risk || 'UNKNOWN';
+    rsk.className = 'status-badge ' + (d.current_risk === 'LOW' ? 'green' : (d.current_risk === 'HIGH' ? 'red' : 'yellow'));
+}
+
+function updateMathEngine(d) {
+    if (!d.clusters) return;
+    const c = d.clusters;
+    
+    // Update bars
+    document.getElementById('bar-dir').style.width = `${c.directional}%`;
+    document.getElementById('val-dir').innerText = `${Math.round(c.directional)}%`;
+    
+    document.getElementById('bar-vol').style.width = `${c.volatility}%`;
+    document.getElementById('val-vol').innerText = `${Math.round(c.volatility)}%`;
+    
+    document.getElementById('bar-fin').style.width = `${c.financial}%`;
+    document.getElementById('val-fin').innerText = `${Math.round(c.financial)}%`;
+    
+    document.getElementById('bar-ctx').style.width = `${c.context}%`;
+    document.getElementById('val-ctx').innerText = `${Math.round(c.context)}%`;
+    
+    // Update final stress
+    const finalStress = c.final_stress;
+    const el = document.getElementById('val-final-stress');
+    el.innerText = `${Math.round(finalStress)}%`;
+    
+    // Set color based on ARES thresholds
+    el.className = '';
+    if (finalStress >= 85) el.classList.add('stress-crit');
+    else if (finalStress >= 70) el.classList.add('stress-high');
+    else if (finalStress >= 45) el.classList.add('stress-med');
+    else el.classList.add('stress-low');
 }
 
 function updateOrders(orders) {

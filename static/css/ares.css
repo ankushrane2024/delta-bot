@@ -205,6 +205,23 @@ body {
 .type-writer { border-right: 2px solid var(--c-cyan); white-space: pre-wrap; animation: blink 1s step-end infinite; }
 @keyframes blink { 50% { border-color: transparent; } }
 
+/* MATH ENGINE */
+.math-engine { display: flex; flex-direction: column; }
+.math-grid { padding: 20px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.math-item { display: flex; align-items: center; gap: 16px; }
+.math-label { width: 140px; font-size: 15px; font-weight: 600; color: var(--text-muted); }
+.math-bar-bg { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.math-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease-out; box-shadow: 0 0 10px currentColor; }
+.math-val { width: 60px; text-align: right; font-family: var(--f-mono); font-weight: 700; font-size: 16px; }
+
+.math-total { padding: 20px; background: rgba(0, 0, 0, 0.2); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.math-total span { font-size: 16px; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; }
+.math-total strong { font-size: 28px; font-family: var(--f-mono); font-weight: 800; text-shadow: 0 0 15px currentColor; }
+.stress-low { color: var(--c-green); }
+.stress-med { color: var(--c-yellow); }
+.stress-high { color: var(--c-orange); }
+.stress-crit { color: var(--c-red); }
+
 .timeline-panel { flex: 0 0 auto; }
 .timeline { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 .tl-item { display: flex; align-items: center; font-family: var(--f-mono); font-size: 16px; }

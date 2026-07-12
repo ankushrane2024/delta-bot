@@ -924,6 +924,16 @@ def ares_status():
             market_regime = regime_res.current_regime.name
             
         risk_result = getattr(tick_result, 'risk_result', None)
+        
+        # Risk Clusters for UI
+        clusters = {
+            'directional': 0.0,
+            'volatility': 0.0,
+            'financial': 0.0,
+            'context': 0.0,
+            'final_stress': 0.0
+        }
+        
         if risk_result:
             risk_level = getattr(risk_result, 'risk_level', 'LOW')
             if hasattr(risk_level, 'name'):
@@ -931,6 +941,23 @@ def ares_status():
             risk_score = getattr(risk_result, 'overall_risk_score', 0.0)
             recovery_prob = getattr(risk_result, 'recovery_probability', 0.0)
             expected_loss = getattr(risk_result, 'call_stress', 0.0) + getattr(risk_result, 'put_stress', 0.0)
+            
+            # Extract cluster math for UI
+            try:
+                # Find the leg with the highest stress to show its clusters
+                breakdown = getattr(risk_result, 'call_breakdown', None)
+                if not breakdown or getattr(risk_result, 'put_stress', 0.0) > getattr(risk_result, 'call_stress', 0.0):
+                    breakdown = getattr(risk_result, 'put_breakdown', None)
+                    
+                if breakdown and hasattr(breakdown, 'fusion_breakdown') and breakdown.fusion_breakdown:
+                    fb = breakdown.fusion_breakdown
+                    clusters['directional'] = getattr(fb.directional_cluster, 'score', 0.0)
+                    clusters['volatility'] = getattr(fb.volatility_cluster, 'score', 0.0)
+                    clusters['financial'] = getattr(fb.financial_cluster, 'score', 0.0)
+                    clusters['context'] = getattr(fb.context_cluster, 'score', 0.0)
+                    clusters['final_stress'] = getattr(fb, 'fused_score', 0.0)
+            except Exception as e:
+                pass
             
         hedge_decision = getattr(tick_result, 'hedge_decision', None)
         if hedge_decision:
@@ -1060,7 +1087,8 @@ def ares_status():
         'decision_action': decision_action,
         'actual_hedge_size': actual_hedge_size,
         'options_delta': options_delta,
-        'delta_coverage_pct': delta_coverage_pct
+        'delta_coverage_pct': delta_coverage_pct,
+        'clusters': clusters
     }
     return jsonify(res)
 
