@@ -58,7 +58,7 @@
             <section class="col-1">
                 <!-- CENTERPIECE: PORTFOLIO -->
                 <div class="panel centerpiece">
-                    <div class="panel-header">PORTFOLIO COMMAND</div>
+                    <div class="panel-header">HEDGE PERFORMANCE COMMAND</div>
                     <div class="center-metrics">
                         <div class="cm-main">
                             <div class="cm-label">COMBINED MTM</div>
@@ -98,10 +98,10 @@
                 </div>
             </section>
 
-            <!-- COLUMN 2: AI BRAIN & PIPELINE -->
+            <!-- COLUMN 2: AI BRAIN & TERMINAL -->
             <section class="col-2">
                 <!-- AI BRAIN -->
-                <div class="panel ai-brain">
+                <div class="panel ai-brain" style="flex: 0.6;">
                     <div class="panel-header"><i data-lucide="brain"></i> ARES AI COMMAND</div>
                     <div class="ai-grid">
                         <div class="ai-metric">
@@ -128,60 +128,8 @@
                     </div>
                 </div>
 
-                <!-- EXECUTION TIMELINE -->
-                <div class="panel timeline-panel">
-                    <div class="panel-header"><i data-lucide="activity"></i> EXECUTION TIMELINE</div>
-                    <div class="timeline" id="exec-timeline">
-                        <!-- Populated by JS -->
-                        <div class="tl-item"><span class="tl-time">--:--:--</span><span class="tl-name">Market Tick</span><span class="tl-status">Waiting</span></div>
-                        <div class="tl-item"><span class="tl-time">--:--:--</span><span class="tl-name">Trend Engine</span><span class="tl-status">Waiting</span></div>
-                        <div class="tl-item"><span class="tl-time">--:--:--</span><span class="tl-name">Risk Engine</span><span class="tl-status">Waiting</span></div>
-                        <div class="tl-item"><span class="tl-time">--:--:--</span><span class="tl-name">Decision</span><span class="tl-status">Waiting</span></div>
-                        <div class="tl-item"><span class="tl-time">--:--:--</span><span class="tl-name">Execution</span><span class="tl-status">Waiting</span></div>
-                    </div>
-                </div>
-
-                <!-- ORDERS FEED -->
-                <div class="panel feed-panel">
-                    <div class="panel-header"><i data-lucide="list"></i> LIVE EXECUTION FEED</div>
-                    <div class="feed-container" id="orders-feed">
-                        <div class="empty-state">No executions yet</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- COLUMN 3: SYSTEM HEALTH & TERMINAL -->
-            <section class="col-3">
-                <!-- OVERALL HEALTH -->
-                <div class="panel health-score">
-                    <div class="panel-header">ARES HEALTH</div>
-                    <div class="hs-main">
-                        <div class="hs-val" id="health-score">N/A</div>
-                        <div class="hs-sub" id="health-text">Waiting</div>
-                    </div>
-                    <div class="hs-grid">
-                        <div class="hs-item"><span>Market Data</span><span id="ck-market">⚪</span></div>
-                        <div class="hs-item"><span>Execution</span><span id="ck-exec">⚪</span></div>
-                        <div class="hs-item"><span>Risk Engine</span><span id="ck-risk">⚪</span></div>
-                        <div class="hs-item"><span>Provider</span><span id="ck-prov">⚪</span></div>
-                    </div>
-                </div>
-
-                <!-- TRAFFIC LIGHTS -->
-                <div class="panel traffic-panel">
-                    <div class="panel-header">SUBSYSTEM STATUS</div>
-                    <div class="tl-grid">
-                        <div class="t-item"><span>REST</span><span id="st-rest">⚪</span></div>
-                        <div class="t-item"><span>WebSocket</span><span id="st-ws">⚪</span></div>
-                        <div class="t-item"><span>Database</span><span id="st-db">🟢</span></div>
-                        <div class="t-item"><span>EventBus</span><span id="st-eb">🟢</span></div>
-                        <div class="t-item"><span>Paper Mode</span><span id="st-paper">⚪</span></div>
-                        <div class="t-item"><span>Risk Limits</span><span id="st-risk">⚪</span></div>
-                    </div>
-                </div>
-
                 <!-- TERMINAL -->
-                <div class="panel term-panel">
+                <div class="panel term-panel" style="flex: 0.4;">
                     <div class="panel-header"><i data-lucide="terminal"></i> SYSTEM TERMINAL</div>
                     <div class="term-window" id="sys-terminal">
                         Waiting for logs...

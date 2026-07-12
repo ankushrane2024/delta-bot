@@ -90,8 +90,8 @@ async function pollData() {
             
             updateCenterpiece(statusRes);
             updateAI(statusRes);
-            updateTimeline(statusRes);
-            updateHealth(statusRes);
+            // updateTimeline(statusRes);
+            // updateHealth(statusRes);
             
             // Append to charts
             const nowStr = new Date().toLocaleTimeString('en-US', {hour12: false});
@@ -113,7 +113,7 @@ async function pollData() {
             }
         }
         
-        if (ordersRes) updateOrders(ordersRes);
+        // if (ordersRes) updateOrders(ordersRes);
         if (logsRes) updateTerminal(logsRes);
         
     } catch (err) {
