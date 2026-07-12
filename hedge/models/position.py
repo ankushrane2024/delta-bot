@@ -23,15 +23,14 @@ class PositionRiskResult:
     recovery_probability: float
     hedge_efficiency_estimate: float
     
-    call_breakdown: Any = None
-    put_breakdown: Any = None
-    
     confidence: float
     timestamp: str
     started_at: float
     completed_at: float
     execution_time_ms: float
     explanation: str
+    call_breakdown: Any = None
+    put_breakdown: Any = None
     debug_information: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
