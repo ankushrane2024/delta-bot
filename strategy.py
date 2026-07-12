@@ -170,8 +170,12 @@ class ShortStrangleStrategy:
                     valid_pairs.append((c, p))
 
         if check_premium and valid_pairs:
-            # Select the pair with the most balanced premiums (minimum difference)
-            best_pair = min(valid_pairs, key=lambda pair: abs(pair[0]['premium_inr'] - pair[1]['premium_inr']))
+            if force:
+                # User requested: when forced, prioritize premiums close to $100, fallback to whatever 5 OTM is available
+                best_pair = min(valid_pairs, key=lambda pair: abs(pair[0]['premium_inr'] - 100) + abs(pair[1]['premium_inr'] - 100))
+            else:
+                # Select the pair with the most balanced premiums (minimum difference)
+                best_pair = min(valid_pairs, key=lambda pair: abs(pair[0]['premium_inr'] - pair[1]['premium_inr']))
             best_call, best_put = best_pair
             app_logger.info(
                 f"Strategy: Selected balanced strikes (Call: {best_call['symbol']} Premium: {best_call['premium_inr']:.2f}, "

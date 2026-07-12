@@ -932,6 +932,13 @@ def ares_status():
     recommended_size = 0.0
     decision_reason = 'Initializing'
     decision_action = 'WAITING'
+    clusters = {
+        'directional': 0.0,
+        'volatility': 0.0,
+        'financial': 0.0,
+        'context': 0.0,
+        'final_stress': 0.0
+    }
 
     if tick_result:
         trend_res = getattr(tick_result, 'trend_result', None)
@@ -943,15 +950,6 @@ def ares_status():
             market_regime = regime_res.current_regime.name
             
         risk_result = getattr(tick_result, 'risk_result', None)
-        
-        # Risk Clusters for UI
-        clusters = {
-            'directional': 0.0,
-            'volatility': 0.0,
-            'financial': 0.0,
-            'context': 0.0,
-            'final_stress': 0.0
-        }
         
         if risk_result:
             risk_level = getattr(risk_result, 'risk_level', 'LOW')
