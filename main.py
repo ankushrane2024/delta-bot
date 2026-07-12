@@ -64,9 +64,11 @@ def main():
             try:
                 from hedge.deployment.service_runner import ServiceRunner
                 from hedge.engines.adapters.option_bridge import OptionBridge
+                from web_server import set_ares_runner
                 
                 bridge = OptionBridge(engine)
                 ares_runner = ServiceRunner(mode_override='PAPER', option_bridge=bridge)
+                set_ares_runner(ares_runner)
                 ares_thread = threading.Thread(target=ares_runner.run, daemon=True)
                 ares_thread.start()
                 app_logger.info("ARES ServiceRunner initialized in background thread in PAPER mode with OptionBridge.")

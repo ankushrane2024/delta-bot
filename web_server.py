@@ -13,6 +13,10 @@ def init_web_server(engine):
     global bot_engine
     bot_engine = engine
 
+def set_ares_runner(runner):
+    global ares_runner
+    ares_runner = runner
+
 @app.route('/')
 def index():
     return render_template('dashboard.html')
