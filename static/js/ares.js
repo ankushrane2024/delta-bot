@@ -98,7 +98,7 @@ async function pollData() {
             if (timeData.length > 60) { timeData.shift(); equityData.shift(); btcData.shift(); }
             
             timeData.push(nowStr);
-            equityData.push(statusRes.portfolio_value || null);
+            equityData.push(statusRes.combined_mtm !== undefined ? statusRes.combined_mtm : (statusRes.pnl || 0));
             btcData.push(statusRes.btc_price || null);
             
             chartEquity.setOption({ xAxis: { data: timeData }, series: [{ data: equityData }] });
