@@ -30,19 +30,19 @@ def get_status():
     # Read last 50 lines of the trading_bot.log and ares.log
     logs = []
     try:
-        with open('trading_bot.log', 'r') as f:
+        with open('trading_bot.log', 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
             logs.extend([line.strip() for line in lines[-50:]])
-    except Exception:
-        pass
+    except Exception as e:
+        logs.append(f"Error reading trading_bot.log: {e}")
 
     try:
-        with open('ares.log', 'r') as f:
+        with open('ares.log', 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
             if lines:
                 logs.append("--- ARES SYSTEM LOGS ---")
                 logs.extend([line.strip() for line in lines[-30:]])
-    except Exception:
+    except Exception as e:
         pass
 
     if not logs:
@@ -1213,19 +1213,19 @@ def ares_logs():
     # Read the last 50 lines from the system log (trading_bot.log) and ares.log
     logs = []
     try:
-        with open('trading_bot.log', 'r') as f:
+        with open('trading_bot.log', 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
             logs.extend([line.strip() for line in lines[-50:]])
-    except Exception:
-        pass
+    except Exception as e:
+        logs.append(f"Error reading trading_bot.log: {e}")
 
     try:
-        with open('ares.log', 'r') as f:
+        with open('ares.log', 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
             if lines:
                 logs.append("--- ARES SYSTEM LOGS ---")
                 logs.extend([line.strip() for line in lines[-30:]])
-    except Exception:
+    except Exception as e:
         pass
 
     if not logs:

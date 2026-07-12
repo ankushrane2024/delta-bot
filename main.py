@@ -13,7 +13,7 @@ def run_bot_engine(engine):
     except Exception as e:
         app_logger.critical(f"Critical error in engine thread: {e}")
 
-def keep_alive_pinger():
+def keep_alive_pinger(engine):
     """
     Background Keep-Alive Pinger
     This prevents the Render.com free tier from putting the web service to sleep.
@@ -30,7 +30,8 @@ def keep_alive_pinger():
     while True:
         try:
             requests.get(f"{url}/ping", timeout=15)
-            app_logger.info("[KEEPALIVE] Keep-alive ping successful.")
+            mode = getattr(engine, 'mode', 'OFF')
+            app_logger.info(f"[KEEPALIVE] alive, engine={'ON' if mode != 'OFF' else 'OFF'} (Mode: {mode})")
         except Exception as e:
             app_logger.warning(f"[KEEPALIVE] Keep-alive ping failed: {e}")
         time.sleep(240)  # Ping every 4 minutes
@@ -55,7 +56,7 @@ def main():
             app_logger.error(f"Failed to start telegram listener: {tg_err}")
         
         # 4. Start keep-alive pinger in a background thread
-        pinger_thread = threading.Thread(target=keep_alive_pinger, daemon=True)
+        pinger_thread = threading.Thread(target=keep_alive_pinger, args=(engine,), daemon=True)
         pinger_thread.start()
         
         # 5. Initialize ARES ServiceRunner
