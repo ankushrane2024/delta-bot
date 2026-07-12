@@ -76,6 +76,20 @@ class DecisionEngine:
         ema = self._ema_stress
         buffer = UNHEDGE_THRESHOLD_BUFFER
         
+        # HARD OVERRIDE: If combined PnL is in profit, force MONITOR mode, no hedging allowed.
+        call_pnl = float(context.metadata.get('call_pnl_usd', 0))
+        put_pnl = float(context.metadata.get('put_pnl_usd', 0))
+        if call_pnl + put_pnl > 0.0:
+            return HedgeDecision(
+                action=HedgeAction.MONITOR,
+                target_hedge_ratio=current_hedge_ratio if current_hedge_ratio > 0 else 0.0,
+                confidence=100.0,
+                primary_reason="Profit Override (Standby)",
+                dominant_factor="Combined PnL > 0",
+                ema_stress=ema,
+                debug_information={"msg": "Forced standby due to overall trade profitability"}
+            )
+        
         action = HedgeAction.NO_ACTION
         target_ratio = current_hedge_ratio
         
