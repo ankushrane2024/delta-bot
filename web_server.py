@@ -27,13 +27,25 @@ def get_status():
     if not bot_engine:
         return jsonify({'error': 'Engine not initialized'}), 500
         
-    # Read last 20 lines of the trading_bot.log
+    # Read last 50 lines of the trading_bot.log and ares.log
     logs = []
     try:
         with open('trading_bot.log', 'r') as f:
             lines = f.readlines()
-            logs = [line.strip() for line in lines[-20:]]
+            logs.extend([line.strip() for line in lines[-50:]])
     except Exception:
+        pass
+
+    try:
+        with open('ares.log', 'r') as f:
+            lines = f.readlines()
+            if lines:
+                logs.append("--- ARES SYSTEM LOGS ---")
+                logs.extend([line.strip() for line in lines[-30:]])
+    except Exception:
+        pass
+
+    if not logs:
         logs = ["Log file not found."]
 
     # Format active positions with rich real-time data
@@ -1198,18 +1210,25 @@ def ares_provider():
 
 @app.route('/ares/logs')
 def ares_logs():
-    # Read the last 50 lines from the ARES log or system log
+    # Read the last 50 lines from the system log (trading_bot.log) and ares.log
     logs = []
+    try:
+        with open('trading_bot.log', 'r') as f:
+            lines = f.readlines()
+            logs.extend([line.strip() for line in lines[-50:]])
+    except Exception:
+        pass
+
     try:
         with open('ares.log', 'r') as f:
             lines = f.readlines()
-            logs = [line.strip() for line in lines[-50:]]
+            if lines:
+                logs.append("--- ARES SYSTEM LOGS ---")
+                logs.extend([line.strip() for line in lines[-30:]])
     except Exception:
-        try:
-            with open('trading_bot.log', 'r') as f:
-                lines = f.readlines()
-                logs = [line.strip() for line in lines[-50:]]
-        except Exception:
-            logs = ['No logs found.']
+        pass
+
+    if not logs:
+        logs = ['No logs found.']
     return jsonify(logs)
 

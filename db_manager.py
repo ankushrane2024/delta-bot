@@ -221,22 +221,26 @@ def load_all_data() -> dict:
             return {}
 
 def save_all_data(trade_data: dict) -> bool:
-    """Saves unified state to Gist."""
+    """Saves unified state to Gist, merging with existing data so omitted fields aren't wiped."""
     with _sync_lock:
         if not _connected: _connect()
         
-        # Unify into bot_state.json structure
+        # Load existing to merge so we don't wipe active_positions when saving trades!
+        existing = _fetch_gist_file("bot_state.json") or {}
+        
+        # Unify into bot_state.json structure (Merge)
         unified = {
-            "trade_history": trade_data.get("trades", []),
-            "daily_reports": trade_data.get("daily_reports", []),
-            "state": trade_data.get("state", {})
+            "max_equity": trade_data.get("max_equity", existing.get("max_equity", 0.0)),
+            "trade_history": trade_data.get("trades", existing.get("trade_history", [])),
+            "daily_reports": trade_data.get("daily_reports", existing.get("daily_reports", [])),
+            "state": trade_data.get("state", existing.get("state", {}))
         }
         content_str = json.dumps(unified, indent=4)
         
         # Save local fallback
         try:
             with open(BOT_STATE_FILE, 'w') as f: f.write(content_str)
-            with open("trade_history.json", 'w') as f: json.dump({"trades": unified["trade_history"]}, f, indent=4)
+            with open("trade_history.json", 'w') as f: json.dump({"trades": unified["trade_history"], "max_equity": unified["max_equity"]}, f, indent=4)
             with open("daily_reports.json", 'w') as f: json.dump({"reports": unified["daily_reports"]}, f, indent=4)
         except Exception as e:
             app_logger.error(f"DB: Local save failed: {e}")
