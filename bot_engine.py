@@ -237,7 +237,7 @@ class DeltaTradingEngine:
                     return
         # Find Strikes with DVOL Integration (MODIFIED)
         expiry = get_next_expiry_date()
-        call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, dvol_provider=self.dvol_provider)
+        call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, dvol_provider=self.dvol_provider, force=force)
         
         # User requested: "If no suitable strikes found → Skip the trade (do not force entry)"
         # Removed all fallback mechanisms that bypass premium filters.
@@ -251,10 +251,14 @@ class DeltaTradingEngine:
         # Premium Validation Check
         call_premium = call_opt.get('mark_price', 0.0)
         put_premium = put_opt.get('mark_price', 0.0)
-        from config import MIN_ENTRY_PREMIUM
         
-        if call_premium < MIN_ENTRY_PREMIUM or put_premium < MIN_ENTRY_PREMIUM:
-            reason_text = f"ENTRY REJECTED\nReason:\nPremium below minimum threshold\nCall Premium:\n${call_premium:.2f}\nPut Premium:\n${put_premium:.2f}\nMinimum Required:\n${MIN_ENTRY_PREMIUM}\nDecision:\nNO TRADE"
+        import datetime
+        ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
+        is_weekend = ist_now.weekday() >= 5
+        req_min = 30 if force else (80 if is_weekend else 100)
+        
+        if not force and (call_premium < req_min or put_premium < req_min):
+            reason_text = f"ENTRY REJECTED\nReason:\nPremium below minimum threshold\nCall Premium:\n${call_premium:.2f}\nPut Premium:\n${put_premium:.2f}\nMinimum Required:\n${req_min}\nDecision:\nNO TRADE"
             
             app_logger.warning(reason_text.replace('\n', ' | '))
             self.today_trade_status = "Waiting for Valid Premium"

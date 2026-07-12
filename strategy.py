@@ -5,7 +5,7 @@ class ShortStrangleStrategy:
     def __init__(self, api_client):
         self.api_client = api_client
 
-    def find_strikes(self, target_delta=0.15, expiry_date=None, check_premium=True, dvol_provider=None):
+    def find_strikes(self, target_delta=0.15, expiry_date=None, check_premium=True, dvol_provider=None, force=False):
         """
         Finds the best Call and Put strikes based on the advanced strike selection rules.
         
@@ -97,16 +97,23 @@ class ShortStrangleStrategy:
         atm_idx = all_strikes.index(ATM)
 
         # Determine premium range from DVOL provider (Section 1: IV-Based Premium Target)
-        if dvol_provider and check_premium:
+        import datetime
+        ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
+        is_weekend = ist_now.weekday() >= 5  # 5=Sat, 6=Sun
+        
+        base_min = 30 if force else (80 if is_weekend else 100)
+        
+        if dvol_provider and check_premium and not force:
             premium_min, premium_max = dvol_provider.get_premium_range()
+            premium_min = max(premium_min, base_min)
             current_dvol = dvol_provider.get_current_dvol()
             app_logger.info(
-                f"Strategy: Using DVOL-based premium range. DVOL: {current_dvol:.2f}%, "
-                f"Target: ${premium_min}–${premium_max}"
+                f"Strategy: Using DVOL-based premium range (Floored to {base_min}). DVOL: {current_dvol:.2f}%, "
+                f"Target: ${premium_min}-${premium_max}"
             )
         else:
-            premium_min, premium_max = 100, 250  # Legacy fallback
-            app_logger.info(f"Strategy: Using legacy premium range ${premium_min}–${premium_max}")
+            premium_min, premium_max = base_min, 250  # Legacy fallback / Force mode
+            app_logger.info(f"Strategy: Using premium range ${premium_min}-${premium_max} (Force={force})")
 
         # Separate and filter options (Section 1: Minimum MIN_OTM_STRIKES OTM from ATM)
         min_otm = MIN_OTM_STRIKES  # 5 strikes OTM minimum
@@ -148,13 +155,12 @@ class ShortStrangleStrategy:
         valid_pairs = []
         if check_premium:
             for c in eligible_calls:
-                # STRICT REQUIREMENT: Both legs must have premium >= $50 USD
-                if c['premium_inr'] < 50:
+                if not force and c['premium_inr'] < 50:
                     continue
                 if not (premium_min <= c['premium_inr'] <= premium_max):
                     continue
                 for p in eligible_puts:
-                    if p['premium_inr'] < 50:
+                    if not force and p['premium_inr'] < 50:
                         continue
                     if not (premium_min <= p['premium_inr'] <= premium_max):
                         continue
