@@ -998,6 +998,32 @@ def ares_status():
             protection_pct = round((abs(hedge_mtm) / abs(option_mtm)) * 100, 2)
             if protection_pct > 100.0: protection_pct = 100.0
 
+    # --- INTRA-DAY TREND OVERRIDE ---
+    # The UI wants the trend since trade entry, not the 24h moving average.
+    intraday_trend = "WAITING"
+    
+    if bot_engine and bot_engine.current_trade_info.get("calls"):
+        btc_entry = bot_engine.current_trade_info.get("btc_entry_price", 0.0)
+        current_btc = analytics.get('btc_price', 0.0)
+        if current_btc == 0.0 and getattr(ares_runner.orchestrator, 'market_data_provider', None):
+            current_btc = ares_runner.orchestrator.market_data_provider.get_latest_data().get('spot_price', 0.0)
+            
+        if btc_entry > 0 and current_btc > 0:
+            pct_change = ((current_btc - btc_entry) / btc_entry) * 100.0
+            if pct_change > 0.2:
+                intraday_trend = "BULLISH"
+                trend_strength = abs(pct_change) # Pass pct change as strength
+            elif pct_change < -0.2:
+                intraday_trend = "BEARISH"
+                trend_strength = abs(pct_change)
+            else:
+                intraday_trend = "SIDEWAYS"
+                trend_strength = abs(pct_change)
+                
+    # Override generic long-term trend with the highly-accurate Intraday Trade Trend
+    if intraday_trend != "WAITING":
+        market_regime = intraday_trend
+        
     res = {
         'bot_mode': ares_runner.config.mode,
         'exchange_status': 'CONNECTED' if getattr(ares_runner.orchestrator.execution_provider, 'is_connected', False) else 'DISCONNECTED',
@@ -1024,6 +1050,7 @@ def ares_status():
         'protection_pct': protection_pct,
         'trend_strength': trend_strength,
         'market_regime': market_regime,
+        'intraday_trend': intraday_trend,
         'recovery_probability': recovery_prob,
         'confidence': confidence,
         'risk_score': risk_score,

@@ -162,21 +162,38 @@ function updateCenterpiece(d) {
 function updateAI(d) {
     const hedge = (d.active_hedge || 'NONE').toUpperCase();
     const risk = (d.current_risk || 'LOW').toUpperCase();
-    const btc = d.btc_price || 0;
+    const trendStrength = d.trend_strength || 0;
+    const regime = (d.intraday_trend || d.market_regime || 'WAITING').toUpperCase();
     
-    document.getElementById('ai-market').innerText = btc > 50000 ? 'BULLISH' : 'BEARISH';
-    document.getElementById('ai-trend').innerText = btc > 50000 ? 'STRONG UP' : 'STRONG DOWN';
+    document.getElementById('ai-market').innerText = regime;
+    
+    // Set trend direction display
+    let trendLabel = "WAITING";
+    if (regime === "BULLISH") trendLabel = `UP (${trendStrength.toFixed(2)}%)`;
+    if (regime === "BEARISH") trendLabel = `DOWN (${trendStrength.toFixed(2)}%)`;
+    if (regime === "SIDEWAYS") trendLabel = `CHOP (${trendStrength.toFixed(2)}%)`;
+    
+    document.getElementById('ai-trend').innerText = trendLabel;
+    
     document.getElementById('ai-vol').innerText = risk === 'HIGH' ? 'HIGH' : 'NORMAL';
-    document.getElementById('ai-decision').innerText = hedge === 'ACTIVE' ? 'BUY HEDGE' : 'HOLD';
-    document.getElementById('ai-decision').className = hedge === 'ACTIVE' ? 'dec-active' : '';
-    document.getElementById('ai-conf').innerText = hedge === 'ACTIVE' ? '92%' : 'N/A';
     
-    // Synthesize Reasoning deterministically
-    let reason = '';
-    if (hedge === 'ACTIVE') {
-        reason = `[ARES KERNEL] Delta exposure exceeded strict limit.\n[RISK ENGINE] ${risk} risk detected. Hedge approved.\n[EXECUTION] Generating market order to neutralize delta.\n[CONFIDENCE] High. Executing.`;
-    } else {
-        reason = `[ARES KERNEL] Portfolio delta within nominal limits.\n[RISK ENGINE] ${risk} risk detected. Limits OK.\n[DECISION] Maintain current exposure.\nWaiting for market catalyst...`;
+    const decisionStr = d.decision_action || (hedge === 'ACTIVE' ? 'BUY HEDGE' : 'HOLD');
+    document.getElementById('ai-decision').innerText = decisionStr;
+    document.getElementById('ai-decision').className = (decisionStr !== 'HOLD' && decisionStr !== 'WAITING') ? 'dec-active' : '';
+    
+    const conf = d.confidence ? (d.confidence * 100).toFixed(0) + '%' : (hedge === 'ACTIVE' ? '92%' : 'N/A');
+    document.getElementById('ai-conf').innerText = conf;
+    
+    // Use real reasoning if available
+    let reason = d.decision_reason || '';
+    if (!reason || reason === 'Initializing' || reason === 'No Reason') {
+        if (hedge === 'ACTIVE') {
+            reason = `[ARES KERNEL] Intraday Trend is ${regime}.\n[RISK ENGINE] ${risk} risk detected. Hedge approved.\n[EXECUTION] Generating market order to neutralize delta.\n[CONFIDENCE] High. Executing.`;
+        } else if (regime === 'WAITING') {
+            reason = `[ARES KERNEL] Waiting for trade entry...\n[RISK ENGINE] Analyzing market regime...\n[DECISION] Standby.`;
+        } else {
+            reason = `[ARES KERNEL] Intraday Trend is ${regime}.\n[RISK ENGINE] ${risk} risk detected. Limits OK.\n[DECISION] Maintain current exposure.\nWaiting for market catalyst...`;
+        }
     }
     
     const reasonEl = document.getElementById('ai-reason');

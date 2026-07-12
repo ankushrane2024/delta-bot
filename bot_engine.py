@@ -287,6 +287,7 @@ class DeltaTradingEngine:
 
         # Save trade details for tracking
         self.current_trade_info["entry_time"] = get_ist_now().isoformat()
+        self.current_trade_info["btc_entry_price"] = call_opt.get('underlying_price', 0.0)
         self._trade_start_ts = time.time()
         self.current_trade_info["calls"].append(call_opt['symbol'])
         self.current_trade_info["puts"].append(put_opt['symbol'])
