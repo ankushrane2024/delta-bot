@@ -11,8 +11,11 @@ class ExecutionHandler:
         # In PAPER mode, try to recover active positions from cloud DB after a server reboot
         if self.mode != 'LIVE':
             self.active_positions = db_manager.load_active_positions()
+            # Extract persisted DPL state if present (injected by save_state)
+            self._persisted_dpl_state = self.active_positions.pop('__dpl_state__', None)
         else:
             self.active_positions = {} # symbol -> data
+            self._persisted_dpl_state = None
             
         self.hedge_position = 0 # Net BTC futures size
         self.hedge_size_btc = 0.0  # Actual BTC size of current hedge
@@ -44,10 +47,14 @@ class ExecutionHandler:
             "hedge_owner": self.hedge_owner
         }
 
-    def save_state(self):
-        """Persists the current paper trading active positions to the cloud database."""
+    def save_state(self, dpl_state=None):
+        """Persists the current paper trading active positions to the cloud database.
+        Optionally includes the DPL trailing state for crash recovery."""
         if self.mode != 'LIVE':
-            db_manager.save_active_positions(self.active_positions)
+            data_to_save = dict(self.active_positions)
+            if dpl_state:
+                data_to_save['__dpl_state__'] = dpl_state
+            db_manager.save_active_positions(data_to_save)
 
     def execute_strangle(self, call_opt, put_opt, size):
         """Places the short strangle orders."""

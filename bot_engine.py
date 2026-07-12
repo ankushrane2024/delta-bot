@@ -836,18 +836,26 @@ class DeltaTradingEngine:
                                 self.current_trade_info["btc_entry_price"] = float(ws_data['spot_price'])
                         
                         # HOT-RECOVERY: Rebuild DPL Trailing State
-                        # The trailing SL state is lost on restart. We must rebuild it
-                        # by computing the CURRENT pnl_pct and force-running the ratchet.
-                        if recovered_premium > 0 and current_total_value > 0:
+                        # Step 1: Try to restore EXACT persisted DPL state from cloud DB
+                        persisted_dpl = getattr(self.execution, '_persisted_dpl_state', None)
+                        if persisted_dpl:
+                            self.risk_manager.restore_trailing_state(persisted_dpl)
+                            trail_state = self.risk_manager.get_trailing_state()
+                            app_logger.warning(
+                                f"Engine: DPL state RESTORED from cloud DB! "
+                                f"Peak={trail_state['highest_profit_pct']}% | "
+                                f"SL={trail_state['current_trailing_sl']}% | "
+                                f"Confirmed={trail_state['trailing_confirmed']}"
+                            )
+                        elif recovered_premium > 0 and current_total_value > 0:
+                            # Step 2: Fallback — rebuild from current live PnL
                             recovery_profit = recovered_premium - current_total_value
                             recovery_pnl_pct = recovery_profit / recovered_premium
                             if recovery_pnl_pct > 0:
-                                # Force-feed the ratchet engine with the current profit level
-                                # This instantly rebuilds: highest_profit_pct, trailing_confirmed, current_trailing_sl
                                 self.risk_manager._update_ratchet(recovery_pnl_pct)
                                 trail_state = self.risk_manager.get_trailing_state()
                                 app_logger.warning(
-                                    f"Engine: Hot-recovered DPL state! PnL={recovery_pnl_pct*100:.1f}% | "
+                                    f"Engine: DPL state REBUILT from live PnL! PnL={recovery_pnl_pct*100:.1f}% | "
                                     f"Peak={trail_state['highest_profit_pct']}% | "
                                     f"SL={trail_state['current_trailing_sl']}% | "
                                     f"Confirmed={trail_state['trailing_confirmed']}"
@@ -942,6 +950,10 @@ class DeltaTradingEngine:
                                 "hedge": round(hedge_pnl_now, 4),
                                 "total": round(options_profit + hedge_pnl_now, 4)
                             })
+                            
+                            # Persist DPL state to cloud every 60s so it survives server restarts
+                            dpl_state = self.risk_manager.get_trailing_state()
+                            self.execution.save_state(dpl_state=dpl_state)
 
                         # Prevent premature exit (Race Condition / Price Stability Guard)
                         if time_in_trade_seconds < getattr(config, 'MIN_HOLD_SECONDS', 30):
