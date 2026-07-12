@@ -493,19 +493,22 @@ class PositionRiskEngine(AbstractBaseEngine):
 
     def _compute_pnl_factor(self, ctx: PositionContext, is_call: bool = True) -> float:
         try:
-            # We want the unrealized P&L of the specific leg being evaluated.
-            leg_pnl = getattr(ctx, 'call_leg_pnl' if is_call else 'put_leg_pnl', 0.0)
+            # Get the PnL of the specific leg being evaluated
+            call_pnl = getattr(ctx, 'call_leg_pnl', 0.0)
+            put_pnl = getattr(ctx, 'put_leg_pnl', 0.0)
             
-            if leg_pnl is None or math.isnan(leg_pnl) or math.isinf(leg_pnl):
-                return 0.0
-                
-            leg_pnl = float(leg_pnl)
+            # Prevent NoneTypes
+            if call_pnl is None or math.isnan(call_pnl) or math.isinf(call_pnl): call_pnl = 0.0
+            if put_pnl is None or math.isnan(put_pnl) or math.isinf(put_pnl): put_pnl = 0.0
             
-            # Positive P&L (profit) generates 0 stress
+            leg_pnl = float(call_pnl) if is_call else float(put_pnl)
+            combined_pnl = float(call_pnl) + float(put_pnl)
+            
+            # Positive P&L (profit) on the bleeding leg generates 0 stress
             if leg_pnl >= 0.0:
                 return 0.0
                 
-            # Convert to a positive absolute loss
+            # Convert to a positive absolute loss for math
             loss = abs(leg_pnl)
             
             from config import PNL_STRESS_REFERENCE_LOSS
@@ -515,18 +518,27 @@ class PositionRiskEngine(AbstractBaseEngine):
                 
             # Rayleigh CDF (Squared Exponential Asymptote)
             # Score = 100 * (1 - exp(-k * (Loss/Ref)^2))
-            # k = ln(2) approx 0.693147 so Score is exactly 50 at Ref.
             k = 0.69314718056
             ratio = loss / ref_loss
             
             exponent = -k * (ratio ** 2)
             
             if exponent < -50:
-                return 100.0
+                base_score = 100.0 # Prevent underflow
+            else:
+                base_score = 100.0 * (1.0 - math.exp(exponent))
                 
-            score = 100.0 * (1.0 - math.exp(exponent))
-            return max(0.0, min(100.0, score))
-            
+            # NEW LOGIC: Combined PnL Awareness
+            if combined_pnl > 0:
+                # Trade is net profitable overall. Bleeding leg is NOT ignored,
+                # but ARES stress is halved because the winning leg provides a cushion.
+                final_score = base_score * 0.5
+            else:
+                # Trade is net losing. Treat bleeding leg with full severity.
+                final_score = base_score
+                
+            return float(min(max(final_score, 0.0), 100.0))
+
         except Exception as e:
             msg = f"Exception in _compute_pnl_factor: {str(e)}"
             self._warnings.append(msg)
