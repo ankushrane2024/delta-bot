@@ -23,6 +23,9 @@ class PositionRiskResult:
     recovery_probability: float
     hedge_efficiency_estimate: float
     
+    call_breakdown: Any = None
+    put_breakdown: Any = None
+    
     confidence: float
     timestamp: str
     started_at: float

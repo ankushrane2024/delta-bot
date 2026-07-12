@@ -1,7 +1,7 @@
 // ARES Mission Control X - Institutional JS
 
 const POLL_INTERVAL = 1000;
-let chartEquity, chartSpark;
+let chartSpark;
 let timeData = [];
 let equityData = [];
 let btcData = [];
@@ -34,26 +34,6 @@ function initCharts() {
     const text = '#94A3B8';
     const gridColor = '#1F2937';
 
-    chartEquity = echarts.init(document.getElementById('chart-equity'));
-    chartEquity.setOption({
-        backgroundColor: 'transparent',
-        tooltip: { trigger: 'axis', backgroundColor: '#111827', borderColor: '#1F2937', textStyle: { color: '#F8FAFC' } },
-        grid: { left: '2%', right: '2%', bottom: '5%', top: '5%', containLabel: true },
-        xAxis: { type: 'category', boundaryGap: false, data: [], axisLine: { lineStyle: { color: text } }, splitLine: { show: false } },
-        yAxis: { type: 'value', scale: true, axisLine: { lineStyle: { color: text } }, splitLine: { lineStyle: { color: gridColor } } },
-        series: [{
-            name: 'Equity', type: 'line', smooth: true, symbol: 'none',
-            lineStyle: { color: '#00E5FF', width: 3 },
-            areaStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: 'rgba(0,229,255,0.4)' },
-                    { offset: 1, color: 'rgba(0,229,255,0.0)' }
-                ])
-            },
-            data: []
-        }]
-    });
-
     chartSpark = echarts.init(document.getElementById('chart-btc-spark'));
     chartSpark.setOption({
         backgroundColor: 'transparent',
@@ -68,7 +48,7 @@ function initCharts() {
     });
 
     window.addEventListener('resize', () => {
-        chartEquity.resize(); chartSpark.resize();
+        chartSpark.resize();
     });
 }
 
@@ -96,13 +76,11 @@ async function pollData() {
             
             // Append to charts
             const nowStr = new Date().toLocaleTimeString('en-US', {hour12: false});
-            if (timeData.length > 60) { timeData.shift(); equityData.shift(); btcData.shift(); }
+            if (timeData.length > 60) { timeData.shift(); btcData.shift(); }
             
             timeData.push(nowStr);
-            equityData.push(statusRes.combined_mtm !== undefined ? statusRes.combined_mtm : (statusRes.pnl || 0));
             btcData.push(statusRes.btc_price || null);
             
-            chartEquity.setOption({ xAxis: { data: timeData }, series: [{ data: equityData }] });
             chartSpark.setOption({ xAxis: { data: timeData }, series: [{ data: btcData }] });
             
             // Update spark trend color

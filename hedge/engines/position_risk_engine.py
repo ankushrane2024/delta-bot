@@ -78,6 +78,8 @@ class PositionRiskEngine(AbstractBaseEngine):
             hedge_urgency=hedge_urgency,
             call_stress=call_stress,
             put_stress=put_stress,
+            call_breakdown=call_stress_breakdown,
+            put_breakdown=put_stress_breakdown,
             portfolio_stress=0.0,
             stress_velocity=0.0,
             recovery_probability=0.0,
