@@ -967,7 +967,7 @@ def ares_status():
             try:
                 ws_data = bot_engine.api_client.get_realtime_ticker(sym)
                 if ws_data:
-                    current_p = float(ws_data.get('spot_price') or ws_data.get('greeks', {}).get('spot') or entry_p)
+                    current_p = float(ws_data.get('mark_price') or entry_p)
             except:
                 pass
                 
