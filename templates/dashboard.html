@@ -2461,6 +2461,11 @@
                             statusBadge.style.background = "rgba(245, 158, 11, 0.1)";
                             statusBadge.style.border = "1px solid rgba(245, 158, 11, 0.2)";
                         }
+                    } else if (status === "Waiting for Valid Premium") {
+                        statusBadge.textContent = "🟡 " + status;
+                        statusBadge.style.color = "var(--warning)";
+                        statusBadge.style.background = "rgba(245, 158, 11, 0.1)";
+                        statusBadge.style.border = "1px solid rgba(245, 158, 11, 0.2)";
                     } else {
                         statusBadge.textContent = "⏳ " + status;
                         statusBadge.style.color = "var(--text-secondary)";
@@ -2478,10 +2483,19 @@
                         const skipHistEl   = document.getElementById('skip-history-list');
                         const skipHistSec  = document.getElementById('skip-history-section');
 
-                        if (status === 'Trade Skipped' && reason) {
+                        if ((status === 'Trade Skipped' || status === 'Waiting for Valid Premium') && reason) {
                             skipAlertCard.style.display = 'block';
                             skipAlertCard.style.animation = 'slide-down-in 0.4s ease';
                             skipReasonEl.textContent = reason;
+
+                            if (status === 'Waiting for Valid Premium') {
+                                skipReasonEl.innerHTML = reason.replace(/\|/g, '<br/>');
+                                document.querySelector('#trade-skip-alert-card > div > div > div > div:nth-child(1)').textContent = 'Waiting for Valid Premium';
+                                document.querySelector('#trade-skip-alert-card > div > div > div > div:nth-child(2)').textContent = 'Premium below $100 minimum requirement';
+                            } else {
+                                document.querySelector('#trade-skip-alert-card > div > div > div > div:nth-child(1)').textContent = 'Trade Was Skipped';
+                                document.querySelector('#trade-skip-alert-card > div > div > div > div:nth-child(2)').textContent = 'Bot did not enter a position — exact reason below';
+                            }
 
                             const hist = data.schedule_info.skip_history || [];
                             skipTsEl.textContent = hist.length > 0 ? hist[0].time : '';

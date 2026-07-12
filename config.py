@@ -70,7 +70,8 @@ DVOL_PREMIUM_RANGES = {
 }
 
 # --- Stop Loss & Dynamic Profit Lock (Section 6) ---
-SL_PERCENT = 1.30              # 130% of collected premium → triggers full exit (unchanged)
+SL_PERCENT = 1.00              # 100% of collected premium → triggers full exit
+MIN_ENTRY_PREMIUM = 100.0      # Minimum required premium for entry
 MIN_HOLD_SECONDS = 30          # Minimum seconds to hold before any exit is allowed
 
 # --- ARES Dynamic Profit Lock ---

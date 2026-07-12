@@ -248,6 +248,23 @@ class DeltaTradingEngine:
             self._record_skip("No suitable strikes found matching DVOL premium targets")
             return
             
+        # Premium Validation Check
+        call_premium = call_opt.get('mark_price', 0.0)
+        put_premium = put_opt.get('mark_price', 0.0)
+        from config import MIN_ENTRY_PREMIUM
+        
+        if call_premium < MIN_ENTRY_PREMIUM or put_premium < MIN_ENTRY_PREMIUM:
+            reason_text = f"ENTRY REJECTED\nReason:\nPremium below minimum threshold\nCall Premium:\n${call_premium:.2f}\nPut Premium:\n${put_premium:.2f}\nMinimum Required:\n${MIN_ENTRY_PREMIUM}\nDecision:\nNO TRADE"
+            
+            app_logger.warning(reason_text.replace('\n', ' | '))
+            self.today_trade_status = "Waiting for Valid Premium"
+            
+            # The dashboard looks for 'Waiting for Valid Premium'
+            # We will use this in the HTML directly.
+            self.today_skip_reason = reason_text
+            self._record_skip(reason_text, status="Waiting for Valid Premium")
+            return
+            
         # 4. Dynamic Position Sizing (NEW — Section 4)
         base_lots = self.get_saved_lot_size()
         adjusted_lots = self._apply_dynamic_sizing(base_lots)

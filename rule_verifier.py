@@ -16,6 +16,12 @@ def verify_all_rules():
             "check": config.MIN_OTM_STRIKES == 5 and config.PUT_SKEW_CAP == 1.30 and config.NET_DELTA_ENTRY_LIMIT == 0.10
         },
         {
+            "id": 21,
+            "name": "Premium Validation Threshold",
+            "expected": "Minimum $100 premium per leg. If below, SKIP trade entirely.",
+            "check": hasattr(config, 'MIN_ENTRY_PREMIUM') and config.MIN_ENTRY_PREMIUM == 100.0
+        },
+        {
             "id": 3,
             "name": "Lot Size (Manual + Dynamic)",
             "expected": "Manual from dashboard + DVOL/loss-based dynamic sizing",
@@ -24,8 +30,8 @@ def verify_all_rules():
         {
             "id": 4,
             "name": "Stop Loss & Target",
-            "expected": "Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)",
-            "check": config.SL_PERCENT == 1.30 and hasattr(config, 'PROFIT_LOCK_TIERS')
+            "expected": "Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)",
+            "check": config.SL_PERCENT == 1.00 and hasattr(config, 'PROFIT_LOCK_TIERS')
         },
         {
             "id": 5,
