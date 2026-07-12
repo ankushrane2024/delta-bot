@@ -122,9 +122,32 @@
                     </div>
                 </div>
 
-                <!-- MATH ENGINE (REMOVED PER USER REQUEST) -->
-
-                <!-- TERMINAL -->
+                <!-- ARES THINKING ENGINE -->
+                <div class="panel ai-brain" style="flex: 0.5;">
+                    <div class="panel-header"><i data-lucide="activity"></i> HEDGE DECISION METRICS (THINKING %)</div>
+                    <div class="ai-grid">
+                        <div class="ai-metric">
+                            <span>DIRECTIONAL</span><strong id="ai-dir-cluster">0%</strong>
+                        </div>
+                        <div class="ai-metric">
+                            <span>VOLATILITY</span><strong id="ai-vol-cluster">0%</strong>
+                        </div>
+                        <div class="ai-metric">
+                            <span>FINANCIAL</span><strong id="ai-fin-cluster">0%</strong>
+                        </div>
+                        <div class="ai-metric">
+                            <span>CONTEXT</span><strong id="ai-ctx-cluster">0%</strong>
+                        </div>
+                        <div class="ai-metric">
+                            <span>FINAL STRESS</span><strong id="ai-stress-cluster" style="color: #ff3366;">0%</strong>
+                        </div>
+                    </div>
+                    <div class="ai-reason-box" style="display: flex; justify-content: space-between; background: rgba(255,51,102,0.05); border-top: 1px solid rgba(255,51,102,0.1);">
+                        <div><span class="reason-label" style="color: #ff3366;">RECOVERY PROB: </span><strong id="ai-recovery" style="color: white; font-size: 16px;">0%</strong></div>
+                        <div><span class="reason-label" style="color: #ff3366;">EXPECTED LOSS: </span><strong id="ai-loss" style="color: white; font-size: 16px;">$0.00</strong></div>
+                        <div><span class="reason-label" style="color: #ff3366;">TARGET HEDGE: </span><strong id="ai-target-size" style="color: white; font-size: 16px;">0.00 BTC</strong></div>
+                    </div>
+                </div>
                 <div class="panel term-panel" style="flex: 0.9;">
                     <div class="panel-header"><i data-lucide="terminal"></i> SYSTEM TERMINAL</div>
                     <div class="term-window" id="sys-terminal" style="max-height: 500px; overflow-y: auto;">

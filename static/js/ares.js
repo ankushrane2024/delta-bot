@@ -163,6 +163,19 @@ function updateAI(d) {
     const conf = d.confidence ? (d.confidence * 100).toFixed(0) + '%' : (hedge === 'ACTIVE' ? '92%' : 'N/A');
     document.getElementById('ai-conf').innerText = conf;
     
+    // Update Thinking Metrics
+    if (d.clusters) {
+        document.getElementById('ai-dir-cluster').innerText = (d.clusters.directional * 100).toFixed(1) + '%';
+        document.getElementById('ai-vol-cluster').innerText = (d.clusters.volatility * 100).toFixed(1) + '%';
+        document.getElementById('ai-fin-cluster').innerText = (d.clusters.financial * 100).toFixed(1) + '%';
+        document.getElementById('ai-ctx-cluster').innerText = (d.clusters.context * 100).toFixed(1) + '%';
+        document.getElementById('ai-stress-cluster').innerText = (d.clusters.final_stress * 100).toFixed(1) + '%';
+    }
+    
+    document.getElementById('ai-recovery').innerText = d.recovery_probability ? (d.recovery_probability * 100).toFixed(1) + '%' : '0%';
+    document.getElementById('ai-loss').innerText = d.expected_future_loss ? fmtUSD(d.expected_future_loss) : '$0.00';
+    document.getElementById('ai-target-size').innerText = d.recommended_hedge_size ? d.recommended_hedge_size.toFixed(3) + ' BTC' : '0.000 BTC';
+    
     // Use real reasoning if available
     let reason = d.decision_reason || '';
     if (!reason || reason === 'Initializing' || reason === 'No Reason') {
