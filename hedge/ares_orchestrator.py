@@ -135,7 +135,8 @@ class AresOrchestrator:
                     "timestamp": market_data.get("timestamp", self.clock.now()),
                     "open_interest": market_data.get("open_interest", 0.0),
                     "volume_24h": market_data.get("volume", 0.0),
-                    "implied_volatility": market_data.get("iv", 0.0)
+                    "implied_volatility": market_data.get("iv", 0.0),
+                    "detailed_signal": market_data.get("detailed_signal", "WAITING")
                 }
             )
 

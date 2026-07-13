@@ -44,6 +44,22 @@ class TrendEngine(AbstractBaseEngine):
             analyzer_health_summary=health_summary
         )
         
+        # --- ARES MULTI-INDICATOR SIGNAL INJECTION ---
+        from hedge.models.enums import MarketRegime
+        detailed_signal = context.metadata.get("detailed_signal", "WAITING")
+        if "UPTREND" in detailed_signal or ("STRENGTHENING" in detailed_signal and "UP" in detailed_signal):
+            result.trend_direction = TrendDirection.LONG
+            result.trend_strength = 100.0 # Force max strength to trigger
+            result.debug_information["force_regime"] = MarketRegime.CONFIRMED_TREND
+        elif "DOWNTREND" in detailed_signal or ("STRENGTHENING" in detailed_signal and "DOWN" in detailed_signal):
+            result.trend_direction = TrendDirection.SHORT
+            result.trend_strength = 100.0
+            result.debug_information["force_regime"] = MarketRegime.CONFIRMED_TREND
+        elif "SIDEWAYS" in detailed_signal or "WEAKENING" in detailed_signal:
+            result.trend_direction = TrendDirection.NONE
+            result.trend_strength = 0.0
+            result.debug_information["force_regime"] = MarketRegime.SAFE_RANGE
+            
         logger.debug(f"TrendEngine evaluated in {result.execution_time_ms:.2f}ms. ID: {evaluation_id}")
         return result
         
