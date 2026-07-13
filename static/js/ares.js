@@ -111,8 +111,6 @@ function fmtNum(val) {
 }
 
 function updateCenterpiece(d) {
-    document.getElementById('val-port').innerText = fmtUSD(d.portfolio_value);
-    
     document.getElementById('val-port').innerText = fmtUSD(d.combined_mtm || d.pnl);
     
     const opt_mtm = Number(d.option_mtm || 0);
@@ -165,11 +163,15 @@ function updateAI(d) {
     
     // Update Thinking Metrics
     if (d.clusters) {
-        document.getElementById('ai-dir-cluster').innerText = (d.clusters.directional * 100).toFixed(1) + '%';
-        document.getElementById('ai-vol-cluster').innerText = (d.clusters.volatility * 100).toFixed(1) + '%';
-        document.getElementById('ai-fin-cluster').innerText = (d.clusters.financial * 100).toFixed(1) + '%';
-        document.getElementById('ai-ctx-cluster').innerText = (d.clusters.context * 100).toFixed(1) + '%';
-        document.getElementById('ai-stress-cluster').innerText = (d.clusters.final_stress * 100).toFixed(1) + '%';
+        const formatPct = (val) => {
+            if (val === undefined || val === null) return '0.0%';
+            return (val > 1.0 ? val : val * 100).toFixed(1) + '%';
+        };
+        document.getElementById('ai-dir-cluster').innerText = formatPct(d.clusters.directional);
+        document.getElementById('ai-vol-cluster').innerText = formatPct(d.clusters.volatility);
+        document.getElementById('ai-fin-cluster').innerText = formatPct(d.clusters.financial);
+        document.getElementById('ai-ctx-cluster').innerText = formatPct(d.clusters.context);
+        document.getElementById('ai-stress-cluster').innerText = formatPct(d.clusters.final_stress);
     }
     
     document.getElementById('ai-recovery').innerText = d.recovery_probability ? (d.recovery_probability * 100).toFixed(1) + '%' : '0%';

@@ -968,11 +968,12 @@ def ares_status():
                     
                 if breakdown and hasattr(breakdown, 'fusion_breakdown') and breakdown.fusion_breakdown:
                     fb = breakdown.fusion_breakdown
-                    clusters['directional'] = getattr(fb.directional_cluster, 'score', 0.0)
-                    clusters['volatility'] = getattr(fb.volatility_cluster, 'score', 0.0)
-                    clusters['financial'] = getattr(fb.financial_cluster, 'score', 0.0)
-                    clusters['context'] = getattr(fb.context_cluster, 'score', 0.0)
-                    clusters['final_stress'] = getattr(fb, 'fused_score', 0.0)
+                    # Normalize to 0.0-1.0 scale (scores are 0-100 internally, JS multiplies by 100)
+                    clusters['directional'] = min(1.0, max(0.0, getattr(fb.directional_cluster, 'score', 0.0) / 100.0))
+                    clusters['volatility'] = min(1.0, max(0.0, getattr(fb.volatility_cluster, 'score', 0.0) / 100.0))
+                    clusters['financial'] = min(1.0, max(0.0, getattr(fb.financial_cluster, 'score', 0.0) / 100.0))
+                    clusters['context'] = min(1.0, max(0.0, getattr(fb.context_cluster, 'score', 0.0) / 100.0))
+                    clusters['final_stress'] = min(1.0, max(0.0, getattr(fb, 'fused_score', 0.0) / 100.0))
             except Exception as e:
                 pass
             
@@ -1024,11 +1025,14 @@ def ares_status():
         if abs(actual_hedge_size) > 0:
             hedge_entry = bot_engine.execution.hedge_entry_price
             current_btc = ares_runner.orchestrator.market_data_provider.get_latest_data().get('spot_price', 0)
-            if current_btc > 0 and hedge_entry > 0:
+            # GUARD: Only calculate hedge MTM if entry price is valid and reasonable
+            if current_btc > 0 and hedge_entry > 0 and abs(current_btc - hedge_entry) / hedge_entry < 0.5:
                 if actual_hedge_size > 0: # Long hedge
                     hedge_mtm = (current_btc - hedge_entry) * actual_hedge_size
                 else: # Short hedge
                     hedge_mtm = (hedge_entry - current_btc) * abs(actual_hedge_size)
+            elif hedge_entry <= 0:
+                hedge_mtm = 0.0  # Entry price not set yet, skip
                     
             if abs(options_delta) > 0.0001:
                 delta_coverage_pct = round((abs(actual_hedge_size) / abs(options_delta)) * 100, 2)
