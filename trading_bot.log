@@ -6260,3 +6260,579 @@ Rule 11: Exit Time - [PASS]
 2026-07-09 22:42:36 IST - BotCore - INFO - Hedge: State fully reset.
 2026-07-09 22:42:36 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
 2026-07-09 22:42:37 IST - BotCore - INFO - Engine: Daily state reset.
+2026-07-09 23:24:05 IST - BotCore - INFO - API: Time synced. Offset: -1s
+2026-07-09 23:24:05 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-09 23:24:05 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: Smart Hedging - [PASS]
+   Expected: Premium-based: 12% Bleed (50%), 25% Bleed (100%), Delta-Weighted
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-09 23:24:22 IST - BotCore - INFO - Engine: Exit cycle triggered (Fixed Time Square-off)
+2026-07-09 23:24:22 IST - BotCore - INFO - Execution: Closing all positions due to End of Day Square-off
+2026-07-09 23:24:22 IST - BotCore - INFO - Execution: Hedge lock released by NONE
+2026-07-09 23:24:22 IST - BotCore - INFO - Execution [PAPER]: Simulating close of CALL_60000
+2026-07-09 23:24:22 IST - BotCore - INFO - Execution [PAPER]: Simulating close of PUT_40000
+2026-07-09 23:24:22 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-09 23:24:22 IST - BotCore - INFO - Hedge: State fully reset.
+2026-07-09 23:24:22 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-07-09 23:24:23 IST - BotCore - INFO - Engine: Daily state reset.
+2026-07-11 11:34:21 IST - BotCore - INFO - API: Time synced. Offset: 86838s
+2026-07-11 11:34:21 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:34:21 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine - [PASS]
+   Expected: Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-11 11:34:38 IST - BotCore - INFO - Engine: Exit cycle triggered (Fixed Time Square-off)
+2026-07-11 11:34:51 IST - BotCore - INFO - API: Time synced. Offset: 86838s
+2026-07-11 11:34:51 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:34:51 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine - [PASS]
+   Expected: Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-11 11:35:08 IST - BotCore - INFO - Engine: Exit cycle triggered (Fixed Time Square-off)
+2026-07-11 11:35:19 IST - BotCore - INFO - Execution: Closing all positions due to End of Day Square-off
+2026-07-11 11:35:19 IST - BotCore - INFO - Execution: Hedge lock released by NONE
+2026-07-11 11:35:19 IST - BotCore - INFO - Execution [PAPER]: Simulating close of CALL_60000
+2026-07-11 11:35:19 IST - BotCore - INFO - Execution [PAPER]: Simulating close of PUT_40000
+2026-07-11 11:35:19 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:35:19 IST - BotCore - INFO - Hedge: State fully reset.
+2026-07-11 11:35:19 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-07-11 11:35:19 IST - BotCore - INFO - Engine: Daily state reset.
+2026-07-11 11:35:51 IST - BotCore - INFO - API: Time synced. Offset: 86841s
+2026-07-11 11:35:51 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:35:51 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine - [PASS]
+   Expected: Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-11 11:36:08 IST - BotCore - INFO - Engine: Exit cycle triggered (Fixed Time Square-off)
+2026-07-11 11:36:08 IST - BotCore - INFO - Execution: Closing all positions due to End of Day Square-off
+2026-07-11 11:36:08 IST - BotCore - INFO - Execution: Hedge lock released by NONE
+2026-07-11 11:36:08 IST - BotCore - INFO - Execution [PAPER]: Simulating close of CALL_60000
+2026-07-11 11:36:08 IST - BotCore - INFO - Execution [PAPER]: Simulating close of PUT_40000
+2026-07-11 11:36:08 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:36:08 IST - BotCore - INFO - Hedge: State fully reset.
+2026-07-11 11:36:08 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-07-11 11:36:08 IST - BotCore - INFO - Engine: Daily state reset.
+2026-07-11 11:37:19 IST - BotCore - INFO - API: Time synced. Offset: 86834s
+2026-07-11 11:37:19 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:37:19 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine - [PASS]
+   Expected: Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-11 11:37:36 IST - BotCore - INFO - Engine: Exit cycle triggered (Fixed Time Square-off)
+2026-07-11 11:37:36 IST - BotCore - INFO - Execution: Closing all positions due to End of Day Square-off
+2026-07-11 11:37:36 IST - BotCore - INFO - Execution: Hedge lock released by NONE
+2026-07-11 11:37:36 IST - BotCore - INFO - Execution [PAPER]: Simulating close of CALL_60000
+2026-07-11 11:37:36 IST - BotCore - INFO - Execution [PAPER]: Simulating close of PUT_40000
+2026-07-11 11:37:36 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:37:36 IST - BotCore - INFO - Hedge: State fully reset.
+2026-07-11 11:37:36 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-07-11 11:37:37 IST - BotCore - INFO - Engine: Daily state reset.
+2026-07-11 11:38:38 IST - BotCore - INFO - API: Time synced. Offset: 86836s
+2026-07-11 11:38:38 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:38:38 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine - [PASS]
+   Expected: Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-11 11:38:55 IST - BotCore - INFO - Engine: Exit cycle triggered (Fixed Time Square-off)
+2026-07-11 11:39:06 IST - BotCore - INFO - Execution: Closing all positions due to End of Day Square-off
+2026-07-11 11:39:06 IST - BotCore - INFO - Execution: Hedge lock released by NONE
+2026-07-11 11:39:06 IST - BotCore - INFO - Execution [PAPER]: Simulating close of CALL_60000
+2026-07-11 11:39:06 IST - BotCore - INFO - Execution [PAPER]: Simulating close of PUT_40000
+2026-07-11 11:39:06 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:39:06 IST - BotCore - INFO - Hedge: State fully reset.
+2026-07-11 11:39:06 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-07-11 11:39:06 IST - BotCore - INFO - Engine: Daily state reset.
+2026-07-11 11:40:56 IST - BotCore - INFO - API: Time synced. Offset: 86832s
+2026-07-11 11:40:56 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:40:56 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine - [PASS]
+   Expected: Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-11 11:41:13 IST - BotCore - INFO - Engine: Exit cycle triggered (Fixed Time Square-off)
+2026-07-11 11:41:13 IST - BotCore - INFO - Execution: Closing all positions due to End of Day Square-off
+2026-07-11 11:41:13 IST - BotCore - INFO - Execution: Hedge lock released by NONE
+2026-07-11 11:41:13 IST - BotCore - INFO - Execution [PAPER]: Simulating close of CALL_60000
+2026-07-11 11:41:13 IST - BotCore - INFO - Execution [PAPER]: Simulating close of PUT_40000
+2026-07-11 11:41:13 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:41:13 IST - BotCore - INFO - Hedge: State fully reset.
+2026-07-11 11:41:13 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-07-11 11:41:14 IST - BotCore - INFO - Engine: Daily state reset.
+2026-07-11 11:41:50 IST - BotCore - INFO - API: Time synced. Offset: 86840s
+2026-07-11 11:41:50 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:41:50 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine - [PASS]
+   Expected: Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-11 11:42:20 IST - BotCore - INFO - API: Time synced. Offset: 86839s
+2026-07-11 11:42:20 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:42:20 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine - [PASS]
+   Expected: Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-11 11:42:37 IST - BotCore - INFO - Engine: Exit cycle triggered (Fixed Time Square-off)
+2026-07-11 11:42:37 IST - BotCore - INFO - Execution: Closing all positions due to End of Day Square-off
+2026-07-11 11:42:37 IST - BotCore - INFO - Execution: Hedge lock released by NONE
+2026-07-11 11:42:37 IST - BotCore - INFO - Execution [PAPER]: Simulating close of CALL_60000
+2026-07-11 11:42:37 IST - BotCore - INFO - Execution [PAPER]: Simulating close of PUT_40000
+2026-07-11 11:42:37 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-11 11:42:37 IST - BotCore - INFO - Hedge: State fully reset.
+2026-07-11 11:42:37 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-07-11 11:42:38 IST - BotCore - INFO - Engine: Daily state reset.
+2026-07-12 11:57:35 IST - BotCore - INFO - API: Time synced. Offset: -9s
+2026-07-12 11:57:35 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-12 11:57:35 IST - BotCore - INFO - Rule Compliance: 100% (11/11)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 130% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine - [PASS]
+   Expected: Delta-Neutral Sizing, Active Regime & ADX Monitoring, Hysteresis Dehedge
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-12 11:57:52 IST - BotCore - INFO - Engine: Exit cycle triggered (Fixed Time Square-off)
+2026-07-12 12:23:27 IST - BotCore - INFO - API: Time synced. Offset: -8s
+2026-07-12 12:23:27 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-12 12:23:27 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-12 12:23:28 IST - BotCore - INFO - WS Connection Opened
+2026-07-12 12:23:28 IST - BotCore - INFO - WS: Subscribed to ['BTCUSD']
+2026-07-12 12:23:29 IST - BotCore - INFO - API: Time synced. Offset: -1s
+2026-07-12 14:52:39 IST - BotCore - INFO - Risk [DPL]: Confirmation window opened at 16.0% profit.
+2026-07-12 14:52:39 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-07-12 14:55:46 IST - BotCore - INFO - Risk [DPL]: Confirmation window opened at 23.0% profit.
+2026-07-12 14:55:46 IST - BotCore - INFO - Risk [DPL]: Trailing state restored. Peak=30.0% SL=25.0% Confirmed=True
+2026-07-12 20:23:05 IST - BotCore - INFO - API: Time synced. Offset: -8s
+2026-07-12 20:23:05 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-12 20:23:05 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-12 20:24:48 IST - BotCore - INFO - API: Time synced. Offset: -6s
+2026-07-12 20:24:48 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-12 20:24:48 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-12 20:24:48 IST - BotCore - INFO - Engine: Starting Delta BTC Options Bot in SHADOW mode with Capital: $50000.0
+2026-07-12 20:24:48 IST - BotCore - INFO - Telegram polling loop started.
+2026-07-12 20:24:48 IST - BotCore - INFO - Telegram interactive bot thread started.
+2026-07-12 20:24:48 IST - BotCore - INFO - ARES ServiceRunner initialized in background thread in PAPER mode with OptionBridge.
+2026-07-12 20:24:48 IST - BotCore - INFO - Starting Web Dashboard on port 5000
+2026-07-12 20:24:49 IST - BotCore - INFO - Telegram: Skipped 0 old messages. Waiting for new commands.
+2026-07-12 20:24:49 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)
+2026-07-12 20:24:49 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)
+2026-07-12 20:24:49 IST - BotCore - INFO - Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)
+2026-07-12 20:24:49 IST - BotCore - INFO - Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)
+2026-07-12 20:24:49 IST - BotCore - INFO - Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)
+2026-07-12 20:24:49 IST - BotCore - INFO - Engine: Starting 24/7 background Option Chain Monitor...
+2026-07-12 20:24:49 IST - BotCore - INFO - WS Connection Opened
+2026-07-12 20:24:49 IST - BotCore - INFO - WS: Subscribed to ['BTCUSD']
+2026-07-12 20:24:51 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:25:48 IST - BotCore - INFO - Keep-alive pinger started. Target URL: http://localhost:5000
+2026-07-12 20:25:50 IST - BotCore - INFO - [KEEPALIVE] alive, engine=OFF (Mode: OFF)
+2026-07-12 20:25:52 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:26:52 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:27:52 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:28:52 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:29:51 IST - BotCore - INFO - Engine Heartbeat: Monitor loop is active and running 24/7.
+2026-07-12 20:29:52 IST - BotCore - INFO - [KEEPALIVE] alive, engine=OFF (Mode: OFF)
+2026-07-12 20:29:52 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:30:52 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:31:53 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:32:26 IST - BotCore - INFO - API: Time synced. Offset: -8s
+2026-07-12 20:32:26 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-12 20:32:26 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-12 20:32:26 IST - BotCore - INFO - Engine: Starting Delta BTC Options Bot in SHADOW mode with Capital: $50000.0
+2026-07-12 20:32:26 IST - BotCore - INFO - Telegram polling loop started.
+2026-07-12 20:32:26 IST - BotCore - INFO - Telegram interactive bot thread started.
+2026-07-12 20:32:26 IST - BotCore - INFO - ARES ServiceRunner initialized in background thread in PAPER mode with OptionBridge.
+2026-07-12 20:32:26 IST - BotCore - INFO - Starting Web Dashboard on port 5000
+2026-07-12 20:32:26 IST - BotCore - INFO - Telegram: Skipped 0 old messages. Waiting for new commands.
+2026-07-12 20:32:27 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)
+2026-07-12 20:32:27 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)
+2026-07-12 20:32:27 IST - BotCore - INFO - Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)
+2026-07-12 20:32:27 IST - BotCore - INFO - Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)
+2026-07-12 20:32:27 IST - BotCore - INFO - Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)
+2026-07-12 20:32:27 IST - BotCore - INFO - Engine: Starting 24/7 background Option Chain Monitor...
+2026-07-12 20:32:27 IST - BotCore - INFO - WS Connection Opened
+2026-07-12 20:32:27 IST - BotCore - INFO - WS: Subscribed to ['BTCUSD']
+2026-07-12 20:32:27 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:33:26 IST - BotCore - INFO - Keep-alive pinger started. Target URL: http://localhost:5000
+2026-07-12 20:33:27 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:33:28 IST - BotCore - INFO - [KEEPALIVE] alive, engine=OFF (Mode: OFF)
+2026-07-12 20:34:27 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:34:41 IST - BotCore - INFO - API: Time synced. Offset: -6s
+2026-07-12 20:34:41 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-12 20:34:41 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-12 20:34:55 IST - BotCore - INFO - API: Time synced. Offset: 0s
+2026-07-12 20:34:55 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-12 20:34:55 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-12 20:35:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:35:53 IST - BotCore - INFO - API: Time synced. Offset: -5s
+2026-07-12 20:35:53 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-12 20:35:53 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-12 20:36:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:37:28 IST - BotCore - INFO - Engine Heartbeat: Monitor loop is active and running 24/7.
+2026-07-12 20:37:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
+2026-07-12 20:37:30 IST - BotCore - INFO - [KEEPALIVE] alive, engine=OFF (Mode: OFF)
+2026-07-12 20:38:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.

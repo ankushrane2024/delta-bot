@@ -127,13 +127,7 @@ class AresOrchestrator:
                 self.portfolio_sync.reconcile_with_provider()
                 snapshot = self.portfolio_sync.current_snapshot
 
-            # IDLE MODE: If no options are open and no hedge is active, skip ARES processing
-            has_options = snapshot.metadata.get("total_entry_premium", 0.0) > 0.0
-            if not has_options and snapshot.futures_position_qty == 0:
-                self.latest_tick_result = None
-                return
-
-            # Extract market attributes
+            # Extract market attributes (Run Trend & Regime even if idle for UI telemetry)
             trend_context = MarketContext(
                 current_price=market_data.get("spot_price", 0.0),
                 funding_rate=market_data.get("funding", 0.0),
@@ -151,11 +145,33 @@ class AresOrchestrator:
             # 4. Market Regime Engine
             regime_result = self.regime_engine.evaluate(trend_result)
 
+            # IDLE MODE: If no options are open and no hedge is active, skip Risk processing
+            has_options = snapshot.metadata.get("total_entry_premium", 0.0) > 0.0
+            if not has_options and snapshot.futures_position_qty == 0:
+                # Return partial tick result so UI shows live market trend/regime
+                self.latest_tick_result = TickResult(
+                    tick_id=self.tick_number,
+                    timestamp=self.clock.now(),
+                    market_context=trend_context,
+                    trend_result=trend_result,
+                    regime_result=regime_result,
+                    risk_result=None,
+                    hedge_sizing=None,
+                    hedge_decision=None,
+                    portfolio_snapshot=snapshot,
+                    pipeline_latency=time.time() - start_time,
+                    provider_health="GREEN"
+                )
+                return
+
             # 5. Create Position Context (Adapter)
             if self.option_bridge:
                 # Build context from LIVE legacy position
                 pos_context = PositionContextAdapter.from_snapshot(snapshot)
-                # Bridge automatically injects live Option MTM, Greeks, and Delta
+                # CRITICAL: Also inject live BTC price from market data as a safety fallback
+                spot = market_data.get("spot_price", 0.0)
+                if spot > 0 and (pos_context.futures_price <= 0):
+                    pos_context.futures_price = spot
             else:
                 pos_context = PositionContextAdapter.from_snapshot(snapshot)
                 # Inject live market data overrides for mock
@@ -189,10 +205,11 @@ class AresOrchestrator:
                 breakdown=breakdown,
                 context=pos_context,
                 current_hedge_ratio=snapshot.hedge_ratio,
-                current_time=self.clock.now()
+                current_time=self.clock.now(),
+                regime_result=regime_result
             )
             
-            if decision.action.name != "HOLD" and risk_result.overall_risk_score > 10.0:
+            if decision.action.name != "HOLD" and decision.action.name != "MONITOR" and risk_result.overall_risk_score > 10.0:
                 logger.info(f"ARES Decision: {decision.action.name} | Risk: {risk_result.overall_risk_score:.2f} | Reason: {decision.reason}")
 
             self.last_decision = decision

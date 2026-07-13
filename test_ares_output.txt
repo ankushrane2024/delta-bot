@@ -1,0 +1,26 @@
+﻿=== STARTING ARES REPLAY SIMULATION ===
+--- ENTERING PAPER OPTION POSITION ---
+--- SIMULATING MARKET CRASH ---
+Simulated BTC Price: 49500.0
+ARES Decision: MONITOR | Trend Strength: 0.00 | Regime: SAFE_RANGE | Risk: 0.00 | Recovery Prob: 0.00 | Target Size: 0.0000
+Simulated BTC Price: 49000.0
+ARES Decision: MONITOR | Trend Strength: 0.00 | Regime: SAFE_RANGE | Risk: 0.00 | Recovery Prob: 0.00 | Target Size: 0.0000
+Simulated BTC Price: 48500.0
+ARES Decision: MONITOR | Trend Strength: 0.00 | Regime: SAFE_RANGE | Risk: 0.00 | Recovery Prob: 0.00 | Target Size: 0.0000
+Simulated BTC Price: 48000.0
+ARES Decision: MONITOR | Trend Strength: 0.00 | Regime: SAFE_RANGE | Risk: 0.00 | Recovery Prob: 0.00 | Target Size: 0.0000
+Simulated BTC Price: 47500.0
+ARES Decision: MONITOR | Trend Strength: 0.00 | Regime: SAFE_RANGE | Risk: 0.00 | Recovery Prob: 0.00 | Target Size: 0.0000
+Simulated BTC Price: 47000.0
+ARES Decision: MONITOR | Trend Strength: 0.00 | Regime: SAFE_RANGE | Risk: 0.00 | Recovery Prob: 0.00 | Target Size: 0.0000
+Simulated BTC Price: 46500.0
+ARES Decision: MONITOR | Trend Strength: 0.00 | Regime: SAFE_RANGE | Risk: 0.00 | Recovery Prob: 0.00 | Target Size: 0.0000
+Simulated BTC Price: 46000.0
+ARES Decision: MONITOR | Trend Strength: 0.00 | Regime: SAFE_RANGE | Risk: 0.00 | Recovery Prob: 0.00 | Target Size: 0.0000
+Simulated BTC Price: 45500.0
+ARES Decision: MONITOR | Trend Strength: 0.00 | Regime: SAFE_RANGE | Risk: 0.00 | Recovery Prob: 0.00 | Target Size: 0.0000
+Simulated BTC Price: 45000.0
+ARES Decision: MONITOR | Trend Strength: 0.00 | Regime: SAFE_RANGE | Risk: 0.00 | Recovery Prob: 0.00 | Target Size: 0.0000
+FAILURE: ARES did not hedge during the crash.
+--- SIMULATING EOD EXIT ---
+=== REPLAY SIMULATION COMPLETE ===

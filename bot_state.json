@@ -14,34 +14,8 @@
             "put_tp_on": true
         },
         "positions": {
-            "call": {
-                "symbol": "C-BTC-82400-120526",
-                "strike": 82400,
-                "side": "SELL CALL",
-                "option_type": "call",
-                "entry_price": 126.02895621,
-                "current_price": 112.87,
-                "size": 7872,
-                "pnl": 103587.3,
-                "sl": 252.06,
-                "sl_on": true,
-                "tp": 6.3,
-                "tp_on": true
-            },
-            "put": {
-                "symbol": "P-BTC-79800-120526",
-                "strike": 79800,
-                "side": "SELL PUT",
-                "option_type": "put",
-                "entry_price": 115.25174319,
-                "current_price": 102.41,
-                "size": 8602,
-                "pnl": 110464.67,
-                "sl": 230.5,
-                "sl_on": true,
-                "tp": 5.76,
-                "tp_on": true
-            }
+            "call": null,
+            "put": null
         },
         "balance": 10000
     },

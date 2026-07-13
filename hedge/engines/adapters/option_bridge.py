@@ -90,19 +90,35 @@ class OptionBridge(AbstractExecutionProvider):
             
         self.version += 1
         
+        # Fetch live BTC spot price for risk engine
+        btc_spot = 0.0
+        try:
+            ws_btc = self.engine.api_client.get_realtime_ticker('BTCUSD')
+            if ws_btc:
+                btc_spot = float(ws_btc.get('mark_price', 0.0) or ws_btc.get('close', 0.0) or 0.0)
+            if btc_spot <= 0:
+                btc_spot = float(self.engine.latest_btc_price or 0.0)
+        except Exception:
+            btc_spot = float(getattr(self.engine, 'latest_btc_price', 0.0) or 0.0)
+        
         # Compute live options delta and pnl using actual data if available
         net_delta = 0.0
         live_metadata = {
             "hedge_owner": snapshot_raw['hedge_owner'],
             "total_entry_premium": self.engine.total_entry_premium,
             "current_equity": self.engine.risk_manager.current_equity,
+            "futures_price": btc_spot,
             "total_lots": 0,
             "call_leg": {},
-            "put_leg": {}
+            "put_leg": {},
+            "call_pnl_usd": 0.0,
+            "put_pnl_usd": 0.0,
         }
         
         total_pnl = 0.0
         total_lots = 0
+        call_pnl_usd = 0.0
+        put_pnl_usd = 0.0
         
         for sym, opt in snapshot_raw['active_options'].items():
             leg = opt.get('leg_type', 'call')
@@ -113,11 +129,18 @@ class OptionBridge(AbstractExecutionProvider):
             ticker = self.engine.api_client.get_realtime_ticker(sym)
             live_price = float(ticker.get('mark_price', opt.get('entry_price', 0.0))) if ticker else opt.get('entry_price', 0.0)
             
-            # Options Pnl
+            # Options Pnl (in USD): For SOLD options, profit = (entry - current) * qty_btc * btc_price
             side_mult = -1 if opt.get('side', 'SELL') == 'SELL' else 1
             entry_price = float(opt.get('entry_price', 0.0))
             pnl_btc = (live_price - entry_price) * side_mult * size * 0.001
-            total_pnl += pnl_btc # Simplified for now, real PnL is tracked in engine
+            pnl_usd = pnl_btc * btc_spot if btc_spot > 0 else pnl_btc
+            total_pnl += pnl_btc
+            
+            # Track per-leg PnL for Decision Engine Profit Override
+            if leg == 'call':
+                call_pnl_usd += pnl_usd
+            else:
+                put_pnl_usd += pnl_usd
             
             # Extract Live Greeks
             greeks = ticker.get('greeks', {}) if ticker else {}
@@ -147,6 +170,8 @@ class OptionBridge(AbstractExecutionProvider):
             }
 
         live_metadata["total_lots"] = total_lots
+        live_metadata["call_pnl_usd"] = call_pnl_usd
+        live_metadata["put_pnl_usd"] = put_pnl_usd
 
         return PortfolioSnapshot(
             timestamp=datetime.utcnow().isoformat() + "Z",

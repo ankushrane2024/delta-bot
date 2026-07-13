@@ -47,17 +47,18 @@ class DecisionEngine:
         return dominant_cluster_name, dominant_factor, primary_reason
 
     def evaluate(self, fused_score: float, breakdown: StressFusionBreakdown, 
-                 context: PositionContext, current_hedge_ratio: float, current_time: float = 0.0) -> HedgeDecision:
+                 context: PositionContext, current_hedge_ratio: float, current_time: float = 0.0,
+                 regime_result=None) -> HedgeDecision:
                  
         if context.total_lots == 0:
             self._ema_stress = 0.0
             self._last_ema_time = current_time
             return HedgeDecision(
                 action=HedgeAction.HOLD,
-                target_hedge_ratio=0.0,
-                confidence=100.0,
-                primary_reason="No active option positions.",
-                dominant_factor="None",
+                hedge_ratio=0.0,
+                urgency=0.0,
+                reason="No active option positions.",
+                dominant_cluster="None", dominant_factor="None",
                 ema_stress=0.0,
                 debug_information={"total_lots": 0}
             )
@@ -76,20 +77,77 @@ class DecisionEngine:
         ema = self._ema_stress
         buffer = UNHEDGE_THRESHOLD_BUFFER
         
-        # HARD OVERRIDE: If combined PnL is in profit, force MONITOR mode, no hedging allowed.
+        # ===== HARD GATE 1: PROFIT OVERRIDE =====
+        # If combined PnL is in profit, NO HEDGE allowed (block entry, keep existing)
         call_pnl = float(context.metadata.get('call_pnl_usd', 0))
         put_pnl = float(context.metadata.get('put_pnl_usd', 0))
-        if call_pnl + put_pnl > 0.0:
+        combined_pnl = call_pnl + put_pnl
+        
+        if combined_pnl >= 0.0:
+            # Trade is in profit — NEVER hedge
+            if current_hedge_ratio > 0:
+                # If we have an existing hedge and we're now profitable, dehedge
+                return HedgeDecision(
+                    action=HedgeAction.DEHEDGE,
+                    hedge_ratio=0.0,
+                    urgency=0.0,
+                    reason="Trade in Profit — Removing hedge",
+                    dominant_cluster="None", dominant_factor="Combined PnL > 0",
+                    ema_stress=ema,
+                    debug_information={"msg": "Dehedge: trade turned profitable", "combined_pnl": combined_pnl}
+                )
             return HedgeDecision(
                 action=HedgeAction.MONITOR,
-                target_hedge_ratio=current_hedge_ratio if current_hedge_ratio > 0 else 0.0,
-                confidence=100.0,
-                primary_reason="Profit Override (Standby)",
-                dominant_factor="Combined PnL > 0",
+                hedge_ratio=0.0,
+                urgency=0.0,
+                reason="Profit Override (Standby)",
+                dominant_cluster="None", dominant_factor="Combined PnL > 0",
                 ema_stress=ema,
-                debug_information={"msg": "Forced standby due to overall trade profitability"}
+                debug_information={"msg": "Forced standby due to overall trade profitability", "combined_pnl": combined_pnl}
             )
         
+        # ===== HARD GATE 2: MINIMUM LOSS THRESHOLD =====
+        # Options must be losing at least 20% of premium collected before any hedge is considered
+        total_premium = float(context.metadata.get('total_entry_premium', 0.0))
+        loss_pct = 0.0
+        if total_premium > 0:
+            loss_pct = (abs(combined_pnl) / total_premium) * 100.0
+        
+        if loss_pct < 20.0 and current_hedge_ratio == 0:
+            # Loss is less than 20% of premium — too early to hedge, might reverse
+            return HedgeDecision(
+                action=HedgeAction.MONITOR,
+                hedge_ratio=0.0,
+                urgency=0.0,
+                reason=f"Loss {loss_pct:.1f}% < 20% threshold — Waiting for confirmation",
+                dominant_cluster="None", dominant_factor="Loss too small",
+                ema_stress=ema,
+                debug_information={"loss_pct": loss_pct, "combined_pnl": combined_pnl, "total_premium": total_premium}
+            )
+        
+        # ===== HARD GATE 3: CONFIRMED TREND REQUIRED =====
+        # Only hedge if the market regime is CONFIRMED_TREND or ACCELERATION (not early/weak)
+        trend_confirmed = False
+        if regime_result:
+            from hedge.models.enums import MarketRegime
+            current_regime = getattr(regime_result, 'current_regime', None)
+            if current_regime in (MarketRegime.CONFIRMED_TREND, MarketRegime.ACCELERATION):
+                trend_confirmed = True
+        
+        if not trend_confirmed and current_hedge_ratio == 0:
+            # Trend is not confirmed — do not enter hedge
+            regime_name = getattr(getattr(regime_result, 'current_regime', None), 'name', 'UNKNOWN') if regime_result else 'UNKNOWN'
+            return HedgeDecision(
+                action=HedgeAction.MONITOR,
+                hedge_ratio=0.0,
+                urgency=0.0,
+                reason=f"Trend not confirmed ({regime_name}) — Waiting",
+                dominant_cluster="None", dominant_factor="Regime not confirmed",
+                ema_stress=ema,
+                debug_information={"regime": regime_name, "loss_pct": loss_pct}
+            )
+        
+        # ===== PASSED ALL GATES — Apply stress-based hedge scaling =====
         action = HedgeAction.NO_ACTION
         target_ratio = current_hedge_ratio
         

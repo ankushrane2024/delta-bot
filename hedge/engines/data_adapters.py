@@ -20,6 +20,9 @@ class PositionContextAdapter:
         ctx.is_hedged = snapshot.futures_position_qty != 0
         ctx.timestamp = snapshot.timestamp
         
+        # CRITICAL: Inject live BTC price for risk engine strike distance calculations
+        ctx.futures_price = snapshot.metadata.get("futures_price", 0.0)
+        
         # Unpack Live Metadata if available
         if "total_entry_premium" in snapshot.metadata:
             ctx.position_size = snapshot.metadata["total_entry_premium"]
@@ -42,5 +45,15 @@ class PositionContextAdapter:
             ctx.put_gamma = put_meta.get("gamma", 0.0)
             ctx.put_vega = put_meta.get("vega", 0.0)
             ctx.put_iv = put_meta.get("iv", 0.0)
+            
+            # CRITICAL: Populate per-leg PnL for Decision Engine Profit Override
+            call_pnl = snapshot.metadata.get("call_pnl_usd", 0.0)
+            put_pnl = snapshot.metadata.get("put_pnl_usd", 0.0)
+            ctx.call_leg_pnl = call_pnl
+            ctx.put_leg_pnl = put_pnl
+            ctx.metadata['call_pnl_usd'] = call_pnl
+            ctx.metadata['put_pnl_usd'] = put_pnl
+            ctx.metadata['total_entry_premium'] = snapshot.metadata["total_entry_premium"]
+            ctx.metadata['futures_price'] = ctx.futures_price
             
         return ctx

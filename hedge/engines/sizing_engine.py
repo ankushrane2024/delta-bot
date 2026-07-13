@@ -98,6 +98,22 @@ class HedgeSizingEngine:
         if abs_qty > max_qty:
             self._warnings.append(f"Calculated quantity {abs_qty} exceeds MAX_ORDER_QTY {max_qty}. Clamping.")
             abs_qty = max_qty
+        
+        # 5. PROPORTIONAL SAFETY CAP — Hedge must never exceed the options notional
+        # The hedge should only be large enough to cover the option loss, not oversized.
+        max_hedge_btc = context.total_lots * lot_to_btc  # Total options notional in BTC
+        max_hedge_contracts = max_hedge_btc / futures_contract_size if futures_contract_size > 0 else abs_qty
+        
+        if abs_qty > max_hedge_contracts:
+            self._warnings.append(
+                f"SAFETY CAP: Clamped hedge from {abs_qty:.0f} to {max_hedge_contracts:.0f} contracts "
+                f"(max = options notional {max_hedge_btc:.4f} BTC)"
+            )
+            abs_qty = max_hedge_contracts
+            
+        # Re-round after cap
+        if step_size > 0:
+            abs_qty = round(abs_qty / step_size) * step_size
             
         # Determine additional quantity and side
         if abs_qty == 0:

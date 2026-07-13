@@ -22,12 +22,20 @@ def run_replay():
             self.price = 50000.0
             
         def get_realtime_ticker(self, symbol):
-            if symbol == "BTCUSDT":
+            if symbol == "BTCUSD":
                 return {"mark_price": self.price}
-            return {"mark_price": 500.0} # Option price mock
+            # Simulate put option exploding in value as spot crashes
+            if symbol == "PUT_40000":
+                # As spot drops from 50000 down to 45000, put premium increases and delta goes to -1.0
+                put_delta = -0.5 - ((50000.0 - self.price) / 5000.0) * 0.5
+                return {"mark_price": 500.0 + (50000.0 - self.price) * 0.5, "greeks": {"delta": max(-1.0, put_delta)}}
+            
+            # Call option price and delta drops
+            call_delta = 0.5 - ((50000.0 - self.price) / 5000.0) * 0.5
+            return {"mark_price": max(10.0, 500.0 - (50000.0 - self.price) * 0.2), "greeks": {"delta": max(0.0, call_delta)}}
             
         def get_tickers(self, params=None):
-            return {"success": True, "result": [{"symbol": "BTCUSDT", "mark_price": self.price}]}
+            return {"success": True, "result": [{"symbol": "BTCUSD", "mark_price": self.price}]}
             
         def get_position(self, product_id):
             return None
@@ -48,10 +56,10 @@ def run_replay():
     # 3. Enter a position
     print("--- ENTERING PAPER OPTION POSITION ---")
     engine.execution.active_positions = {
-        "CALL_60000": {"size": 2, "entry_price": 500.0, "side": "SELL", "leg_type": "call"},
-        "PUT_40000": {"size": 2, "entry_price": 500.0, "side": "SELL", "leg_type": "put"}
+        "CALL_60000": {"size": 20, "entry_price": 500.0, "side": "SELL", "leg_type": "call"},
+        "PUT_40000": {"size": 20, "entry_price": 500.0, "side": "SELL", "leg_type": "put"}
     }
-    engine.total_entry_premium = 2000.0
+    engine.total_entry_premium = 20000.0
     
     time.sleep(5)
     
