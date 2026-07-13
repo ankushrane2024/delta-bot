@@ -23,6 +23,8 @@ class DecisionEngine:
         self._warnings: List[str] = []
         self._ema_stress: Optional[float] = None
         self._last_ema_time: Optional[float] = None
+        self._hedge_start_bleeding_pnl: Optional[float] = None
+        self._max_hedge_pnl: float = 0.0
 
     def _determine_dominant_cluster(self, breakdown: StressFusionBreakdown) -> Tuple[str, str, str]:
         clusters = {
@@ -105,14 +107,57 @@ class DecisionEngine:
                 ema_stress=ema,
                 debug_information={"msg": "Forced standby due to overall trade profitability", "combined_pnl": combined_pnl}
             )
+            
+        bleeding_leg_pnl = min(call_pnl, put_pnl)
         
-        # ===== HARD GATE 2: MINIMUM LOSS THRESHOLD =====
-        # Options must be losing at least 20% of premium collected before any hedge is considered
+        # Pre-calculate loss percentage for Reversal check and Entry Gate (Overall Combined PnL Trigger)
         total_premium = float(context.metadata.get('total_entry_premium', 0.0))
         loss_pct = 0.0
         if total_premium > 0:
             loss_pct = (abs(combined_pnl) / total_premium) * 100.0
         
+        # ===== HARD GATE 1.5: REVERSAL FREE EXIT & TRAILING STOP =====
+        if current_hedge_ratio > 0:
+            hedge_pnl_usd = float(context.metadata.get('hedge_pnl_usd', 0.0))
+            
+            # Track max profit
+            self._max_hedge_pnl = max(self._max_hedge_pnl, hedge_pnl_usd)
+            
+            # Trailing Stop: If max profit > 50, lock in 50%
+            if self._max_hedge_pnl > 50.0:
+                trailing_stop = max(15.0, self._max_hedge_pnl * 0.50) # Minimum $15 safety floor
+                if hedge_pnl_usd < trailing_stop:
+                    return HedgeDecision(
+                        action=HedgeAction.DEHEDGE,
+                        hedge_ratio=0.0,
+                        urgency=0.0,
+                        reason="Trailing Stop Triggered",
+                        dominant_cluster="None", dominant_factor="Hedge Trailing Stop",
+                        ema_stress=ema,
+                        debug_information={"max_hedge_pnl": self._max_hedge_pnl, "hedge_pnl": hedge_pnl_usd}
+                    )
+                    
+            # Reversal Free Exit: Oversized hedge reversal cutoff
+            # If the market fakes out and option loss recovers back to -5%, cut the hedge immediately
+            if self._hedge_start_bleeding_pnl is not None:
+                if loss_pct <= 5.0 and hedge_pnl_usd < 0:
+                    return HedgeDecision(
+                        action=HedgeAction.DEHEDGE,
+                        hedge_ratio=0.0,
+                        urgency=0.0,
+                        reason="Reversal Exit — Option loss recovered to -5%",
+                        dominant_cluster="None", dominant_factor="Reversal Exit",
+                        ema_stress=ema,
+                        debug_information={"current_loss_pct": loss_pct, "hedge_loss": hedge_pnl_usd}
+                    )
+        else:
+            # If not hedged, reset hedge state
+            self._hedge_start_bleeding_pnl = None
+            self._max_hedge_pnl = 0.0
+        
+        # ===== HARD GATE 2: MINIMUM LOSS THRESHOLD =====
+        # Options must be losing at least 20% of premium collected before any hedge is considered
+        # (loss_pct is already calculated at the top)
         if loss_pct < 20.0 and current_hedge_ratio == 0:
             # Loss is less than 20% of premium — too early to hedge, might reverse
             return HedgeDecision(
@@ -215,7 +260,14 @@ class DecisionEngine:
             raw_stress=fused_score
         )
         
+        # Record start PnL when a new hedge is ordered
+        if current_hedge_ratio == 0.0 and decision.action in (HedgeAction.PARTIAL_HEDGE, HedgeAction.FULL_HEDGE, HedgeAction.EMERGENCY_HEDGE):
+            self._hedge_start_bleeding_pnl = bleeding_leg_pnl
+            self._max_hedge_pnl = 0.0
+            
         return decision
 
     def reset_state(self):
         self._ema_stress = None
+        self._hedge_start_bleeding_pnl = None
+        self._max_hedge_pnl = 0.0

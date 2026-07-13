@@ -796,13 +796,23 @@
             </div>
 
             <!-- Section 2: Smart Hedging Status -->
-            <div class="glass-panel" id="hedge-panel" style="display: none !important;">
-                <h2>🛡️ Smart Hedging Status</h2>
-                <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 20px;">
+            <div class="glass-panel" id="hedge-panel">
+                <h2>🛡️ ARES Hedge Shield</h2>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 18px;">
+                    <!-- Status Badge -->
                     <div class="stat-row-modern">
                         <span class="stat-label">Hedge Status</span>
                         <span id="hedge-active-badge" class="badge-modern">Evaluating...</span>
                     </div>
+                    <!-- Decision Reason -->
+                    <div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Decision</div>
+                        <div id="hedge-decision-reason" style="font-size: 0.9rem; font-weight: 600; color: #94a3b8; word-break: break-word;">Waiting for data...</div>
+                    </div>
+                    
+                    <div style="border-top: 1px solid rgba(255,255,255,0.06); margin: 2px 0;"></div>
+
+                    <!-- Hedge Type & Size -->
                     <div class="stat-row-modern">
                         <span class="stat-label">Hedge Type</span>
                         <span id="hedge-type-val" style="font-weight:700; font-size:1.1rem;">-</span>
@@ -811,24 +821,54 @@
                         <span class="stat-label">Hedge Size</span>
                         <span id="hedge-size-val" style="font-weight:700; color:#38bdf8; font-size:1.1rem;">0.000000 BTC</span>
                     </div>
-                    <div class="stat-row-modern">
-                        <span class="stat-label">Live Hedge P&L</span>
-                        <span id="hedge-pnl-val" style="font-weight:700; color:#94a3b8; font-size:1.1rem;">$0.00</span>
+
+                    <div style="border-top: 1px solid rgba(255,255,255,0.06); margin: 2px 0;"></div>
+
+                    <!-- P&L Section -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; text-align: center;">
+                            <div style="font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Hedge P&L</div>
+                            <div id="hedge-pnl-val" style="font-weight:800; color:#94a3b8; font-size:1.3rem; margin-top: 4px;">$0.00</div>
+                        </div>
+                        <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; text-align: center;">
+                            <div style="font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Peak P&L</div>
+                            <div id="hedge-peak-pnl-val" style="font-weight:800; color:#fbbf24; font-size:1.3rem; margin-top: 4px;">$0.00</div>
+                        </div>
                     </div>
-                    
-                    <div class="stat-row-modern" style="border-top: 1px solid rgba(255,255,255,0.05); margin-top: 5px; padding-top: 12px;">
-                        <span class="stat-label">Peak Hedge P&L</span>
-                        <span id="hedge-peak-pnl-val" style="font-weight:700; color:#fbbf24; font-size:1.0rem;">$0.00</span>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; text-align: center;">
+                            <div style="font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Options P&L</div>
+                            <div id="hedge-options-pnl-val" style="font-weight:800; color:#94a3b8; font-size:1.3rem; margin-top: 4px;">$0.00</div>
+                        </div>
+                        <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; text-align: center;">
+                            <div style="font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Combined P&L</div>
+                            <div id="hedge-combined-pnl-val" style="font-weight:800; color:#94a3b8; font-size:1.3rem; margin-top: 4px;">$0.00</div>
+                        </div>
                     </div>
+
+                    <div style="border-top: 1px solid rgba(255,255,255,0.06); margin: 2px 0;"></div>
+
+                    <!-- Bleeding Leg Tracker -->
                     <div class="stat-row-modern">
                         <span class="stat-label">Bleeding Leg</span>
                         <span id="hedge-bleeding-leg-val" style="font-weight:700; color:var(--text-secondary); font-size:1.0rem;">None</span>
                     </div>
+                    <!-- SL Distance Progress Bar -->
+                    <div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px;">
+                            <span>SL Distance Remaining</span>
+                            <span id="hedge-sl-remaining-val" style="font-weight: 800; color: #10b981;">100%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div id="hedge-sl-remaining-bar" class="progress-bar-fill" style="width: 100%; background: linear-gradient(90deg, #10b981, #22d3ee);"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hedge Percentage -->
                     <div class="stat-row-modern">
                         <span class="stat-label">Grid Tier Active</span>
                         <span id="hedge-grid-tier-val" style="font-weight:700; font-size:1.0rem;">Standby</span>
                     </div>
-                    
                     <div class="progress-box-modern">
                         <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">
                             <span>Hedge Percentage</span>
@@ -935,12 +975,12 @@
                 <div id="ares-metrics-card" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; padding: 18px; background: linear-gradient(145deg, rgba(16, 185, 129, 0.05) 0%, rgba(0, 0, 0, 0.4) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.1);">
                     <!-- Row 1 -->
                     <div style="display: flex; flex-direction: column; align-items: flex-start; padding-right: 10px;">
-                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Active Hedge Size</span>
+                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">BTC Quantity Hedged</span>
                         <span id="am-size" style="font-size: 1.15rem; font-weight: 800; color: #10b981;">0.0000 BTC</span>
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Delta Coverage</span>
-                        <span id="am-cov" style="font-size: 1.15rem; font-weight: 800; color: #38bdf8;">0%</span>
+                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Market Regime</span>
+                        <span id="am-regime" style="font-size: 1.05rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">WAITING</span>
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05);">
                         <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Trend Strength</span>
@@ -952,8 +992,8 @@
                     
                     <!-- Row 2 -->
                     <div style="display: flex; flex-direction: column; align-items: flex-start; padding-right: 10px;">
-                        <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Market Regime</span>
-                        <span id="am-regime" style="font-size: 1.05rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">WAITING</span>
+                        <span style="font-size: 0.7rem; color: #f43f5e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Bleeding Leg Drop</span>
+                        <span id="am-bleeding-pct" style="font-size: 1.15rem; font-weight: 800; color: #f43f5e;">0.0%</span>
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: flex-start; padding-left: 15px; border-left: 1px solid rgba(255,255,255,0.05); flex-grow: 1;">
                         <span style="font-size: 0.7rem; color: #10b981; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Loss Covered</span>
@@ -1953,24 +1993,43 @@
                     if (aresCard) {
                         // Fetch live telemetry continuously
                         fetch('/ares/status').then(r => r.json()).then(aresData => {
-                            document.getElementById('am-pct').textContent = aresData.protection_pct + '%';
+                            const reg = aresData.market_regime || 'WAITING';
+                            const regEl = document.getElementById('am-regime');
+                            if (regEl) {
+                                regEl.textContent = reg.replace(/_/g, ' ');
+                                if(reg.includes('CRASH') || reg.includes('EXTREME')) { regEl.style.color = '#f43f5e'; }
+                                else if(reg.includes('TREND')) { regEl.style.color = '#fbbf24'; }
+                                else { regEl.style.color = '#38bdf8'; }
+                            }
+                            
+                            const pct = document.getElementById('am-pct');
+                            if (pct) pct.textContent = aresData.protection_pct + '%';
                             const pctBar = document.getElementById('am-pct-bar');
-                            if(pctBar) {
+                            if (pctBar) {
                                 let boundedPct = Math.min(aresData.protection_pct, 100);
                                 pctBar.style.width = boundedPct + '%';
                             }
-                            document.getElementById('am-risk').textContent = parseFloat(aresData.risk_score || 0).toFixed(2);
                             
-                            document.getElementById('am-size').textContent = (aresData.actual_hedge_size || 0).toFixed(4) + ' BTC';
-                            document.getElementById('am-cov').textContent = (aresData.delta_coverage_pct || 0) + '%';
-                            document.getElementById('am-trend').textContent = parseFloat(aresData.trend_strength || 0).toFixed(2);
+                            const risk = document.getElementById('am-risk');
+                            if (risk) risk.textContent = parseFloat(aresData.risk_score || 0).toFixed(2);
                             
-                            const reg = aresData.market_regime || 'WAITING';
-                            const regEl = document.getElementById('am-regime');
-                            regEl.textContent = reg.replace(/_/g, ' ');
-                            if(reg.includes('CRASH') || reg.includes('EXTREME')) { regEl.style.color = '#f43f5e'; }
-                            else if(reg.includes('TREND')) { regEl.style.color = '#fbbf24'; }
-                            else { regEl.style.color = '#38bdf8'; }
+                            const trend = document.getElementById('am-trend');
+                            if (trend) trend.textContent = parseFloat(aresData.trend_strength || 0).toFixed(2);
+                            
+                            if (data.hedge_status) {
+                                // Active Hedge Size
+                                const amSize = document.getElementById('am-size');
+                                if (amSize) {
+                                    amSize.textContent = `${(data.hedge_status.hedge_size_btc || 0).toFixed(4)} BTC`;
+                                }
+                                
+                                // Bleeding Leg Loss %
+                                const bLegPct = document.getElementById('am-bleeding-pct');
+                                if (bLegPct) {
+                                    const bLegLoss = data.hedge_status.bleeding_leg_loss_pct || 0;
+                                    bLegPct.textContent = `${bLegLoss.toFixed(1)}%`;
+                                }
+                            }
                         }).catch(e => console.error(e));
                     }
                     // ---------------------------------
@@ -2000,7 +2059,49 @@
                     // PRO LEVEL DETAILS
                     const peakPnl = data.hedge_status.hedge_peak_pnl || 0;
                     document.getElementById('hedge-peak-pnl-val').textContent = `${peakPnl >= 0 ? '+' : ''}$${peakPnl.toFixed(2)}`;
+                    
+                    // Options PnL
+                    const optPnl = data.hedge_status.options_pnl_live || 0;
+                    const optPnlEl = document.getElementById('hedge-options-pnl-val');
+                    optPnlEl.textContent = `${optPnl >= 0 ? '+' : ''}$${optPnl.toFixed(2)}`;
+                    optPnlEl.style.color = optPnl > 0 ? '#10b981' : (optPnl < 0 ? '#f43f5e' : '#94a3b8');
+                    
+                    // Combined PnL (Options + Hedge)
+                    const combPnl = data.hedge_status.combined_pnl_live || 0;
+                    const combPnlEl = document.getElementById('hedge-combined-pnl-val');
+                    combPnlEl.textContent = `${combPnl >= 0 ? '+' : ''}$${combPnl.toFixed(2)}`;
+                    combPnlEl.style.color = combPnl > 0 ? '#10b981' : (combPnl < 0 ? '#f43f5e' : '#94a3b8');
+                    
+                    // Bleeding Leg
                     document.getElementById('hedge-bleeding-leg-val').textContent = data.hedge_status.bleeding_leg || 'None';
+                    
+                    // Decision Reason
+                    const reasonEl = document.getElementById('hedge-decision-reason');
+                    if (reasonEl) {
+                        reasonEl.textContent = data.hedge_status.decision_reason || 'Monitoring...';
+                        if (data.hedge_status.hedge_active) {
+                            reasonEl.style.color = '#fbbf24';
+                        } else {
+                            reasonEl.style.color = '#94a3b8';
+                        }
+                    }
+                    
+                    // SL Distance Remaining Bar
+                    const slRemaining = data.hedge_status.remaining_sl_pct || 100;
+                    const slRemEl = document.getElementById('hedge-sl-remaining-val');
+                    const slBarEl = document.getElementById('hedge-sl-remaining-bar');
+                    if (slRemEl) {
+                        slRemEl.textContent = `${slRemaining.toFixed(0)}%`;
+                        if (slRemaining > 70) { slRemEl.style.color = '#10b981'; }
+                        else if (slRemaining > 40) { slRemEl.style.color = '#fbbf24'; }
+                        else { slRemEl.style.color = '#f43f5e'; }
+                    }
+                    if (slBarEl) {
+                        slBarEl.style.width = `${Math.max(0, Math.min(100, slRemaining))}%`;
+                        if (slRemaining > 70) { slBarEl.style.background = 'linear-gradient(90deg, #10b981, #22d3ee)'; }
+                        else if (slRemaining > 40) { slBarEl.style.background = 'linear-gradient(90deg, #fbbf24, #f97316)'; }
+                        else { slBarEl.style.background = 'linear-gradient(90deg, #f43f5e, #dc2626)'; }
+                    }
                     
                     const hPct = data.hedge_status.hedge_percentage || 0;
                     const tierSpan = document.getElementById('hedge-grid-tier-val');

@@ -60,8 +60,30 @@ class HedgeSizingEngine:
         
         # Target delta to hedge is based on the hedge_ratio from DecisionEngine
         # If options delta is negative (e.g. -0.5 BTC), we need +0.5 BTC to hedge.
-        # So target hedge delta = -1.0 * net_options_delta_btc * hedge_ratio
-        target_delta_to_hedge_btc = -1.0 * net_options_delta_btc * decision.hedge_ratio
+        base_target_delta = -1.0 * net_options_delta_btc * decision.hedge_ratio
+        
+        # Apply 100% SL Max Loss Scaling multiplier (Premium-Based Sizing)
+        call_loss = context.call_leg_pnl
+        put_loss = context.put_leg_pnl
+        
+        if put_loss < call_loss and put_loss < 0:
+            max_loss_usd = context.metadata.get('put_entry_premium_usd', 0.0)
+            current_loss_usd = abs(put_loss)
+        elif call_loss < put_loss and call_loss < 0:
+            max_loss_usd = context.metadata.get('call_entry_premium_usd', 0.0)
+            current_loss_usd = abs(call_loss)
+        else:
+            max_loss_usd = 0.0
+            current_loss_usd = 0.0
+            
+        scaling_factor = 1.0
+        MAX_SCALING_FACTOR = 3.0  # Safety: Never allow more than 3x oversizing
+        if max_loss_usd > 0 and current_loss_usd < max_loss_usd and decision.action in [HedgeAction.PARTIAL_HEDGE, HedgeAction.FULL_HEDGE, HedgeAction.EMERGENCY_HEDGE]:
+            remaining_loss = max_loss_usd - current_loss_usd
+            if remaining_loss > 0:
+                scaling_factor = min(max_loss_usd / remaining_loss, MAX_SCALING_FACTOR)
+                
+        target_delta_to_hedge_btc = base_target_delta * scaling_factor
         
         # Current hedge delta
         current_hedge_delta_btc = current_hedge_qty * futures_contract_size
@@ -99,15 +121,16 @@ class HedgeSizingEngine:
             self._warnings.append(f"Calculated quantity {abs_qty} exceeds MAX_ORDER_QTY {max_qty}. Clamping.")
             abs_qty = max_qty
         
-        # 5. PROPORTIONAL SAFETY CAP — Hedge must never exceed the options notional
-        # The hedge should only be large enough to cover the option loss, not oversized.
+        # 5. PROPORTIONAL SAFETY CAP
+        # We allow the hedge to exceed the exact Notional by the Scaling Factor to hit the Premium 100% SL Target.
         max_hedge_btc = context.total_lots * lot_to_btc  # Total options notional in BTC
-        max_hedge_contracts = max_hedge_btc / futures_contract_size if futures_contract_size > 0 else abs_qty
+        max_hedge_contracts = (max_hedge_btc / futures_contract_size) if futures_contract_size > 0 else abs_qty
+        max_hedge_contracts *= scaling_factor # Allow oversized scaling to pass
         
         if abs_qty > max_hedge_contracts:
             self._warnings.append(
                 f"SAFETY CAP: Clamped hedge from {abs_qty:.0f} to {max_hedge_contracts:.0f} contracts "
-                f"(max = options notional {max_hedge_btc:.4f} BTC)"
+                f"(max = options notional {max_hedge_btc:.4f} BTC * {scaling_factor:.2f} scaling)"
             )
             abs_qty = max_hedge_contracts
             

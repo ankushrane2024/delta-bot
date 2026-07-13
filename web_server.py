@@ -235,9 +235,100 @@ def get_status():
             'trade_status': trade_status,
         })
     
-    # Hedge Status
-    hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
-    hedge_pnl_usd = hedge_status.get('hedge_pnl_usd', 0.0)
+    # Hedge Status (ARES Engine Integration)
+    hedge_status = {}
+    hedge_pnl_usd = 0.0
+    
+    if getattr(bot_engine, 'ares_runner', None) and getattr(bot_engine.ares_runner, 'orchestrator', None):
+        ares_orch = bot_engine.ares_runner.orchestrator
+        tick_result = getattr(ares_orch, 'latest_tick_result', None)
+        decision_engine = getattr(ares_orch, 'decision_engine', None)
+        
+        hedge_percentage = 0.0
+        hedge_type = "Standby"
+        hedge_active = False
+        
+        if tick_result and getattr(tick_result, 'hedge_decision', None):
+            action_name = tick_result.hedge_decision.action.name
+            if action_name == "PARTIAL_HEDGE": 
+                hedge_percentage = 50.0
+                hedge_type = "Partial (Tier 1)"
+                hedge_active = True
+            elif action_name in ["FULL_HEDGE", "EMERGENCY_HEDGE"]:
+                hedge_percentage = 100.0
+                hedge_type = "Full (Emergency)"
+                hedge_active = True
+            elif action_name == "DEHEDGE":
+                hedge_percentage = 0.0
+                hedge_type = "Dehedged"
+                
+        actual_hedge_size = bot_engine.execution.hedge_size_btc
+        hedge_entry = bot_engine.execution.hedge_entry_price
+        current_btc = (ares_orch.market_data_provider.get_latest_data() or {}).get('spot_price', 0)
+        
+        if current_btc > 0 and hedge_entry > 0 and abs(actual_hedge_size) > 0:
+            direction_mult = 1 if actual_hedge_size > 0 else -1
+            hedge_pnl_usd = (current_btc - hedge_entry) * abs(actual_hedge_size) * direction_mult
+            
+        max_hedge_pnl = getattr(decision_engine, '_max_hedge_pnl', 0.0) if decision_engine else 0.0
+        
+        # Calculate bleeding leg details for dashboard
+        start_pnl = getattr(decision_engine, '_hedge_start_bleeding_pnl', None) if decision_engine else None
+        bleeding_leg_val = "None"
+        bleeding_leg_loss_pct = 0.0
+        remaining_sl_pct = 100.0
+        options_pnl_live = 0.0
+        combined_pnl_live = 0.0
+        
+        call_pnl = sum(p['leg_pnl_usd'] for p in positions if p['leg_type'] == 'call') if positions else 0.0
+        put_pnl = sum(p['leg_pnl_usd'] for p in positions if p['leg_type'] == 'put') if positions else 0.0
+        options_pnl_live = call_pnl + put_pnl
+        combined_pnl_live = options_pnl_live + hedge_pnl_usd
+        
+        # Calculate individual leg loss percentages
+        call_premium = 0.0
+        put_premium = 0.0
+        if tick_result and getattr(tick_result, 'portfolio_snapshot', None):
+            snap_meta = tick_result.portfolio_snapshot.metadata
+            call_leg = snap_meta.get('call_leg', {})
+            put_leg = snap_meta.get('put_leg', {})
+            call_premium = call_leg.get('entry_premium_usd', 0.0)
+            put_premium = put_leg.get('entry_premium_usd', 0.0)
+        
+        if put_pnl < call_pnl and put_pnl < 0:
+            bleeding_leg_loss_pct = (abs(put_pnl) / put_premium * 100.0) if put_premium > 0 else 0.0
+            remaining_sl_pct = max(0.0, 100.0 - bleeding_leg_loss_pct)
+            bleeding_leg_val = f"PUT (-{bleeding_leg_loss_pct:.1f}%)"
+        elif call_pnl < put_pnl and call_pnl < 0:
+            bleeding_leg_loss_pct = (abs(call_pnl) / call_premium * 100.0) if call_premium > 0 else 0.0
+            remaining_sl_pct = max(0.0, 100.0 - bleeding_leg_loss_pct)
+            bleeding_leg_val = f"CALL (-{bleeding_leg_loss_pct:.1f}%)"
+        else:
+            bleeding_leg_val = "None"
+        
+        # Get the decision reason for display
+        decision_reason = ""
+        if tick_result and getattr(tick_result, 'hedge_decision', None):
+            decision_reason = tick_result.hedge_decision.reason or ""
+        
+        hedge_status = {
+            'hedge_active': hedge_active,
+            'hedge_percentage': hedge_percentage,
+            'hedge_type': hedge_type,
+            'hedge_size_btc': abs(actual_hedge_size),
+            'hedge_pnl_usd': hedge_pnl_usd,
+            'hedge_peak_pnl': max_hedge_pnl,
+            'bleeding_leg': bleeding_leg_val,
+            'bleeding_leg_loss_pct': bleeding_leg_loss_pct,
+            'remaining_sl_pct': remaining_sl_pct,
+            'options_pnl_live': options_pnl_live,
+            'combined_pnl_live': combined_pnl_live,
+            'decision_reason': decision_reason,
+            'sl_tightened': False
+        }
+    else:
+        hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
+        hedge_pnl_usd = hedge_status.get('hedge_pnl_usd', 0.0)
 
     # Total P&L and Capital Used across all legs + Hedge
     options_pnl_usd = sum(pos['leg_pnl_usd'] for pos in positions) if positions else 0.0

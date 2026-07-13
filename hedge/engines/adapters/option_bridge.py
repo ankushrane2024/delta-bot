@@ -121,57 +121,73 @@ class OptionBridge(AbstractExecutionProvider):
         put_pnl_usd = 0.0
         
         for sym, opt in snapshot_raw['active_options'].items():
-            leg = opt.get('leg_type', 'call')
-            size = opt.get('size', 1.0)
-            total_lots += size
-            
-            # Use cached live metrics from legacy engine if available
-            ticker = self.engine.api_client.get_realtime_ticker(sym)
-            live_price = float(ticker.get('mark_price', opt.get('entry_price', 0.0))) if ticker else opt.get('entry_price', 0.0)
-            
-            # Options Pnl (in USD): For SOLD options, profit = (entry - current) * qty_btc * btc_price
-            side_mult = -1 if opt.get('side', 'SELL') == 'SELL' else 1
-            entry_price = float(opt.get('entry_price', 0.0))
-            pnl_btc = (live_price - entry_price) * side_mult * size * 0.001
-            pnl_usd = pnl_btc * btc_spot if btc_spot > 0 else pnl_btc
-            total_pnl += pnl_btc
-            
-            # Track per-leg PnL for Decision Engine Profit Override
-            if leg == 'call':
-                call_pnl_usd += pnl_usd
-            else:
-                put_pnl_usd += pnl_usd
-            
-            # Extract Live Greeks
-            greeks = ticker.get('greeks', {}) if ticker else {}
-            fallback_delta = 0.5 if leg == 'call' else -0.5
-            delta_val = float(greeks.get('delta', fallback_delta))
-            if delta_val == 0.0:
-                delta_val = fallback_delta
+            try:
+                leg = opt.get('leg_type', 'call')
+                size = opt.get('size', 1.0)
+                total_lots += size
                 
-            gamma_val = float(greeks.get('gamma', 0.05))
-            vega_val = float(greeks.get('vega', 10.0))
-            theta_val = float(greeks.get('theta', -5.0))
-            
-            # Live Delta Calculation
-            net_delta += size * delta_val * side_mult
-            
-            # Populate metadata for PositionContext
-            leg_key = f"{leg}_leg"
-            live_metadata[leg_key] = {
-                "strike": float(opt.get('strike', 0.0)),
-                "entry_price": entry_price,
-                "current_price": live_price,
-                "delta": delta_val,
-                "gamma": gamma_val, 
-                "vega": vega_val,
-                "theta": theta_val,
-                "iv": float(greeks.get('iv', 0.6)) if 'iv' in greeks else 0.6
-            }
+                # Use cached live metrics from legacy engine if available
+                ticker = self.engine.api_client.get_realtime_ticker(sym)
+                live_price = float(ticker.get('mark_price', opt.get('entry_price', 0.0))) if ticker else opt.get('entry_price', 0.0)
+                
+                # Options Pnl (in USD): For SOLD options, profit = (entry - current) * qty_btc * btc_price
+                side_mult = -1 if opt.get('side', 'SELL') == 'SELL' else 1
+                entry_price = float(opt.get('entry_price', 0.0))
+                pnl_btc = (live_price - entry_price) * side_mult * size * 0.001
+                pnl_usd = pnl_btc * btc_spot if btc_spot > 0 else pnl_btc
+                total_pnl += pnl_btc
+                
+                # Track per-leg PnL for Decision Engine Profit Override
+                if leg == 'call':
+                    call_pnl_usd += pnl_usd
+                else:
+                    put_pnl_usd += pnl_usd
+                
+                # Extract Live Greeks
+                greeks = ticker.get('greeks', {}) if ticker else {}
+                fallback_delta = 0.5 if leg == 'call' else -0.5
+                delta_val = float(greeks.get('delta', fallback_delta))
+                if delta_val == 0.0:
+                    delta_val = fallback_delta
+                    
+                gamma_val = float(greeks.get('gamma', 0.05))
+                vega_val = float(greeks.get('vega', 10.0))
+                theta_val = float(greeks.get('theta', -5.0))
+                
+                # Live Delta Calculation
+                net_delta += size * delta_val * side_mult
+                
+                entry_premium_usd = entry_price * size * 0.001 * btc_spot if btc_spot > 0 else 0.0
+                
+                # Populate metadata for PositionContext
+                leg_key = f"{leg}_leg"
+                live_metadata[leg_key] = {
+                    "strike": float(opt.get('strike', 0.0)),
+                    "entry_price": entry_price,
+                    "entry_premium_usd": entry_premium_usd,
+                    "current_price": live_price,
+                    "delta": delta_val,
+                    "gamma": gamma_val, 
+                    "vega": vega_val,
+                    "theta": theta_val,
+                    "iv": float(greeks.get('iv', 0.6)) if 'iv' in greeks else 0.6
+                }
+            except Exception as e:
+                logger.error(f"Option bridge: Error processing {sym}: {e}", exc_info=True)
+                continue
 
         live_metadata["total_lots"] = total_lots
         live_metadata["call_pnl_usd"] = call_pnl_usd
         live_metadata["put_pnl_usd"] = put_pnl_usd
+        
+        hedge_size_btc = snapshot_raw.get('hedge_size_btc', 0.0)
+        hedge_entry_price = self.execution.hedge_entry_price
+        hedge_pnl_usd = 0.0
+        if hedge_size_btc != 0 and hedge_entry_price > 0:
+            direction_mult = 1 if hedge_size_btc > 0 else -1
+            hedge_pnl_usd = (btc_spot - hedge_entry_price) * abs(hedge_size_btc) * direction_mult
+        
+        live_metadata["hedge_pnl_usd"] = hedge_pnl_usd
 
         return PortfolioSnapshot(
             timestamp=datetime.utcnow().isoformat() + "Z",
