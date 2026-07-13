@@ -1149,19 +1149,14 @@ def ares_status():
             
         if btc_entry > 0 and current_btc > 0:
             pct_change = ((current_btc - btc_entry) / btc_entry) * 100.0
-            if pct_change > 0.2:
-                intraday_trend = "BULLISH"
-                trend_strength = abs(pct_change) # Pass pct change as strength
-            elif pct_change < -0.2:
-                intraday_trend = "BEARISH"
-                trend_strength = abs(pct_change)
-            else:
-                intraday_trend = "SIDEWAYS"
-                trend_strength = abs(pct_change)
-                
-    # Override generic long-term trend with the highly-accurate Intraday Trade Trend
-    if intraday_trend != "WAITING":
-        market_regime = intraday_trend
+            
+        # Get the highly accurate ADX + RSI + BB Multi-Indicator signal from the Filter
+        try:
+            detailed_signal = getattr(bot_engine.filters, 'last_detailed_signal', 'WAITING')
+            market_regime = detailed_signal
+            trend_strength = getattr(bot_engine, 'current_adx_value', trend_strength)
+        except Exception:
+            pass
         
     res = {
         'bot_mode': ares_runner.config.mode,

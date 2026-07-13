@@ -180,108 +180,125 @@ class TradingFilters:
         return schedule
 
     def get_market_regime(self):
-        """Calculates 14-period ADX on 1H BTC perp candles using pure pandas/numpy.
-        Returns (regime, adx_value, adx_history). No external TA libraries needed."""
+        """Calculates ADX, Bollinger Bands, and RSI on 15m BTC perp candles.
+        Returns (regime, adx_value, adx_history)."""
         import pandas as pd
         import numpy as np
+        import pytz
+        from datetime import datetime
         
         try:
-            # Fetch 4 days of 1H candles to ensure enough data for a stable 14-period ADX
+            # Fetch 200 candles (15m) = 50 hours of data to ensure stable smoothing
             end_time = int(time.time())
-            start_time = end_time - (4 * 24 * 3600)
+            start_time = end_time - (60 * 3600)
             
-            res = self.api_client.get_candles("BTCUSD", "1h", start=start_time, end=end_time)
+            res = self.api_client.get_candles("BTCUSD", "15m", start=start_time, end=end_time)
             
             if not (res and res.get('success')):
-                app_logger.warning("Filter: Failed to fetch candles for ADX.")
+                app_logger.warning("Filter: Failed to fetch candles for Market Regime.")
                 return "Unknown", 0.0, []
                 
             candles = res.get('result', [])
-            if not candles or len(candles) < 28:  # need ~2x period for stable Wilder's smoothing
-                app_logger.warning(f"Filter: Not enough candle data ({len(candles) if candles else 0} bars) to calculate ADX.")
+            if not candles or len(candles) < 50:
+                app_logger.warning("Filter: Not enough candle data.")
                 return "Unknown", 0.0, []
                 
             df = pd.DataFrame(candles)
             df['high']  = df['high'].astype(float)
             df['low']   = df['low'].astype(float)
             df['close'] = df['close'].astype(float)
-            if 'time' in df.columns:
-                df = df.sort_values(by='time').reset_index(drop=True)
+            df['time']  = pd.to_datetime(df['time'], unit='s')
+            df = df.sort_values(by='time').reset_index(drop=True)
             
-            period = 14
+            # --- ADX + DI ---
+            tr = pd.concat([df['high'] - df['low'], 
+                            abs(df['high'] - df['close'].shift()), 
+                            abs(df['low'] - df['close'].shift())], axis=1).max(axis=1)
             
-            # --- True Range ---
-            df['prev_close'] = df['close'].shift(1)
-            df['tr'] = np.maximum(
-                df['high'] - df['low'],
-                np.maximum(
-                    (df['high'] - df['prev_close']).abs(),
-                    (df['low']  - df['prev_close']).abs()
-                )
-            )
+            plus_dm = np.where((df['high'].diff() > df['low'].diff().abs()) & (df['high'].diff() > 0), df['high'].diff(), 0)
+            minus_dm = np.where((df['low'].diff().abs() > df['high'].diff()) & (df['low'].diff() < 0), -df['low'].diff(), 0)
             
-            # --- Directional Movement ---
-            df['prev_high'] = df['high'].shift(1)
-            df['prev_low']  = df['low'].shift(1)
-            df['up_move']   = df['high'] - df['prev_high']
-            df['down_move'] = df['prev_low'] - df['low']
+            tr14 = tr.rolling(14).sum()
+            df['+DI'] = 100 * (pd.Series(plus_dm).rolling(14).sum() / tr14)
+            df['-DI'] = 100 * (pd.Series(minus_dm).rolling(14).sum() / tr14)
+            dx = 100 * abs(df['+DI'] - df['-DI']) / (df['+DI'] + df['-DI'])
+            df['ADX'] = dx.rolling(14).mean()
             
-            df['plus_dm']  = np.where((df['up_move'] > df['down_move']) & (df['up_move'] > 0), df['up_move'], 0.0)
-            df['minus_dm'] = np.where((df['down_move'] > df['up_move']) & (df['down_move'] > 0), df['down_move'], 0.0)
+            # --- Bollinger Bands ---
+            df['BB_mid'] = df['close'].rolling(20).mean()
+            df['BB_upper'] = df['BB_mid'] + 2 * df['close'].rolling(20).std()
+            df['BB_lower'] = df['BB_mid'] - 2 * df['close'].rolling(20).std()
+            df['BB_width'] = (df['BB_upper'] - df['BB_lower']) / df['BB_mid']
             
-            # --- Wilder's Smoothing (RMA) ---
-            def wilders(series, n):
-                result = [np.nan] * len(series)
-                # Seed with simple average of first n values
-                seed_start = series.first_valid_index()
-                vals = series.dropna().values
-                if len(vals) < n:
-                    return pd.Series(result, index=series.index)
-                result_arr = np.full(len(series), np.nan)
-                # Find first non-nan position
-                first_idx = series.first_valid_index()
-                pos = series.index.get_loc(first_idx)
-                result_arr[pos + n - 1] = vals[:n].mean()
-                for i in range(n, len(vals)):
-                    result_arr[pos + i] = (result_arr[pos + i - 1] * (n - 1) + vals[i]) / n
-                return pd.Series(result_arr, index=series.index)
+            # --- RSI ---
+            delta = df['close'].diff()
+            gain = delta.where(delta > 0, 0).rolling(14).mean()
+            loss = -delta.where(delta < 0, 0).rolling(14).mean()
+            df['RSI'] = 100 - (100 / (1 + gain / loss))
             
-            df = df.dropna(subset=['tr', 'plus_dm', 'minus_dm']).reset_index(drop=True)
-            
-            smoothed_tr       = wilders(df['tr'],       period)
-            smoothed_plus_dm  = wilders(df['plus_dm'],  period)
-            smoothed_minus_dm = wilders(df['minus_dm'], period)
-            
-            plus_di  = 100 * smoothed_plus_dm  / smoothed_tr.replace(0, np.nan)
-            minus_di = 100 * smoothed_minus_dm / smoothed_tr.replace(0, np.nan)
-            
-            di_sum  = (plus_di + minus_di).replace(0, np.nan)
-            dx      = 100 * (plus_di - minus_di).abs() / di_sum
-            
-            adx_series = wilders(dx.dropna().reset_index(drop=True), period)
-            
-            adx_history = adx_series.dropna().tail(6).tolist()
-            if len(adx_history) < 2:
+            df = df.dropna()
+            if df.empty:
                 return "Unknown", 0.0, []
-
-            current_adx = float(adx_history[-1])
-            prev_adx = float(adx_history[-2])
+                
+            # Filter for IST Session (09:00 - 17:00)
+            ist_tz = pytz.timezone('Asia/Kolkata')
+            df['ist_time'] = df['time'].dt.tz_localize('UTC').dt.tz_convert(ist_tz).dt.strftime('%H:%M')
+            session_df = df[(df['ist_time'] >= '09:00') & (df['ist_time'] <= '17:00')]
             
-            is_rising = current_adx > prev_adx
-            is_falling = current_adx < prev_adx
-
-            if current_adx > 25 and is_rising:
-                regime = "Trending"
-            elif current_adx < 22 and is_falling:
+            if session_df.empty:
+                # Outside session hours, evaluate on latest overall candle for fallback
+                session_df = df
+                
+            latest = session_df.iloc[-1]
+            prev = session_df.iloc[-2] if len(session_df) > 1 else latest
+            
+            adx_val = latest['ADX']
+            adx_history = session_df['ADX'].tail(6).tolist()
+            
+            # Default backward-compatible regime
+            regime = "Transition"
+            detailed_signal = "WAITING"
+            
+            # ARES Multi-Indicator Signal Logic
+            if latest['ADX'] < 23 and latest['BB_width'] < 0.025 and 40 <= latest['RSI'] <= 60:
+                detailed_signal = "SIDEWAYS"
                 regime = "Sideways"
+                
+            # Uptrend Start
+            elif (prev['ADX'] <= 25 and latest['ADX'] > 25) and latest['+DI'] > latest['-DI'] and latest['RSI'] > 52 and latest['close'] > latest['BB_mid']:
+                detailed_signal = "UPTREND START"
+                regime = "Trending"
+                
+            # Downtrend Start
+            elif (prev['ADX'] <= 25 and latest['ADX'] > 25) and latest['-DI'] > latest['+DI'] and latest['RSI'] < 48 and latest['close'] < latest['BB_mid']:
+                detailed_signal = "DOWNTREND START"
+                regime = "Trending"
+                
+            # Trend Strengthening
+            elif latest['ADX'] > 28 and latest['ADX'] > prev['ADX']:
+                dir_str = "UP" if latest['+DI'] > latest['-DI'] else "DOWN"
+                detailed_signal = f"STRENGTHENING {dir_str}"
+                regime = "Trending"
+                
+            # Trend Weakening
+            elif latest['ADX'] < 25 and prev['ADX'] >= 25:
+                detailed_signal = "WEAKENING"
+                regime = "Sideways"
+                
+            elif latest['ADX'] > 25:
+                 regime = "Trending"
+                 detailed_signal = "TRENDING"
             else:
-                regime = "Transition"
-
-            app_logger.info(f"Filter: Market Regime is {regime} (ADX: {current_adx:.2f})")
-            return regime, round(current_adx, 2), [round(float(x), 2) for x in adx_history]
+                 regime = "Sideways"
+                 detailed_signal = "SIDEWAYS"
+            
+            self.last_detailed_signal = detailed_signal
+            app_logger.info(f"Filter: Market is {detailed_signal} / {regime} (ADX: {adx_val:.2f}, RSI: {latest['RSI']:.1f})")
+            
+            return regime, round(adx_val, 2), [round(float(x), 2) for x in adx_history]
             
         except Exception as e:
-            app_logger.error(f"Filter: Error calculating ADX: {e}")
+            app_logger.error(f"Filter: Error calculating Regime: {e}")
             return "Unknown", 0.0, []
 
     def get_btc_atr(self, period=14, resolution="15m"):
