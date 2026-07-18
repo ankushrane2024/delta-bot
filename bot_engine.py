@@ -818,6 +818,7 @@ class DeltaTradingEngine:
                         recovered_premium = 0.0
                         rcalls = []
                         rputs = []
+                        oldest_entry_time = time.time()
                         for sym, data in self.execution.active_positions.items():
                             ltype = data.get('leg_type', '').lower()
                             if 'call' in ltype or 'c' in sym[-3:].lower():
@@ -829,8 +830,22 @@ class DeltaTradingEngine:
                                 entry_p = data.get('entry_price', 0)
                                 lots = data.get('entry_size', data['size'])
                                 recovered_premium += entry_p * lots * LOT_TO_BTC
+                                
+                                # Extract time if available
+                                if 'time' in data:
+                                    try:
+                                        from dateutil import parser
+                                        dt = parser.parse(data['time'])
+                                        ts = dt.timestamp()
+                                        if ts < oldest_entry_time:
+                                            oldest_entry_time = ts
+                                    except:
+                                        pass
                         
                         self.total_entry_premium = recovered_premium
+                        if not getattr(self, '_trade_start_ts', None):
+                            self._trade_start_ts = oldest_entry_time
+                            
                         if not self.current_trade_info.get("calls") and rcalls:
                             self.current_trade_info["calls"] = rcalls
                             self.current_trade_info["puts"] = rputs
