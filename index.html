@@ -2661,9 +2661,11 @@
 
         // Status Polling
         async function fetchStatus() {
+            let dataReceived = false;
             try {
                 const res = await fetch('/api/status');
                 const data = await res.json();
+                dataReceived = true;
 
 
                 // Update Badge
@@ -3497,9 +3499,13 @@
 
             } catch (e) {
                 console.error("Polling failed", e);
-                const badge = document.getElementById('status-badge');
-                badge.textContent = `🔴 OFFLINE`;
-                badge.className = 'status-badge offline';
+                // Only show OFFLINE if the fetch itself failed (network error).
+                // If data was received, the badge was already set correctly above.
+                if (!dataReceived) {
+                    const badge = document.getElementById('status-badge');
+                    badge.textContent = `🔴 OFFLINE`;
+                    badge.className = 'status-badge offline';
+                }
             }
         }
 
