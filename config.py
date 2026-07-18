@@ -12,11 +12,7 @@ DELTA_INDIA_WS_URL = "wss://socket.india.delta.exchange"
 
 # --- Bot Mode ---
 # Set BOT_MODE to "PAPER" for simulation or "LIVE" for real trading.
-# Remote Render bot is forced to "PAPER" mode for safety and simulation, local uses .env.
-if os.getenv("RENDER") == "true":
-    BOT_MODE = "PAPER"
-else:
-    BOT_MODE = os.getenv("BOT_MODE", "PAPER").upper()
+BOT_MODE = os.getenv("BOT_MODE", "PAPER").upper()
 
 # --- Capital & Risk ---
 # STARTING_CAPITAL is used only for paper-mode equity simulation and reporting.

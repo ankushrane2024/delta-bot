@@ -167,3 +167,11 @@
 {"timestamp": "2026-07-18 13:41:43,787", "level": "ERROR", "logger": "trading_bot", "message": "Error fetching historical DVOL from Deribit: HTTPSConnectionPool(host='www.deribit.com', port=443): Read timed out. (read timeout=10)"}
 {"timestamp": "2026-07-18 13:42:28,530", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
 {"timestamp": "2026-07-18 13:43:28,709", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:49:53,724", "level": "INFO", "logger": "system", "message": "Booting ARES Service in PAPER mode..."}
+{"timestamp": "2026-07-18 13:49:55,235", "level": "INFO", "logger": "system", "message": "ServiceRunner: Using OptionBridge as ExecutionProvider."}
+{"timestamp": "2026-07-18 13:49:55,238", "level": "INFO", "logger": "system", "message": "Internal dashboard API disabled. Using host Flask application."}
+{"timestamp": "2026-07-18 13:49:55,238", "level": "INFO", "logger": "hedge.engines.shadow.shadow_pipeline_validator", "message": "Starting ShadowPipelineValidator..."}
+{"timestamp": "2026-07-18 13:49:55,238", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "Starting Ares Orchestrator..."}
+{"timestamp": "2026-07-18 13:49:55,238", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Initiating Execution State Machine Recovery..."}
+{"timestamp": "2026-07-18 13:49:55,238", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Execution State Machine Recovery Complete."}
+{"timestamp": "2026-07-18 13:49:55,238", "level": "INFO", "logger": "system", "message": "ARES Main Loop started."}
