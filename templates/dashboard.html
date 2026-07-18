@@ -2919,8 +2919,7 @@
                     // ---------------------------------
 // ---------------------------------
 
-                    try {
-if (hBadge) {
+                    if (hBadge) {
                         if (data.hedge_status.hedge_active) {
                             hBadge.textContent = '🛡️ ACTIVE';
                             hBadge.style.color = 'var(--success)';
@@ -3011,7 +3010,6 @@ if (hBadge) {
                     }
                 }
 
-                } catch (e) { /* ignore legacy UI missing element errors */ }
                 // Show/Hide Test Order button based on mode
                 const testBtn = document.getElementById('btn-test-order');
                 if (testBtn) {
