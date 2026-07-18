@@ -1,0 +1,24 @@
+{
+    "weights": {
+        "stability": 40.0,
+        "percentile": 20.0,
+        "rank": 15.0,
+        "trend_5d": 15.0,
+        "change_1h": 10.0
+    },
+    "thresholds": {
+        "score_excellent": 70.0,
+        "score_good": 40.0,
+        "score_poor": 30.0,
+        "iv_stale_seconds": 300,
+        "rv_premium_excellent": 10.0,
+        "rv_premium_good": 0.0,
+        "rv_premium_poor": -5.0
+    },
+    "stability": {
+        "rapid_rise_slope": 1.0,
+        "slow_rise_slope": 0.2,
+        "rapid_fall_slope": -1.0,
+        "slow_fall_slope": -0.2
+    }
+}

@@ -1,31 +1,13 @@
 {
-    "PAPER": {
-        "running": false,
-        "config": {
-            "target_premium": 100,
-            "allocation_pct": 0.5,
-            "call_sl_mult": 2,
-            "call_sl_on": true,
-            "call_tp_mult": 0.050000000000000044,
-            "call_tp_on": true,
-            "put_sl_mult": 2,
-            "put_sl_on": true,
-            "put_tp_mult": 0.050000000000000044,
-            "put_tp_on": true
+    "max_equity": 100,
+    "trade_history": [
+        {
+            "id": 1
         },
-        "positions": {
-            "call": null,
-            "put": null
-        },
-        "balance": 10000
-    },
-    "LIVE": {
-        "running": false,
-        "config": {},
-        "positions": {
-            "call": null,
-            "put": null
-        },
-        "balance": 0
-    }
+        {
+            "id": 2
+        }
+    ],
+    "daily_reports": [],
+    "state": {}
 }

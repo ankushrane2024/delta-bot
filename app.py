@@ -118,6 +118,34 @@ def get_audit_metrics():
     from audit_manager import audit_system
     return jsonify(audit_system.get_dashboard_metrics())
 
+# Global PSCE Instance for API
+from psce import PremiumSellingConditionsEngine
+from api_client import DeltaIndiaClient
+from dvol_provider import DVOLProvider
+_psce_instance = None
+_dvol_provider = None
+
+@app.route('/api/premium_conditions')
+def get_premium_conditions():
+    try:
+        global _psce_instance, _dvol_provider
+        if not _psce_instance:
+            _dvol_provider = DVOLProvider()
+            _dvol_provider.start()
+            _psce_instance = PremiumSellingConditionsEngine(DeltaIndiaClient(), _dvol_provider)
+            
+        return jsonify(_psce_instance.evaluate_conditions(mode="MONITOR"))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+    return jsonify({
+        "status": "error",
+        "trade_allowed": False,
+        "zone": "RED",
+        "decision": "DATA UNAVAILABLE",
+        "reasons": ["API Error: Could not reach PSCE Engine."]
+    })
+
 @app.route('/api/start', methods=['POST'])
 def start_bot():
     data    = request.get_json() or {}

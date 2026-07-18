@@ -16,6 +16,7 @@ from logger import app_logger, error_logger
 from db_manager import get_last_backup_time
 from audit_manager import audit_system
 from notifier import notifier
+from psce import PremiumSellingConditionsEngine
 from api_client import DeltaIndiaClient
 from risk_manager import RiskManager
 from strategy import ShortStrangleStrategy
@@ -32,6 +33,7 @@ class DeltaTradingEngine:
         self.api_client = DeltaIndiaClient()
         self.dvol_provider = DVOLProvider()
         self.dvol_provider.start()
+        self.premium_engine = PremiumSellingConditionsEngine(self.api_client, self.dvol_provider)
         self.risk_manager = RiskManager(self.api_client)
         self.strategy = ShortStrangleStrategy(self.api_client)
         self.execution = ExecutionHandler(self.api_client, mode=BOT_MODE)
@@ -178,6 +180,26 @@ class DeltaTradingEngine:
             self._record_skip("Maximum 1 trade per day limit met")
             return
             
+        # 1.5 MASTER GATE: Premium Selling Conditions Engine (PSCE)
+        psce_eval = self.premium_engine.evaluate_conditions(mode="ENTRY")
+        if not psce_eval.get('trade_allowed', False):
+            app_logger.warning(f"Engine: BLOCKED BY PSCE ({psce_eval.get('zone')}). Skipping trade.")
+            self.today_trade_status = "Trade Skipped"
+            self.today_skip_reason = f"BLOCKED BY PREMIUM SELLING CONDITIONS. Reason: {psce_eval.get('reasons', ['Unknown'])[0]}"
+            self._record_skip(self.today_skip_reason)
+            
+            # Explicitly log to audit as per requirement
+            audit_snapshot = self._build_audit_snapshot(
+                btc_price=psce_eval.get('metrics', {}).get('btc_price', 0.0),
+                options_profit=0.0, hedge_pnl=0.0, pnl_pct=0.0,
+                time_in_trade_seconds=0, action="TRADE_BLOCKED",
+                reason=self.today_skip_reason
+            )
+            audit_system.log_critical_event(
+                "Trade Execution Blocked by PSCE", "psce", "evaluate_conditions", 
+                audit_snapshot, self.today_skip_reason
+            )
+            return
         # Guard 3: Next day pause check (NEW — Section 5)
         if not force and self.next_day_paused:
             app_logger.warning("Engine: Paused today due to yesterday's >2.5% loss pause trigger")
@@ -383,8 +405,14 @@ class DeltaTradingEngine:
         """
         app_logger.info("Engine [TEST]: run_test_order triggered")
         if getattr(self.execution, 'mode', 'PAPER') != 'PAPER':
-            app_logger.warning("Engine [TEST]: Blocked — mode is LIVE")
+            app_logger.warning("Engine [TEST]: Blocked - mode is LIVE")
             return False, "Test Order is only allowed in PAPER mode for safety."
+
+        # MUST PASS PSCE (Master Gate) even for Test Order
+        psce_eval = self.premium_engine.evaluate_conditions(mode="ENTRY")
+        if not psce_eval.get('trade_allowed', False):
+            app_logger.warning(f"Engine [TEST]: BLOCKED BY PSCE ({psce_eval.get('zone')}). Test Order aborted.")
+            return False, f"BLOCKED BY PREMIUM SELLING CONDITIONS. Reason: {psce_eval.get('reasons', ['Unknown'])[0]}"
 
         try:
             # ── Step 1: Find Strikes (3-attempt fallback, bypasses all entry filters) ──
@@ -689,6 +717,27 @@ class DeltaTradingEngine:
                         self.adx_history = history
                     except Exception as e:
                         error_logger.error(f"Engine: Error updating Market Regime: {e}")
+                        
+                    # PSCE Live Monitoring Hook
+                    if self.execution.active_positions:
+                        try:
+                            psce_mon = self.premium_engine.evaluate_conditions(mode="MONITOR")
+                            if psce_mon.get('zone') == "LOW EDGE" or not psce_mon.get('trade_allowed', False):
+                                app_logger.warning(f"PSCE Live Monitor: Premium conditions deteriorated! Zone: {psce_mon.get('zone')}. Notifying ARES.")
+                                # We do not exit directly, we log to audit. ARES reads this if needed.
+                                audit_snapshot = self._build_audit_snapshot(
+                                    btc_price=psce_mon.get('metrics', {}).get('btc_price', 0.0),
+                                    options_profit=0.0, hedge_pnl=0.0, pnl_pct=0.0,
+                                    time_in_trade_seconds=0, action="PSCE_DETERIORATION_ALERT",
+                                    reason=psce_mon.get('reasons', ['Unknown'])[0]
+                                )
+                                audit_system.log_critical_event(
+                                    "PSCE Condition Deterioration Alert", "psce", "evaluate_conditions", 
+                                    audit_snapshot, psce_mon.get('reasons', ['Unknown'])[0]
+                                )
+                        except Exception as e:
+                            error_logger.error(f"Engine: Error running PSCE Live Monitor: {e}")
+                            
                     last_regime_update = time.time()
 
                 

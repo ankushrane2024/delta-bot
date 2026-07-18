@@ -31543,3 +31543,58 @@
 2026-05-11 17:01:22,424 [INFO] 127.0.0.1 - - [11/May/2026 17:01:22] "GET /api/status?mode=PAPER HTTP/1.1" 200 -
 2026-05-11 17:01:22,703 [INFO] 127.0.0.1 - - [11/May/2026 17:01:22] "GET /api/state?mode=PAPER HTTP/1.1" 200 -
 2026-05-11 17:01:22,734 [INFO] 127.0.0.1 - - [11/May/2026 17:01:22] "GET /api/status?mode=PAPER HTTP/1.1" 200 -
+2026-07-18 13:00:20,375 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.36:5000
+2026-07-18 13:00:20,375 [INFO] [33mPress CTRL+C to quit[0m
+2026-07-18 13:00:20,377 [INFO]  * Restarting with stat
+2026-07-18 13:00:21,024 [WARNING]  * Debugger is active!
+2026-07-18 13:00:21,026 [INFO]  * Debugger PIN: 104-010-427
+2026-07-18 13:00:41,769 [INFO] 127.0.0.1 - - [18/Jul/2026 13:00:41] "GET /api/premium_conditions HTTP/1.1" 200 -
+2026-07-18 13:00:49,492 [INFO] DB: Manual Cloud Sync Triggered
+2026-07-18 13:00:49,492 [INFO] 127.0.0.1 - - [18/Jul/2026 13:00:49] "POST /api/start HTTP/1.1" 200 -
+2026-07-18 13:00:55,238 [INFO] 127.0.0.1 - - [18/Jul/2026 13:00:55] "GET /api/premium_conditions HTTP/1.1" 200 -
+2026-07-18 13:01:22,233 [INFO] 127.0.0.1 - - [18/Jul/2026 13:01:22] "GET /health HTTP/1.1" 200 -
+2026-07-18 13:04:07,235 [INFO]  * Detected change in 'C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\app.py', reloading
+2026-07-18 13:04:07,307 [INFO]  * Restarting with stat
+2026-07-18 13:04:08,066 [WARNING]  * Debugger is active!
+2026-07-18 13:04:08,068 [INFO]  * Debugger PIN: 104-010-427
+2026-07-18 13:09:14,297 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.36:5000
+2026-07-18 13:09:14,297 [INFO] [33mPress CTRL+C to quit[0m
+2026-07-18 13:09:14,298 [INFO]  * Restarting with stat
+2026-07-18 13:09:15,009 [WARNING]  * Debugger is active!
+2026-07-18 13:09:15,011 [INFO]  * Debugger PIN: 104-010-427
+2026-07-18 13:09:25,633 [INFO] Loaded DVOL cache from dvol_history.json.
+2026-07-18 13:09:25,633 [INFO] DVOLProvider background thread started.
+2026-07-18 13:09:26,013 [INFO] API: Time synced. Offset: -7s
+2026-07-18 13:09:26,015 [INFO] 127.0.0.1 - - [18/Jul/2026 13:09:26] "GET /api/premium_conditions HTTP/1.1" 200 -
+2026-07-18 13:10:16,210 [INFO] 127.0.0.1 - - [18/Jul/2026 13:10:16] "GET /health HTTP/1.1" 200 -
+2026-07-18 13:10:54,268 [INFO]  * Detected change in 'C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\run_psce_validation.py', reloading
+2026-07-18 13:10:54,334 [INFO]  * Restarting with stat
+2026-07-18 13:10:55,053 [WARNING]  * Debugger is active!
+2026-07-18 13:10:55,055 [INFO]  * Debugger PIN: 104-010-427
+2026-07-18 13:11:04,346 [INFO]  * Detected change in 'C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\run_psce_validation.py', reloading
+2026-07-18 13:11:04,419 [INFO]  * Restarting with stat
+2026-07-18 13:11:05,137 [WARNING]  * Debugger is active!
+2026-07-18 13:11:05,139 [INFO]  * Debugger PIN: 104-010-427
+2026-07-18 13:11:13,188 [INFO]  * Detected change in 'C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\run_psce_validation.py', reloading
+2026-07-18 13:11:13,260 [INFO]  * Restarting with stat
+2026-07-18 13:11:13,984 [WARNING]  * Debugger is active!
+2026-07-18 13:11:13,987 [INFO]  * Debugger PIN: 104-010-427
+2026-07-18 13:11:57,746 [INFO]  * Detected change in 'C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\run_psce_validation.py', reloading
+2026-07-18 13:11:57,806 [INFO]  * Restarting with stat
+2026-07-18 13:11:58,544 [WARNING]  * Debugger is active!
+2026-07-18 13:11:58,547 [INFO]  * Debugger PIN: 104-010-427
+2026-07-18 13:12:15,344 [INFO]  * Detected change in 'C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\run_psce_validation.py', reloading
+2026-07-18 13:12:15,423 [INFO]  * Restarting with stat
+2026-07-18 13:12:16,184 [WARNING]  * Debugger is active!
+2026-07-18 13:12:16,185 [INFO]  * Debugger PIN: 104-010-427
+2026-07-18 13:16:06,028 [INFO]  * Detected change in 'C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\inject_ui.py', reloading
+2026-07-18 13:16:06,129 [INFO]  * Restarting with stat
+2026-07-18 13:16:06,879 [WARNING]  * Debugger is active!
+2026-07-18 13:16:06,881 [INFO]  * Debugger PIN: 104-010-427
+2026-07-18 13:20:18,251 [INFO] 127.0.0.1 - - [18/Jul/2026 13:20:18] "GET /health HTTP/1.1" 200 -

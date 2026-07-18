@@ -24,7 +24,32 @@ def index():
 @app.route('/ping')
 def ping():
     # Lightweight endpoint for Keep-Alive pinger and UptimeRobot
-    return jsonify({'status': 'OK', 'message': 'Keep-alive ping successful.'})
+    return "OK", 200
+
+@app.route('/api/premium_conditions')
+def get_premium_conditions():
+    if not bot_engine:
+        return jsonify({
+            "status": "error",
+            "trade_allowed": False,
+            "zone": "RED",
+            "decision": "DATA UNAVAILABLE",
+            "reasons": ["API Error: Engine not initialized."]
+        })
+    try:
+        if hasattr(bot_engine, 'premium_engine') and bot_engine.premium_engine:
+            return jsonify(bot_engine.premium_engine.evaluate_conditions(mode="MONITOR"))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        
+    return jsonify({
+        "status": "error",
+        "trade_allowed": False,
+        "zone": "RED",
+        "decision": "DATA UNAVAILABLE",
+        "reasons": ["API Error: Could not reach PSCE Engine."]
+    })
 
 @app.route('/api/status')
 def get_status():

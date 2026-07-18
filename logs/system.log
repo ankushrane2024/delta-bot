@@ -90,3 +90,48 @@
 {"timestamp": "2026-07-18 11:14:29,019", "level": "INFO", "logger": "BotCore", "message": "Hedge: State fully reset."}
 {"timestamp": "2026-07-18 11:14:29,019", "level": "INFO", "logger": "BotCore", "message": "Risk [DPL]: Trailing state reset for new trade."}
 {"timestamp": "2026-07-18 11:14:29,166", "level": "INFO", "logger": "BotCore", "message": "Engine: Daily state reset."}
+{"timestamp": "2026-07-18 13:27:15,579", "level": "INFO", "logger": "system", "message": "Booting ARES Service in PAPER mode..."}
+{"timestamp": "2026-07-18 13:27:15,580", "level": "INFO", "logger": "BotCore", "message": "ARES ServiceRunner initialized in background thread in PAPER mode with OptionBridge."}
+{"timestamp": "2026-07-18 13:27:15,580", "level": "INFO", "logger": "BotCore", "message": "Starting Web Dashboard on port 5000"}
+{"timestamp": "2026-07-18 13:27:15,591", "level": "INFO", "logger": "werkzeug", "message": "\u001b[31m\u001b[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\u001b[0m\n * Running on all addresses (0.0.0.0)\n * Running on http://127.0.0.1:5000\n * Running on http://192.168.1.36:5000"}
+{"timestamp": "2026-07-18 13:27:15,591", "level": "INFO", "logger": "werkzeug", "message": "\u001b[33mPress CTRL+C to quit\u001b[0m"}
+{"timestamp": "2026-07-18 13:27:15,948", "level": "INFO", "logger": "BotCore", "message": "Telegram: Skipped 0 old messages. Waiting for new commands."}
+{"timestamp": "2026-07-18 13:27:17,248", "level": "INFO", "logger": "system", "message": "ServiceRunner: Using OptionBridge as ExecutionProvider."}
+{"timestamp": "2026-07-18 13:27:17,251", "level": "INFO", "logger": "system", "message": "Internal dashboard API disabled. Using host Flask application."}
+{"timestamp": "2026-07-18 13:27:17,251", "level": "INFO", "logger": "hedge.engines.shadow.shadow_pipeline_validator", "message": "Starting ShadowPipelineValidator..."}
+{"timestamp": "2026-07-18 13:27:17,251", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "Starting Ares Orchestrator..."}
+{"timestamp": "2026-07-18 13:27:17,251", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Initiating Execution State Machine Recovery..."}
+{"timestamp": "2026-07-18 13:27:17,252", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Execution State Machine Recovery Complete."}
+{"timestamp": "2026-07-18 13:27:17,252", "level": "INFO", "logger": "system", "message": "ARES Main Loop started."}
+{"timestamp": "2026-07-18 13:27:25,791", "level": "ERROR", "logger": "ErrorLog", "message": "Telegram failed: {\"ok\":false,\"error_code\":404,\"description\":\"Not Found\"}"}
+{"timestamp": "2026-07-18 13:27:26,193", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-18 13:27:26,193", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-18 13:27:26,193", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-18 13:27:26,194", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-18 13:27:26,194", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)"}
+{"timestamp": "2026-07-18 13:27:26,194", "level": "INFO", "logger": "BotCore", "message": "Engine: Starting 24/7 background Option Chain Monitor..."}
+{"timestamp": "2026-07-18 13:27:26,266", "level": "INFO", "logger": "websocket", "message": "Websocket connected"}
+{"timestamp": "2026-07-18 13:27:26,266", "level": "INFO", "logger": "BotCore", "message": "WS Connection Opened"}
+{"timestamp": "2026-07-18 13:27:26,267", "level": "INFO", "logger": "BotCore", "message": "WS: Subscribed to ['BTCUSD']"}
+{"timestamp": "2026-07-18 13:27:27,842", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:27:31,172", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [18/Jul/2026 13:27:31] \"GET /api/premium_conditions HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-18 13:28:15,171", "level": "INFO", "logger": "BotCore", "message": "Keep-alive pinger started. Target URL: http://localhost:5000"}
+{"timestamp": "2026-07-18 13:28:17,212", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [18/Jul/2026 13:28:17] \"GET /ping HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-18 13:28:17,213", "level": "INFO", "logger": "BotCore", "message": "[KEEPALIVE] alive, engine=OFF (Mode: OFF)"}
+{"timestamp": "2026-07-18 13:28:28,010", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:29:28,176", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:30:28,348", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:31:28,518", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:32:19,244", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [18/Jul/2026 13:32:19] \"GET /ping HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-18 13:32:19,245", "level": "INFO", "logger": "BotCore", "message": "[KEEPALIVE] alive, engine=OFF (Mode: OFF)"}
+{"timestamp": "2026-07-18 13:32:27,044", "level": "INFO", "logger": "BotCore", "message": "Engine Heartbeat: Monitor loop is active and running 24/7."}
+{"timestamp": "2026-07-18 13:32:28,681", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:33:28,846", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:34:29,021", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:35:29,203", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:36:21,288", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [18/Jul/2026 13:36:21] \"GET /ping HTTP/1.1\" 200 -"}
+{"timestamp": "2026-07-18 13:36:21,288", "level": "INFO", "logger": "BotCore", "message": "[KEEPALIVE] alive, engine=OFF (Mode: OFF)"}
+{"timestamp": "2026-07-18 13:36:29,376", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:37:27,903", "level": "INFO", "logger": "BotCore", "message": "Engine Heartbeat: Monitor loop is active and running 24/7."}
+{"timestamp": "2026-07-18 13:37:29,548", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}
+{"timestamp": "2026-07-18 13:38:29,713", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for Market Regime."}

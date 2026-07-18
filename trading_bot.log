@@ -6881,3 +6881,313 @@ Rule 11: Exit Time - [PASS]
 2026-07-18 11:14:29 IST - BotCore - INFO - Hedge: State fully reset.
 2026-07-18 11:14:29 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
 2026-07-18 11:14:29 IST - BotCore - INFO - Engine: Daily state reset.
+2026-07-18 11:24:23 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 11:24:23 IST - BotCore - WARNING - DB: JSONBLOB_ID missing. Will create a new JSONBlob on first save.
+2026-07-18 11:24:24 IST - BotCore - WARNING - DB: Fallback JSONBlob Created! ID: 019f73ca-48b4-7119-80ae-ecaec61225dd
+2026-07-18 11:24:24 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 11:24:24 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...c61225dd
+2026-07-18 11:25:43 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 11:25:43 IST - BotCore - WARNING - DB: JSONBLOB_ID missing. Will create a new JSONBlob on first save.
+2026-07-18 11:25:44 IST - BotCore - WARNING - DB: Fallback JSONBlob Created! ID: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 11:25:46 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 11:25:46 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 11:25:46 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 11:27:19 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 11:27:19 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 11:27:19 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 11:27:22 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 11:27:22 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 11:27:22 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 11:27:25 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 11:27:25 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 11:27:25 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 11:27:26 IST - BotCore - ERROR - DB: Exception updating JSONBlob: Simulated Network Timeout
+2026-07-18 12:01:07 IST - BotCore - INFO - API: Time synced. Offset: -3s
+2026-07-18 12:01:08 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 12:01:08 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 12:01:08 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 12:01:09 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-18 12:01:09 IST - BotCore - INFO - Risk [DPL]: Trailing state restored. Peak=17.0% SL=5.0% Confirmed=True
+2026-07-18 12:01:10 IST - BotCore - WARNING - Engine [DEBUG] Hard-Suppressing TRAILING_SL_EXIT because time_in_trade (0.0s) < 15s (spread stabilization)
+2026-07-18 12:17:18 IST - BotCore - INFO - API: Time synced. Offset: -5s
+2026-07-18 12:17:19 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 12:17:19 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 12:17:19 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 12:17:21 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-18 12:17:22 IST - BotCore - INFO - HedgeLog [OPEN]: Bleeding Call Leg | BUY 0.0500 BTC @ $65,000 | OptsPnL=$-10.00 HedgePnL=$+0.00
+2026-07-18 12:17:24 IST - BotCore - INFO - API: Time synced. Offset: -1s
+2026-07-18 12:17:26 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-18 12:18:06 IST - BotCore - INFO - API: Time synced. Offset: -3s
+2026-07-18 12:18:07 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 12:18:07 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 12:18:07 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 12:18:08 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-18 12:18:10 IST - BotCore - INFO - HedgeLog [OPEN]: Bleeding Call Leg | BUY 0.0500 BTC @ $65,000 | OptsPnL=$-10.00 HedgePnL=$+0.00
+2026-07-18 12:18:12 IST - BotCore - INFO - API: Time synced. Offset: -9s
+2026-07-18 12:18:14 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-18 12:52:31 IST - BotCore - INFO - API: Time synced. Offset: -1s
+2026-07-18 13:00:49 IST - BotCore - INFO - DB: Manual Cloud Sync Triggered
+2026-07-18 13:09:26 IST - BotCore - INFO - API: Time synced. Offset: -7s
+2026-07-18 13:11:25 IST - BotCore - INFO - API: Time synced. Offset: -6s
+2026-07-18 13:11:26 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 13:11:26 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 13:11:26 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 13:11:28 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-18 13:11:28 IST - BotCore - INFO - Engine [TEST]: run_test_order triggered
+2026-07-18 13:11:28 IST - BotCore - WARNING - Engine [TEST]: BLOCKED BY PSCE (RED). Test Order aborted.
+2026-07-18 13:11:28 IST - BotCore - INFO - Engine: Entry cycle triggered (force=True)
+2026-07-18 13:11:28 IST - BotCore - WARNING - Engine: BLOCKED BY PSCE (RED). Skipping trade.
+2026-07-18 13:12:26 IST - BotCore - INFO - API: Time synced. Offset: -6s
+2026-07-18 13:12:27 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 13:12:27 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 13:12:27 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 13:12:29 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-18 13:12:29 IST - BotCore - INFO - Engine [TEST]: run_test_order triggered
+2026-07-18 13:12:29 IST - BotCore - WARNING - Engine [TEST]: BLOCKED BY PSCE (RED). Test Order aborted.
+2026-07-18 13:12:29 IST - BotCore - INFO - Engine: Entry cycle triggered (force=True)
+2026-07-18 13:12:29 IST - BotCore - WARNING - Engine: BLOCKED BY PSCE (RED). Skipping trade.
+2026-07-18 13:27:10 IST - BotCore - INFO - API: Time synced. Offset: -6s
+2026-07-18 13:27:11 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 13:27:11 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 13:27:11 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 13:27:15 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-18 13:27:15 IST - BotCore - INFO - Engine: Starting Delta BTC Options Bot in SHADOW mode with Capital: $50000.0
+2026-07-18 13:27:15 IST - BotCore - INFO - Telegram polling loop started.
+2026-07-18 13:27:15 IST - BotCore - INFO - Telegram interactive bot thread started.
+2026-07-18 13:27:15 IST - BotCore - INFO - ARES ServiceRunner initialized in background thread in PAPER mode with OptionBridge.
+2026-07-18 13:27:15 IST - BotCore - INFO - Starting Web Dashboard on port 5000
+2026-07-18 13:27:15 IST - BotCore - INFO - Telegram: Skipped 0 old messages. Waiting for new commands.
+2026-07-18 13:27:26 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)
+2026-07-18 13:27:26 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)
+2026-07-18 13:27:26 IST - BotCore - INFO - Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)
+2026-07-18 13:27:26 IST - BotCore - INFO - Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)
+2026-07-18 13:27:26 IST - BotCore - INFO - Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)
+2026-07-18 13:27:26 IST - BotCore - INFO - Engine: Starting 24/7 background Option Chain Monitor...
+2026-07-18 13:27:26 IST - BotCore - INFO - WS Connection Opened
+2026-07-18 13:27:26 IST - BotCore - INFO - WS: Subscribed to ['BTCUSD']
+2026-07-18 13:27:27 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:28:15 IST - BotCore - INFO - Keep-alive pinger started. Target URL: http://localhost:5000
+2026-07-18 13:28:17 IST - BotCore - INFO - [KEEPALIVE] alive, engine=OFF (Mode: OFF)
+2026-07-18 13:28:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:29:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:30:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:31:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:32:19 IST - BotCore - INFO - [KEEPALIVE] alive, engine=OFF (Mode: OFF)
+2026-07-18 13:32:27 IST - BotCore - INFO - Engine Heartbeat: Monitor loop is active and running 24/7.
+2026-07-18 13:32:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:33:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:34:29 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:35:29 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:36:21 IST - BotCore - INFO - [KEEPALIVE] alive, engine=OFF (Mode: OFF)
+2026-07-18 13:36:29 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:37:27 IST - BotCore - INFO - Engine Heartbeat: Monitor loop is active and running 24/7.
+2026-07-18 13:37:29 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:38:29 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.

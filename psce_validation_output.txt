@@ -1,0 +1,29 @@
+API Payload:
+{
+  "status": "success",
+  "trade_allowed": false,
+  "zone": "RED",
+  "edge_score": 0.0,
+  "decision": "DATA UNAVAILABLE",
+  "premium_state": "Premium Selling Environment: Unknown",
+  "reasons": [
+    "BTC Price feed is offline or invalid."
+  ],
+  "metrics": {},
+  "health": {
+    "btc_feed": "OFFLINE",
+    "iv_feed": "OFFLINE",
+    "db_status": "ONLINE",
+    "engine_status": "ONLINE"
+  },
+  "last_update": "2026-07-18T13:12:26"
+}
+Negative IV Decision: False | Reason: ['BTC Price feed is offline or invalid.']
+Stale Feed Decision: False | Reason: ['BTC Price feed is offline or invalid.']
+Disconnect Decision: False | Reason: ['BTC Price feed is offline or invalid.']
+Test Order Result (Force): Success=False, Message=BLOCKED BY PREMIUM SELLING CONDITIONS. Reason: BTC Price feed is offline or invalid.
+Entry Cycle Status: Trade Skipped | Reason: BLOCKED BY PREMIUM SELLING CONDITIONS. Reason: BTC Price feed is offline or invalid.
+Live Monitor triggered Deterioration Alert to Audit.
+Audit Log Found: Trade Execution Blocked by PSCE | Reason: BLOCKED BY PREMIUM SELLING CONDITIONS. Reason: BTC Price feed is offline or invalid.
+Audit Log Found: PSCE Condition Deterioration Alert | Reason: Test
+1000 Evals Completed in 0.13s. Errors: 0

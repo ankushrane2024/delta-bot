@@ -1,0 +1,54 @@
+[
+    {
+        "Event ID": "361faf74-10ce-423f-8851-5bab6c0c6a28",
+        "Trade ID": "NO_TRADE",
+        "Parent Event ID": null,
+        "Timestamp": 1784360549113,
+        "Date Time": "2026-07-18 13:12:29",
+        "Module Name": "psce",
+        "Function Name": "evaluate_conditions",
+        "Event Type": "Trade Execution Blocked by PSCE",
+        "Reason": "BLOCKED BY PREMIUM SELLING CONDITIONS. Reason: BTC Price feed is offline or invalid.",
+        "Snapshot": {
+            "BTC Price": 0.0,
+            "Current PnL": 0.0,
+            "Peak Profit": 0.0,
+            "Locked Profit": null,
+            "Dynamic Profit Lock Status": false,
+            "Trailing SL Value": null,
+            "Trailing SL Trigger": "NO",
+            "Trade Age": 0,
+            "Market Regime": "Unknown",
+            "Decision Engine Output": "TRADE_BLOCKED",
+            "Decision Reason": "BLOCKED BY PREMIUM SELLING CONDITIONS. Reason: BTC Price feed is offline or invalid.",
+            "Order Status": "Pending",
+            "Hedge State": "INACTIVE"
+        }
+    },
+    {
+        "Event ID": "d41d9b84-6ffb-4c4c-a4f9-4ecafa1d7e1e",
+        "Trade ID": "NO_TRADE",
+        "Parent Event ID": null,
+        "Timestamp": 1784360550866,
+        "Date Time": "2026-07-18 13:12:30",
+        "Module Name": "psce",
+        "Function Name": "evaluate_conditions",
+        "Event Type": "PSCE Condition Deterioration Alert",
+        "Reason": "Test",
+        "Snapshot": {
+            "BTC Price": 64000,
+            "Current PnL": 0,
+            "Peak Profit": 0.0,
+            "Locked Profit": null,
+            "Dynamic Profit Lock Status": false,
+            "Trailing SL Value": null,
+            "Trailing SL Trigger": "NO",
+            "Trade Age": 0,
+            "Market Regime": "Unknown",
+            "Decision Engine Output": "PSCE_DETERIORATION_ALERT",
+            "Decision Reason": "Test Deterioration",
+            "Order Status": "Pending",
+            "Hedge State": "INACTIVE"
+        }
+    }
+]
