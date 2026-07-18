@@ -1,6 +1,7 @@
 """
-Database Manager - GitHub Gists Edition
+Database Manager - GitHub Gists Edition (with JSONBlob fallback)
 Permanently stores bot state and active positions in a private GitHub Gist.
+If GITHUB_PAT is missing, falls back to JSONBlob so Render restarts don't wipe data.
 """
 
 import json
@@ -14,6 +15,9 @@ from utils import get_ist_now
 # Environment Variables
 GITHUB_PAT = os.environ.get("GITHUB_PAT")
 GITHUB_GIST_ID = os.environ.get("GITHUB_GIST_ID")
+
+_MASTER_JSONBLOB_ID = "019f73ca-cf4b-7663-9864-9bf01fe15970"
+JSONBLOB_ID = None
 
 # Local files for fallback and caching
 BOT_STATE_FILE = "bot_state.json"
@@ -33,20 +37,42 @@ def _get_headers():
     }
 
 def _load_config():
-    global GITHUB_GIST_ID
-    if not GITHUB_GIST_ID and os.path.exists(CONFIG_FILE):
+    global GITHUB_GIST_ID, JSONBLOB_ID
+    if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r') as f:
                 data = json.load(f)
-                if data.get("provider") == "github_gists":
+                if data.get("provider") == "github_gists" and not GITHUB_GIST_ID:
                     GITHUB_GIST_ID = data.get("gist_id")
+                elif data.get("provider") == "jsonblob" and not JSONBLOB_ID:
+                    JSONBLOB_ID = data.get("jsonblob_id")
         except Exception as e:
             app_logger.error(f"DB: Failed to load config - {e}")
+            
+    # CRITICAL: Always override JSONBLOB_ID from Master Blob to survive Render wipes
+    if not GITHUB_PAT:
+        try:
+            url = f"https://jsonblob.com/api/jsonBlob/{_MASTER_JSONBLOB_ID}"
+            res = requests.get(url, headers={'Accept': 'application/json'}, timeout=5)
+            if res.status_code == 200:
+                master_data = res.json()
+                active_id = master_data.get("active_jsonblob_id")
+                if active_id:
+                    JSONBLOB_ID = active_id
+                    app_logger.info(f"DB: Recovered Active JSONBLOB_ID from Master Blob: {JSONBLOB_ID}")
+        except Exception as e:
+            app_logger.error(f"DB: Failed to fetch Master Blob: {e}")
 
-def _save_config(gist_id):
+def _save_config(provider, identifier):
     try:
+        key = "gist_id" if provider == "github_gists" else "jsonblob_id"
         with open(CONFIG_FILE, 'w') as f:
-            json.dump({"provider": "github_gists", "gist_id": gist_id}, f, indent=4)
+            json.dump({"provider": provider, key: identifier}, f, indent=4)
+            
+        if provider == "jsonblob":
+            # Update Master Blob
+            url = f"https://jsonblob.com/api/jsonBlob/{_MASTER_JSONBLOB_ID}"
+            requests.put(url, json={"active_jsonblob_id": identifier}, headers={'Content-Type': 'application/json', 'Accept': 'application/json'}, timeout=5)
     except Exception as e:
         pass
 
@@ -55,7 +81,6 @@ def _create_gist(bot_state_content, active_pos_content):
     global GITHUB_GIST_ID
     headers = _get_headers()
     if not headers:
-        app_logger.error("DB: Missing GITHUB_PAT. Cannot create Gist.")
         return None
         
     payload = {
@@ -72,21 +97,18 @@ def _create_gist(bot_state_content, active_pos_content):
         if res.status_code == 201:
             gist_id = res.json()["id"]
             GITHUB_GIST_ID = gist_id
-            _save_config(gist_id)
+            _save_config("github_gists", gist_id)
             app_logger.warning(f"\n======================================================\n"
                                f"DB: NEW GIST CREATED SUCCESSFULLY!\n"
                                f"DB: GIST ID: {gist_id}\n"
                                f"DB: Add GITHUB_GIST_ID={gist_id} to Render Env Vars!\n"
                                f"======================================================")
             return gist_id
-        else:
-            app_logger.error(f"DB: Failed to create Gist. {res.status_code} - {res.text}")
     except Exception as e:
         app_logger.error(f"DB: Exception creating Gist: {e}")
     return None
 
 def _update_gist(files_dict):
-    """Updates the existing Gist. files_dict format: {'filename.json': {'content': '...json...'}}"""
     headers = _get_headers()
     if not headers or not GITHUB_GIST_ID:
         return False
@@ -102,19 +124,15 @@ def _update_gist(files_dict):
         if res.status_code == 200:
             _write_last_backup_time()
             return True
-        else:
-            app_logger.error(f"DB: Failed to update Gist {GITHUB_GIST_ID}. {res.status_code} - {res.text}")
-            # If Gist is deleted (404), create a new one
-            if res.status_code == 404:
-                app_logger.error("DB: Gist 404! Recreating Gist...")
-                _create_gist(files_dict.get('bot_state.json', {}).get('content', '{}'),
-                             files_dict.get('active_positions.json', {}).get('content', '{}'))
+        elif res.status_code == 404:
+            app_logger.error("DB: Gist 404! Recreating Gist...")
+            _create_gist(files_dict.get('bot_state.json', {}).get('content', '{}'),
+                         files_dict.get('active_positions.json', {}).get('content', '{}'))
     except Exception as e:
         app_logger.error(f"DB: Exception updating Gist: {e}")
     return False
 
 def _fetch_gist_file(filename):
-    """Fetches a specific file from the Gist."""
     headers = _get_headers()
     if not headers or not GITHUB_GIST_ID:
         return None
@@ -128,14 +146,63 @@ def _fetch_gist_file(filename):
             if filename in files:
                 content = files[filename].get("content", "")
                 return json.loads(content)
-            else:
-                return {} # File doesn't exist yet
+            return {} 
         elif res.status_code == 404:
-            app_logger.error("DB: Gist 404! Needs recreation on next save.")
             return None
     except Exception as e:
         app_logger.error(f"DB: Exception fetching Gist {filename}: {e}")
     return None
+
+# --- JSONBLOB FALLBACK ---
+
+def _create_jsonblob(data: dict) -> str:
+    global JSONBLOB_ID
+    try:
+        headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+        res = requests.post("https://jsonblob.com/api/jsonBlob", json=data, headers=headers, timeout=10)
+        if res.status_code in [200, 201]:
+            location = res.headers.get("Location", "")
+            new_id = location.split("/")[-1]
+            if new_id:
+                JSONBLOB_ID = new_id
+                _save_config("jsonblob", new_id)
+                app_logger.warning(f"DB: Fallback JSONBlob Created! ID: {new_id}")
+                return new_id
+    except Exception as e:
+        app_logger.error(f"DB: Failed to create JSONBlob: {e}")
+    return None
+
+def _update_jsonblob(data: dict) -> bool:
+    if not JSONBLOB_ID:
+        return False
+    try:
+        headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+        url = f"https://jsonblob.com/api/jsonBlob/{JSONBLOB_ID}"
+        res = requests.put(url, json=data, headers=headers, timeout=10)
+        if res.status_code in [200, 201]:
+            _write_last_backup_time()
+            return True
+        elif res.status_code == 404:
+            app_logger.error("DB: JSONBlob 404! Recreating...")
+            _create_jsonblob(data)
+    except Exception as e:
+        app_logger.error(f"DB: Exception updating JSONBlob: {e}")
+    return False
+
+def _fetch_jsonblob():
+    if not JSONBLOB_ID:
+        return None
+    try:
+        headers = {'Accept': 'application/json'}
+        url = f"https://jsonblob.com/api/jsonBlob/{JSONBLOB_ID}"
+        res = requests.get(url, headers=headers, timeout=10)
+        if res.status_code == 200:
+            return res.json()
+    except Exception as e:
+        app_logger.error(f"DB: Exception fetching JSONBlob: {e}")
+    return None
+
+# -------------------------
 
 def _write_last_backup_time():
     try:
@@ -157,14 +224,19 @@ def get_last_backup_time() -> str:
 def _connect():
     global _connected
     _load_config()
-    if not GITHUB_PAT:
-        app_logger.error("DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.")
-        return
-        
-    if not GITHUB_GIST_ID:
-        app_logger.warning("DB: GITHUB_GIST_ID missing. Will create a new Gist on first save.")
+    
+    if GITHUB_PAT:
+        if not GITHUB_GIST_ID:
+            app_logger.warning("DB: GITHUB_GIST_ID missing. Will create a new Gist on first save.")
+        else:
+            app_logger.info(f"DB: Connected to GitHub Gist: ...{GITHUB_GIST_ID[-8:]}")
     else:
-        app_logger.info(f"DB: Connected to GitHub Gist: ...{GITHUB_GIST_ID[-8:]}")
+        app_logger.warning("DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.")
+        if not JSONBLOB_ID:
+            app_logger.warning("DB: JSONBLOB_ID missing. Will create a new JSONBlob on first save.")
+        else:
+            app_logger.info(f"DB: Connected to JSONBlob Fallback: ...{JSONBLOB_ID[-8:]}")
+            
     _connected = True
 
 # ---------------------------------------------------------
@@ -172,19 +244,25 @@ def _connect():
 # ---------------------------------------------------------
 
 def load_all_data() -> dict:
-    """Loads trade_history, daily_reports, and bot_state from Gist."""
+    """Loads trade_history, daily_reports, and bot_state from Cloud."""
     with _sync_lock:
         if not _connected: _connect()
         
         # 1. Try Cloud
-        data = _fetch_gist_file("bot_state.json")
+        data = None
+        if GITHUB_PAT:
+            data = _fetch_gist_file("bot_state.json")
+        elif JSONBLOB_ID:
+            blob_data = _fetch_jsonblob()
+            if blob_data:
+                data = blob_data.get("bot_state", {})
+                
         if data is not None:
             # Overwrite local fallback files so they stay in sync
             try:
                 with open(BOT_STATE_FILE, 'w') as f: json.dump(data, f, indent=4)
             except: pass
             
-            # The bot engine expects 'trades' directly inside the unified dictionary
             if 'trade_history' in data and 'trades' not in data:
                 data['trades'] = data.pop('trade_history')
             return data
@@ -193,7 +271,6 @@ def load_all_data() -> dict:
         app_logger.warning("DB: Cloud load failed. Falling back to local files.")
         local_data = {}
         
-        # Try to gather from local split files
         try:
             if os.path.exists("trade_history.json"):
                 with open("trade_history.json", 'r') as f:
@@ -209,11 +286,14 @@ def load_all_data() -> dict:
                     dr = json.load(f)
                     local_data['daily_reports'] = dr.get("reports", [])
                     
-            # Auto-create Gist if missing and we have PAT
+            # Auto-create Cloud DB if missing
+            content_str = json.dumps(local_data, indent=4)
             if GITHUB_PAT and not GITHUB_GIST_ID:
                 app_logger.info("DB: Bootstrapping new Gist from local data...")
-                content_str = json.dumps(local_data, indent=4)
                 _create_gist(content_str, "{}")
+            elif not GITHUB_PAT and not JSONBLOB_ID:
+                app_logger.info("DB: Bootstrapping new JSONBlob from local data...")
+                _create_jsonblob({"bot_state": local_data, "active_positions": {}})
                     
             return local_data
         except Exception as e:
@@ -221,45 +301,54 @@ def load_all_data() -> dict:
             return {}
 
 def save_all_data(trade_data: dict) -> bool:
-    """Saves unified state to Gist, merging with existing data so omitted fields aren't wiped."""
+    """Saves unified state to Cloud, merging with existing data."""
     with _sync_lock:
         if not _connected: _connect()
         
-        # Load existing to merge so we don't wipe active_positions when saving trades!
-        existing = _fetch_gist_file("bot_state.json") or {}
-        
-        # Unify into bot_state.json structure (Merge)
+        # Merge unified state
         unified = {
-            "max_equity": trade_data.get("max_equity", existing.get("max_equity", 0.0)),
-            "trade_history": trade_data.get("trades", existing.get("trade_history", [])),
-            "daily_reports": trade_data.get("daily_reports", existing.get("daily_reports", [])),
-            "state": trade_data.get("state", existing.get("state", {}))
+            "max_equity": trade_data.get("max_equity", 0.0),
+            "trade_history": trade_data.get("trades", []),
+            "daily_reports": trade_data.get("daily_reports", []),
+            "state": trade_data.get("state", {})
         }
-        content_str = json.dumps(unified, indent=4)
         
         # Save local fallback
         try:
-            with open(BOT_STATE_FILE, 'w') as f: f.write(content_str)
+            with open(BOT_STATE_FILE, 'w') as f: json.dump(unified, f, indent=4)
             with open("trade_history.json", 'w') as f: json.dump({"trades": unified["trade_history"], "max_equity": unified["max_equity"]}, f, indent=4)
             with open("daily_reports.json", 'w') as f: json.dump({"reports": unified["daily_reports"]}, f, indent=4)
         except Exception as e:
             app_logger.error(f"DB: Local save failed: {e}")
             
-        if not GITHUB_PAT:
-            return False
-            
-        if not GITHUB_GIST_ID:
-            _create_gist(content_str, "{}")
-            return True
-            
-        # Update existing Gist
-        return _update_gist({"bot_state.json": {"content": content_str}})
+        if GITHUB_PAT:
+            content_str = json.dumps(unified, indent=4)
+            if not GITHUB_GIST_ID:
+                _create_gist(content_str, "{}")
+                return True
+            return _update_gist({"bot_state.json": {"content": content_str}})
+        else:
+            # JSONBlob Fallback
+            blob_data = _fetch_jsonblob() or {}
+            blob_data["bot_state"] = unified
+            if not JSONBLOB_ID:
+                _create_jsonblob(blob_data)
+                return True
+            return _update_jsonblob(blob_data)
 
 def load_active_positions() -> dict:
-    """Loads active positions from Gist."""
+    """Loads active positions from Cloud."""
     with _sync_lock:
         if not _connected: _connect()
-        data = _fetch_gist_file("active_positions.json")
+        
+        data = None
+        if GITHUB_PAT:
+            data = _fetch_gist_file("active_positions.json")
+        elif JSONBLOB_ID:
+            blob_data = _fetch_jsonblob()
+            if blob_data:
+                data = blob_data.get("active_positions", {})
+                
         if data is not None:
             return data
             
@@ -272,7 +361,7 @@ def load_active_positions() -> dict:
         return {}
 
 def save_active_positions(positions: dict):
-    """Saves active positions to Gist."""
+    """Saves active positions to Cloud."""
     with _sync_lock:
         if not _connected: _connect()
         content_str = json.dumps(positions, indent=4)
@@ -282,38 +371,21 @@ def save_active_positions(positions: dict):
         except:
             pass
             
-        if not GITHUB_PAT: return
-        
-        if not GITHUB_GIST_ID:
-            _create_gist("{}", content_str)
-            return
-            
-        _update_gist({"active_positions.json": {"content": content_str}})
+        if GITHUB_PAT:
+            if not GITHUB_GIST_ID:
+                _create_gist("{}", content_str)
+            else:
+                _update_gist({"active_positions.json": {"content": content_str}})
+        else:
+            blob_data = _fetch_jsonblob() or {}
+            blob_data["active_positions"] = positions
+            if not JSONBLOB_ID:
+                _create_jsonblob(blob_data)
+            else:
+                _update_jsonblob(blob_data)
 
 def trigger_cloud_sync():
-    app_logger.info("DB: Manual Cloud Sync Triggered (Gist)")
+    app_logger.info("DB: Manual Cloud Sync Triggered")
 
 def is_connected() -> bool:
-    return bool(GITHUB_GIST_ID and GITHUB_PAT)
-
-def save_backup_data(data: dict) -> bool:
-    """Saves a backup copy of the state to the Gist."""
-    with _sync_lock:
-        if not _connected: _connect()
-        try:
-            content = json.dumps(data, indent=4)
-            return _update_gist({"backup_state.json": {"content": content}})
-        except Exception as e:
-            app_logger.error(f"DB: Failed to save backup: {e}")
-            return False
-
-def load_backup_data() -> dict:
-    """Loads the backup copy from the Gist."""
-    with _sync_lock:
-        if not _connected: _connect()
-        try:
-            data = _fetch_gist_file("backup_state.json")
-            return data if data else {}
-        except Exception as e:
-            app_logger.error(f"DB: Failed to load backup: {e}")
-            return {}
+    return True # We now always have a connection (either Gist or JSONBlob fallback)
