@@ -13,6 +13,8 @@ from config import (
 )
 from utils import get_ist_now, get_next_expiry_date, should_check_hedge, adjust_time_to_system_tz
 from logger import app_logger, error_logger
+from db_manager import get_last_backup_time
+from audit_manager import audit_system
 from notifier import notifier
 from api_client import DeltaIndiaClient
 from risk_manager import RiskManager
@@ -293,6 +295,7 @@ class DeltaTradingEngine:
         self.current_trade_info["entry_time"] = get_ist_now().isoformat()
         self.current_trade_info["btc_entry_price"] = call_opt.get('underlying_price', 0.0)
         self._trade_start_ts = time.time()
+        audit_system.start_trade_session(self.current_trade_info["btc_entry_price"])
         self.current_trade_info["calls"].append(call_opt['symbol'])
         self.current_trade_info["puts"].append(put_opt['symbol'])
         self.current_trade_info["max_pnl_pct"] = 0.0
@@ -815,6 +818,9 @@ class DeltaTradingEngine:
                     # Recover it from the active positions loaded from the cloud DB.
                     if self.total_entry_premium == 0 and len(self.execution.active_positions) > 0:
                         app_logger.warning("Engine: Hot-recovering transient trade state after restart...")
+                        import db_manager
+                        recovered_audit = db_manager.load_audit_log()
+                        audit_system.recover_trade_session(recovered_audit)
                         recovered_premium = 0.0
                         rcalls = []
                         rputs = []
@@ -985,6 +991,32 @@ class DeltaTradingEngine:
                                 app_logger.warning(f"Engine [DEBUG] Hard-Suppressing {action} because time_in_trade ({time_in_trade_seconds:.1f}s) < 15s (spread stabilization)")
                                 action = None
                         
+                        # --- AUDIT SYSTEM INTEGRATION ---
+                        try:
+                            # Safely fetch btc_price
+                            btc_price = 0.0
+                            if 'spot_price' in locals():
+                                btc_price = float(spot_price)
+                            elif getattr(self.api_client, 'last_price_update_time', 0) > 0:
+                                btc_price = float(self.api_client.get_realtime_ticker("BTCUSD").get('spot_price', 0.0))
+                                
+                            audit_snapshot = self._build_audit_snapshot(
+                                btc_price=btc_price,
+                                options_profit=options_profit,
+                                hedge_pnl=hedge_pnl,
+                                pnl_pct=pnl_pct,
+                                time_in_trade_seconds=time_in_trade_seconds,
+                                action=action,
+                                reason="Standard Evaluation Cycle"
+                            )
+                            if action is not None:
+                                audit_system.log_critical_event(f"Action Triggered: {action}", "bot_engine", "_monitor_loop", audit_snapshot, f"Risk Engine decided to {action}")
+                            else:
+                                audit_system.log_event("Routine Evaluation", "bot_engine", "_monitor_loop", audit_snapshot, "No action required")
+                        except Exception as e:
+                            audit_system.log_exception("bot_engine", "_monitor_loop_audit", e, {"time_in_trade": time_in_trade_seconds, "action": action})
+                        # --------------------------------
+
                         if action in ["STOP_LOSS_ALL", "TRAILING_SL_EXIT"]:
                             # Apply slippage and execution delay in PAPER mode
                             if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
@@ -1089,6 +1121,24 @@ class DeltaTradingEngine:
         self.consecutive_losses = 0
         self.paper_trading_paused = False
         app_logger.info("Engine: Daily state reset.")
+
+    def _build_audit_snapshot(self, btc_price, options_profit, hedge_pnl, pnl_pct, time_in_trade_seconds, action, reason):
+        trail_state = self.risk_manager.get_trailing_state()
+        return {
+            "BTC Price": btc_price,
+            "Current PnL": options_profit + hedge_pnl,
+            "Peak Profit": trail_state['highest_profit_pct'],
+            "Locked Profit": trail_state['current_trailing_sl'],
+            "Dynamic Profit Lock Status": trail_state['trailing_confirmed'],
+            "Trailing SL Value": trail_state['current_trailing_sl'],
+            "Trailing SL Trigger": "YES" if action == "TRAILING_SL_EXIT" else "NO",
+            "Trade Age": time_in_trade_seconds,
+            "Market Regime": self.filters.market_regime if hasattr(self.filters, 'market_regime') else "Unknown",
+            "Decision Engine Output": action if action else "HOLD",
+            "Decision Reason": reason,
+            "Order Status": "Pending" if action else "None",
+            "Hedge State": "ACTIVE" if self.smart_hedging.hedge_active else "INACTIVE",
+        }
 
     def _validate_startup_state(self):
         """Phase 5: Automatically verify critical runtime state after Hot-Recovery."""
@@ -1251,6 +1301,14 @@ class DeltaTradingEngine:
             self.last_hedge_check_time = None
             self.hedging_triggered_today = False
             self._trade_start_ts = None
+            
+            # Export audit log
+            try:
+                audit_file = audit_system.export_session()
+                if audit_file and os.path.exists(audit_file):
+                    notifier.send_document(audit_file, caption="📜 <b>Live Decision Audit Export</b>\nComplete trade decision lifecycle exported successfully.")
+            except Exception as e:
+                app_logger.error(f"Engine: Audit export failed: {e}")
             
             # Automatically generate actual report for today immediately upon trade square-off/logging
             try:

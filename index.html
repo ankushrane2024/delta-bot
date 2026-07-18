@@ -509,6 +509,37 @@
                     <div id="lotSizeFeedback" style="font-size:0.83rem; min-height:18px; font-weight:600;"></div>
                 </div>
             </div>
+            
+            <!-- Live Audit Status Panel -->
+            <div class="panel" id="audit-status-panel" style="flex: 1; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h2 style="margin:0;">📜 Live Audit Status</h2>
+                    <span id="audit-health-badge" style="padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: var(--success);">Healthy</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 0.9rem; margin-top: 5px;">
+                    <div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Trade ID</div>
+                        <div id="audit-trade-id" style="color: #fff; font-family: monospace; font-weight: 600; font-size: 0.95rem;">None</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Last Sync Time</div>
+                        <div id="audit-last-sync" style="color: #fff; font-weight: 600; font-size: 0.95rem;">Never</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Events Recorded</div>
+                        <div id="audit-events" style="color: #fff; font-weight: 600; font-size: 0.95rem;">0</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Pending Queue</div>
+                        <div id="audit-queue" style="color: #38bdf8; font-weight: 600; font-size: 0.95rem;">0</div>
+                    </div>
+                    <div style="grid-column: span 2; margin-top: 5px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Last Critical Event</div>
+                        <div id="audit-last-critical" style="color: #f59e0b; font-weight: 600; font-size: 0.9rem;">None</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Right Column (Stacked) -->
@@ -1644,7 +1675,37 @@
         }
 
         // Poll every 2 seconds
+        async function fetchAuditStatus() {
+            try {
+                const res = await fetch('/api/audit_metrics');
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                document.getElementById('audit-trade-id').textContent = data['Current Trade ID'];
+                document.getElementById('audit-last-sync').textContent = data['Last Sync Time'];
+                document.getElementById('audit-events').textContent = data['Events Recorded'];
+                document.getElementById('audit-queue').textContent = data['Pending Queue Size'];
+                document.getElementById('audit-last-critical').textContent = data['Last Critical Event'];
+                
+                const healthBadge = document.getElementById('audit-health-badge');
+                if (data['Audit Health'] === 'Healthy') {
+                    healthBadge.textContent = 'Healthy';
+                    healthBadge.style.color = 'var(--success)';
+                    healthBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+                    healthBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                } else {
+                    healthBadge.textContent = 'Warning';
+                    healthBadge.style.color = 'var(--warning)';
+                    healthBadge.style.background = 'rgba(245, 158, 11, 0.1)';
+                    healthBadge.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+                }
+            } catch (e) {
+                console.error("Audit fetch failed", e);
+            }
+        }
+
         setInterval(fetchStatus, 4000);
+        setInterval(fetchAuditStatus, 3000);
         fetchStatus();
 
         // --- News & Events ---

@@ -113,6 +113,11 @@ def my_ip():
     except Exception as e:
         return jsonify({'error': str(e)})
 
+@app.route('/api/audit_metrics')
+def get_audit_metrics():
+    from audit_manager import audit_system
+    return jsonify(audit_system.get_dashboard_metrics())
+
 @app.route('/api/start', methods=['POST'])
 def start_bot():
     data    = request.get_json() or {}

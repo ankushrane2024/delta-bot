@@ -382,7 +382,60 @@ def save_active_positions(positions: dict):
             if not JSONBLOB_ID:
                 _create_jsonblob(blob_data)
             else:
-                _update_jsonblob(blob_data)
+               return _update_jsonblob(blob_data)
+
+def load_audit_log() -> list:
+    """Loads the active decision audit session from Cloud."""
+    with _sync_lock:
+        if not _connected: _connect()
+        
+        # Local fallback
+        local_audit = []
+        if os.path.exists("decision_audit.json"):
+            try:
+                with open("decision_audit.json", 'r') as f:
+                    local_audit = json.load(f)
+            except:
+                pass
+                
+        if GITHUB_PAT:
+            if not GITHUB_GIST_ID: return local_audit
+            content = _fetch_gist_file("decision_audit.json")
+            if content:
+                try:
+                    return json.loads(content)
+                except:
+                    return local_audit
+            return local_audit
+        else:
+            blob_data = _fetch_jsonblob()
+            if blob_data and "decision_audit" in blob_data:
+                return blob_data["decision_audit"]
+            return local_audit
+
+def save_audit_log(events: list) -> bool:
+    """Saves the decision audit session to Cloud."""
+    with _sync_lock:
+        if not _connected: _connect()
+        
+        try:
+            with open("decision_audit.json", 'w') as f:
+                json.dump(events, f, indent=4)
+        except Exception as e:
+            app_logger.error(f"DB: Local audit save failed: {e}")
+            
+        if GITHUB_PAT:
+            content_str = json.dumps(events, indent=4)
+            if not GITHUB_GIST_ID:
+                _create_gist("{}", "{}")  # create empty
+            return _update_gist({"decision_audit.json": {"content": content_str}})
+        else:
+            blob_data = _fetch_jsonblob() or {}
+            blob_data["decision_audit"] = events
+            if not JSONBLOB_ID:
+                _create_jsonblob(blob_data)
+                return True
+            return _update_jsonblob(blob_data)
 
 def trigger_cloud_sync():
     app_logger.info("DB: Manual Cloud Sync Triggered")

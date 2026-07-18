@@ -159,6 +159,25 @@ class SmartHedgingManager:
             f"{direction.upper()} {size_btc:.4f} BTC @ ${btc_price:,.0f} | "
             f"OptsPnL=${options_pnl_usd:+.2f} HedgePnL=${hedge_pnl_usd:+.2f}"
         )
+        
+        # --- AUDIT SYSTEM INTEGRATION ---
+        try:
+            from audit_manager import audit_system
+            snapshot = {
+                "BTC Price": btc_price,
+                "Current PnL": options_pnl_usd + hedge_pnl_usd,
+                "Hedge Event": event_type,
+                "Hedge Direction": direction,
+                "Hedge Size (BTC)": size_btc,
+                "Hedge Trigger Reason": trigger_reason,
+            }
+            if exit_reason:
+                snapshot["Hedge Exit Reason"] = exit_reason
+                
+            audit_system.log_critical_event(f"Hedge {event_type}", "smart_hedging", "_log_hedge_event", snapshot, trigger_reason)
+        except Exception as e:
+            error_logger.error(f"Audit: Failed to log hedge event: {e}")
+        # --------------------------------
 
     def get_hedge_event_log(self):
         """Returns a copy of the hedge event log for saving with the trade record."""
