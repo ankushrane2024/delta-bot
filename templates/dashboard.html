@@ -573,132 +573,1096 @@
     border-radius: 16px;
     padding: 24px;
     margin-bottom: 24px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(139, 92, 246, 0.05);
     font-family: 'Inter', sans-serif;
+    color: #fff;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 40px rgba(139, 92, 246, 0.05);
+}
+
+.ares-cc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 16px;
+}
+
+.ares-cc-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.ares-cc-logo-shield {
+    width: 60px;
+    height: 70px;
+    background: radial-gradient(circle at center, rgba(139, 92, 246, 0.2), transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+}
+.ares-cc-title-text {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+.ares-cc-subtitle-text {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+.ares-cc-tags {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+.ares-cc-tag {
+    font-size: 10px;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ares-cc-engine-status {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+.ares-cc-engine-lbl {
+    font-size: 10px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.ares-cc-engine-val {
+    font-size: 32px;
+    font-weight: 800;
+    color: #f59e0b;
+    text-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+    letter-spacing: 2px;
+}
+
+/* Row 1 Grid */
+.ares-cc-row1 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr) 1.5fr;
+    gap: 16px;
+}
+.ares-cc-box {
+    background: rgba(20,25,40,0.6);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+}
+.ares-cc-box-lbl {
+    font-size: 10px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ares-cc-box-val {
+    font-size: 20px;
+    font-weight: 700;
+}
+.ares-cc-chart-mini {
+    height: 16px;
+    width: 100%;
+    margin-top: 8px;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+}
+.ares-cc-bar { width: 100%; background: #38bdf8; opacity: 0.5; }
+
+/* Row 2 */
+.ares-cc-row2 {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 16px;
+}
+.ares-cc-shield-panel {
+    background: radial-gradient(circle at center, rgba(16, 185, 129, 0.1), rgba(11, 15, 25, 0.8));
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: inset 0 0 40px rgba(16,185,129,0.05), 0 0 20px rgba(16,185,129,0.1);
+    transition: all 0.3s ease;
+}
+.ares-cc-gauge {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 8px solid rgba(56,189,248,0.2);
+    border-top-color: #38bdf8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+.ares-cc-decision-box {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    min-width: 120px;
+}
+.ares-cc-shield-3d {
+    width: 100px;
+    height: 120px;
+    background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="%2338bdf8" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>') no-repeat center;
+    background-size: contain;
+    filter: drop-shadow(0 0 15px rgba(56,189,248,0.5));
+    transition: all 0.3s ease;
+}
+
+/* Details Table */
+.ares-cc-details-panel {
+    background: rgba(20,25,40,0.6);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 20px;
+}
+.ares-cc-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 13px;
+}
+.ares-cc-detail-row:last-child { border: none; }
+.ares-cc-d-lbl { color: #94a3b8; display: flex; align-items: center; gap: 8px; }
+.ares-cc-d-val { font-weight: 700; }
+
+/* Row 3 Grid */
+.ares-cc-row3 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+}
+
+/* Lifecycle */
+.ares-cc-lifecycle {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+}
+.ares-cc-lc-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+}
+.ares-cc-lc-step.active { opacity: 1; }
+.ares-cc-lc-icon { font-size: 18px; }
+.ares-cc-lc-text { display: flex; flex-direction: column; }
+.ares-cc-lc-lbl { font-size: 11px; font-weight: 700; color: #fff; text-transform: uppercase; }
+.ares-cc-lc-sub { font-size: 9px; color: #94a3b8; }
+.ares-cc-lc-arrow { color: rgba(255,255,255,0.2); font-size: 12px; margin: 0 10px; }
+
+
+/* ARES IV DECISION CARD CSS */
+.ares-iv-container {
+    background: #0b0f19;
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    font-family: 'Inter', sans-serif;
+    color: #fff;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+}
+
+/* TOP BAR */
+.ares-iv-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 16px;
+}
+.ares-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.ares-logo-text {
+    font-size: 32px;
+    font-weight: 800;
+    background: linear-gradient(90deg, #38bdf8, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+    font-style: italic;
+}
+.ares-title-text {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+.ares-subtitle-text {
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+.ares-header-right {
+    display: flex;
+    gap: 24px;
+}
+.ares-header-stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.03);
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+.ares-stat-icon {
+    font-size: 20px;
+    color: #f59e0b;
+}
+
+/* MAIN GRID */
+.ares-iv-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr 1fr;
+    gap: 20px;
+}
+
+/* LEFT COLUMN */
+.ares-left-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.ares-metric-box {
+    background: rgba(20,25,40,0.4);
+    border: 1px solid rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.ares-metric-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 8px;
+}
+.ares-metric-live {
+    color: #10b981;
+    font-size: 9px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.ares-metric-live::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulse-green 2s infinite;
+}
+.ares-metric-value-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+.ares-metric-val {
+    font-size: 24px;
+    font-weight: 700;
+}
+.text-green { color: #10b981; }
+.text-red { color: #ef4444; }
+
+.ares-progress-bg {
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    margin-top: 8px;
+    width: 100%;
+}
+.ares-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #10b981);
+    border-radius: 2px;
+    position: relative;
+}
+.ares-progress-thumb {
+    width: 4px;
+    height: 12px;
+    background: #fff;
+    position: absolute;
+    right: 0;
+    top: -4px;
+    box-shadow: 0 0 5px rgba(255,255,255,0.8);
+}
+
+/* CENTER COLUMN (SHIELD) */
+.ares-center-card {
+    background: radial-gradient(circle at 50% 30%, rgba(16, 185, 129, 0.15) 0%, rgba(11, 15, 25, 0) 70%);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 16px;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: inset 0 0 60px rgba(16,185,129,0.05), 0 0 20px rgba(16,185,129,0.1);
     position: relative;
     overflow: hidden;
 }
-.ares-cc-container::before {
-    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-    background: linear-gradient(90deg, transparent, #8b5cf6, #3b82f6, transparent);
-    animation: scanline 3s linear infinite;
+.ares-center-card.zone-red {
+    background: radial-gradient(circle at 50% 30%, rgba(239, 68, 68, 0.15) 0%, rgba(11, 15, 25, 0) 70%);
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: inset 0 0 60px rgba(239,68,68,0.05), 0 0 20px rgba(239,68,68,0.1);
 }
-@keyframes scanline { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-
-.ares-cc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-.ares-cc-logo-container { display: flex; gap: 16px; align-items: center; }
-.ares-cc-logo-shield {
-    width: 60px; height: 60px; border-radius: 12px;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.1));
-    border: 1px solid rgba(139, 92, 246, 0.4);
-    display: flex; justify-content: center; align-items: center;
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
-}
-.ares-cc-logo-shield svg {
-    width: 34px; height: 34px; color: #a855f7;
-    filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.8));
-}
-.ares-cc-title-area { display: flex; flex-direction: column; gap: 4px; }
-.ares-cc-title { font-size: 1.8rem; font-weight: 900; letter-spacing: -0.5px; color: #f8fafc; display: flex; align-items: center; gap: 8px;}
-.ares-cc-title span { color: #8b5cf6; text-shadow: 0 0 15px rgba(139, 92, 246, 0.6); }
-.ares-cc-subtitle { font-size: 0.85rem; color: #94a3b8; font-weight: 500; }
-.ares-cc-badges { display: flex; gap: 10px; margin-top: 8px; }
-.ares-cc-badge { 
-    font-size: 0.7rem; padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,0.05); 
-    border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; font-weight: 600; display: flex; align-items: center; gap: 4px;
-}
-.ares-cc-badge.green { border-color: rgba(16, 185, 129, 0.3); color: #10b981; }
-.ares-cc-badge.blue { border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; }
-.ares-cc-badge.purple { border-color: rgba(168, 85, 247, 0.3); color: #a855f7; }
-.ares-cc-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
-
-.ares-cc-status-card { text-align: right; }
-.ares-cc-status-lbl { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; font-weight: 600;}
-.ares-cc-status-val { font-size: 1.8rem; font-weight: 900; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; justify-content: flex-end;}
-.ares-cc-pulse { width: 40px; height: 16px; opacity: 0.7; }
-
-/* Grid Layout */
-.ares-cc-row1 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 16px; }
-.ares-cc-box { 
-    background: rgba(11, 15, 25, 0.6); border: 1px solid rgba(255,255,255,0.08); 
-    border-radius: 12px; padding: 16px; position: relative; overflow: hidden;
-    display: flex; flex-direction: column; justify-content: space-between;
-}
-.ares-cc-box:hover { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.15); }
-.ares-cc-box-lbl { font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;}
-.ares-cc-box-lbl svg { width: 14px; height: 14px; }
-.ares-cc-box-val { font-size: 1.5rem; font-weight: 800; color: #f8fafc; }
-
-.ares-cc-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-.ares-cc-panel { 
-    background: rgba(11, 15, 25, 0.6); border: 1px solid rgba(255,255,255,0.08); 
-    border-radius: 12px; padding: 20px;
-}
-.ares-cc-panel-title { font-size: 0.9rem; font-weight: 800; color: #cbd5e1; display: flex; align-items: center; gap: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px;}
-.ares-cc-panel-title svg { width: 18px; height: 18px; color: #38bdf8; }
-
-.ares-cc-shield-layout { display: flex; gap: 20px; align-items: center; height: 160px;}
-.ares-cc-gauge { width: 140px; height: 140px; border-radius: 50%; border: 4px solid rgba(56, 189, 248, 0.1); border-top-color: #38bdf8; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-.ares-cc-gauge::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 1px dashed rgba(56, 189, 248, 0.2); animation: spin 20s linear infinite; }
-@keyframes spin { 100% { transform: rotate(360deg); } }
-.ares-cc-gauge-lbl { font-size: 0.65rem; color: #94a3b8; font-weight: 700; letter-spacing: 1px; margin-bottom: -4px;}
-.ares-cc-gauge-val { font-size: 2.2rem; font-weight: 900; color: #38bdf8; text-shadow: 0 0 15px rgba(56,189,248,0.5);}
-
-.ares-cc-decision-area { flex-grow: 1; display: flex; flex-direction: column; gap: 12px; }
-.ares-cc-status-pill { padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); }
-.ares-cc-status-pill-lbl { font-size: 0.65rem; color: #64748b; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px; }
-.ares-cc-status-pill-val { font-size: 0.95rem; font-weight: 800; color: #f8fafc; display: flex; align-items: center; gap: 8px;}
-
-.ares-cc-shield-graphic { 
-    width: 100px; height: 130px; border: 2px solid rgba(56, 189, 248, 0.3); border-radius: 12px; 
-    background: radial-gradient(circle at center, rgba(56, 189, 248, 0.1), rgba(11, 15, 25, 0.8));
-    display: flex; justify-content: center; align-items: center; position: relative;
-    box-shadow: inset 0 0 40px rgba(56,189,248,0.05), 0 0 20px rgba(56,189,248,0.1);
-}
-.ares-cc-shield-graphic::before {
-    content: ''; position: absolute; bottom: -10px; width: 60px; height: 4px; background: #38bdf8; border-radius: 50%; filter: blur(4px); opacity: 0.5;
-}
-.ares-cc-shield-graphic div {
-    width: 48px; height: 60px;
-    background-size: contain; background-repeat: no-repeat; background-position: center;
-    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='1.5' xmlns='http://www.w3.org/2000/svg'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>");
-    filter: drop-shadow(0 0 15px rgba(56,189,248,0.5));
+.ares-center-card.zone-yellow {
+    background: radial-gradient(circle at 50% 30%, rgba(245, 158, 11, 0.15) 0%, rgba(11, 15, 25, 0) 70%);
+    border-color: rgba(245, 158, 11, 0.3);
+    box-shadow: inset 0 0 60px rgba(245,158,11,0.05), 0 0 20px rgba(245,158,11,0.1);
 }
 
-.ares-cc-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
-.ares-cc-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
-.ares-cc-detail-row:last-child { border-bottom: none; }
-.ares-cc-d-lbl { font-size: 0.75rem; color: #94a3b8; font-weight: 600; display: flex; align-items: center; gap: 8px;}
-.ares-cc-d-lbl svg { width: 14px; height: 14px; }
-.ares-cc-d-val { font-size: 0.9rem; font-weight: 700; color: #f8fafc; }
-
-.ares-cc-row3 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 16px; }
-
-.ares-cc-lifecycle { 
-    background: rgba(11, 15, 25, 0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px 20px;
-    display: flex; justify-content: space-between; align-items: center;
+.ares-shield-icon {
+    width: 60px;
+    height: 70px;
+    background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="%2310b981" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>') no-repeat center;
+    background-size: contain;
+    margin-bottom: 12px;
 }
-.ares-cc-lc-step { display: flex; align-items: center; gap: 8px; opacity: 0.3; transition: all 0.3s; }
-.ares-cc-lc-step.active { opacity: 1; }
-.ares-cc-lc-icon { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: 800; border: 1px solid rgba(255,255,255,0.2); }
-.ares-cc-lc-step.active .ares-cc-lc-icon { background: currentColor; color: #1e293b !important; box-shadow: 0 0 10px currentColor; }
-.ares-cc-lc-text { display: flex; flex-direction: column; }
-.ares-cc-lc-lbl { font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;}
-.ares-cc-lc-sub { font-size: 0.55rem; color: #64748b; }
-.ares-cc-lc-arrow { color: #334155; font-size: 0.8rem; letter-spacing: 2px;}
+.ares-center-card.zone-red .ares-shield-icon { stroke: %23ef4444; }
 
-@media (max-width: 1200px) {
-    .ares-cc-row1, .ares-cc-row3 { grid-template-columns: repeat(3, 1fr); }
-    .ares-cc-row2 { grid-template-columns: 1fr; }
-    .ares-cc-lifecycle { display: none; }
+.ares-zone-label {
+    font-size: 12px;
+    color: #94a3b8;
+    letter-spacing: 2px;
 }
-@media (max-width: 768px) {
-    .ares-cc-row1, .ares-cc-row3 { grid-template-columns: 1fr 1fr; }
-    .ares-cc-shield-layout { flex-direction: column; height: auto; padding: 20px 0;}
-    .ares-cc-details-grid { grid-template-columns: 1fr; }
+.ares-zone-main {
+    font-size: 38px;
+    font-weight: 800;
+    color: #10b981;
+    text-shadow: 0 0 15px rgba(16,185,129,0.5);
+    margin: 4px 0;
 }
+.ares-zone-sub {
+    font-size: 11px;
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+    padding: 4px 12px;
+    border-radius: 12px;
+    letter-spacing: 1px;
+}
+
+.ares-confidence-circle {
+    margin: 24px 0;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    border: 8px solid rgba(16,185,129,0.2);
+    border-top-color: #10b981;
+    border-right-color: #10b981;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(16,185,129,0.2);
+}
+.ares-conf-val {
+    font-size: 32px;
+    font-weight: 800;
+}
+.ares-conf-lbl {
+    font-size: 9px;
+    color: #94a3b8;
+    letter-spacing: 1px;
+}
+
+.ares-action-box {
+    border: 1px solid rgba(16,185,129,0.4);
+    background: rgba(16,185,129,0.05);
+    border-radius: 12px;
+    width: 100%;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.ares-action-label {
+    font-size: 10px;
+    color: #10b981;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+.ares-action-val {
+    font-size: 22px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ares-center-footer {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding-top: 16px;
+}
+.ares-cf-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.ares-cf-lbl {
+    font-size: 9px;
+    color: #94a3b8;
+}
+.ares-cf-val {
+    font-size: 11px;
+    font-weight: 700;
+    color: #10b981;
+}
+
+/* RIGHT COLUMN */
+.ares-right-col {
+    background: rgba(20,25,40,0.4);
+    border: 1px solid rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 20px;
+}
+.ares-right-title {
+    font-size: 13px;
+    color: #10b981;
+    font-weight: 700;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 12px;
+}
+.ares-reasons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.ares-reason-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+.ares-reason-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    color: #10b981;
+}
+.ares-reason-text-main {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+.ares-reason-text-sub {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+/* ZONE METER */
+.ares-zone-meter {
+    background: rgba(20,25,40,0.4);
+    border: 1px solid rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 20px;
+}
+.ares-zm-header {
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.ares-zm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    text-align: center;
+    position: relative;
+    padding-bottom: 20px;
+}
+.ares-zm-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.ares-zm-title { font-size: 12px; font-weight: 700; }
+.ares-zm-range { font-size: 11px; color: #94a3b8; }
+.ares-zm-sub { font-size: 11px; }
+
+.ares-zm-bar-container {
+    height: 6px;
+    background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%);
+    border-radius: 3px;
+    margin-top: 10px;
+    position: relative;
+}
+.ares-zm-thumb {
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px #fff;
+    transition: left 0.5s;
+}
+
+/* BOTTOM MODULES */
+.ares-bottom-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+.ares-strip-box {
+    background: rgba(20,25,40,0.4);
+    border: 1px solid rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.ares-strip-icon {
+    font-size: 20px;
+    color: #38bdf8;
+    opacity: 0.8;
+}
+.ares-strip-title {
+    font-size: 9px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.ares-strip-val {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 2px 0;
+}
+.ares-strip-sub {
+    font-size: 10px;
+    color: #64748b;
+}
+
+.psce-block-alert {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    color: #ef4444;
+}
+.psce-block-alert.active { display: flex; }
+
 </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Terminal Boot Sequence Overlay -->
+    <div id="boot-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0f1c; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease;">
+        <div style="font-family: monospace; color: #10b981; font-size: 1.15rem; line-height: 2; text-align: left; max-width: 600px; width: 90%; font-weight: 600; text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);">
+            <div id="line1" style="opacity: 0; transition: opacity 0.1s;">> INITIALIZING DELTA ENGINE...</div>
+            <div id="line2" style="opacity: 0; transition: opacity 0.1s;">> SYSTEM CHECKS: OK</div>
+            <div id="line3" style="opacity: 0; transition: opacity 0.1s;">> AUTHENTICATING CREATOR: ANKUSH RANE...</div>
+            <div id="line4" style="opacity: 0; transition: opacity 0.1s; color: #a855f7; text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);">> ACCESS GRANTED.</div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            setTimeout(() => { document.getElementById('line1').style.opacity = '1'; }, 300);
+            setTimeout(() => { document.getElementById('line2').style.opacity = '1'; }, 800);
+            setTimeout(() => { document.getElementById('line3').style.opacity = '1'; }, 1500);
+            setTimeout(() => { document.getElementById('line4').style.opacity = '1'; }, 2200);
+            setTimeout(() => { 
+                const bs = document.getElementById('boot-screen');
+                bs.style.opacity = '0'; 
+                setTimeout(() => { bs.style.display = 'none'; }, 500);
+            }, 3000);
+        });
+    </script>
 
+    <header>
+        <div>
+            <h1 style="display: flex; align-items: center; gap: 15px;">
+                Delta Engine 
+                <span id="regime-badge" style="font-size: 0.9rem; padding: 4px 10px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                    Regime: Unknown
+                </span>
+            </h1>
+            <div style="display: flex; align-items: center; gap: 12px; margin-top: 5px;">
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">Automated Short Strangle Strategy</div>
+                <div style="width: 4px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 50%;"></div>
+                <div style="font-size: 0.85rem; color: #a855f7; font-weight: 600; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(168, 85, 247, 0.4);">
+                    Created by Ankush Rane
+                </div>
+            </div>
+        </div>
+        <div id="status-badge" class="status-badge">🟢 CONNECTING...</div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+        <button class="tab-btn active" id="tab-btn-live"      onclick="switchTab('live')"><span class="tab-live-dot"></span>Live Trade</button>
+        <button class="tab-btn"        id="tab-btn-analytics" onclick="switchTab('analytics')">&#128202; Analytics</button>
+        <button class="tab-btn"        id="tab-btn-history"   onclick="window.location.href='/history'">📓 Trade History</button>
+        <button class="tab-btn"        id="tab-btn-config"    onclick="switchTab('config')">&#9881;&#65039; Config</button>
+        <button class="tab-btn"        id="tab-btn-ares"      onclick="window.location.href='/ares/dashboard'">🤖 ARES Terminal</button>
+    </nav>
+
+    
+    <!-- TAB 1: LIVE TRADE -->
+    <style>
+        #tab-live.active { display: flex !important; }
+    </style>
+    <div class="tab-pane active" id="tab-live" style="max-width: 1100px; width: 100%; flex-direction: column; gap: 24px; animation: fadeIn 0.3s ease;">
+        
+        <!-- TOP SUMMARY BAR -->
+        <div class="summary-bar-hero">
+            <div class="hero-item">
+                <span class="hero-label">Current Equity</span>
+                <span class="hero-val" id="equity-val">$0.00</span>
+            </div>
+            <div class="hero-divider" style="display:none;"></div>
+            <div class="hero-item">
+                <span class="hero-label">Mode</span>
+                <span class="hero-val mode-val-color" id="mode-val">-</span>
+            </div>
+            <div class="hero-divider" style="display:none;"></div>
+            <div class="hero-item">
+                <span class="hero-label">Daily Loss Hits</span>
+                <span class="hero-val loss-val-color" id="loss-hits-val">0 / 2</span>
+            </div>
+            <div class="hero-divider" style="display:none;"></div>
+            <div class="hero-item">
+                <span class="hero-label">Current Size</span>
+                <span class="hero-val size-val-color" id="lot-multiplier-val">100%</span>
+            </div>
+            <div class="hero-divider" style="display:none;"></div>
+            <div class="hero-item">
+                <span class="hero-label">API Status</span>
+                <span class="hero-val" id="api-status-badge" style="font-size:1.1rem; padding: 4px 12px; background: rgba(255,255,255,0.1); border-radius: 8px;">Unknown</span>
+            </div>
+        </div>
+
+        <div id="paper-mode-note" style="display: none; padding: 14px 20px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; font-size: 0.95rem; color: #38bdf8; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.4rem;">ℹ️</span>
+            <div><strong>PAPER MODE ACTIVE</strong> - Realistic slippage + Smart Position Sizing enabled (No USDT balance required).</div>
+        </div>
+
+        <div id="next-day-paused-container" style="display: none;">
+            <div style="padding: 14px 20px; border-radius: 12px; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); font-weight: 700; text-align: center; font-size: 1.1rem; animation: pulse-red 2.5s infinite;">
+                ⏸️ Trading Paused for Tomorrow (Daily Loss Limit Hit)
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TRADE SKIP ALERT CARD — shows EXACT reason trade was missed
+             Hidden when no skip. Pulses orange when trade was skipped.
+        ════════════════════════════════════════════════════════════════ -->
+        
+        
+
+        
+        <!-- ARES IV DECISION CARD (EXACT REPLICA) -->
+        <div class="ares-iv-container">
+            
+            <div class="psce-block-alert" id="psce-block-alert">
+                <span style="font-size: 24px;">🚨</span>
+                <div style="width: 100%;">
+                    <div style="font-weight: 800; font-size: 14px; letter-spacing: 1px;">BLOCKED BY TRADE READINESS MASTER GATE</div>
+                    <div id="psce-block-reason" style="font-size: 12px; margin-top: 4px; font-weight: 600;">Reason: </div>
+                </div>
+            </div>
+
+            <!-- Header -->
+            <div class="ares-iv-header">
+                <div class="ares-logo-container">
+                    <div class="ares-logo-text">ARES</div>
+                    <div>
+                        <div class="ares-title-text">IV DECISION CARD</div>
+                        <div class="ares-subtitle-text">BTC OPTIONS INTRADAY FILTER</div>
+                    </div>
+                </div>
+                <div class="ares-header-right">
+                    <div class="ares-header-stat">
+                        <div class="ares-stat-icon">₿</div>
+                        <div>
+                            <div style="font-size: 10px; color: #94a3b8;">BTC</div>
+                            <div id="ares-btc-price" style="font-weight: 700; font-size: 13px;">$--</div>
+                        </div>
+                    </div>
+                    <div class="ares-header-stat">
+                        <div class="ares-stat-icon" style="color: #64748b;">🕒</div>
+                        <div>
+                            <div id="ares-time-main" style="font-size: 13px; font-weight: 700;">--:--</div>
+                            <div id="ares-date-main" style="font-size: 10px; color: #94a3b8;">-- --- ----</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="ares-iv-grid">
+                
+                <!-- Left Column -->
+                <div class="ares-left-col">
+                    <div class="ares-metric-box">
+                        <div class="ares-metric-header">
+                            <span>ATM IV (1DTE)</span>
+                            <span class="ares-metric-live" id="ares-live-dot">LIVE</span>
+                        </div>
+                        <div class="ares-metric-value-row">
+                            <span class="ares-metric-val text-green" id="ares-atm-iv">--%</span>
+                            <!-- Mock sparkline via SVG -->
+                            <svg width="60" height="20" viewBox="0 0 60 20" style="stroke: #10b981; fill: none; stroke-width: 1.5px;"><path d="M0,15 L10,5 L20,12 L30,2 L40,10 L50,0 L60,8"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="ares-metric-box">
+                        <div class="ares-metric-header"><span>IV Percentile (30D)</span></div>
+                        <div class="ares-metric-val" id="ares-iv-pct">--%</div>
+                        <div class="ares-progress-bg"><div class="ares-progress-fill" id="ares-bar-pct" style="width: 0%;"><div class="ares-progress-thumb"></div></div></div>
+                    </div>
+
+                    <div class="ares-metric-box">
+                        <div class="ares-metric-header"><span>IV Rank (30D)</span></div>
+                        <div class="ares-metric-val" id="ares-iv-rank">--</div>
+                        <div class="ares-progress-bg"><div class="ares-progress-fill" id="ares-bar-rank" style="width: 0%; background: linear-gradient(90deg, #ef4444, #f59e0b);"><div class="ares-progress-thumb"></div></div></div>
+                    </div>
+
+                    <div class="ares-metric-box">
+                        <div class="ares-metric-header"><span>5 Day IV Trend</span></div>
+                        <div class="ares-metric-value-row">
+                            <span class="ares-metric-val text-green" id="ares-iv-trend">--</span>
+                            <svg width="60" height="20" viewBox="0 0 60 20" style="stroke: #10b981; fill: none; stroke-width: 1.5px;"><path d="M0,10 L15,10 L30,8 L45,12 L60,10"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="ares-metric-box">
+                        <div class="ares-metric-header"><span>IV Change (Past 1H)</span></div>
+                        <div class="ares-metric-value-row">
+                            <span class="ares-metric-val text-green" id="ares-iv-change">--</span>
+                            <!-- Mock bar chart -->
+                            <div style="display:flex; gap:2px; align-items:flex-end; height: 20px;">
+                                <div style="width:4px; height:8px; background:#10b981;"></div>
+                                <div style="width:4px; height:12px; background:#10b981;"></div>
+                                <div style="width:4px; height:6px; background:#ef4444;"></div>
+                                <div style="width:4px; height:16px; background:#10b981;"></div>
+                                <div style="width:4px; height:10px; background:#10b981;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ares-metric-box">
+                        <div class="ares-metric-header"><span>IV vs Realized Vol (5D)</span></div>
+                        <div class="ares-metric-value-row">
+                            <span class="ares-metric-val text-green" id="ares-iv-vs-rv">+18%</span>
+                            <div style="font-size:24px;">🎛️</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center Shield -->
+                <div class="ares-center-card" id="ares-center-shield">
+                    <div class="ares-shield-icon"></div>
+                    <div class="ares-zone-label">IV ZONE</div>
+                    <div class="ares-zone-main" id="ares-zone-main">LOADING</div>
+                    <div class="ares-zone-sub" id="ares-zone-sub">ANALYZING EDGE...</div>
+
+                    <div class="ares-confidence-circle">
+                        <div class="ares-conf-val" id="ares-edge-score">--%</div>
+                        <div class="ares-conf-lbl">CONFIDENCE</div>
+                    </div>
+
+                    <div class="ares-action-box" id="ares-action-box">
+                        <div class="ares-action-label">ACTION</div>
+                        <div class="ares-action-val" id="ares-decision"><span style="font-size:20px;">🎯</span> WAITING</div>
+                    </div>
+
+                    <div class="ares-center-footer">
+                        <div class="ares-cf-item">
+                            <span class="ares-cf-lbl">RISK LEVEL</span>
+                            <span class="ares-cf-val" id="ares-cf-risk">LOW</span>
+                        </div>
+                        <div class="ares-cf-item">
+                            <span class="ares-cf-lbl">REWARD</span>
+                            <span class="ares-cf-val" id="ares-cf-reward">★★★★★</span>
+                        </div>
+                        <div class="ares-cf-item">
+                            <span class="ares-cf-lbl">MARKET CONDITION</span>
+                            <span class="ares-cf-val" id="ares-cf-market">RANGE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="ares-right-col">
+                    <div class="ares-right-title">WHY THIS ZONE?</div>
+                    <div class="ares-reasons-list" id="ares-reasons-list">
+                        <div class="ares-reason-row"><div class="ares-reason-icon">⏳</div><div><div class="ares-reason-text-main">Loading...</div></div></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- IV Zone Meter -->
+            <div class="ares-zone-meter">
+                <div class="ares-zm-header"><span>📉</span> IV ZONE METER</div>
+                <div class="ares-zm-grid">
+                    <div class="ares-zm-col">
+                        <div style="font-size:24px; color:#ef4444; margin-bottom:4px;">🐻</div>
+                        <div class="ares-zm-title" style="color:#ef4444;">LOW IV</div>
+                        <div class="ares-zm-range">0 - 25%</div>
+                        <div class="ares-zm-sub" style="color:#ef4444;">High Risk<br>Skip Trade</div>
+                    </div>
+                    <div class="ares-zm-col">
+                        <div style="font-size:24px; color:#f59e0b; margin-bottom:4px;">😐</div>
+                        <div class="ares-zm-title" style="color:#f59e0b;">MEDIUM IV</div>
+                        <div class="ares-zm-range">25 - 70%</div>
+                        <div class="ares-zm-sub" style="color:#f59e0b;">Low Risk<br>Trade</div>
+                    </div>
+                    <div class="ares-zm-col">
+                        <div style="font-size:24px; color:#10b981; margin-bottom:4px;">🐂</div>
+                        <div class="ares-zm-title" style="color:#10b981;">HEALTHY IV</div>
+                        <div class="ares-zm-range">70 - 100%</div>
+                        <div class="ares-zm-sub" style="color:#10b981;">Perfect Zone<br>Trade with Confidence</div>
+                    </div>
+                </div>
+                <div class="ares-zm-bar-container">
+                    <div class="ares-zm-thumb" id="ares-zm-thumb" style="left: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Bottom Strip -->
+            <div class="ares-bottom-strip">
+                <div class="ares-strip-box">
+                    <div class="ares-strip-icon">🔄</div>
+                    <div>
+                        <div class="ares-strip-title">NEXT IV UPDATE</div>
+                        <div class="ares-strip-val">15:00</div>
+                        <div class="ares-strip-sub">Minutes</div>
+                    </div>
+                </div>
+                <div class="ares-strip-box">
+                    <div class="ares-strip-icon">📅</div>
+                    <div>
+                        <div class="ares-strip-title">BEST ENTRY WINDOW</div>
+                        <div class="ares-strip-val">08:00 AM - 09:30 AM</div>
+                        <div class="ares-strip-sub">IST</div>
+                    </div>
+                </div>
+                <div class="ares-strip-box">
+                    <div class="ares-strip-icon text-green">🛡️</div>
+                    <div>
+                        <div class="ares-strip-title">NEWS FILTER</div>
+                        <div class="ares-strip-val text-green">CLEAR</div>
+                        <div class="ares-strip-sub">No High Impact News</div>
+                    </div>
+                </div>
+                <div class="ares-strip-box">
+                    <div class="ares-strip-icon" style="color:#f59e0b;">🥧</div>
+                    <div>
+                        <div class="ares-strip-title">POSITION SIZE ADVICE</div>
+                        <div class="ares-strip-val">100%</div>
+                        <div class="ares-strip-sub">Normal Size</div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        <!-- END ARES IV DECISION CARD -->
+
+        <div id="trade-skip-alert-card" style="display:none;">
+            <div style="
+                background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(239,68,68,0.08) 100%);
+                border: 1.5px solid rgba(245,158,11,0.45);
+                border-radius: 16px;
+                padding: 0;
+                overflow: hidden;
+                box-shadow: 0 0 32px rgba(245,158,11,0.15), 0 4px 24px rgba(0,0,0,0.3);
+            ">
+                <!-- Header -->
+                <div style="
+                    display: flex; align-items: center; gap: 14px;
+                    padding: 16px 22px;
+                    background: rgba(245,158,11,0.10);
+                    border-bottom: 1px solid rgba(245,158,11,0.2);
+                ">
+                    <span style="font-size: 1.6rem; animation: pulse-orange 1.8s infinite;">⚠️</span>
+                    <div style="flex:1;">
+                        <div style="font-weight: 800; font-size: 1.0rem; color: #f59e0b; letter-spacing: 0.04em; text-transform: uppercase;">
+                            Trade Was Skipped
+                        </div>
+                        <div style="font-size: 0.78rem; color: rgba(245,158,11,0.7); margin-top: 2px;">
+                            Bot did not enter a position — exact reason below
+                        </div>
+                    </div>
+                    <div id="skip-timestamp" style="
+                        font-size: 0.72rem; color: rgba(255,255,255,0.4);
+                        text-align: right; min-width: 100px;
+                    "></div>
+                </div>
+
+                <!-- Main Reason Box -->
+                <div style="padding: 18px 22px;">
+                    <div style="
+                        background: rgba(245,158,11,0.08);
+                        border: 1px solid rgba(245,158,11,0.25);
+                        border-radius: 10px;
+                        padding: 14px 18px;
+                        display: flex; align-items: flex-start; gap: 12px;
+                    ">
+                        <span style="font-size: 1.3rem; margin-top: 2px;">🔍</span>
+                        <div>
+                            <div style="font-size: 0.72rem; color: rgba(255,255,255,0.45); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;">
+                                Exact Skip Reason
+                            </div>
+                            <div id="skip-reason-text" style="
+                                font-size: 1.05rem; font-weight: 700;
+                                color: #fbbf24;
+                                line-height: 1.5;
+                            ">—</div>
+                        </div>
+                    </div>
+
+                    <!-- What To Do hint -->
+                    <div id="skip-hint-box" style="
+                        margin-top: 12px;
+                        background: rgba(255,255,255,0.03);
+                        border: 1px solid rgba(255,255,255,0.06);
+                        border-radius: 8px;
+                        padding: 10px 14px;
+                        font-size: 0.78rem;
+                        color: rgba(255,255,255,0.45);
+                        display: flex; align-items: center; gap: 8px;
+                    ">
+                        <span>💡</span>
+                        <span id="skip-hint-text">This trade slot was passed.</span>
+                    </div>
+                </div>
+
+                <!-- Skip History Section -->
+                <div id="skip-history-section" style="border-top: 1px solid rgba(245,158,11,0.15); padding: 14px 22px 18px;">
+                    <div style="font-size: 0.72rem; color: rgba(255,255,255,0.4); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;">
+                        📋 Recent Skip History
+                    </div>
+                    <div id="skip-history-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TWO COLUMN GRID FOR OVERVIEW AND HEDGING -->
+        <div style="display: flex; flex-direction: column; width: 100%; gap: 24px;">
+            
+            <!-- Section 1: Live Trade Overview -->
+            <div class="glass-panel">
+                <h2>📊 Live Trade Overview</h2>
+                <span id="pos-btc-price" style="display:none;"></span>
+                <div id="pos-total-bar" style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px; display: none;">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="hero-pnl-card">
+                            <span class="stat-label">NET P&L (Opt + Hdg)</span>
+                            <div id="pos-total-pnl-usd" class="stat-val pnl-pos" style="z-index: 1;">0.00 USDT</div>
+                        </div>
+                        <div class="hero-pnl-card">
+                            <span class="stat-label">Total P&L (INR)</span>
+                            <div id="pos-total-pnl-inr" class="stat-val pnl-pos" style="font-size:1.8rem; padding-top: 10px; z-index: 1;">₹0.00</div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="stat-box-modern">
+                            <span class="stat-label">Capital Used</span>
+                            <span class="stat-val" style="font-size:1.4rem;">$<span id="pos-total-capital">0.00</span></span>
+                        </div>
+                        <div class="stat-box-modern">
+                            <span class="stat-label">Total Premium Collected</span>
+                            <span class="stat-val" style="font-size:1.4rem;">$<span id="pos-total-entry">0.00</span></span>
+                        </div>
+                    </div>
+
+                    <div id="dpl-indicator" class="dpl-indicator">
+                        <div>
+                            <span class="stat-label" style="color: #38bdf8; font-size: 0.8rem;">🔒 Dynamic Profit Lock — SL Locked At</span>
+                            <div id="dpl-sl-value" class="dpl-sl-value">—</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="stat-label" style="color: #34d399; font-size: 0.75rem;">Peak Profit</span>
+                            <div id="dpl-peak-value" class="dpl-peak-value">—</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-box-modern" style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2); flex-direction: row; justify-content: space-between; align-items: center;">
+                        <span class="stat-label" style="color: #34d399;">Time to Square-off</span>
+                        <span id="pos-time-remaining" class="stat-val" style="color: #34d399; font-size:1.4rem;">--</span>
+                    </div>
+                </div>
+            </div>
+
+            
 <!-- ==============================================
      ARES HEDGE COMMAND CENTER
      ============================================== -->
@@ -707,141 +1671,111 @@
     <div class="ares-cc-header">
         <div class="ares-cc-logo-container">
             <div class="ares-cc-logo-shield">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                <svg width="34" height="40" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
             </div>
-            <div class="ares-cc-title-area">
-                <div class="ares-cc-title">ARES <span>HEDGE COMMAND CENTER</span></div>
-                <div class="ares-cc-subtitle">Autonomous AI Hedge & Risk Management Engine</div>
-                <div class="ares-cc-badges">
-                    <div class="ares-cc-badge green"><div class="dot" style="background:#10b981;"></div> Continuous Protection</div>
-                    <div class="ares-cc-badge blue"><div class="dot" style="background:#38bdf8;"></div> 1Hz Monitoring</div>
-                    <div class="ares-cc-badge purple"><div class="dot" style="background:#a855f7;"></div> AI Driven Decisions</div>
+            <div>
+                <div class="ares-cc-title-text"><span style="color:#f8fafc;">ARES</span> <span style="color:#a855f7;">HEDGE COMMAND CENTER</span></div>
+                <div class="ares-cc-subtitle-text">Autonomous AI Hedge & Risk Management Engine</div>
+                <div class="ares-cc-tags">
+                    <div class="ares-cc-tag"><span style="color:#10b981;">?</span> Continuous Protection</div>
+                    <div class="ares-cc-tag"><span style="color:#38bdf8;">?</span> 1Hz Monitoring</div>
+                    <div class="ares-cc-tag"><span style="color:#a855f7;">?</span> AI Driven Decisions</div>
                 </div>
             </div>
         </div>
-        <div class="ares-cc-status-card">
-            <div class="ares-cc-status-lbl">Engine Status</div>
-            <div class="ares-cc-status-val" id="ares-cc-status" style="color: #f59e0b; text-shadow: 0 0 15px rgba(245, 158, 11, 0.5);">STANDBY 
-                <svg class="ares-cc-pulse" viewBox="0 0 40 16" stroke="currentColor" stroke-width="1.5" fill="none"><polyline points="0,8 10,8 14,2 20,14 24,8 40,8"/></svg>
-            </div>
+        <div class="ares-cc-engine-status">
+            <div class="ares-cc-engine-lbl">Engine Status</div>
+            <div class="ares-cc-engine-val" id="ares-cc-status">STANDBY</div>
         </div>
     </div>
 
-    <!-- Row 1: Core Metrics -->
+    <!-- Row 1: Metrics -->
     <div class="ares-cc-row1">
         <div class="ares-cc-box">
-            <div class="ares-cc-box-lbl">
-                <svg style="color:#f59e0b;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M15.3 14c.2-1 .8-1.2 1.5-1.5-.9-.6-1.9-1.2-3-1.6V8.2c1-.4 1.7-1 2-1.9-.9.4-1.9.6-2.9.7v-2h-1.5v2c-.7.1-1.3.1-2 .1v-2H8v2c-.4 0-.8.1-1.2.1L6 9h1.7c.3 0 .7.1 1 .2v6c-.3 0-.6.1-1 .2H6l.8 2c.4 0 .9-.1 1.2-.1v2h1.5v-2c.7-.1 1.3-.1 2-.1v2h1.5v-2c1.2-.3 2.1-.9 2.3-1.9z"></path></svg>
-                BTC QUANTITY HEDGED
-            </div>
+            <div class="ares-cc-box-lbl"><span style="color:#f59e0b;">Y~</span> BTC QUANTITY HEDGED</div>
             <div class="ares-cc-box-val" style="color:#f59e0b;" id="ares-cc-btc-qty">0.0000 <span style="font-size:12px;color:#94a3b8;">BTC</span></div>
         </div>
-        <div class="ares-cc-box" style="border-color: rgba(16, 185, 129, 0.3);">
-            <div class="ares-cc-box-lbl">
-                <svg style="color:#10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>
-                MARKET REGIME
-            </div>
+        <div class="ares-cc-box">
+            <div class="ares-cc-box-lbl"><span style="color:#10b981;">~+</span> MARKET REGIME</div>
             <div class="ares-cc-box-val" style="color:#10b981;" id="ares-cc-regime">SAFE RANGE</div>
-            <div style="display:flex; gap:2px; margin-top:8px;">
-                <div style="width:20%; height:3px; background:#10b981;"></div><div style="width:20%; height:3px; background:#10b981;"></div><div style="width:20%; height:3px; background:#10b981;"></div><div style="width:20%; height:3px; background:#10b981;"></div><div style="width:20%; height:3px; background:#10b981;"></div>
-            </div>
+            <div class="ares-cc-chart-mini"><div class="ares-cc-bar" style="height:20%;background:#10b981;"></div><div class="ares-cc-bar" style="height:40%;background:#10b981;"></div><div class="ares-cc-bar" style="height:30%;background:#10b981;"></div><div class="ares-cc-bar" style="height:60%;background:#10b981;"></div><div class="ares-cc-bar" style="height:50%;background:#10b981;"></div></div>
         </div>
         <div class="ares-cc-box">
-            <div class="ares-cc-box-lbl">
-                <svg style="color:#38bdf8;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
-                TREND STRENGTH
-            </div>
+            <div class="ares-cc-box-lbl"><span style="color:#38bdf8;">Y"</span> TREND STRENGTH</div>
             <div class="ares-cc-box-val" style="color:#38bdf8;" id="ares-cc-trend">0.00</div>
-            <div style="display:flex; gap:2px; margin-top:8px; align-items:flex-end; height:12px;">
-                <div style="width:10%; height:3px; background:#38bdf8;"></div><div style="width:10%; height:5px; background:#38bdf8;"></div><div style="width:10%; height:7px; background:#38bdf8;"></div><div style="width:10%; height:9px; background:#38bdf8;"></div><div style="width:10%; height:12px; background:#38bdf8;"></div>
-                <div style="width:10%; height:3px; background:rgba(56,189,248,0.2);"></div><div style="width:10%; height:3px; background:rgba(56,189,248,0.2);"></div><div style="width:10%; height:3px; background:rgba(56,189,248,0.2);"></div><div style="width:10%; height:3px; background:rgba(56,189,248,0.2);"></div><div style="width:10%; height:3px; background:rgba(56,189,248,0.2);"></div>
-            </div>
+            <div class="ares-cc-chart-mini"><div class="ares-cc-bar" style="height:10%;"></div><div class="ares-cc-bar" style="height:20%;"></div><div class="ares-cc-bar" style="height:15%;"></div><div class="ares-cc-bar" style="height:25%;"></div><div class="ares-cc-bar" style="height:10%;"></div></div>
         </div>
         <div class="ares-cc-box">
-            <div class="ares-cc-box-lbl">
-                <svg style="color:#ef4444;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
-                BLEEDING LEG DROP
-            </div>
+            <div class="ares-cc-box-lbl"><span style="color:#ef4444;">Y(</span> BLEEDING LEG DROP</div>
             <div class="ares-cc-box-val" style="color:#ef4444;" id="ares-cc-bleed-pct">0.0%</div>
-            <div style="display:flex; gap:2px; margin-top:8px;">
-                <div style="width:25%; height:3px; background:#ef4444;"></div><div style="width:25%; height:3px; background:#ef4444;"></div><div style="width:25%; height:3px; background:#ef4444;"></div><div style="width:25%; height:3px; background:#ef4444;"></div>
-            </div>
+            <div class="ares-cc-chart-mini"><div class="ares-cc-bar" style="height:30%;background:#ef4444;"></div><div class="ares-cc-bar" style="height:20%;background:#ef4444;"></div><div class="ares-cc-bar" style="height:40%;background:#ef4444;"></div><div class="ares-cc-bar" style="height:10%;background:#ef4444;"></div><div class="ares-cc-bar" style="height:35%;background:#ef4444;"></div></div>
         </div>
-        <div class="ares-cc-box" style="border-color: rgba(16, 185, 129, 0.3);">
-            <div class="ares-cc-box-lbl">
-                <svg style="color:#10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>
-                LOSS COVERED
-            </div>
+        <div class="ares-cc-box">
+            <div class="ares-cc-box-lbl"><span style="color:#10b981;">~+</span> LOSS COVERED</div>
             <div class="ares-cc-box-val" style="color:#10b981;" id="ares-cc-loss-covered">0%</div>
-            <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); margin-top:8px; border-radius:2px;"><div id="ares-cc-loss-bar" style="width:0%; height:100%; background:#10b981; border-radius:2px; box-shadow:0 0 10px #10b981;"></div></div>
+            <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); margin-top:12px; border-radius:2px;"><div id="ares-cc-loss-bar" style="width:0%; height:100%; background:#10b981; border-radius:2px; transition: width 0.5s;"></div></div>
+        </div>
+        <div class="ares-cc-box" style="align-items:center; justify-content:center;">
+            <div class="ares-cc-box-lbl" style="margin-bottom:0;">ACTIVE RISK SCORE</div>
+            <div style="position:relative; width:80px; height:40px; overflow:hidden; margin-top:8px;">
+                <div style="width:80px; height:80px; border-radius:50%; border:6px solid rgba(139,92,246,0.2); border-top-color:#a855f7; position:absolute; top:0; left:0; transform:rotate(-45deg);"></div>
+            </div>
+            <div class="ares-cc-box-val" style="color:#a855f7; font-size:18px;" id="ares-cc-risk-top">0.00</div>
         </div>
     </div>
 
-    <!-- Row 2: Deep Dive Panels -->
+    <!-- Row 2: Main Shield & Details -->
     <div class="ares-cc-row2">
-        <!-- Shield Panel -->
-        <div class="ares-cc-panel" style="border: 1px solid rgba(56, 189, 248, 0.2);">
-            <div class="ares-cc-panel-title">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                ARES HEDGE SHIELD
-            </div>
-            <div style="font-size:0.75rem; color:#94a3b8; margin-top:-10px; margin-bottom:15px;">Real-time Protection Overview</div>
-            
-            <div class="ares-cc-shield-layout">
+        <div class="ares-cc-shield-panel" id="ares-cc-shield-bg">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <div class="ares-cc-title-text" style="font-size:16px; color:#38bdf8;"><span style="color:#fff;">ARES</span> HEDGE SHIELD</div>
+                <div class="ares-cc-subtitle-text" style="margin-bottom:20px;">Real-time Protection Overview</div>
+                
                 <div class="ares-cc-gauge" id="ares-cc-gauge-border">
-                    <div class="ares-cc-gauge-lbl">ACTIVE RISK SCORE</div>
-                    <div class="ares-cc-gauge-val" id="ares-cc-risk-main">0.00</div>
-                    <div style="font-size:0.6rem; color:#64748b; margin-top:4px;">/100</div>
-                    <svg style="width:30px; height:12px; margin-top:4px; color:#38bdf8;" viewBox="0 0 40 16" stroke="currentColor" stroke-width="1.5" fill="none"><polyline points="0,8 10,8 14,2 20,14 24,8 40,8"/></svg>
-                </div>
-                
-                <div class="ares-cc-decision-area">
-                    <div class="ares-cc-status-pill">
-                        <div class="ares-cc-status-pill-lbl">HEDGE STATUS</div>
-                        <div class="ares-cc-status-pill-val" id="ares-cc-decision-status"><div style="width:12px; height:12px; border-radius:50%; border:2px solid #64748b;"></div> INACTIVE</div>
-                    </div>
-                    <div style="border-top: 1px solid rgba(255,255,255,0.05); margin: 2px 0;"></div>
-                    <div style="padding-left:12px;">
-                        <div class="ares-cc-status-pill-lbl">DECISION</div>
-                        <div style="font-size:0.95rem; font-weight:700; color:#38bdf8;" id="ares-cc-decision-text">Monitoring...</div>
-                        <div style="display:flex; gap:4px; margin-top:8px;">
-                            <div style="width:6px; height:6px; border-radius:50%; background:#38bdf8; opacity:0.3;"></div>
-                            <div style="width:6px; height:6px; border-radius:50%; background:#38bdf8; opacity:0.6;"></div>
-                            <div style="width:6px; height:6px; border-radius:50%; background:#38bdf8; opacity:1;"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="ares-cc-shield-graphic" id="ares-cc-shield-bg">
-                    <div id="ares-cc-shield-icon"></div>
+                    <div style="font-size:10px; color:#94a3b8; font-weight:700;">ACTIVE RISK SCORE</div>
+                    <div style="font-size:36px; font-weight:800; color:#38bdf8; text-shadow:0 0 15px rgba(56,189,248,0.5);" id="ares-cc-risk-main">0.00</div>
+                    <div style="font-size:10px; color:#64748b;">/100</div>
+                    <div style="margin-top:8px; color:#38bdf8;">Y"</div>
                 </div>
             </div>
+
+            <div class="ares-cc-decision-box">
+                <div style="font-size:10px; color:#94a3b8; text-transform:uppercase; margin-bottom:8px;">HEDGE STATUS</div>
+                <div style="display:flex; align-items:center; justify-content:center; gap:6px; font-size:14px; font-weight:700; color:#f8fafc;" id="ares-cc-decision-status">
+                    <div style="width:12px; height:12px; border-radius:50%; border:2px solid #64748b;"></div> INACTIVE
+                </div>
+                <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;">
+                    <div style="font-size:10px; color:#94a3b8; text-transform:uppercase; margin-bottom:4px;">DECISION</div>
+                    <div style="color:#38bdf8; font-weight:700; font-size:13px;" id="ares-cc-decision-text">Monitoring...</div>
+                    <div style="display:flex; gap:4px; justify-content:center; margin-top:8px;">
+                        <div style="width:6px; height:6px; background:#38bdf8; border-radius:50%;"></div>
+                        <div style="width:6px; height:6px; background:rgba(56,189,248,0.3); border-radius:50%;"></div>
+                        <div style="width:6px; height:6px; background:rgba(56,189,248,0.3); border-radius:50%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ares-cc-shield-3d" id="ares-cc-shield-icon"></div>
         </div>
 
-        <!-- Details Panel -->
-        <div class="ares-cc-panel">
-            <div class="ares-cc-panel-title" style="color:#a855f7; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:12px; justify-content:space-between;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#a855f7;"><line x1="4" y1="21" x2="14" y2="11"></line><line x1="4" y1="3" x2="14" y2="13"></line><line x1="20" y1="21" x2="10" y2="11"></line><line x1="20" y1="3" x2="10" y2="13"></line><line x1="14" y1="11" x2="10" y2="13"></line><line x1="14" y1="13" x2="10" y2="11"></line></svg>
-                    HEDGE DETAILS
-                </div>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:16px; color:#64748b;"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+        <div class="ares-cc-details-panel">
+            <div style="font-size:14px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                <span style="color:#a855f7;">~+</span> HEDGE DETAILS
             </div>
-            
-            <div class="ares-cc-details-grid">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:x-large; column-gap:30px;">
                 <div>
-                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><svg style="color:#a855f7;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"></path><path d="M13 19l6-6"></path><path d="M16 16l4 4"></path><path d="M19 21l2-2"></path><path d="M9.5 6.5L21 18v3h-3L6.5 9.5"></path><path d="M5 11l6-6"></path><path d="M8 8L4 4"></path><path d="M5 3L3 5"></path></svg> HEDGE TYPE</div><div class="ares-cc-d-val" style="color:#a855f7;" id="ares-cc-dt-type">NONE</div></div>
-                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><svg style="color:#8b5cf6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"></path><path d="M3 7h18"></path><path d="M6 7l-3 7c0 1.7 1.3 3 3 3s3-1.3 3-3L6 7z"></path><path d="M18 7l-3 7c0 1.7 1.3 3 3 3s3-1.3 3-3L18 7z"></path></svg> HEDGE SIZE</div><div class="ares-cc-d-val" style="color:#8b5cf6;" id="ares-cc-dt-size">0.000000 BTC</div></div>
-                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><svg style="color:#10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg> HEDGE P&L</div><div class="ares-cc-d-val" style="color:#10b981;" id="ares-cc-dt-hpnl">+$0.00</div></div>
-                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><svg style="color:#10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> PEAK P&L</div><div class="ares-cc-d-val" style="color:#10b981;" id="ares-cc-dt-peakpnl">+$0.00</div></div>
-                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><svg style="color:#10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> OPTIONS P&L</div><div class="ares-cc-d-val" style="color:#10b981;" id="ares-cc-dt-opnl">+$0.00</div></div>
+                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><span style="color:#a855f7;">Y-</span> HEDGE TYPE</div><div class="ares-cc-d-val" style="color:#a855f7;" id="ares-cc-dt-type">NONE</div></div>
+                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><span style="color:#a855f7;">s~</span> HEDGE SIZE</div><div class="ares-cc-d-val" style="color:#a855f7;" id="ares-cc-dt-size">0.000000 BTC</div></div>
+                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><span style="color:#10b981;">Y"</span> HEDGE P&L</div><div class="ares-cc-d-val" style="color:#10b981;" id="ares-cc-dt-hpnl">+$0.00</div></div>
+                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><span style="color:#10b981;">Y"</span> PEAK P&L</div><div class="ares-cc-d-val" style="color:#10b981;" id="ares-cc-dt-peakpnl">+$0.00</div></div>
+                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><span style="color:#10b981;">Y"</span> OPTIONS P&L</div><div class="ares-cc-d-val" style="color:#10b981;" id="ares-cc-dt-opnl">+$0.00</div></div>
                 </div>
                 <div>
-                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><svg style="color:#38bdf8;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg> COMBINED P&L</div><div class="ares-cc-d-val" style="color:#10b981;" id="ares-cc-dt-cpnl">+$0.00</div></div>
-                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><svg style="color:#f59e0b;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M15.3 14c.2-1 .8-1.2 1.5-1.5-.9-.6-1.9-1.2-3-1.6V8.2c1-.4 1.7-1 2-1.9-.9.4-1.9.6-2.9.7v-2h-1.5v2c-.7.1-1.3.1-2 .1v-2H8v2c-.4 0-.8.1-1.2.1L6 9h1.7c.3 0 .7.1 1 .2v6c-.3 0-.6.1-1 .2H6l.8 2c.4 0 .9-.1 1.2-.1v2h1.5v-2c.7-.1 1.3-.1 2-.1v2h1.5v-2c1.2-.3 2.1-.9 2.3-1.9z"></path></svg> BTC QTY HEDGED</div><div class="ares-cc-d-val" id="ares-cc-dt-btcqty">0.0000 BTC</div></div>
-                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><svg style="color:#10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg> LOSS COVERED</div><div class="ares-cc-d-val" id="ares-cc-dt-losscov">0%</div></div>
-                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><svg style="color:#a855f7;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg> HEDGE PERCENTAGE</div><div class="ares-cc-d-val" id="ares-cc-dt-hpct">0%</div></div>
-                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><svg style="color:#64748b;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> TIME SINCE HEDGE</div><div class="ares-cc-d-val" id="ares-cc-dt-time">-</div></div>
+                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><span style="color:#38bdf8;">~+</span> COMBINED P&L</div><div class="ares-cc-d-val" style="color:#10b981;" id="ares-cc-dt-cpnl">+$0.00</div></div>
+                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><span style="color:#f59e0b;">Y~</span> BTC QTY HEDGED</div><div class="ares-cc-d-val" id="ares-cc-dt-btcqty">0.0000 BTC</div></div>
+                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><span style="color:#10b981;">~+</span> LOSS COVERED</div><div class="ares-cc-d-val" id="ares-cc-dt-losscov">0%</div></div>
+                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><span style="color:#a855f7;">~+</span> HEDGE PERCENTAGE</div><div class="ares-cc-d-val" id="ares-cc-dt-hpct">0%</div></div>
+                    <div class="ares-cc-detail-row"><div class="ares-cc-d-lbl"><span style="color:#38bdf8;">Y"</span> TIME SINCE HEDGE</div><div class="ares-cc-d-val" id="ares-cc-dt-time">-</div></div>
                 </div>
             </div>
         </div>
@@ -850,29 +1784,29 @@
     <!-- Row 3: Sub Metrics -->
     <div class="ares-cc-row3">
         <div class="ares-cc-box">
-            <div class="ares-cc-box-lbl"><svg style="color:#ef4444;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> BLEEDING LEG</div>
+            <div class="ares-cc-box-lbl"><span style="color:#ef4444;">Y(</span> BLEEDING LEG</div>
             <div class="ares-cc-box-val" style="color:#ef4444;" id="ares-cc-b-leg">None</div>
             <div style="width:100%; border-top:1px dashed rgba(239,68,68,0.5); margin-top:12px;"></div>
         </div>
         <div class="ares-cc-box">
-            <div class="ares-cc-box-lbl"><svg style="color:#f59e0b;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg> SL DISTANCE REMAINING</div>
+            <div class="ares-cc-box-lbl"><span style="color:#f59e0b;">Y!</span> SL DISTANCE REMAINING</div>
             <div class="ares-cc-box-val" style="color:#f59e0b;" id="ares-cc-b-sl">100%</div>
             <div style="display:flex; gap:4px; margin-top:12px;">
                 <div style="flex:1; height:4px; background:#f59e0b;"></div><div style="flex:1; height:4px; background:#f59e0b;"></div><div style="flex:1; height:4px; background:#f59e0b;"></div><div style="flex:1; height:4px; background:#f59e0b;"></div><div style="flex:1; height:4px; background:#f59e0b;"></div>
             </div>
         </div>
         <div class="ares-cc-box">
-            <div class="ares-cc-box-lbl"><svg style="color:#38bdf8;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 12 12 17 22 12"></polyline><polyline points="2 17 12 22 22 17"></polyline></svg> GRID TIER ACTIVE</div>
+            <div class="ares-cc-box-lbl"><span style="color:#38bdf8;">Y"</span> GRID TIER ACTIVE</div>
             <div class="ares-cc-box-val" style="color:#38bdf8;" id="ares-cc-b-tier">Standby</div>
             <div style="font-size:10px; color:#94a3b8; margin-top:4px;">No Active Tier</div>
         </div>
         <div class="ares-cc-box">
-            <div class="ares-cc-box-lbl"><svg style="color:#10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg> HEDGE PERCENTAGE</div>
+            <div class="ares-cc-box-lbl"><span style="color:#10b981;">~+</span> HEDGE PERCENTAGE</div>
             <div class="ares-cc-box-val" style="color:#10b981;" id="ares-cc-b-hpct">0%</div>
             <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); margin-top:12px; border-radius:2px;"><div id="ares-cc-b-hpct-bar" style="width:0%; height:100%; background:#10b981; border-radius:2px;"></div></div>
         </div>
         <div class="ares-cc-box">
-            <div class="ares-cc-box-lbl"><svg style="color:#a855f7;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg> HEDGE CONFIDENCE</div>
+            <div class="ares-cc-box-lbl"><span style="color:#a855f7;">Y"</span> HEDGE CONFIDENCE</div>
             <div class="ares-cc-box-val" style="color:#a855f7;" id="ares-cc-b-conf">0%</div>
             <div style="display:flex; gap:2px; margin-top:12px;">
                 <div style="width:30%; height:4px; background:#a855f7;"></div><div style="width:70%; height:4px; background:rgba(168,85,247,0.2);"></div>
@@ -886,32 +1820,32 @@
         
         <div style="display:flex; align-items:center; flex-grow:1; justify-content:center;">
             <div class="ares-cc-lc-step active" id="lc-1">
-                <div class="ares-cc-lc-icon" style="color:#38bdf8;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
+                <div class="ares-cc-lc-icon" style="color:#38bdf8;">Y"</div>
                 <div class="ares-cc-lc-text"><div class="ares-cc-lc-lbl" style="color:#38bdf8;">MONITORING</div><div class="ares-cc-lc-sub">Scanning Market</div></div>
             </div>
-            <div class="ares-cc-lc-arrow">----&gt;</div>
+            <div class="ares-cc-lc-arrow">----+</div>
             <div class="ares-cc-lc-step" id="lc-2">
-                <div class="ares-cc-lc-icon" style="color:#ef4444;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>
+                <div class="ares-cc-lc-icon" style="color:#ef4444;">Y!</div>
                 <div class="ares-cc-lc-text"><div class="ares-cc-lc-lbl">THREAT DETECTED</div><div class="ares-cc-lc-sub">Evaluating Risk</div></div>
             </div>
-            <div class="ares-cc-lc-arrow">----&gt;</div>
+            <div class="ares-cc-lc-arrow">----+</div>
             <div class="ares-cc-lc-step" id="lc-3">
-                <div class="ares-cc-lc-icon" style="color:#f59e0b;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"></path><path d="M13 19l6-6"></path><path d="M16 16l4 4"></path><path d="M19 21l2-2"></path><path d="M9.5 6.5L21 18v3h-3L6.5 9.5"></path><path d="M5 11l6-6"></path><path d="M8 8L4 4"></path><path d="M5 3L3 5"></path></svg></div>
+                <div class="ares-cc-lc-icon" style="color:#f59e0b;">Y-</div>
                 <div class="ares-cc-lc-text"><div class="ares-cc-lc-lbl">HEDGE ACTIVATED</div><div class="ares-cc-lc-sub">Protecting Position</div></div>
             </div>
-            <div class="ares-cc-lc-arrow">----&gt;</div>
+            <div class="ares-cc-lc-arrow">----+</div>
             <div class="ares-cc-lc-step" id="lc-4">
-                <div class="ares-cc-lc-icon" style="color:#10b981;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg></div>
+                <div class="ares-cc-lc-icon" style="color:#10b981;">~+</div>
                 <div class="ares-cc-lc-text"><div class="ares-cc-lc-lbl">PROTECTED</div><div class="ares-cc-lc-sub">Risk Neutralized</div></div>
             </div>
-            <div class="ares-cc-lc-arrow">----&gt;</div>
+            <div class="ares-cc-lc-arrow">----+</div>
             <div class="ares-cc-lc-step" id="lc-5">
-                <div class="ares-cc-lc-icon" style="color:#10b981;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="1 4 1 10 7 10"></polyline><polyline points="23 20 23 14 17 14"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></svg></div>
+                <div class="ares-cc-lc-icon" style="color:#10b981;">Y"</div>
                 <div class="ares-cc-lc-text"><div class="ares-cc-lc-lbl">RECOVERY</div><div class="ares-cc-lc-sub">Waiting Reversal</div></div>
             </div>
-            <div class="ares-cc-lc-arrow">----&gt;</div>
+            <div class="ares-cc-lc-arrow">----+</div>
             <div class="ares-cc-lc-step" id="lc-6">
-                <div class="ares-cc-lc-icon" style="color:#94a3b8;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 8 12 12 14 14"></polyline></svg></div>
+                <div class="ares-cc-lc-icon" style="color:#94a3b8;">Y"</div>
                 <div class="ares-cc-lc-text"><div class="ares-cc-lc-lbl">DE-HEDGE</div><div class="ares-cc-lc-sub">Exit Protection</div></div>
             </div>
         </div>
@@ -919,7 +1853,7 @@
         <div style="text-align:right; width:120px;">
             <div style="font-size:9px; color:#94a3b8; text-transform:uppercase;">LAST UPDATE</div>
             <div style="font-size:12px; color:#f8fafc; font-weight:700; margin:2px 0;" id="ares-cc-time">--:--:-- IST</div>
-            <div style="font-size:9px; color:#10b981; display:flex; align-items:center; justify-content:flex-end; gap:4px;"><div style="width:4px;height:4px;border-radius:50%;background:#10b981;box-shadow:0 0 5px #10b981;"></div> Live Feed Active</div>
+            <div style="font-size:9px; color:#10b981; display:flex; align-items:center; justify-content:flex-end; gap:4px;"><div style="width:4px;height:4px;border-radius:50%;background:#10b981;"></div> Live Feed Active</div>
         </div>
     </div>
 </div>
