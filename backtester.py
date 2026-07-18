@@ -410,17 +410,17 @@ class AdvancedBacktester:
                 # No SL hit. Evaluate profit targets matching actual bot config.
                 closing_pnl_pct = (entry_premium_total - close_strangle_premium) / entry_premium_total
 
-                # Full Exit Target (config.EXIT_PROFIT_TARGET = 30%)
-                if closing_pnl_pct >= config.EXIT_PROFIT_TARGET:
+                # Full Exit Target (default 30%)
+                if closing_pnl_pct >= 0.30:
                     exit_reason = "FULL_TARGET"
-                    final_pnl_pct = config.EXIT_PROFIT_TARGET
+                    final_pnl_pct = 0.30
 
-                # Partial Profit (config.PARTIAL_PROFIT_TRIGGER = 20%)
+                # Partial Profit (default 20%)
                 # 50% closed at trigger, remaining 50% runs to EOD close
-                elif closing_pnl_pct >= config.PARTIAL_PROFIT_TRIGGER:
+                elif closing_pnl_pct >= 0.20:
                     exit_reason = "PARTIAL_TARGET"
-                    partial_size = config.PARTIAL_PROFIT_SIZE  # 0.50
-                    final_pnl_pct = (partial_size * config.PARTIAL_PROFIT_TRIGGER +
+                    partial_size = 0.50
+                    final_pnl_pct = (partial_size * 0.20 +
                                      (1 - partial_size) * closing_pnl_pct)
 
                 # Trailing SL: if price touched TRAILING_SL_TRIGGER (15%) during day
