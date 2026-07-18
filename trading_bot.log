@@ -7191,3 +7191,55 @@ Rule 11: Exit Time - [PASS]
 2026-07-18 13:37:27 IST - BotCore - INFO - Engine Heartbeat: Monitor loop is active and running 24/7.
 2026-07-18 13:37:29 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
 2026-07-18 13:38:29 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:39:23 IST - BotCore - INFO - API: Time synced. Offset: -3s
+2026-07-18 13:39:24 IST - BotCore - INFO - DB: Recovered Active JSONBLOB_ID from Master Blob: 019f73cb-7df4-7edc-86f2-b3551cc9ad66
+2026-07-18 13:39:24 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-07-18 13:39:24 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...1cc9ad66
+2026-07-18 13:39:26 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-18 13:39:26 IST - BotCore - INFO - Engine: Starting Delta BTC Options Bot in SHADOW mode with Capital: $50000.0
+2026-07-18 13:39:26 IST - BotCore - INFO - Telegram polling loop started.
+2026-07-18 13:39:26 IST - BotCore - INFO - Telegram interactive bot thread started.
+2026-07-18 13:39:26 IST - BotCore - INFO - ARES ServiceRunner initialized in background thread in PAPER mode with OptionBridge.
+2026-07-18 13:39:26 IST - BotCore - INFO - Starting Web Dashboard on port 5000
+2026-07-18 13:39:26 IST - BotCore - INFO - Telegram: Skipped 0 old messages. Waiting for new commands.
+2026-07-18 13:39:27 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)
+2026-07-18 13:39:27 IST - BotCore - INFO - Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)
+2026-07-18 13:39:27 IST - BotCore - INFO - Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)
+2026-07-18 13:39:27 IST - BotCore - INFO - Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)
+2026-07-18 13:39:27 IST - BotCore - INFO - Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)
+2026-07-18 13:39:27 IST - BotCore - INFO - Engine: Starting 24/7 background Option Chain Monitor...
+2026-07-18 13:39:27 IST - BotCore - INFO - WS Connection Opened
+2026-07-18 13:39:27 IST - BotCore - INFO - WS: Subscribed to ['BTCUSD']
+2026-07-18 13:39:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:40:26 IST - BotCore - INFO - Keep-alive pinger started. Target URL: http://localhost:5000
+2026-07-18 13:40:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:40:28 IST - BotCore - INFO - [KEEPALIVE] alive, engine=OFF (Mode: OFF)
+2026-07-18 13:41:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:42:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 13:43:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.

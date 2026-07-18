@@ -158,7 +158,7 @@ class AresOrchestrator:
             regime_result = self.regime_engine.evaluate(trend_result)
 
             # IDLE MODE: If no options are open and no hedge is active, skip Risk processing
-            has_options = snapshot.metadata.get("total_entry_premium", 0.0) > 0.0
+            has_options = snapshot.metadata.get("total_lots", 0) > 0 or snapshot.metadata.get("total_entry_premium", 0.0) > 0.0
             if not has_options and snapshot.futures_position_qty == 0:
                 # Return partial tick result so UI shows live market trend/regime
                 self.latest_tick_result = TickResult(
