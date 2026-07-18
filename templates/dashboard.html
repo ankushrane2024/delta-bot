@@ -2841,66 +2841,146 @@
                 if (data.hedge_status) {
                     const hBadge = document.getElementById('hedge-active-badge');
                     
-                    // --- ARES X Integration Bridge ---
-                    const aresBadge = document.getElementById('legacy-ares-status-badge');
-                    const aresCard = document.getElementById('ares-metrics-card');
-                    if (aresBadge) {
-                        if (data.hedge_status.hedge_active) {
-                            aresBadge.textContent = 'ACTIVE';
-                            aresBadge.style.background = 'rgba(16, 185, 129, 0.2)';
-                            aresBadge.style.color = '#10b981';
-                            aresBadge.style.border = '1px solid rgba(16, 185, 129, 0.4)';
-                        } else {
-                            aresBadge.textContent = 'STANDBY';
-                            aresBadge.style.background = 'rgba(255, 255, 255, 0.1)';
-                            aresBadge.style.color = '#94a3b8';
-                            aresBadge.style.border = 'none';
-                        }
-                    }
                     
-                    if (aresCard) {
-                        // Fetch live telemetry continuously
-                        fetch('/ares/status').then(r => r.json()).then(aresData => {
-                            const reg = aresData.market_regime || 'WAITING';
-                            const regEl = document.getElementById('am-regime');
-                            if (regEl) {
-                                regEl.textContent = reg.replace(/_/g, ' ');
-                                if(reg.includes('CRASH') || reg.includes('EXTREME')) { regEl.style.color = '#f43f5e'; }
-                                else if(reg.includes('TREND')) { regEl.style.color = '#fbbf24'; }
-                                else { regEl.style.color = '#38bdf8'; }
+                    // --- ARES HEDGE COMMAND CENTER ---
+                    fetch('/ares/status').then(r => r.json()).then(ares => {
+                        const sh = data.hedge_status || {};
+                        const isHedgeActive = sh.hedge_active || false;
+                        
+                        // Top Header
+                        const statusEl = document.getElementById('ares-cc-status');
+                        if(statusEl) {
+                            statusEl.innerText = isHedgeActive ? 'ACTIVE' : 'STANDBY';
+                            statusEl.style.color = isHedgeActive ? '#10b981' : '#f59e0b';
+                            statusEl.style.textShadow = isHedgeActive ? '0 0 15px rgba(16, 185, 129, 0.5)' : '0 0 15px rgba(245, 158, 11, 0.5)';
+                        }
+                        
+                        // Row 1
+                        const regimeEl = document.getElementById('ares-cc-regime');
+                        if(regimeEl) {
+                            regimeEl.innerText = (ares.market_regime || 'WAITING').toUpperCase();
+                            let regColor = '#10b981';
+                            if (ares.market_regime === 'Caution') regColor = '#f59e0b';
+                            else if (ares.market_regime === 'Trending') regColor = '#ef4444';
+                            regimeEl.style.color = regColor;
+                        }
+                        
+                        const trendEl = document.getElementById('ares-cc-trend');
+                        if(trendEl) {
+                            trendEl.innerText = parseFloat(ares.trend_strength || 0).toFixed(2);
+                            let trendColor = (ares.trend_strength > 20) ? '#ef4444' : '#38bdf8';
+                            trendEl.style.color = trendColor;
+                        }
+
+                        if(document.getElementById('ares-cc-bleed-pct')) document.getElementById('ares-cc-bleed-pct').innerText = (ares.bleeding_drop_pct || sh.bleeding_leg_loss_pct || 0).toFixed(1) + '%';
+                        
+                        const pctVal = Math.min(ares.protection_pct || 0, 100);
+                        if(document.getElementById('ares-cc-loss-covered')) document.getElementById('ares-cc-loss-covered').innerText = pctVal + '%';
+                        if(document.getElementById('ares-cc-loss-bar')) document.getElementById('ares-cc-loss-bar').style.width = pctVal + '%';
+                        
+                        const riskVal = parseFloat(ares.risk_score || 0).toFixed(2);
+                        if(document.getElementById('ares-cc-risk-top')) document.getElementById('ares-cc-risk-top').innerText = riskVal;
+                        if(document.getElementById('ares-cc-risk-main')) document.getElementById('ares-cc-risk-main').innerText = riskVal;
+
+                        // Shield Styling based on Risk
+                        const shieldBg = document.getElementById('ares-cc-shield-bg');
+                        const gaugeBorder = document.getElementById('ares-cc-gauge-border');
+                        const shieldIcon = document.getElementById('ares-cc-shield-icon');
+                        
+                        if(shieldBg) {
+                            if (isHedgeActive) {
+                                shieldBg.style.background = 'radial-gradient(circle at center, rgba(16, 185, 129, 0.15), rgba(11, 15, 25, 0.8))';
+                                shieldBg.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                                shieldBg.style.boxShadow = 'inset 0 0 60px rgba(16,185,129,0.1), 0 0 20px rgba(16,185,129,0.2)';
+                                gaugeBorder.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                                gaugeBorder.style.borderTopColor = '#10b981';
+                                document.getElementById('ares-cc-risk-main').style.color = '#10b981';
+                                document.getElementById('ares-cc-risk-main').style.textShadow = '0 0 15px rgba(16,185,129,0.5)';
+                                shieldIcon.style.backgroundImage = 'url("data:image/svg+xml;utf8,<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%2310b981\" stroke-width=\"1\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z\"/></svg>")';
+                                shieldIcon.style.filter = 'drop-shadow(0 0 25px rgba(16,185,129,0.8))';
+                            } else if (riskVal > 75) {
+                                shieldBg.style.background = 'radial-gradient(circle at center, rgba(239, 68, 68, 0.15), rgba(11, 15, 25, 0.8))';
+                                shieldBg.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                                shieldBg.style.boxShadow = 'inset 0 0 60px rgba(239,68,68,0.1), 0 0 20px rgba(239,68,68,0.2)';
+                                gaugeBorder.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                                gaugeBorder.style.borderTopColor = '#ef4444';
+                                document.getElementById('ares-cc-risk-main').style.color = '#ef4444';
+                                document.getElementById('ares-cc-risk-main').style.textShadow = '0 0 15px rgba(239,68,68,0.5)';
+                                shieldIcon.style.backgroundImage = 'url("data:image/svg+xml;utf8,<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%23ef4444\" stroke-width=\"1\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z\"/></svg>")';
+                                shieldIcon.style.filter = 'drop-shadow(0 0 25px rgba(239,68,68,0.8))';
+                            } else {
+                                shieldBg.style.background = 'radial-gradient(circle at center, rgba(56, 189, 248, 0.1), rgba(11, 15, 25, 0.8))';
+                                shieldBg.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+                                shieldBg.style.boxShadow = 'inset 0 0 40px rgba(56,189,248,0.05), 0 0 20px rgba(56,189,248,0.1)';
+                                gaugeBorder.style.borderColor = 'rgba(56, 189, 248, 0.2)';
+                                gaugeBorder.style.borderTopColor = '#38bdf8';
+                                document.getElementById('ares-cc-risk-main').style.color = '#38bdf8';
+                                document.getElementById('ares-cc-risk-main').style.textShadow = '0 0 15px rgba(56,189,248,0.5)';
+                                shieldIcon.style.backgroundImage = 'url("data:image/svg+xml;utf8,<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%2338bdf8\" stroke-width=\"1\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z\"/></svg>")';
+                                shieldIcon.style.filter = 'drop-shadow(0 0 15px rgba(56,189,248,0.5))';
                             }
-                            
-                            const pct = document.getElementById('am-pct');
-                            if (pct) pct.textContent = aresData.protection_pct + '%';
-                            const pctBar = document.getElementById('am-pct-bar');
-                            if (pctBar) {
-                                let boundedPct = Math.min(aresData.protection_pct, 100);
-                                pctBar.style.width = boundedPct + '%';
+                        }
+
+                        // Row 3 Sub Metrics
+                        if(document.getElementById('ares-cc-b-leg')) document.getElementById('ares-cc-b-leg').innerText = ares.bleeding_leg || sh.bleeding_leg || 'None';
+                        
+                        // Timeline / Lifecycle Update
+                        document.querySelectorAll('.ares-cc-lc-step').forEach(el => el.classList.remove('active'));
+                        if (isHedgeActive) {
+                            if(document.getElementById('lc-1')) document.getElementById('lc-1').classList.add('active');
+                            if(document.getElementById('lc-2')) document.getElementById('lc-2').classList.add('active');
+                            if(document.getElementById('lc-3')) document.getElementById('lc-3').classList.add('active');
+                            if(document.getElementById('lc-4')) document.getElementById('lc-4').classList.add('active');
+                        } else if (riskVal > 50) {
+                            if(document.getElementById('lc-1')) document.getElementById('lc-1').classList.add('active');
+                            if(document.getElementById('lc-2')) document.getElementById('lc-2').classList.add('active');
+                        } else {
+                            if(document.getElementById('lc-1')) document.getElementById('lc-1').classList.add('active');
+                        }
+                        
+                        const now = new Date();
+                        if(document.getElementById('ares-cc-time')) document.getElementById('ares-cc-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) + ' IST';
+                        
+                    }).catch(e => console.error(e));
+                    
+                    // Smart Hedging Details (from main data payload)
+                    if (data.hedge_status) {
+                        const sh = data.hedge_status;
+                        if(document.getElementById('ares-cc-decision-text')) document.getElementById('ares-cc-decision-text').innerText = sh.decision_reason || 'Monitoring...';
+                        
+                        if (sh.hedge_active) {
+                            if(document.getElementById('ares-cc-decision-status')) {
+                                document.getElementById('ares-cc-decision-status').innerHTML = '<div style="width:12px; height:12px; border-radius:50%; background:#10b981; box-shadow:0 0 10px #10b981;"></div> ACTIVE';
+                                document.getElementById('ares-cc-decision-status').style.color = '#10b981';
                             }
-                            
-                            const risk = document.getElementById('am-risk');
-                            if (risk) risk.textContent = parseFloat(aresData.risk_score || 0).toFixed(2);
-                            
-                            const trend = document.getElementById('am-trend');
-                            if (trend) trend.textContent = parseFloat(aresData.trend_strength || 0).toFixed(2);
-                            
-                            if (data.hedge_status) {
-                                // Active Hedge Size
-                                const amSize = document.getElementById('am-size');
-                                if (amSize) {
-                                    amSize.textContent = `${(data.hedge_status.hedge_size_btc || 0).toFixed(4)} BTC`;
-                                }
-                                
-                                // Bleeding Leg Loss %
-                                const bLegPct = document.getElementById('am-bleeding-pct');
-                                if (bLegPct) {
-                                    const bLegLoss = data.hedge_status.bleeding_leg_loss_pct || 0;
-                                    bLegPct.textContent = `${bLegLoss.toFixed(1)}%`;
-                                }
+                        } else {
+                            if(document.getElementById('ares-cc-decision-status')) {
+                                document.getElementById('ares-cc-decision-status').innerHTML = '<div style="width:12px; height:12px; border-radius:50%; border:2px solid #64748b;"></div> INACTIVE';
+                                document.getElementById('ares-cc-decision-status').style.color = '#f8fafc';
                             }
-                        }).catch(e => console.error(e));
+                        }
+                        
+                        if(document.getElementById('ares-cc-dt-type')) document.getElementById('ares-cc-dt-type').innerText = sh.hedge_active ? (sh.hedge_type || 'FUTURES') : 'NONE';
+                        if(document.getElementById('ares-cc-dt-size')) document.getElementById('ares-cc-dt-size').innerText = parseFloat(sh.hedge_size_btc || 0).toFixed(6) + ' BTC';
+                        
+                        const hpnl = sh.hedge_pnl_usd || 0;
+                        if(document.getElementById('ares-cc-dt-hpnl')) {
+                            document.getElementById('ares-cc-dt-hpnl').innerText = (hpnl>=0?'+':'') + '$' + hpnl.toFixed(2);
+                            document.getElementById('ares-cc-dt-hpnl').style.color = hpnl >= 0 ? '#10b981' : '#ef4444';
+                        }
+                        
+                        if(document.getElementById('ares-cc-dt-opnl')) document.getElementById('ares-cc-dt-opnl').innerText = (sh.options_pnl_live>=0?'+':'') + '$' + (sh.options_pnl_live||0).toFixed(2);
+                        if(document.getElementById('ares-cc-dt-cpnl')) document.getElementById('ares-cc-dt-cpnl').innerText = (sh.combined_pnl_live>=0?'+':'') + '$' + (sh.combined_pnl_live||0).toFixed(2);
+                        if(document.getElementById('ares-cc-dt-peakpnl')) document.getElementById('ares-cc-dt-peakpnl').innerText = (sh.hedge_peak_pnl>=0?'+':'') + '$' + (sh.hedge_peak_pnl||0).toFixed(2);
+                        
+                        if(document.getElementById('ares-cc-btc-qty')) document.getElementById('ares-cc-btc-qty').innerHTML = Math.abs(sh.hedge_size_btc || 0).toFixed(4) + ' <span style="font-size:12px;color:#94a3b8;">BTC</span>';
+                        if(document.getElementById('ares-cc-dt-btcqty')) document.getElementById('ares-cc-dt-btcqty').innerText = Math.abs(sh.hedge_size_btc || 0).toFixed(4) + ' BTC';
+                        if(document.getElementById('ares-cc-b-hpct')) document.getElementById('ares-cc-b-hpct').innerText = (sh.hedge_percentage || 0) + '%';
+                        if(document.getElementById('ares-cc-b-hpct-bar')) document.getElementById('ares-cc-b-hpct-bar').style.width = (sh.hedge_percentage || 0) + '%';
+                        if(document.getElementById('ares-cc-b-sl')) document.getElementById('ares-cc-b-sl').innerText = (sh.remaining_sl_pct || 100).toFixed(1) + '%';
                     }
                     // ---------------------------------
+// ---------------------------------
 
                     if (hBadge) {
                         if (data.hedge_status.hedge_active) {
