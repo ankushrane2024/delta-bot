@@ -2916,8 +2916,101 @@
                         if(document.getElementById('ares-cc-b-hpct-bar')) document.getElementById('ares-cc-b-hpct-bar').style.width = (sh.hedge_percentage || 0) + '%';
                         if(document.getElementById('ares-cc-b-sl')) document.getElementById('ares-cc-b-sl').innerText = (sh.remaining_sl_pct || 100).toFixed(1) + '%';
                     }
+                    // ---------------------------------
+// ---------------------------------
+
+                    if (hBadge) {
+                        if (data.hedge_status.hedge_active) {
+                            hBadge.textContent = '🛡️ ACTIVE';
+                            hBadge.style.color = 'var(--success)';
+                            hBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+                            hBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                        } else {
+                            hBadge.textContent = '⚪ INACTIVE';
+                            hBadge.style.color = 'var(--text-secondary)';
+                            hBadge.style.background = 'rgba(255, 255, 255, 0.05)';
+                            hBadge.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        }
+                    }
                     
-                    // Show/Hide Test Order button based on mode
+                    document.getElementById('hedge-type-val').textContent = (data.hedge_status.hedge_type || 'none').toUpperCase();
+                    document.getElementById('hedge-size-val').textContent = `${(data.hedge_status.hedge_size_btc || 0).toFixed(6)} BTC`;
+                    
+                    const hedgePnl = data.hedge_status.hedge_pnl_usd || 0;
+                    const pnlSpan = document.getElementById('hedge-pnl-val');
+                    pnlSpan.textContent = `${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}`;
+                    pnlSpan.style.color = hedgePnl > 0 ? 'var(--success)' : (hedgePnl < 0 ? 'var(--danger)' : 'var(--text-secondary)');
+                    
+                    // PRO LEVEL DETAILS
+                    const peakPnl = data.hedge_status.hedge_peak_pnl || 0;
+                    document.getElementById('hedge-peak-pnl-val').textContent = `${peakPnl >= 0 ? '+' : ''}$${peakPnl.toFixed(2)}`;
+                    
+                    // Options PnL
+                    const optPnl = data.hedge_status.options_pnl_live || 0;
+                    const optPnlEl = document.getElementById('hedge-options-pnl-val');
+                    optPnlEl.textContent = `${optPnl >= 0 ? '+' : ''}$${optPnl.toFixed(2)}`;
+                    optPnlEl.style.color = optPnl > 0 ? '#10b981' : (optPnl < 0 ? '#f43f5e' : '#94a3b8');
+                    
+                    // Combined PnL (Options + Hedge)
+                    const combPnl = data.hedge_status.combined_pnl_live || 0;
+                    const combPnlEl = document.getElementById('hedge-combined-pnl-val');
+                    combPnlEl.textContent = `${combPnl >= 0 ? '+' : ''}$${combPnl.toFixed(2)}`;
+                    combPnlEl.style.color = combPnl > 0 ? '#10b981' : (combPnl < 0 ? '#f43f5e' : '#94a3b8');
+                    
+                    // Bleeding Leg
+                    document.getElementById('hedge-bleeding-leg-val').textContent = data.hedge_status.bleeding_leg || 'None';
+                    
+                    // Decision Reason
+                    const reasonEl = document.getElementById('hedge-decision-reason');
+                    if (reasonEl) {
+                        reasonEl.textContent = data.hedge_status.decision_reason || 'Monitoring...';
+                        if (data.hedge_status.hedge_active) {
+                            reasonEl.style.color = '#fbbf24';
+                        } else {
+                            reasonEl.style.color = '#94a3b8';
+                        }
+                    }
+                    
+                    // SL Distance Remaining Bar
+                    const slRemaining = data.hedge_status.remaining_sl_pct || 100;
+                    const slRemEl = document.getElementById('hedge-sl-remaining-val');
+                    const slBarEl = document.getElementById('hedge-sl-remaining-bar');
+                    if (slRemEl) {
+                        slRemEl.textContent = `${slRemaining.toFixed(0)}%`;
+                        if (slRemaining > 70) { slRemEl.style.color = '#10b981'; }
+                        else if (slRemaining > 40) { slRemEl.style.color = '#fbbf24'; }
+                        else { slRemEl.style.color = '#f43f5e'; }
+                    }
+                    if (slBarEl) {
+                        slBarEl.style.width = `${Math.max(0, Math.min(100, slRemaining))}%`;
+                        if (slRemaining > 70) { slBarEl.style.background = 'linear-gradient(90deg, #10b981, #22d3ee)'; }
+                        else if (slRemaining > 40) { slBarEl.style.background = 'linear-gradient(90deg, #fbbf24, #f97316)'; }
+                        else { slBarEl.style.background = 'linear-gradient(90deg, #f43f5e, #dc2626)'; }
+                    }
+                    
+                    const hPct = data.hedge_status.hedge_percentage || 0;
+                    const tierSpan = document.getElementById('hedge-grid-tier-val');
+                    if (hPct === 0) {
+                        tierSpan.textContent = 'Standby';
+                        tierSpan.style.color = 'var(--text-secondary)';
+                    } else if (hPct < 70) {
+                        tierSpan.textContent = 'Tier 1 (50%)';
+                        tierSpan.style.color = '#38bdf8'; // blue
+                    } else {
+                        tierSpan.textContent = 'Tier 2 (100% RED ALERT)';
+                        tierSpan.style.color = '#fbbf24'; // yellow/orange
+                    }
+                    
+                    document.getElementById('hedge-percentage-val').textContent = `${(data.hedge_status.hedge_percentage || 0).toFixed(0)}%`;
+                    document.getElementById('hedge-percentage-bar').style.width = `${data.hedge_status.hedge_percentage || 0}%`;
+                    
+                    const slTight = document.getElementById('sl-tightened-badge');
+                    if (slTight) {
+                        slTight.style.display = data.hedge_status.sl_tightened ? 'block' : 'none';
+                    }
+                }
+
+                // Show/Hide Test Order button based on mode
                 const testBtn = document.getElementById('btn-test-order');
                 if (testBtn) {
                     testBtn.style.display = data.mode === 'PAPER' ? 'block' : 'none';
@@ -3010,7 +3103,42 @@
                     }
                 }
                 
-                
+                // Sync pill button state
+                const pill = document.getElementById('regime-pill');
+                if(pill && data.regime_filter_enabled !== undefined) {
+                    if(data.regime_filter_enabled) {
+                        pill.textContent = 'ON';
+                        pill.style.background = 'var(--success)';
+                        pill.style.borderColor = 'var(--success)';
+                        pill.style.color = '#fff';
+                        pill.style.boxShadow = '0 0 10px rgba(16,185,129,0.4)';
+                    } else {
+                        pill.textContent = 'OFF';
+                        pill.style.background = '#334155';
+                        pill.style.borderColor = '#334155';
+                        pill.style.color = '#94a3b8';
+                        pill.style.boxShadow = 'none';
+                    }
+                }
+
+                const hedgePill = document.getElementById('hedge-pill');
+                if(hedgePill && data.smart_hedging_enabled !== undefined) {
+                    if(data.smart_hedging_enabled) {
+                        hedgePill.textContent = 'ON';
+                        hedgePill.style.background = 'var(--success)';
+                        hedgePill.style.borderColor = 'var(--success)';
+                        hedgePill.style.color = '#fff';
+                        hedgePill.style.boxShadow = '0 0 10px rgba(16,185,129,0.4)';
+                    } else {
+                        hedgePill.textContent = 'OFF';
+                        hedgePill.style.background = '#334155';
+                        hedgePill.style.borderColor = '#334155';
+                        hedgePill.style.color = '#94a3b8';
+                        hedgePill.style.boxShadow = 'none';
+                    }
+                }
+
+
                 // ── Update Active Positions ──────────────────────────────────────────
                 const posCards  = document.getElementById('positions-cards');
                 const totalBar  = document.getElementById('pos-total-bar');
