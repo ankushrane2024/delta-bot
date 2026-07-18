@@ -45,9 +45,14 @@ def run_replay():
             
     engine.api_client = MockApiClient()
     
+    class MockFilters:
+        def __init__(self):
+            self.last_detailed_signal = "WAITING"
+    engine.filters = MockFilters()
+    
     # 2. Start ARES
     bridge = OptionBridge(engine)
-    ares_runner = ServiceRunner(mode_override="PAPER", option_bridge=bridge)
+    ares_runner = ServiceRunner(mode_override="PAPER", option_bridge=bridge, bot_engine=engine)
     ares_thread = threading.Thread(target=ares_runner.run, daemon=True)
     ares_thread.start()
     
@@ -60,11 +65,13 @@ def run_replay():
         "PUT_40000": {"size": 20, "entry_price": 500.0, "side": "SELL", "leg_type": "put"}
     }
     engine.total_entry_premium = 20000.0
+    engine.execution.acquire_hedge_lock('ARES')
     
     time.sleep(5)
     
     # 4. Simulate Trend (BTC crashes)
     print("--- SIMULATING MARKET CRASH ---")
+    engine.filters.last_detailed_signal = "DOWNTREND START"
     
     for _ in range(10):
         engine.api_client.price -= 500.0

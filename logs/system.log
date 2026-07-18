@@ -1,172 +1,92 @@
-{"timestamp": "2026-07-12 11:57:35,957", "level": "INFO", "logger": "system", "message": "Booting ARES Service in PAPER mode..."}
-{"timestamp": "2026-07-12 11:57:37,417", "level": "INFO", "logger": "system", "message": "ServiceRunner: Using OptionBridge as ExecutionProvider."}
-{"timestamp": "2026-07-12 11:57:37,421", "level": "INFO", "logger": "system", "message": "Internal dashboard API disabled. Using host Flask application."}
-{"timestamp": "2026-07-12 11:57:37,421", "level": "INFO", "logger": "hedge.engines.shadow.shadow_pipeline_validator", "message": "Starting ShadowPipelineValidator..."}
-{"timestamp": "2026-07-12 11:57:37,421", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "Starting Ares Orchestrator..."}
-{"timestamp": "2026-07-12 11:57:37,421", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Initiating Execution State Machine Recovery..."}
-{"timestamp": "2026-07-12 11:57:37,421", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Execution State Machine Recovery Complete."}
-{"timestamp": "2026-07-12 11:57:37,421", "level": "INFO", "logger": "system", "message": "ARES Main Loop started."}
-{"timestamp": "2026-07-12 11:57:38,422", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:38,422", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:38,422", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:38,422", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 67.34 | Reason: Directional Threat"}
-{"timestamp": "2026-07-12 11:57:39,423", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:39,423", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:39,424", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:39,424", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 67.34 | Reason: Directional Threat"}
-{"timestamp": "2026-07-12 11:57:40,425", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:40,425", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:40,425", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:40,425", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 67.34 | Reason: Directional Threat"}
-{"timestamp": "2026-07-12 11:57:41,426", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:41,426", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:41,426", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:41,426", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 67.34 | Reason: Directional Threat"}
-{"timestamp": "2026-07-12 11:57:42,427", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:42,427", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:42,428", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:42,428", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 67.34 | Reason: Directional Threat"}
-{"timestamp": "2026-07-12 11:57:43,428", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:43,428", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:43,429", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:43,429", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 73.83 | Reason: Volatility Sensitivity"}
-{"timestamp": "2026-07-12 11:57:43,429", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:44,430", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:44,430", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:44,430", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:44,430", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 80.62 | Reason: Volatility Sensitivity"}
-{"timestamp": "2026-07-12 11:57:44,430", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:45,431", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:45,431", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:45,431", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:45,431", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 86.33 | Reason: Volatility Sensitivity"}
-{"timestamp": "2026-07-12 11:57:45,432", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:46,432", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:46,433", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:46,433", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:46,433", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 90.54 | Reason: Volatility Sensitivity"}
-{"timestamp": "2026-07-12 11:57:46,433", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:47,434", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:47,434", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:47,434", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:47,434", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 93.42 | Reason: Volatility Sensitivity"}
-{"timestamp": "2026-07-12 11:57:47,434", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:48,435", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:48,435", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:48,435", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:48,435", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 95.30 | Reason: Volatility Sensitivity"}
-{"timestamp": "2026-07-12 11:57:48,436", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:49,436", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:49,436", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:49,437", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:49,437", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 96.49 | Reason: Volatility Sensitivity"}
-{"timestamp": "2026-07-12 11:57:49,437", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:50,438", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:50,438", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:50,438", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:50,438", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 97.23 | Reason: Volatility Sensitivity"}
-{"timestamp": "2026-07-12 11:57:50,438", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:51,439", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:51,439", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:51,440", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:51,440", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 97.69 | Reason: Volatility Sensitivity"}
-{"timestamp": "2026-07-12 11:57:51,440", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:52,441", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:52,441", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:52,441", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:52,442", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 97.97 | Reason: Directional Threat"}
-{"timestamp": "2026-07-12 11:57:52,442", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:52,961", "level": "INFO", "logger": "BotCore", "message": "Engine: Exit cycle triggered (Fixed Time Square-off)"}
-{"timestamp": "2026-07-12 11:57:53,442", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:53,443", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:53,443", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:53,443", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 97.97 | Reason: Directional Threat"}
-{"timestamp": "2026-07-12 11:57:53,443", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 11:57:54,444", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:54,444", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:54,444", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=0.0, strike=0.0"}
-{"timestamp": "2026-07-12 11:57:54,444", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 97.97 | Reason: Directional Threat"}
-{"timestamp": "2026-07-12 11:57:54,444", "level": "ERROR", "logger": "hedge.engines.adapters.option_bridge", "message": "Bridge: Cannot place hedge. ARES does not own Hedge Lock! Owner: NONE"}
-{"timestamp": "2026-07-12 20:24:48,803", "level": "INFO", "logger": "system", "message": "Booting ARES Service in PAPER mode..."}
-{"timestamp": "2026-07-12 20:24:48,803", "level": "INFO", "logger": "BotCore", "message": "ARES ServiceRunner initialized in background thread in PAPER mode with OptionBridge."}
-{"timestamp": "2026-07-12 20:24:48,803", "level": "INFO", "logger": "BotCore", "message": "Starting Web Dashboard on port 5000"}
-{"timestamp": "2026-07-12 20:24:48,825", "level": "INFO", "logger": "werkzeug", "message": "\u001b[31m\u001b[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\u001b[0m\n * Running on all addresses (0.0.0.0)\n * Running on http://127.0.0.1:5000\n * Running on http://192.168.1.36:5000"}
-{"timestamp": "2026-07-12 20:24:48,825", "level": "INFO", "logger": "werkzeug", "message": "\u001b[33mPress CTRL+C to quit\u001b[0m"}
-{"timestamp": "2026-07-12 20:24:49,323", "level": "INFO", "logger": "BotCore", "message": "Telegram: Skipped 0 old messages. Waiting for new commands."}
-{"timestamp": "2026-07-12 20:24:49,328", "level": "ERROR", "logger": "ErrorLog", "message": "Telegram failed: {\"ok\":false,\"error_code\":404,\"description\":\"Not Found\"}"}
-{"timestamp": "2026-07-12 20:24:49,726", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)"}
-{"timestamp": "2026-07-12 20:24:49,726", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)"}
-{"timestamp": "2026-07-12 20:24:49,727", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)"}
-{"timestamp": "2026-07-12 20:24:49,727", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)"}
-{"timestamp": "2026-07-12 20:24:49,727", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)"}
-{"timestamp": "2026-07-12 20:24:49,727", "level": "INFO", "logger": "BotCore", "message": "Engine: Starting 24/7 background Option Chain Monitor..."}
-{"timestamp": "2026-07-12 20:24:49,792", "level": "INFO", "logger": "websocket", "message": "Websocket connected"}
-{"timestamp": "2026-07-12 20:24:49,792", "level": "INFO", "logger": "BotCore", "message": "WS Connection Opened"}
-{"timestamp": "2026-07-12 20:24:49,792", "level": "INFO", "logger": "BotCore", "message": "WS: Subscribed to ['BTCUSD']"}
-{"timestamp": "2026-07-12 20:24:50,308", "level": "INFO", "logger": "system", "message": "ServiceRunner: Using OptionBridge as ExecutionProvider."}
-{"timestamp": "2026-07-12 20:24:50,310", "level": "INFO", "logger": "system", "message": "Internal dashboard API disabled. Using host Flask application."}
-{"timestamp": "2026-07-12 20:24:50,310", "level": "INFO", "logger": "hedge.engines.shadow.shadow_pipeline_validator", "message": "Starting ShadowPipelineValidator..."}
-{"timestamp": "2026-07-12 20:24:50,311", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "Starting Ares Orchestrator..."}
-{"timestamp": "2026-07-12 20:24:50,311", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Initiating Execution State Machine Recovery..."}
-{"timestamp": "2026-07-12 20:24:50,311", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Execution State Machine Recovery Complete."}
-{"timestamp": "2026-07-12 20:24:50,311", "level": "INFO", "logger": "system", "message": "ARES Main Loop started."}
-{"timestamp": "2026-07-12 20:24:51,957", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:25:48,641", "level": "INFO", "logger": "BotCore", "message": "Keep-alive pinger started. Target URL: http://localhost:5000"}
-{"timestamp": "2026-07-12 20:25:50,685", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [12/Jul/2026 20:25:50] \"GET /ping HTTP/1.1\" 200 -"}
-{"timestamp": "2026-07-12 20:25:50,686", "level": "INFO", "logger": "BotCore", "message": "[KEEPALIVE] alive, engine=OFF (Mode: OFF)"}
-{"timestamp": "2026-07-12 20:25:52,122", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:26:52,296", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:27:52,469", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:28:52,648", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:29:22,918", "level": "ERROR", "logger": "web_server", "message": "Exception on /ares/status [GET]", "exception": "Traceback (most recent call last):\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 1455, in wsgi_app\n    response = self.full_dispatch_request()\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 869, in full_dispatch_request\n    rv = self.handle_user_exception(e)\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 867, in full_dispatch_request\n    rv = self.dispatch_request()\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 852, in dispatch_request\n    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^\n  File \"C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\web_server.py\", line 1110, in ares_status\n    'clusters': clusters\n                ^^^^^^^^\nUnboundLocalError: cannot access local variable 'clusters' where it is not associated with a value"}
-{"timestamp": "2026-07-12 20:29:22,934", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [12/Jul/2026 20:29:22] \"\u001b[35m\u001b[1mGET /ares/status HTTP/1.1\u001b[0m\" 500 -"}
-{"timestamp": "2026-07-12 20:29:45,999", "level": "ERROR", "logger": "web_server", "message": "Exception on /ares/status [GET]", "exception": "Traceback (most recent call last):\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 1455, in wsgi_app\n    response = self.full_dispatch_request()\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 869, in full_dispatch_request\n    rv = self.handle_user_exception(e)\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 867, in full_dispatch_request\n    rv = self.dispatch_request()\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 852, in dispatch_request\n    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^\n  File \"C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\web_server.py\", line 1110, in ares_status\n    'clusters': clusters\n                ^^^^^^^^\nUnboundLocalError: cannot access local variable 'clusters' where it is not associated with a value"}
-{"timestamp": "2026-07-12 20:29:46,000", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [12/Jul/2026 20:29:46] \"\u001b[35m\u001b[1mGET /ares/status HTTP/1.1\u001b[0m\" 500 -"}
-{"timestamp": "2026-07-12 20:29:51,172", "level": "INFO", "logger": "BotCore", "message": "Engine Heartbeat: Monitor loop is active and running 24/7."}
-{"timestamp": "2026-07-12 20:29:52,729", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [12/Jul/2026 20:29:52] \"GET /ping HTTP/1.1\" 200 -"}
-{"timestamp": "2026-07-12 20:29:52,730", "level": "INFO", "logger": "BotCore", "message": "[KEEPALIVE] alive, engine=OFF (Mode: OFF)"}
-{"timestamp": "2026-07-12 20:29:52,825", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:30:52,990", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:31:53,168", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:32:26,301", "level": "INFO", "logger": "system", "message": "Booting ARES Service in PAPER mode..."}
-{"timestamp": "2026-07-12 20:32:26,301", "level": "INFO", "logger": "BotCore", "message": "ARES ServiceRunner initialized in background thread in PAPER mode with OptionBridge."}
-{"timestamp": "2026-07-12 20:32:26,302", "level": "INFO", "logger": "BotCore", "message": "Starting Web Dashboard on port 5000"}
-{"timestamp": "2026-07-12 20:32:26,308", "level": "INFO", "logger": "werkzeug", "message": "\u001b[31m\u001b[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\u001b[0m\n * Running on all addresses (0.0.0.0)\n * Running on http://127.0.0.1:5000\n * Running on http://192.168.1.36:5000"}
-{"timestamp": "2026-07-12 20:32:26,308", "level": "INFO", "logger": "werkzeug", "message": "\u001b[33mPress CTRL+C to quit\u001b[0m"}
-{"timestamp": "2026-07-12 20:32:26,594", "level": "INFO", "logger": "system", "message": "ServiceRunner: Using OptionBridge as ExecutionProvider."}
-{"timestamp": "2026-07-12 20:32:26,598", "level": "INFO", "logger": "system", "message": "Internal dashboard API disabled. Using host Flask application."}
-{"timestamp": "2026-07-12 20:32:26,598", "level": "INFO", "logger": "hedge.engines.shadow.shadow_pipeline_validator", "message": "Starting ShadowPipelineValidator..."}
-{"timestamp": "2026-07-12 20:32:26,598", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "Starting Ares Orchestrator..."}
-{"timestamp": "2026-07-12 20:32:26,598", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Initiating Execution State Machine Recovery..."}
-{"timestamp": "2026-07-12 20:32:26,598", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Execution State Machine Recovery Complete."}
-{"timestamp": "2026-07-12 20:32:26,598", "level": "INFO", "logger": "system", "message": "ARES Main Loop started."}
-{"timestamp": "2026-07-12 20:32:26,797", "level": "ERROR", "logger": "ErrorLog", "message": "Telegram failed: {\"ok\":false,\"error_code\":404,\"description\":\"Not Found\"}"}
-{"timestamp": "2026-07-12 20:32:26,797", "level": "INFO", "logger": "BotCore", "message": "Telegram: Skipped 0 old messages. Waiting for new commands."}
-{"timestamp": "2026-07-12 20:32:27,174", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily morning entry 09:00 IST (Asia/Kolkata timezone)"}
-{"timestamp": "2026-07-12 20:32:27,174", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily morning entry 09:30 IST (Asia/Kolkata timezone)"}
-{"timestamp": "2026-07-12 20:32:27,174", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily EOD hard exit 17:00 IST (Asia/Kolkata timezone)"}
-{"timestamp": "2026-07-12 20:32:27,174", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled verification at 09:30/18:00 IST (Asia/Kolkata timezone)"}
-{"timestamp": "2026-07-12 20:32:27,174", "level": "INFO", "logger": "BotCore", "message": "Engine: Scheduled daily report & backup at 17:30 IST (Asia/Kolkata timezone)"}
-{"timestamp": "2026-07-12 20:32:27,174", "level": "INFO", "logger": "BotCore", "message": "Engine: Starting 24/7 background Option Chain Monitor..."}
-{"timestamp": "2026-07-12 20:32:27,267", "level": "INFO", "logger": "websocket", "message": "Websocket connected"}
-{"timestamp": "2026-07-12 20:32:27,267", "level": "INFO", "logger": "BotCore", "message": "WS Connection Opened"}
-{"timestamp": "2026-07-12 20:32:27,268", "level": "INFO", "logger": "BotCore", "message": "WS: Subscribed to ['BTCUSD']"}
-{"timestamp": "2026-07-12 20:32:27,660", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:32:47,215", "level": "ERROR", "logger": "web_server", "message": "Exception on /ares/status [GET]", "exception": "Traceback (most recent call last):\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 1455, in wsgi_app\n    response = self.full_dispatch_request()\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 869, in full_dispatch_request\n    rv = self.handle_user_exception(e)\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 867, in full_dispatch_request\n    rv = self.dispatch_request()\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 852, in dispatch_request\n    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^\n  File \"C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\web_server.py\", line 1110, in ares_status\n    'clusters': clusters\n                ^^^^^^^^\nUnboundLocalError: cannot access local variable 'clusters' where it is not associated with a value"}
-{"timestamp": "2026-07-12 20:32:47,218", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [12/Jul/2026 20:32:47] \"\u001b[35m\u001b[1mGET /ares/status HTTP/1.1\u001b[0m\" 500 -"}
-{"timestamp": "2026-07-12 20:33:26,138", "level": "INFO", "logger": "BotCore", "message": "Keep-alive pinger started. Target URL: http://localhost:5000"}
-{"timestamp": "2026-07-12 20:33:27,829", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:33:28,178", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [12/Jul/2026 20:33:28] \"GET /ping HTTP/1.1\" 200 -"}
-{"timestamp": "2026-07-12 20:33:28,179", "level": "INFO", "logger": "BotCore", "message": "[KEEPALIVE] alive, engine=OFF (Mode: OFF)"}
-{"timestamp": "2026-07-12 20:34:27,998", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:34:42,002", "level": "INFO", "logger": "system", "message": "ServiceRunner: Using OptionBridge as ExecutionProvider."}
-{"timestamp": "2026-07-12 20:34:42,096", "level": "ERROR", "logger": "web_server", "message": "Exception on /ares/status [GET]", "exception": "Traceback (most recent call last):\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 1455, in wsgi_app\n    response = self.full_dispatch_request()\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 869, in full_dispatch_request\n    rv = self.handle_user_exception(e)\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 867, in full_dispatch_request\n    rv = self.dispatch_request()\n  File \"C:\\Users\\AnkushR\\AppData\\Roaming\\Python\\Python313\\site-packages\\flask\\app.py\", line 852, in dispatch_request\n    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^\n  File \"C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\web_server.py\", line 1110, in ares_status\n    'clusters': clusters\n                ^^^^^^^^\nUnboundLocalError: cannot access local variable 'clusters' where it is not associated with a value"}
-{"timestamp": "2026-07-12 20:34:55,482", "level": "INFO", "logger": "system", "message": "ServiceRunner: Using OptionBridge as ExecutionProvider."}
-{"timestamp": "2026-07-12 20:35:28,171", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:35:53,684", "level": "INFO", "logger": "system", "message": "ServiceRunner: Using OptionBridge as ExecutionProvider."}
-{"timestamp": "2026-07-12 20:36:28,341", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:37:28,368", "level": "INFO", "logger": "BotCore", "message": "Engine Heartbeat: Monitor loop is active and running 24/7."}
-{"timestamp": "2026-07-12 20:37:28,506", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
-{"timestamp": "2026-07-12 20:37:30,225", "level": "INFO", "logger": "werkzeug", "message": "127.0.0.1 - - [12/Jul/2026 20:37:30] \"GET /ping HTTP/1.1\" 200 -"}
-{"timestamp": "2026-07-12 20:37:30,227", "level": "INFO", "logger": "BotCore", "message": "[KEEPALIVE] alive, engine=OFF (Mode: OFF)"}
-{"timestamp": "2026-07-12 20:38:28,676", "level": "WARNING", "logger": "BotCore", "message": "Filter: Failed to fetch candles for ADX."}
+{"timestamp": "2026-07-18 11:14:13,059", "level": "INFO", "logger": "hedge.engines.shadow.shadow_pipeline_validator", "message": "Starting ShadowPipelineValidator..."}
+{"timestamp": "2026-07-18 11:14:13,060", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "Starting Ares Orchestrator..."}
+{"timestamp": "2026-07-18 11:14:13,060", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Initiating Execution State Machine Recovery..."}
+{"timestamp": "2026-07-18 11:14:13,060", "level": "INFO", "logger": "ARES.ExecutionStateMachine", "message": "Execution State Machine Recovery Complete."}
+{"timestamp": "2026-07-18 11:14:13,060", "level": "INFO", "logger": "system", "message": "ARES Main Loop started."}
+{"timestamp": "2026-07-18 11:14:13,061", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'WAITING' -> SAFE_RANGE"}
+{"timestamp": "2026-07-18 11:14:13,061", "level": "ERROR", "logger": "hedge.ares_orchestrator", "message": "Fatal error in ARES Pipeline tick: TickResult.__init__() got an unexpected keyword argument 'tick_id'", "exception": "Traceback (most recent call last):\n  File \"C:\\Users\\AnkushR\\Downloads\\Delta_BTC_Options_Bot\\Delta_BTC_Options_Bot\\hedge\\ares_orchestrator.py\", line 164, in tick\n    self.latest_tick_result = TickResult(\n                              ~~~~~~~~~~^\n        tick_id=self.tick_number,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<9 lines>...\n        provider_health=\"GREEN\"\n        ^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\nTypeError: TickResult.__init__() got an unexpected keyword argument 'tick_id'"}
+{"timestamp": "2026-07-18 11:14:13,317", "level": "INFO", "logger": "BotCore", "message": "Execution: Hedge lock acquired by ARES"}
+{"timestamp": "2026-07-18 11:14:14,063", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'WAITING' -> SAFE_RANGE"}
+{"timestamp": "2026-07-18 11:14:14,063", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:14,063", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:14,063", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:15,064", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'WAITING' -> SAFE_RANGE"}
+{"timestamp": "2026-07-18 11:14:15,064", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:15,064", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:15,064", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:16,065", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'WAITING' -> SAFE_RANGE"}
+{"timestamp": "2026-07-18 11:14:16,065", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:16,065", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:16,065", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:17,067", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'WAITING' -> SAFE_RANGE"}
+{"timestamp": "2026-07-18 11:14:17,067", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:17,067", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:17,067", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:18,068", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'WAITING' -> SAFE_RANGE"}
+{"timestamp": "2026-07-18 11:14:18,068", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:18,069", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:18,069", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=50000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:19,069", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'DOWNTREND START' -> CONFIRMED_TREND"}
+{"timestamp": "2026-07-18 11:14:19,069", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=49500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:19,069", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=49500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:19,069", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=49500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:19,070", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 99.90 | Reason: Volatility Sensitivity"}
+{"timestamp": "2026-07-18 11:14:19,617", "level": "INFO", "logger": "BotCore", "message": "Hedge [PAPER]: Simulated sell 2000 contracts at 63938.94413929. ID: PAPER-HEDGE-26128"}
+{"timestamp": "2026-07-18 11:14:20,619", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'DOWNTREND START' -> CONFIRMED_TREND"}
+{"timestamp": "2026-07-18 11:14:20,619", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=48500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:20,619", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=48500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:20,619", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=48500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:20,620", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 99.95 | Reason: Volatility Sensitivity"}
+{"timestamp": "2026-07-18 11:14:21,620", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'DOWNTREND START' -> CONFIRMED_TREND"}
+{"timestamp": "2026-07-18 11:14:21,620", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=48000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:21,620", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=48000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:21,620", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=48000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:21,621", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 99.96 | Reason: Volatility Sensitivity"}
+{"timestamp": "2026-07-18 11:14:22,621", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'DOWNTREND START' -> CONFIRMED_TREND"}
+{"timestamp": "2026-07-18 11:14:22,622", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=47500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:22,622", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=47500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:22,622", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=47500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:22,622", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 99.97 | Reason: Volatility Sensitivity"}
+{"timestamp": "2026-07-18 11:14:23,623", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'DOWNTREND START' -> CONFIRMED_TREND"}
+{"timestamp": "2026-07-18 11:14:23,623", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=47000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:23,623", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=47000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:23,623", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=47000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:23,623", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 99.98 | Reason: Volatility Sensitivity"}
+{"timestamp": "2026-07-18 11:14:24,624", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'DOWNTREND START' -> CONFIRMED_TREND"}
+{"timestamp": "2026-07-18 11:14:24,624", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=46500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:24,625", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=46500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:24,625", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=46500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:24,625", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 99.99 | Reason: Volatility Sensitivity"}
+{"timestamp": "2026-07-18 11:14:25,626", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'DOWNTREND START' -> CONFIRMED_TREND"}
+{"timestamp": "2026-07-18 11:14:25,626", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=46000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:25,626", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=46000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:25,626", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=46000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:25,626", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 99.99 | Reason: Volatility Sensitivity"}
+{"timestamp": "2026-07-18 11:14:26,627", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'DOWNTREND START' -> CONFIRMED_TREND"}
+{"timestamp": "2026-07-18 11:14:26,627", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=45500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:26,627", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=45500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:26,627", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=45500.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:26,627", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 99.99 | Reason: Volatility Sensitivity"}
+{"timestamp": "2026-07-18 11:14:27,628", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'DOWNTREND START' -> CONFIRMED_TREND"}
+{"timestamp": "2026-07-18 11:14:27,629", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=45000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:27,629", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=45000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:27,629", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=45000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:27,629", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 99.99 | Reason: Directional Threat"}
+{"timestamp": "2026-07-18 11:14:28,321", "level": "INFO", "logger": "BotCore", "message": "Engine: Exit cycle triggered (Fixed Time Square-off)"}
+{"timestamp": "2026-07-18 11:14:28,630", "level": "INFO", "logger": "ARES.MarketRegimeEngine", "message": "External regime signal 'DOWNTREND START' -> CONFIRMED_TREND"}
+{"timestamp": "2026-07-18 11:14:28,630", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=45000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:28,630", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=45000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:28,631", "level": "WARNING", "logger": "ARES.PositionRiskEngine", "message": "Invalid inputs for strike_distance_factor: futures_price=45000.0, strike=0.0"}
+{"timestamp": "2026-07-18 11:14:28,631", "level": "INFO", "logger": "hedge.ares_orchestrator", "message": "ARES Decision: PARTIAL_HEDGE | Risk: 99.99 | Reason: Directional Threat"}
+{"timestamp": "2026-07-18 11:14:28,968", "level": "ERROR", "logger": "ErrorLog", "message": "Telegram failed: {\"ok\":false,\"error_code\":404,\"description\":\"Not Found\"}"}
+{"timestamp": "2026-07-18 11:14:28,970", "level": "INFO", "logger": "BotCore", "message": "Execution: Closing all positions due to End of Day Square-off"}
+{"timestamp": "2026-07-18 11:14:28,970", "level": "INFO", "logger": "BotCore", "message": "Execution: Hedge lock released by ARES"}
+{"timestamp": "2026-07-18 11:14:28,970", "level": "INFO", "logger": "BotCore", "message": "Execution [PAPER]: Simulating close of CALL_60000"}
+{"timestamp": "2026-07-18 11:14:28,970", "level": "INFO", "logger": "BotCore", "message": "Execution [PAPER]: Simulating close of PUT_40000"}
+{"timestamp": "2026-07-18 11:14:28,970", "level": "INFO", "logger": "BotCore", "message": "Hedge: Closing hedge position. Size: 2.000000 BTC"}
+{"timestamp": "2026-07-18 11:14:29,017", "level": "INFO", "logger": "BotCore", "message": "Hedge [PAPER]: Simulated buy 2000 contracts at 63939.04573728. ID: PAPER-HEDGE-26452"}
+{"timestamp": "2026-07-18 11:14:29,018", "level": "INFO", "logger": "BotCore", "message": "Hedge: All hedge positions closed"}
+{"timestamp": "2026-07-18 11:14:29,018", "level": "ERROR", "logger": "BotCore", "message": "DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode."}
+{"timestamp": "2026-07-18 11:14:29,019", "level": "INFO", "logger": "BotCore", "message": "Hedge: State fully reset."}
+{"timestamp": "2026-07-18 11:14:29,019", "level": "INFO", "logger": "BotCore", "message": "Risk [DPL]: Trailing state reset for new trade."}
+{"timestamp": "2026-07-18 11:14:29,166", "level": "INFO", "logger": "BotCore", "message": "Engine: Daily state reset."}

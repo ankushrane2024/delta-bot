@@ -162,7 +162,7 @@ class AresOrchestrator:
             if not has_options and snapshot.futures_position_qty == 0:
                 # Return partial tick result so UI shows live market trend/regime
                 self.latest_tick_result = TickResult(
-                    tick_id=self.tick_number,
+                    tick_number=self.tick_number,
                     timestamp=self.clock.now(),
                     market_context=trend_context,
                     trend_result=trend_result,

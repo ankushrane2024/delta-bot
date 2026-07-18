@@ -6838,3 +6838,46 @@ Rule 11: Exit Time - [PASS]
 2026-07-12 20:38:28 IST - BotCore - WARNING - Filter: Failed to fetch candles for ADX.
 2026-07-13 19:35:41 IST - BotCore - INFO - API: Time synced. Offset: -4s
 2026-07-13 19:35:42 IST - BotCore - WARNING - Filter: Failed to fetch candles for Market Regime.
+2026-07-18 11:14:11 IST - BotCore - INFO - API: Time synced. Offset: -9s
+2026-07-18 11:14:11 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-18 11:14:11 IST - BotCore - INFO - Rule Compliance: 100% (13/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [PASS]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
+2026-07-18 11:14:13 IST - BotCore - INFO - Execution: Hedge lock acquired by ARES
+2026-07-18 11:14:19 IST - BotCore - INFO - Hedge [PAPER]: Simulated sell 2000 contracts at 63938.94413929. ID: PAPER-HEDGE-26128
+2026-07-18 11:14:28 IST - BotCore - INFO - Engine: Exit cycle triggered (Fixed Time Square-off)
+2026-07-18 11:14:28 IST - BotCore - INFO - Execution: Closing all positions due to End of Day Square-off
+2026-07-18 11:14:28 IST - BotCore - INFO - Execution: Hedge lock released by ARES
+2026-07-18 11:14:28 IST - BotCore - INFO - Execution [PAPER]: Simulating close of CALL_60000
+2026-07-18 11:14:28 IST - BotCore - INFO - Execution [PAPER]: Simulating close of PUT_40000
+2026-07-18 11:14:28 IST - BotCore - INFO - Hedge: Closing hedge position. Size: 2.000000 BTC
+2026-07-18 11:14:29 IST - BotCore - INFO - Hedge [PAPER]: Simulated buy 2000 contracts at 63939.04573728. ID: PAPER-HEDGE-26452
+2026-07-18 11:14:29 IST - BotCore - INFO - Hedge: All hedge positions closed
+2026-07-18 11:14:29 IST - BotCore - ERROR - DB: GITHUB_PAT missing! Operating in LOCAL ONLY mode.
+2026-07-18 11:14:29 IST - BotCore - INFO - Hedge: State fully reset.
+2026-07-18 11:14:29 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-07-18 11:14:29 IST - BotCore - INFO - Engine: Daily state reset.
