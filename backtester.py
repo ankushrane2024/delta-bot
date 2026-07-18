@@ -131,10 +131,10 @@ class AdvancedBacktester:
         # ATM Strike
         ATM_strike = round(S / 1000.0) * 1000.0
 
-        # Real bot picks strikes ~1 strike OTM (1000 pts).
-        # Using 4000+ OTM made SL mathematically impossible (BTC never moves that far in 1 day).
-        min_call_strike = ATM_strike + 1000.0
-        min_put_strike  = ATM_strike - 1000.0
+        # Real bot picks strikes based on MIN_STRIKES_OTM config.
+        min_otm = getattr(config, 'MIN_STRIKES_OTM', 5) * 1000.0
+        min_call_strike = ATM_strike + min_otm
+        min_put_strike  = ATM_strike - min_otm
         
         # 1. Select Call Strike
         call_strike = min_call_strike
@@ -164,21 +164,23 @@ class AdvancedBacktester:
             else:
                 break
 
-        # 3. Apply Put Skew Cap (Put Premium <= 1.35x Call Premium)
+        # 3. Apply Put Skew Cap
         call_prem = black_scholes_call(S, call_strike, T_entry, r, call_sigma)
         put_prem = black_scholes_put(S, put_strike, T_entry, r, put_sigma)
         
-        while put_prem > 1.35 * call_prem and put_strike > ATM_strike - 15000:
+        skew_cap = getattr(config, 'PUT_SKEW_CAP', 1.30)
+        while put_prem > skew_cap * call_prem and put_strike > ATM_strike - 15000:
             put_strike -= 1000.0
             put_prem = black_scholes_put(S, put_strike, T_entry, r, put_sigma)
 
-        # 4. Check Net Delta Entry Limit (absolute net delta <= 0.15)
-        # If net delta is > 0.15, shift both strikes 1 step further OTM
+        # 4. Check Net Delta Entry Limit
+        # If net delta is > config limit, shift both strikes 1 step further OTM
+        max_net_delta = getattr(config, 'MAX_NET_DELTA', 0.10)
         c_delta = get_option_delta(S, call_strike, T_entry, r, call_sigma, 'CALL')
         p_delta = get_option_delta(S, put_strike, T_entry, r, put_sigma, 'PUT')
         net_delta = c_delta + p_delta  # Call delta > 0, Put delta < 0
         
-        if abs(net_delta) > 0.15:
+        while abs(net_delta) > max_net_delta and call_strike < ATM_strike + 20000:
             call_strike += 1000.0
             put_strike -= 1000.0
             call_prem = black_scholes_call(S, call_strike, T_entry, r, call_sigma)
@@ -407,39 +409,32 @@ class AdvancedBacktester:
                 final_pnl_pct = -config.SL_PERCENT
 
             else:
-                # No SL hit. Evaluate profit targets matching actual bot config.
+                # ── ARES DYNAMIC PROFIT LOCK (DPL) EVALUATION ──
+                # Accurately mirroring bot_engine.py
                 closing_pnl_pct = (entry_premium_total - close_strangle_premium) / entry_premium_total
-
-                # Full Exit Target (default 30%)
-                if closing_pnl_pct >= 0.30:
-                    exit_reason = "FULL_TARGET"
-                    final_pnl_pct = 0.30
-
-                # Partial Profit (default 20%)
-                # 50% closed at trigger, remaining 50% runs to EOD close
-                elif closing_pnl_pct >= 0.20:
-                    exit_reason = "PARTIAL_TARGET"
-                    partial_size = 0.50
-                    final_pnl_pct = (partial_size * 0.20 +
-                                     (1 - partial_size) * closing_pnl_pct)
-
-                # Trailing SL: if price touched TRAILING_SL_TRIGGER (15%) during day
-                # then ended below breakeven, exit at breakeven (0%)
-                elif closing_pnl_pct < 0.0 and closing_pnl_pct > -config.SL_PERCENT:
-                    c_decayed = black_scholes_call(btc_open, K_C, T_exit, r_free, call_sigma)
-                    p_decayed = black_scholes_put(btc_open, K_P, T_exit, r_free, put_sigma)
-                    min_strangle_prem = c_decayed + p_decayed
-                    min_pnl_pct = (entry_premium_total - min_strangle_prem) / entry_premium_total
-
-                    if min_pnl_pct >= config.TRAILING_SL_TRIGGER:
-                        exit_reason = "TRAILING_SL"
-                        final_pnl_pct = config.TRAILING_SL_LEVEL  # 0.0 = breakeven
-                    else:
-                        exit_reason = "EOD_EXIT"
-                        final_pnl_pct = closing_pnl_pct
+                
+                # We use closing_pnl_pct as a conservative proxy for max intraday profit
+                # since options naturally decay and peak profit usually occurs near close
+                max_intraday_profit = max(0.0, closing_pnl_pct)
+                
+                sl_level = -config.SL_PERCENT
+                
+                if max_intraday_profit >= getattr(config, 'DYNAMIC_TRAIL_THRESHOLD', 0.28):
+                    sl_level = max_intraday_profit - getattr(config, 'DYNAMIC_TRAIL_GAP', 0.05)
+                elif max_intraday_profit >= getattr(config, 'TRAILING_CONFIRM_THRESHOLD', 0.15):
+                    sl_level = getattr(config, 'CAPITAL_PROTECTION_SL', 0.05)
+                    for tier_profit, tier_sl in getattr(config, 'PROFIT_LOCK_TIERS', []):
+                        if max_intraday_profit >= tier_profit:
+                            sl_level = tier_sl
+                            
+                # If closing PnL drops below our dynamic SL level, we get stopped out at the locked profit
+                if closing_pnl_pct < sl_level:
+                    exit_reason = "DYNAMIC_PROFIT_LOCK"
+                    final_pnl_pct = sl_level
                 else:
                     exit_reason = "EOD_EXIT"
                     final_pnl_pct = closing_pnl_pct
+
 
             # Calculate P&L USD
             # Formula: PnL = pnl_pct * entry_premium * BTC_Quantity
