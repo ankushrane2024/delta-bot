@@ -460,14 +460,14 @@ def emergency_close():
         # We force-populate it here from active_positions so it is ALWAYS saved.
         if not bot_engine.current_trade_info.get("calls"):
             from utils import get_ist_now
-            calls = [sym for sym, d in bot_engine.execution.active_positions.items() if d.get('side') == 'sell' and 'C-' in sym]
-            puts  = [sym for sym, d in bot_engine.execution.active_positions.items() if d.get('side') == 'sell' and 'P-' in sym]
+            calls = [sym for sym, d in bot_engine.execution.active_positions.items() if d.get('side') == 'sell' and ('-C' in sym or 'C-' in sym)]
+            puts  = [sym for sym, d in bot_engine.execution.active_positions.items() if d.get('side') == 'sell' and ('-P' in sym or 'P-' in sym)]
             # Fallback: split all symbols into calls/puts if side not tagged
             if not calls and not puts:
                 for sym in bot_engine.execution.active_positions:
-                    if 'C-' in sym:
+                    if '-C' in sym or 'C-' in sym:
                         calls.append(sym)
-                    elif 'P-' in sym:
+                    elif '-P' in sym or 'P-' in sym:
                         puts.append(sym)
             bot_engine.current_trade_info["calls"] = calls
             bot_engine.current_trade_info["puts"]  = puts
