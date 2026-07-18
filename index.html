@@ -3558,7 +3558,7 @@
                         btn.innerHTML = '⏳ Closing...';
                         btn.disabled = true;
                     }
-                    const res = await fetch('/api/emergency_close', { method: 'POST' });
+                    const res = await fetch('/api/clear', { method: 'POST' });
                     if(res.ok) {
                         if (btn) {
                             btn.innerHTML = '✅ All Closed';
