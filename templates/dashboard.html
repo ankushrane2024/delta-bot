@@ -1079,7 +1079,7 @@
                         color: rgba(255,255,255,0.45);
                         display: flex; align-items: center; gap: 8px;
                     ">
-                        <span>💡</span>
+                        <span>⏭️</span>
                         <span id="skip-hint-text">This trade slot was passed.</span>
                     </div>
                 </div>
@@ -1471,7 +1471,7 @@
 
         <!-- Section: Market Regime Detector -->
         <div class="glass-panel" id="regime-panel" style="margin-bottom: 24px;">
-            <h2>📈 Market Regime Detector</h2>
+            <h2>🟢 Market Regime Detector</h2>
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 20px; gap: 15px; position: relative;">
                 
                 <!-- ADX Arc Gauge Container -->
@@ -2267,7 +2267,7 @@
                         ivBadge.style.background = 'rgba(16, 185, 129, 0.1)';
                         ivBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
                     } else if (data.iv_status === 'Bypassed' || data.iv_status === 'Disabled') {
-                        ivBadge.textContent = '🟢 Bypassed (Testing)';
+                        ivBadge.textContent = '☑️ Bypassed (Testing)';
                         ivBadge.style.color = 'var(--success)';
                         ivBadge.style.background = 'rgba(16, 185, 129, 0.1)';
                         ivBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
@@ -2330,7 +2330,7 @@
                     const dvolBadge = document.getElementById('dvol-can-trade-badge');
                     if (dvolBadge) {
                         if (data.dvol_status.is_bypassed) {
-                            dvolBadge.textContent = '🟢 Bypassed (Testing)';
+                            dvolBadge.textContent = '☑️ Bypassed (Testing)';
                             dvolBadge.style.color = 'var(--success)';
                             dvolBadge.style.background = 'rgba(16, 185, 129, 0.1)';
                             dvolBadge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
@@ -2961,7 +2961,7 @@
                         const isFailed = (r.name === failedRuleName) || !r.passed;
                         const bg = isFailed ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.06)';
                         const border = isFailed ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(16, 185, 129, 0.18)';
-                        const icon = isFailed ? '❌' : '✅';
+                        const icon = isFailed ? '⚠️' : '✅';
                         
                         return `
                             <div style="background: ${bg}; padding: 12px; border-radius: 8px; border: ${border}; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
