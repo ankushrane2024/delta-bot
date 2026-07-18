@@ -46,11 +46,15 @@ class MarketRegimeEngine(AbstractBaseEngine):
         self._warnings.clear()
         
         # 1. Determine the candidate regime based on the TrendResult
-        # Placeholder: Always requesting the current regime unless testing dictates otherwise
         candidate_regime = self._determine_candidate_regime(trend_result)
+        is_external = "external_regime" in trend_result.debug_information
         
-        # 2. Validate the transition
-        is_allowed, reason = self._validate_transition(self.current_regime, candidate_regime)
+        # 2. Validate the transition (external overrides bypass strict state machine)
+        if is_external:
+            is_allowed = True
+            reason = f"External signal override: {trend_result.debug_information.get('external_regime', '?')}"
+        else:
+            is_allowed, reason = self._validate_transition(self.current_regime, candidate_regime)
         
         # 3. Compute auxiliary metrics
         confidence = self._compute_confidence(trend_result)
@@ -100,8 +104,28 @@ class MarketRegimeEngine(AbstractBaseEngine):
     # --- Placeholder Logic Methods ---
     
     def _determine_candidate_regime(self, trend_result: TrendResult) -> MarketRegime:
-        # Placeholder: Return current regime. Tests might inject logic or we just return SAFE_RANGE
-        # If trend_result contains specific debug flags we can use them for testing transitions
+        """Map trend signals to regime states. Uses external_regime override
+        injected by the orchestrator from the filters.py ADX+BB+RSI engine."""
+        
+        # Check for external regime override injected by orchestrator
+        if "external_regime" in trend_result.debug_information:
+            external = trend_result.debug_information["external_regime"]
+            # Map the filters.py signal strings to MarketRegime enum
+            regime_map = {
+                "UPTREND START": MarketRegime.CONFIRMED_TREND,
+                "DOWNTREND START": MarketRegime.CONFIRMED_TREND,
+                "STRENGTHENING UP": MarketRegime.ACCELERATION,
+                "STRENGTHENING DOWN": MarketRegime.ACCELERATION,
+                "TRENDING": MarketRegime.CONFIRMED_TREND,
+                "WEAKENING": MarketRegime.TREND_EXHAUSTION,
+                "SIDEWAYS": MarketRegime.SAFE_RANGE,
+                "WAITING": MarketRegime.SAFE_RANGE,
+            }
+            candidate = regime_map.get(external, MarketRegime.SAFE_RANGE)
+            logger.info(f"External regime signal '{external}' -> {candidate.name}")
+            return candidate
+        
+        # Legacy: use force_regime for tests
         if "force_regime" in trend_result.debug_information:
             return trend_result.debug_information["force_regime"]
         return self.current_regime

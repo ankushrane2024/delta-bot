@@ -31,7 +31,7 @@ class ServiceRunner:
     Owns startup, DI, mode selection, shutdown, signal handling, and background services.
     The AresOrchestrator is completely unaware of this wrapper.
     """
-    def __init__(self, mode_override: str = None, option_bridge=None):
+    def __init__(self, mode_override: str = None, option_bridge=None, bot_engine=None):
         self.running = False
         self.config = AresConfig.load(mode_override=mode_override)
         initialize_all_loggers(self.config.log_dir, self.config)
@@ -39,6 +39,7 @@ class ServiceRunner:
         self.event_bus = EventBus()
         self.store = None
         self.option_bridge = option_bridge
+        self.bot_engine = bot_engine
 
     def _signal_handler(self, sig, frame):
         logger.info(f"Received termination signal ({sig}). Initiating graceful shutdown...")
@@ -72,7 +73,8 @@ class ServiceRunner:
             execution_provider=provider,
             clock=self.clock,
             event_bus=self.event_bus,
-            option_bridge=self.option_bridge
+            option_bridge=self.option_bridge,
+            bot_engine=self.bot_engine
         )
         
         # Setup validation components

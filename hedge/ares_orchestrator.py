@@ -57,6 +57,7 @@ class AresOrchestrator:
         self.event_bus = event_bus
         self.execution_store = execution_store or InMemoryExecutionStore()
         self.option_bridge = kwargs.get('option_bridge')
+        self.bot_engine_ref = kwargs.get('bot_engine')  # Reference to read live ADX+BB+RSI filter
         
         # Determine if we are running in deterministic replay mode
         self.replay_mode = "ReplayClock" in clock.__class__.__name__
@@ -135,13 +136,23 @@ class AresOrchestrator:
                     "timestamp": market_data.get("timestamp", self.clock.now()),
                     "open_interest": market_data.get("open_interest", 0.0),
                     "volume_24h": market_data.get("volume", 0.0),
-                    "implied_volatility": market_data.get("iv", 0.0),
-                    "detailed_signal": market_data.get("detailed_signal", "WAITING")
+                    "implied_volatility": market_data.get("iv", 0.0)
                 }
             )
 
             # 3. Trend Engine
             trend_result = self.trend_engine.evaluate(trend_context)
+            
+            # 3.5 Inject Live ADX+BB+RSI Signal from filters.py into TrendResult
+            # This bridges the 15m multi-indicator regime into the ARES pipeline
+            try:
+                if self.bot_engine_ref and hasattr(self.bot_engine_ref, 'filters'):
+                    external_signal = getattr(self.bot_engine_ref.filters, 'last_detailed_signal', None)
+                    if external_signal:
+                        trend_result.debug_information["external_regime"] = external_signal
+                        logger.debug(f"Injected external regime: {external_signal}")
+            except Exception as e:
+                logger.warning(f"Could not inject external regime: {e}")
         
             # 4. Market Regime Engine
             regime_result = self.regime_engine.evaluate(trend_result)

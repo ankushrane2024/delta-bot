@@ -25,7 +25,6 @@ class LegacyMarketFeedAdapter(AbstractMarketDataProvider):
                 "spot_price": spot_price,
                 "funding": 0.0,
                 "timestamp": self.clock.now(),
-                "detailed_signal": getattr(self.engine.filters, 'last_detailed_signal', 'WAITING'),
                 "open_interest": 0.0,
                 "volume": 0.0,
                 "iv": 0.0,
