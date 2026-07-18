@@ -2492,9 +2492,9 @@
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin: 0;">Rule Compliance Check</h2>
-                <div id="compliance-badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; border: 1px solid rgba(16, 185, 129, 0.2);">100% Compliant</div>
+                <div id="compliance-badge-config" style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; border: 1px solid rgba(16, 185, 129, 0.2);">100% Compliant</div>
             </div>
-            <div id="rules-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+            <div id="rules-grid-config" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
                 <div style="color: var(--text-secondary); font-size: 0.9rem;">Waiting for first rule check...</div>
             </div>
             
@@ -3426,23 +3426,27 @@
                         }
                     }
 
-                    const badge = document.getElementById('compliance-badge');
-                    if (failedRuleName) {
-                        const failedCount = data.rule_report.results.filter(r => r.name === failedRuleName || !r.passed).length;
-                        const compliancePct = Math.round(((data.rule_report.results.length - failedCount) / data.rule_report.results.length) * 100);
-                        badge.textContent = `${compliancePct}% Compliant`;
-                        badge.style.color = 'var(--danger)';
-                        badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
-                        badge.style.background = 'rgba(239, 68, 68, 0.1)';
-                    } else {
-                        badge.textContent = `100% Compliant`;
-                        badge.style.color = 'var(--success)';
-                        badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
-                        badge.style.background = 'rgba(16, 185, 129, 0.1)';
-                    }
+                    const updateBadge = (id) => {
+                        const badge = document.getElementById(id);
+                        if (!badge) return;
+                        if (failedRuleName) {
+                            const failedCount = data.rule_report.results.filter(r => r.name === failedRuleName || !r.passed).length;
+                            const compliancePct = Math.round(((data.rule_report.results.length - failedCount) / data.rule_report.results.length) * 100);
+                            badge.textContent = `${compliancePct}% Compliant`;
+                            badge.style.color = 'var(--danger)';
+                            badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                            badge.style.background = 'rgba(239, 68, 68, 0.1)';
+                        } else {
+                            badge.textContent = `100% Compliant`;
+                            badge.style.color = 'var(--success)';
+                            badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                            badge.style.background = 'rgba(16, 185, 129, 0.1)';
+                        }
+                    };
+                    updateBadge('compliance-badge');
+                    updateBadge('compliance-badge-config');
 
-                    const rulesGrid = document.getElementById('rules-grid');
-                    rulesGrid.innerHTML = data.rule_report.results.map(r => {
+                    const rulesGridHtml = data.rule_report.results.map(r => {
                         const isFailed = (r.name === failedRuleName) || !r.passed;
                         const bg = isFailed ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.06)';
                         const border = isFailed ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(16, 185, 129, 0.18)';
@@ -3458,6 +3462,12 @@
                             </div>
                         `;
                     }).join('');
+                    
+                    const rulesGrid = document.getElementById('rules-grid');
+                    if(rulesGrid) rulesGrid.innerHTML = rulesGridHtml;
+                    
+                    const rulesGridConfig = document.getElementById('rules-grid-config');
+                    if(rulesGridConfig) rulesGridConfig.innerHTML = rulesGridHtml;
 
                     // Today's Skip Reason Section update
                     const skipTitle = document.getElementById('skip-reason-title');
