@@ -879,6 +879,10 @@ class DeltaTradingEngine:
                                     f"SL={trail_state['current_trailing_sl']}% | "
                                     f"Confirmed={trail_state['trailing_confirmed']}"
                                 )
+                        
+                        # Validate the state to prevent any silent failures
+                        self._validate_startup_state()
+                        
                     
                     profit = 0.0
                     pnl_pct = 0.0
@@ -1085,6 +1089,36 @@ class DeltaTradingEngine:
         self.consecutive_losses = 0
         self.paper_trading_paused = False
         app_logger.info("Engine: Daily state reset.")
+
+    def _validate_startup_state(self):
+        """Phase 5: Automatically verify critical runtime state after Hot-Recovery."""
+        if not self.total_entry_premium > 0:
+            return  # No active trade
+
+        failures = []
+        if not hasattr(self, '_trade_start_ts') or not self._trade_start_ts:
+            failures.append("Trade start timestamp missing")
+        
+        trail_state = self.risk_manager.get_trailing_state()
+        if 'highest_profit_pct' not in trail_state:
+            failures.append("Peak profit state missing")
+            
+        if trail_state.get('trailing_confirmed') and trail_state.get('current_trailing_sl') is None:
+            failures.append("Profit lock confirmed but trailing SL missing")
+            
+        if not self.execution.active_positions:
+            failures.append("Active positions dictionary empty despite premium > 0")
+
+        if failures:
+            err_msg = " | ".join(failures)
+            error_logger.critical(f"CRITICAL ERROR: Hot-Recovery State Corruption: {err_msg}")
+            notifier.notify_error(f"🚨 CRITICAL RECOVERY FAILURE 🚨\n{err_msg}\nTrading paused.")
+            self.today_trade_status = "Emergency Auto Closed"
+            self.today_skip_reason = "Corrupted State on Recovery"
+            self.daily_loss_hits += 2 # Disable trading
+            raise Exception(f"Startup Validation Failed: {err_msg}")
+        else:
+            app_logger.info("Startup Validation: All critical state variables successfully restored.")
 
     def _log_and_reset_trade(self, profit, reason):
         if self.current_trade_info.get("calls"):
