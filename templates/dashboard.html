@@ -2935,32 +2935,32 @@
                         }
                     }
                     
-                    document.getElementById('hedge-type-val').textContent = (data.hedge_status.hedge_type || 'none').toUpperCase();
-                    document.getElementById('hedge-size-val').textContent = `${(data.hedge_status.hedge_size_btc || 0).toFixed(6)} BTC`;
+                    if(document.getElementById('hedge-type-val')) document.getElementById('hedge-type-val').textContent = (data.hedge_status.hedge_type || 'none').toUpperCase();
+                    if(document.getElementById('hedge-size-val')) document.getElementById('hedge-size-val').textContent = `${(data.hedge_status.hedge_size_btc || 0).toFixed(6)} BTC`;
                     
                     const hedgePnl = data.hedge_status.hedge_pnl_usd || 0;
-                    const pnlSpan = document.getElementById('hedge-pnl-val');
+                    const pnlSpan = document.getElementById('hedge-pnl-val'); if(pnlSpan) {
                     pnlSpan.textContent = `${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}`;
-                    pnlSpan.style.color = hedgePnl > 0 ? 'var(--success)' : (hedgePnl < 0 ? 'var(--danger)' : 'var(--text-secondary)');
+                    pnlSpan.style.color = hedgePnl > 0 ? 'var(--success)' : (hedgePnl < 0 ? 'var(--danger)' : 'var(--text-secondary)'); }
                     
                     // PRO LEVEL DETAILS
                     const peakPnl = data.hedge_status.hedge_peak_pnl || 0;
-                    document.getElementById('hedge-peak-pnl-val').textContent = `${peakPnl >= 0 ? '+' : ''}$${peakPnl.toFixed(2)}`;
+                    if(document.getElementById('hedge-peak-pnl-val')) document.getElementById('hedge-peak-pnl-val').textContent = `${peakPnl >= 0 ? '+' : ''}$${peakPnl.toFixed(2)}`;
                     
                     // Options PnL
                     const optPnl = data.hedge_status.options_pnl_live || 0;
-                    const optPnlEl = document.getElementById('hedge-options-pnl-val');
+                    const optPnlEl = document.getElementById('hedge-options-pnl-val'); if(optPnlEl) {
                     optPnlEl.textContent = `${optPnl >= 0 ? '+' : ''}$${optPnl.toFixed(2)}`;
-                    optPnlEl.style.color = optPnl > 0 ? '#10b981' : (optPnl < 0 ? '#f43f5e' : '#94a3b8');
+                    optPnlEl.style.color = optPnl > 0 ? '#10b981' : (optPnl < 0 ? '#f43f5e' : '#94a3b8'); }
                     
                     // Combined PnL (Options + Hedge)
                     const combPnl = data.hedge_status.combined_pnl_live || 0;
-                    const combPnlEl = document.getElementById('hedge-combined-pnl-val');
+                    const combPnlEl = document.getElementById('hedge-combined-pnl-val'); if(combPnlEl) {
                     combPnlEl.textContent = `${combPnl >= 0 ? '+' : ''}$${combPnl.toFixed(2)}`;
-                    combPnlEl.style.color = combPnl > 0 ? '#10b981' : (combPnl < 0 ? '#f43f5e' : '#94a3b8');
+                    combPnlEl.style.color = combPnl > 0 ? '#10b981' : (combPnl < 0 ? '#f43f5e' : '#94a3b8'); }
                     
                     // Bleeding Leg
-                    document.getElementById('hedge-bleeding-leg-val').textContent = data.hedge_status.bleeding_leg || 'None';
+                    if(document.getElementById('hedge-bleeding-leg-val')) document.getElementById('hedge-bleeding-leg-val').textContent = data.hedge_status.bleeding_leg || 'None';
                     
                     // Decision Reason
                     const reasonEl = document.getElementById('hedge-decision-reason');
@@ -2991,7 +2991,7 @@
                     }
                     
                     const hPct = data.hedge_status.hedge_percentage || 0;
-                    const tierSpan = document.getElementById('hedge-grid-tier-val');
+                    const tierSpan = document.getElementById('hedge-grid-tier-val'); if(tierSpan) {
                     if (hPct === 0) {
                         tierSpan.textContent = 'Standby';
                         tierSpan.style.color = 'var(--text-secondary)';
@@ -3002,9 +3002,10 @@
                         tierSpan.textContent = 'Tier 2 (100% RED ALERT)';
                         tierSpan.style.color = '#fbbf24'; // yellow/orange
                     }
+                    }
                     
-                    document.getElementById('hedge-percentage-val').textContent = `${(data.hedge_status.hedge_percentage || 0).toFixed(0)}%`;
-                    document.getElementById('hedge-percentage-bar').style.width = `${data.hedge_status.hedge_percentage || 0}%`;
+                    if(document.getElementById('hedge-percentage-val')) document.getElementById('hedge-percentage-val').textContent = `${(data.hedge_status.hedge_percentage || 0).toFixed(0)}%`;
+                    if(document.getElementById('hedge-percentage-bar')) document.getElementById('hedge-percentage-bar').style.width = `${data.hedge_status.hedge_percentage || 0}%`;
                     
                     const slTight = document.getElementById('sl-tightened-badge');
                     if (slTight) {
