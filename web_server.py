@@ -61,7 +61,7 @@ def get_status():
     try:
         with open('trading_bot.log', 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
-            logs.extend([line.strip() for line in lines[-50:]])
+            logs.extend([line.strip() for line in lines[-150:]])
     except Exception as e:
         logs.append(f"Error reading trading_bot.log: {e}")
 
