@@ -183,23 +183,40 @@ class DeltaTradingEngine:
         # 1.5 MASTER GATE: Premium Selling Conditions Engine (PSCE)
         psce_eval = self.premium_engine.evaluate_conditions(mode="ENTRY")
         if not psce_eval.get('trade_allowed', False):
-            app_logger.warning(f"Engine: BLOCKED BY PSCE ({psce_eval.get('zone')}). Skipping trade.")
-            self.today_trade_status = "Trade Skipped"
-            self.today_skip_reason = f"BLOCKED BY PREMIUM SELLING CONDITIONS. Reason: {psce_eval.get('reasons', ['Unknown'])[0]}"
-            self._record_skip(self.today_skip_reason)
-            
-            # Explicitly log to audit as per requirement
-            audit_snapshot = self._build_audit_snapshot(
-                btc_price=psce_eval.get('metrics', {}).get('btc_price', 0.0),
-                options_profit=0.0, hedge_pnl=0.0, pnl_pct=0.0,
-                time_in_trade_seconds=0, action="TRADE_BLOCKED",
-                reason=self.today_skip_reason
-            )
-            audit_system.log_critical_event(
-                "Trade Execution Blocked by PSCE", "psce", "evaluate_conditions", 
-                audit_snapshot, self.today_skip_reason
-            )
-            return
+            if force:
+                # Manual Force Trade: BYPASS PSCE, log warning + audit
+                psce_reason = psce_eval.get('decision_reason', psce_eval.get('reasons', ['Unknown'])[0])
+                app_logger.warning(f"Engine: MANUAL OVERRIDE — PSCE recommended BLOCK ({psce_eval.get('zone')}), "
+                                   f"but force=True. Proceeding. Reason was: {psce_reason}")
+                audit_snapshot = self._build_audit_snapshot(
+                    btc_price=psce_eval.get('metrics', {}).get('btc_price', 0.0),
+                    options_profit=0.0, hedge_pnl=0.0, pnl_pct=0.0,
+                    time_in_trade_seconds=0, action="MANUAL_OVERRIDE",
+                    reason=f"Manual Force Trade bypassed PSCE. IV filter recommended: {psce_reason}"
+                )
+                audit_system.log_critical_event(
+                    "Manual Override — PSCE Bypassed", "bot_engine", "run_entry_cycle",
+                    audit_snapshot, f"Manual Force Trade bypassed PSCE. IV filter recommended: {psce_reason}"
+                )
+            else:
+                # Automatic trade: BLOCK
+                app_logger.warning(f"Engine: BLOCKED BY PSCE ({psce_eval.get('zone')}). Skipping trade.")
+                self.today_trade_status = "Trade Skipped"
+                self.today_skip_reason = f"BLOCKED BY PREMIUM SELLING CONDITIONS. Reason: {psce_eval.get('decision_reason', psce_eval.get('reasons', ['Unknown'])[0])}"
+                self._record_skip(self.today_skip_reason)
+                
+                # Explicitly log to audit as per requirement
+                audit_snapshot = self._build_audit_snapshot(
+                    btc_price=psce_eval.get('metrics', {}).get('btc_price', 0.0),
+                    options_profit=0.0, hedge_pnl=0.0, pnl_pct=0.0,
+                    time_in_trade_seconds=0, action="TRADE_BLOCKED",
+                    reason=self.today_skip_reason
+                )
+                audit_system.log_critical_event(
+                    "Trade Execution Blocked by PSCE", "psce", "evaluate_conditions", 
+                    audit_snapshot, self.today_skip_reason
+                )
+                return
         # Guard 3: Next day pause check (NEW — Section 5)
         if not force and self.next_day_paused:
             app_logger.warning("Engine: Paused today due to yesterday's >2.5% loss pause trigger")

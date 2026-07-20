@@ -20,33 +20,25 @@ class PremiumSellingConditionsEngine:
         
     def _load_config(self):
         default_config = {
-            "weights": {
-                "stability": 40.0,
-                "percentile": 20.0,
-                "rank": 15.0,
-                "trend_5d": 15.0,
-                "change_1h": 10.0
-            },
-            "thresholds": {
-                "score_excellent": 70.0,
-                "score_good": 40.0,
-                "score_poor": 30.0,
-                "iv_stale_seconds": 300,
-                "rv_premium_excellent": 10.0,
-                "rv_premium_good": 0.0,
-                "rv_premium_poor": -5.0
-            },
-            "stability": {
-                "rapid_rise_slope": 1.0,
-                "slow_rise_slope": 0.2,
-                "rapid_fall_slope": -1.0,
-                "slow_fall_slope": -0.2
+            "min_iv_threshold": 20.0,
+            "min_premium_threshold": 100.0,
+            "iv_refresh_interval_seconds": 60,
+            "iv_data_freshness_timeout_seconds": 300,
+            "iv_status_boundaries": {
+                "low_max": 30.0,
+                "medium_max": 50.0
             }
         }
         try:
             if os.path.exists('psce_config.json'):
                 with open('psce_config.json', 'r') as f:
                     cfg = json.load(f)
+                    # Merge with defaults so missing keys don't crash
+                    for key, val in default_config.items():
+                        if key not in cfg:
+                            cfg[key] = val
+                    if "iv_status_boundaries" not in cfg:
+                        cfg["iv_status_boundaries"] = default_config["iv_status_boundaries"]
                     return cfg
         except Exception as e:
             error_logger.error(f"PSCE: Failed to load config: {e}")
@@ -104,10 +96,38 @@ class PremiumSellingConditionsEngine:
         except Exception:
             return 40.0
 
+    def _ensure_fresh_iv(self):
+        """Force-refresh IV data if it is stale beyond the configured timeout."""
+        freshness_timeout = self.config.get('iv_data_freshness_timeout_seconds', 300)
+        data_age = time.time() - self.dvol_provider.last_update_time
+        
+        if data_age > freshness_timeout:
+            app_logger.info(f"PSCE: IV data is {data_age:.0f}s old (limit: {freshness_timeout}s). Force-refreshing...")
+            try:
+                self.dvol_provider.refresh_data()
+                app_logger.info(f"PSCE: IV data refreshed. New DVOL: {self.dvol_provider.current_dvol:.2f}")
+            except Exception as e:
+                error_logger.error(f"PSCE: Failed to force-refresh IV data: {e}")
+
+    def _get_iv_status(self, iv_value):
+        """Returns IV status label based on config boundaries (display only, never blocks)."""
+        boundaries = self.config.get('iv_status_boundaries', {"low_max": 30.0, "medium_max": 50.0})
+        if iv_value < boundaries.get('low_max', 30.0):
+            return "Low"
+        elif iv_value < boundaries.get('medium_max', 50.0):
+            return "Medium"
+        else:
+            return "Healthy"
+
     def evaluate_conditions(self, mode="ENTRY") -> dict:
         """
-        Master method to evaluate all metrics and return absolute permission.
-        mode can be "ENTRY" or "MONITOR".
+        Simplified IV Trade Readiness Master Gate.
+        
+        Decision Logic:
+        1. IV < min_iv_threshold (default 20%) → BLOCK
+        2. Otherwise → ALLOW
+        
+        Premium validation is handled separately in run_entry_cycle().
         """
         payload = {
             "status": "success",
@@ -115,7 +135,7 @@ class PremiumSellingConditionsEngine:
             "zone": "RED",
             "edge_score": 0.0,
             "decision": "SKIP TRADE",
-            "premium_state": "Premium Selling Environment: Unknown",
+            "premium_state": "Unknown",
             "reasons": [],
             "metrics": {},
             "health": {
@@ -124,11 +144,19 @@ class PremiumSellingConditionsEngine:
                 "db_status": "ONLINE",
                 "engine_status": "ONLINE"
             },
-            "last_update": get_ist_now().strftime("%Y-%m-%dT%H:%M:%S")
+            "last_update": get_ist_now().strftime("%Y-%m-%dT%H:%M:%S"),
+            # New transparency fields
+            "live_iv": 0.0,
+            "iv_status": "Unknown",
+            "min_iv_threshold": self.config.get('min_iv_threshold', 20.0),
+            "iv_data_timestamp": "",
+            "data_age_seconds": 0,
+            "final_decision": "BLOCK",
+            "decision_reason": "Evaluation not started"
         }
         
         try:
-            self.config = self._load_config() # hot reload config
+            self.config = self._load_config()  # hot reload config
             
             # --- 1. Data Feed Validation ---
             btc_price = 0.0
@@ -140,22 +168,47 @@ class PremiumSellingConditionsEngine:
             if btc_price <= 0:
                 payload["reasons"].append("BTC Price feed is offline or invalid.")
                 payload["decision"] = "DATA UNAVAILABLE"
+                payload["decision_reason"] = "BTC Price feed is offline or invalid."
+                payload["final_decision"] = "BLOCK"
                 return payload
             payload["health"]["btc_feed"] = "ONLINE"
 
-            if time.time() - self.dvol_provider.last_update_time > self.config['thresholds']['iv_stale_seconds']:
-                payload["reasons"].append(f"IV Feed is stale (>{self.config['thresholds']['iv_stale_seconds']}s).")
+            # --- 2. Ensure Fresh IV Data ---
+            self._ensure_fresh_iv()
+            
+            data_age = time.time() - self.dvol_provider.last_update_time
+            freshness_timeout = self.config.get('iv_data_freshness_timeout_seconds', 300)
+            
+            if data_age > freshness_timeout:
+                payload["reasons"].append(f"IV Feed is stale (>{freshness_timeout}s old even after refresh attempt).")
                 payload["decision"] = "DATA UNAVAILABLE"
+                payload["decision_reason"] = f"IV data is {data_age:.0f}s old — stale beyond {freshness_timeout}s limit."
+                payload["final_decision"] = "BLOCK"
+                payload["data_age_seconds"] = round(data_age)
                 return payload
                 
             current_iv = self.dvol_provider.current_dvol
             if current_iv <= 0:
                 payload["reasons"].append("IV value is 0 or negative.")
                 payload["decision"] = "DATA UNAVAILABLE"
+                payload["decision_reason"] = "IV value is 0 or negative."
+                payload["final_decision"] = "BLOCK"
                 return payload
             payload["health"]["iv_feed"] = "ONLINE"
             
-            # --- 2. Metric Computation ---
+            # --- 3. Populate Transparency Fields ---
+            iv_status = self._get_iv_status(current_iv)
+            iv_timestamp = datetime.fromtimestamp(
+                self.dvol_provider.last_update_time, tz=timezone.utc
+            ).strftime("%Y-%m-%dT%H:%M:%S UTC")
+            
+            payload["live_iv"] = round(current_iv, 2)
+            payload["iv_status"] = iv_status
+            payload["iv_data_timestamp"] = iv_timestamp
+            payload["data_age_seconds"] = round(data_age)
+            payload["min_iv_threshold"] = self.config.get('min_iv_threshold', 20.0)
+            
+            # --- 4. Compute Display Metrics (informational only) ---
             dvol_history = self.dvol_provider.dvol_history
             iv_percentile = self.dvol_provider.dvol_percentile
             iv_rank = 50.0
@@ -174,104 +227,71 @@ class PremiumSellingConditionsEngine:
                 
             # IV Stability Today (Current Session)
             slope_intraday, intraday_candles = self._get_current_session_dvol_slope()
-            s_cfg = self.config['stability']
             stability_status = "Stable"
-            stability_score_mult = 1.0
-            
-            if slope_intraday >= s_cfg['rapid_rise_slope']:
+            if slope_intraday >= 1.0:
                 stability_status = "Rapidly Rising"
-                stability_score_mult = 0.0 # Extreme penalty
-            elif slope_intraday >= s_cfg['slow_rise_slope']:
+            elif slope_intraday >= 0.2:
                 stability_status = "Slowly Rising"
-                stability_score_mult = 0.5
-            elif slope_intraday <= s_cfg['rapid_fall_slope']:
+            elif slope_intraday <= -1.0:
                 stability_status = "Rapidly Falling"
-                stability_score_mult = 0.3 # Falling very fast implies panic
-            elif slope_intraday <= s_cfg['slow_fall_slope']:
+            elif slope_intraday <= -0.2:
                 stability_status = "Slowly Falling"
-                stability_score_mult = 1.0 # Good for selling
-            else:
-                stability_status = "Stable"
-                stability_score_mult = 1.0
                 
             # 1-Hour IV Expansion
             iv_change_1h_pct = 0.0
             if len(intraday_candles) >= 60:
                 iv_1h_ago = intraday_candles[-60]
-                iv_change_1h_pct = ((current_iv - iv_1h_ago) / iv_1h_ago) * 100
-                
-            # Premium State
+                if iv_1h_ago > 0:
+                    iv_change_1h_pct = ((current_iv - iv_1h_ago) / iv_1h_ago) * 100
+                    
+            # Premium State (display only)
             rv_5d = self._calculate_rv_5d()
             iv_premium = current_iv - rv_5d
-            t_cfg = self.config['thresholds']
-            if iv_premium >= t_cfg['rv_premium_excellent']:
+            if iv_premium >= 10.0:
                 premium_state = "Premium Selling Environment: Excellent"
-                prem_mult = 1.0
-            elif iv_premium >= t_cfg['rv_premium_good']:
+            elif iv_premium >= 0.0:
                 premium_state = "Premium Selling Environment: Good"
-                prem_mult = 0.8
-            elif iv_premium >= t_cfg['rv_premium_poor']:
+            elif iv_premium >= -5.0:
                 premium_state = "Premium Selling Environment: Average"
-                prem_mult = 0.5
             else:
                 premium_state = "Premium Selling Environment: Poor"
-                prem_mult = 0.1
-                
-            # --- 3. Edge Score Calculation ---
-            w_cfg = self.config['weights']
             
-            # Max base score is 100 before multipliers
-            # Stability uses its multiplier against the total score at the end
-            score_percentile = (iv_percentile / 100.0) * w_cfg['percentile']
-            score_rank = (iv_rank / 100.0) * w_cfg['rank']
-            
-            # Trend: Falling or Stable is better for sellers
-            score_trend = w_cfg['trend_5d'] if trend_str in ["STABLE", "FALLING"] else (w_cfg['trend_5d'] * 0.5)
-            
-            # 1H Expansion: Big positive change is bad
-            if iv_change_1h_pct > 2.0: score_exp = 0
-            elif iv_change_1h_pct > 1.0: score_exp = w_cfg['change_1h'] * 0.5
-            else: score_exp = w_cfg['change_1h']
-            
-            # Base score combined with Premium multiplier and Stability multiplier
-            base_components = score_percentile + score_rank + score_trend + score_exp
-            
-            # To give stability its weight directly as points vs multiplier:
-            # Let's map stability string to point value out of w_cfg['stability']
-            stab_points = w_cfg['stability'] * stability_score_mult
-            
-            raw_score = stab_points + base_components
-            edge_score = raw_score * prem_mult # Apply premium environment overall multiplier
-            
-            edge_score = max(0.0, min(100.0, round(edge_score, 1)))
-            
-            # --- 4. Decision Boundaries ---
+            # --- 5. SIMPLE DECISION LOGIC ---
+            min_iv = self.config.get('min_iv_threshold', 20.0)
             reasons = []
+            reasons.append(f"Live IV: {current_iv:.1f}% ({iv_status})")
             reasons.append(f"IV is {stability_status} today.")
             reasons.append(premium_state)
             
-            if edge_score >= t_cfg['score_excellent']:
+            if current_iv < min_iv:
+                # BLOCK: Extremely Low IV
+                zone = "RED"
+                decision = "SKIP TRADE"
+                trade_allowed = False
+                decision_reason = f"Extremely Low IV — {current_iv:.1f}% is below {min_iv:.0f}% minimum. Premiums are too compressed."
+                reasons.append(decision_reason)
+                # Edge score: map IV to 0-100 scale where min_iv = 0
+                edge_score = max(0.0, (current_iv / min_iv) * 25.0)  # Below threshold = low score
+            else:
+                # ALLOW: IV is acceptable
                 zone = "HEALTHY"
                 decision = "SELL STRADDLE"
                 trade_allowed = True
-                reasons.append("Optimal edge for premium selling.")
-            elif edge_score >= t_cfg['score_good']:
-                zone = "CAUTION"
-                decision = "REDUCE SIZE"
-                trade_allowed = True
-                reasons.append("Medium edge. Watch for IV expansion.")
-            else:
-                zone = "LOW EDGE"
-                decision = "SKIP TRADE"
-                trade_allowed = False
-                reasons.append("Unfavorable risk/reward. Theta advantage is weak.")
-                
+                decision_reason = f"IV {current_iv:.1f}% is above {min_iv:.0f}% threshold — trade conditions are favorable."
+                reasons.append(decision_reason)
+                # Edge score: map IV range. 20% = 50, 40% = 75, 60%+ = 90+
+                edge_score = min(100.0, 50.0 + ((current_iv - min_iv) / 40.0) * 50.0)
+            
+            edge_score = max(0.0, min(100.0, round(edge_score, 1)))
+            
             payload["zone"] = zone
             payload["decision"] = decision
             payload["edge_score"] = edge_score
             payload["trade_allowed"] = trade_allowed
             payload["premium_state"] = premium_state
             payload["reasons"] = reasons
+            payload["final_decision"] = "ALLOW" if trade_allowed else "BLOCK"
+            payload["decision_reason"] = decision_reason
             
             sign = "+" if iv_change_1h_pct > 0 else ""
             payload["metrics"] = {
@@ -289,12 +309,15 @@ class PremiumSellingConditionsEngine:
                 "timestamp": int(time.time()),
                 "mode": mode,
                 "atm_iv": current_iv,
+                "iv_status": iv_status,
                 "iv_rank": iv_rank,
                 "iv_percentile": iv_percentile,
                 "premium_state": premium_state,
                 "edge_score": edge_score,
                 "decision": decision,
-                "trade_allowed": trade_allowed
+                "trade_allowed": trade_allowed,
+                "decision_reason": decision_reason,
+                "data_age_seconds": round(data_age)
             }
             self._save_historical_snapshot(snapshot)
             
@@ -305,6 +328,8 @@ class PremiumSellingConditionsEngine:
             payload["reasons"].append(f"Engine Exception: {str(e)}")
             payload["health"]["engine_status"] = "ERROR"
             payload["decision"] = "ENGINE ERROR"
+            payload["decision_reason"] = f"Engine Exception: {str(e)}"
+            payload["final_decision"] = "BLOCK"
             return payload
 
     def _save_historical_snapshot(self, snapshot: dict):

@@ -1329,6 +1329,23 @@
                             <div style="font-size:24px;">🎛️</div>
                         </div>
                     </div>
+
+                    <div class="ares-metric-box">
+                        <div class="ares-metric-header"><span>IV Data Freshness</span></div>
+                        <div class="ares-metric-value-row">
+                            <span class="ares-metric-val text-green" id="ares-data-age">--s</span>
+                            <div style="font-size:18px;">⏱️</div>
+                        </div>
+                        <div style="font-size:10px; color:#64748b; margin-top:4px;" id="ares-iv-timestamp">--</div>
+                    </div>
+
+                    <div class="ares-metric-box" style="border: 1px solid rgba(16,185,129,0.2);">
+                        <div class="ares-metric-header"><span>FINAL DECISION</span></div>
+                        <div class="ares-metric-value-row">
+                            <span class="ares-metric-val" id="ares-final-decision" style="font-size:16px; font-weight:900;">--</span>
+                        </div>
+                        <div style="font-size:10px; color:#94a3b8; margin-top:4px; line-height:1.4;" id="ares-decision-reason">--</div>
+                    </div>
                 </div>
 
                 <!-- Center Shield -->
@@ -1379,21 +1396,21 @@
                 <div class="ares-zm-header"><span>📉</span> IV ZONE METER</div>
                 <div class="ares-zm-grid">
                     <div class="ares-zm-col">
-                        <div style="font-size:24px; color:#ef4444; margin-bottom:4px;">🐻</div>
-                        <div class="ares-zm-title" style="color:#ef4444;">LOW IV</div>
-                        <div class="ares-zm-range">0 - 25%</div>
-                        <div class="ares-zm-sub" style="color:#ef4444;">High Risk<br>Skip Trade</div>
+                        <div style="font-size:24px; color:#ef4444; margin-bottom:4px;">🚫</div>
+                        <div class="ares-zm-title" style="color:#ef4444;">BLOCKED</div>
+                        <div class="ares-zm-range">0 - 20%</div>
+                        <div class="ares-zm-sub" style="color:#ef4444;">Extremely Low<br>Trade Blocked</div>
                     </div>
                     <div class="ares-zm-col">
-                        <div style="font-size:24px; color:#f59e0b; margin-bottom:4px;">😐</div>
+                        <div style="font-size:24px; color:#f59e0b; margin-bottom:4px;">✅</div>
                         <div class="ares-zm-title" style="color:#f59e0b;">MEDIUM IV</div>
-                        <div class="ares-zm-range">25 - 70%</div>
-                        <div class="ares-zm-sub" style="color:#f59e0b;">Low Risk<br>Trade</div>
+                        <div class="ares-zm-range">20 - 50%</div>
+                        <div class="ares-zm-sub" style="color:#f59e0b;">Trade Allowed<br>Normal Entry</div>
                     </div>
                     <div class="ares-zm-col">
                         <div style="font-size:24px; color:#10b981; margin-bottom:4px;">🐂</div>
                         <div class="ares-zm-title" style="color:#10b981;">HEALTHY IV</div>
-                        <div class="ares-zm-range">70 - 100%</div>
+                        <div class="ares-zm-range">50%+</div>
                         <div class="ares-zm-sub" style="color:#10b981;">Perfect Zone<br>Trade with Confidence</div>
                     </div>
                 </div>
@@ -4339,7 +4356,7 @@ function updateAresPremium() {
             // Block alert
             if (!data.trade_allowed && data.decision !== "WAITING") {
                 el('psce-block-alert').classList.add('active');
-                el('psce-block-reason').innerText = "Reason: " + (data.reasons[0] || "Low Edge");
+                el('psce-block-reason').innerText = "Reason: " + (data.decision_reason || data.reasons[0] || "Low Edge");
             } else {
                 el('psce-block-alert').classList.remove('active');
             }
@@ -4357,6 +4374,19 @@ function updateAresPremium() {
                 el('ares-live-dot').innerText = (data.health.iv_feed === "ONLINE") ? "LIVE" : "OFFLINE";
                 el('ares-live-dot').style.color = (data.health.iv_feed === "ONLINE") ? "#10b981" : "#ef4444";
             }
+
+            // New transparency fields
+            const dataAge = data.data_age_seconds || 0;
+            const ageEl = el('ares-data-age');
+            ageEl.innerText = dataAge + "s";
+            ageEl.className = 'ares-metric-val ' + (dataAge > 300 ? 'text-red' : 'text-green');
+            el('ares-iv-timestamp').innerText = data.iv_data_timestamp || '--';
+
+            const fdEl = el('ares-final-decision');
+            const fd = data.final_decision || (data.trade_allowed ? 'ALLOW' : 'BLOCK');
+            fdEl.innerText = fd;
+            fdEl.style.color = fd === 'ALLOW' ? '#10b981' : '#ef4444';
+            el('ares-decision-reason').innerText = data.decision_reason || '--';
 
             // Center Card
             const shield = el('ares-center-shield');
