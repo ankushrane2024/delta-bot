@@ -156,15 +156,15 @@ class DecisionEngine:
             self._max_hedge_pnl = 0.0
         
         # ===== HARD GATE 2: MINIMUM LOSS THRESHOLD =====
-        # Options must be losing at least 20% of premium collected before any hedge is considered
+        # Options must be losing at least 10% of premium collected before any hedge is considered
         # (loss_pct is already calculated at the top)
-        if loss_pct < 20.0 and current_hedge_ratio == 0:
-            # Loss is less than 20% of premium — too early to hedge, might reverse
+        if loss_pct < 10.0 and current_hedge_ratio == 0:
+            # Loss is less than 10% of premium - too early to hedge, might reverse
             return HedgeDecision(
                 action=HedgeAction.MONITOR,
                 hedge_ratio=0.0,
                 urgency=0.0,
-                reason=f"Loss {loss_pct:.1f}% < 20% threshold — Waiting for confirmation",
+                reason=f"Loss {loss_pct:.1f}% < 10% threshold - Waiting for confirmation",
                 dominant_cluster="None", dominant_factor="Loss too small",
                 ema_stress=ema,
                 debug_information={"loss_pct": loss_pct, "combined_pnl": combined_pnl, "total_premium": total_premium}
