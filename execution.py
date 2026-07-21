@@ -13,9 +13,12 @@ class ExecutionHandler:
             self.active_positions = db_manager.load_active_positions()
             # Extract persisted DPL state if present (injected by save_state)
             self._persisted_dpl_state = self.active_positions.pop('__dpl_state__', None)
+            # Extract persisted chart data if present (injected by save_state)
+            self._persisted_chart_data = self.active_positions.pop('__chart_data__', None)
         else:
             self.active_positions = {} # symbol -> data
             self._persisted_dpl_state = None
+            self._persisted_chart_data = None
             
         self.hedge_position = 0 # Net BTC futures size
         self.hedge_size_btc = 0.0  # Actual BTC size of current hedge
@@ -47,13 +50,16 @@ class ExecutionHandler:
             "hedge_owner": self.hedge_owner
         }
 
-    def save_state(self, dpl_state=None):
+    def save_state(self, dpl_state=None, chart_data=None):
         """Persists the current paper trading active positions to the cloud database.
-        Optionally includes the DPL trailing state for crash recovery."""
+        Optionally includes the DPL trailing state and chart data for crash recovery."""
         if self.mode != 'LIVE':
             data_to_save = dict(self.active_positions)
             if dpl_state:
                 data_to_save['__dpl_state__'] = dpl_state
+            if chart_data is not None:
+                # Only persist the last 60 chart points to stay within DB size limits
+                data_to_save['__chart_data__'] = chart_data[-60:] if len(chart_data) > 60 else chart_data
             db_manager.save_active_positions(data_to_save)
 
     def execute_strangle(self, call_opt, put_opt, size):

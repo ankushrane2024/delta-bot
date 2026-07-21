@@ -446,6 +446,16 @@ class DeltaTradingEngine:
 
         self.execution.save_state()
 
+        # Capture the FIRST chart point immediately on trade entry (don't wait 60s)
+        self.pnl_chart_data = []  # Clear any stale data from previous trade
+        self.pnl_chart_data.append({
+            "t": get_ist_now().strftime("%H:%M"),
+            "pnl": 0.0,
+            "hedge": 0.0,
+            "total": 0.0
+        })
+        self._last_chart_snapshot_ts = time.time()
+
         # Claim Hedge Ownership Lock before taking action
         self.execution.acquire_hedge_lock(self.smart_hedge_provider)
 
@@ -801,6 +811,7 @@ class DeltaTradingEngine:
         last_heartbeat = time.time()
         last_http_poll_time = 0
         last_regime_update = 0
+        _consecutive_crash_count = 0  # Bug fix: Track consecutive crashes to prevent infinite stuck loops
         
         while self.is_running:
             try:
@@ -1040,6 +1051,22 @@ class DeltaTradingEngine:
                                     f"Confirmed={trail_state['trailing_confirmed']}"
                                 )
                         
+                        # HOT-RECOVERY: Restore persisted chart data from cloud DB
+                        persisted_chart = getattr(self.execution, '_persisted_chart_data', None)
+                        if persisted_chart and isinstance(persisted_chart, list) and len(persisted_chart) > 0:
+                            self.pnl_chart_data = list(persisted_chart)
+                            app_logger.warning(f"Engine: Chart data RESTORED from cloud DB! {len(persisted_chart)} points recovered.")
+                        elif len(self.pnl_chart_data) == 0:
+                            # Fallback: seed a single point so the chart card is always visible
+                            recovery_pnl = recovered_premium - current_total_value if recovered_premium > 0 else 0.0
+                            self.pnl_chart_data.append({
+                                "t": get_ist_now().strftime("%H:%M"),
+                                "pnl": round(recovery_pnl, 4),
+                                "hedge": 0.0,
+                                "total": round(recovery_pnl, 4)
+                            })
+                            app_logger.warning("Engine: Chart data seeded with current PnL snapshot after hot-recovery.")
+
                         # Validate the state to prevent any silent failures
                         self._validate_startup_state()
                         
@@ -1134,9 +1161,9 @@ class DeltaTradingEngine:
                                 "total": round(options_profit + hedge_pnl_now, 4)
                             })
                             
-                            # Persist DPL state to cloud every 60s so it survives server restarts
+                            # Persist DPL state + chart data to cloud every 60s so it survives server restarts
                             dpl_state = self.risk_manager.get_trailing_state()
-                            self.execution.save_state(dpl_state=dpl_state)
+                            self.execution.save_state(dpl_state=dpl_state, chart_data=self.pnl_chart_data)
 
                         # ── UPDATE SINGLE SOURCE OF TRUTH ──
                         try:
@@ -1339,9 +1366,37 @@ class DeltaTradingEngine:
                     time.sleep(1) # Sleep slightly longer if no positions
                     
                 time.sleep(0.5) # High frequency tight loop
+                _consecutive_crash_count = 0  # Reset crash counter on successful tick
             except Exception as e:
-                error_logger.error(f"Monitor: Error in monitor loop: {e}")
-                notifier.notify_error(f"Bot stopped or error occurred: {e}")
+                _consecutive_crash_count += 1
+                error_logger.error(f"Monitor: Error in monitor loop (crash #{_consecutive_crash_count}): {e}")
+                
+                # CRITICAL FIX: If monitor loop crashes 10+ times in a row,
+                # the trade is permanently stuck. Emergency close everything.
+                if _consecutive_crash_count >= 10 and self.execution.active_positions:
+                    error_logger.critical(
+                        f"CRITICAL: Monitor loop crashed {_consecutive_crash_count} times consecutively! "
+                        f"Trade is STUCK. Triggering emergency square-off to protect capital."
+                    )
+                    notifier.notify_error(
+                        f"🚨 CRITICAL: TRADE STUCK DETECTED 🚨\n"
+                        f"Monitor loop crashed {_consecutive_crash_count}x in a row.\n"
+                        f"Error: {e}\n"
+                        f"Emergency closing all positions to protect capital."
+                    )
+                    try:
+                        self.execution.close_all(reason=f"Stuck Trade Emergency ({_consecutive_crash_count} consecutive crashes)")
+                        self.smart_hedging.close_hedge()
+                        self.reset_daily_state()
+                        self.today_trade_status = "Emergency Auto Closed"
+                        self.today_skip_reason = f"Stuck Trade ({_consecutive_crash_count} crashes)"
+                        self.daily_loss_hits += 2  # Block further trades today
+                        _consecutive_crash_count = 0
+                    except Exception as emergency_err:
+                        error_logger.critical(f"EMERGENCY CLOSE ALSO FAILED: {emergency_err}")
+                elif _consecutive_crash_count >= 3:
+                    notifier.notify_error(f"⚠️ Monitor loop crash #{_consecutive_crash_count}: {e}")
+                
                 time.sleep(5)
 
     def reset_daily_state(self):

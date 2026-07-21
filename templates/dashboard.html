@@ -3962,12 +3962,26 @@
 
                 const card = document.getElementById('live-pnl-chart-card');
 
-                if (!data.active || data.points.length === 0) {
-                    card.style.display = 'none';
+                // ALWAYS show the chart card — never hide it
+                card.style.display = 'block';
+
+                if (!data.active || !data.points || data.points.length === 0) {
+                    // Show waiting message but keep the card visible
+                    if (!pnlChart) initPnlChart();
+                    pnlChart.data.labels = ['Waiting...'];
+                    pnlChart.data.datasets[0].data = [0];
+                    pnlChart.data.datasets[1].data = [0];
+                    pnlChart.data.datasets[2].data = [];
+                    pnlChart.update('none');
+                    document.getElementById('pnl-chart-peak').textContent   = '-';
+                    document.getElementById('pnl-chart-trough').textContent = '-';
+                    document.getElementById('pnl-chart-count').textContent  = 'Waiting for trade...';
+                    document.getElementById('pnl-chart-start-label').textContent = 'No active trade';
+                    document.getElementById('pnl-chart-end-label').textContent   = '-';
+                    const slLegend = document.getElementById('sl-line-legend');
+                    if (slLegend) slLegend.style.display = 'none';
                     return;
                 }
-
-                card.style.display = 'block';
 
                 if (!pnlChart) initPnlChart();
 
@@ -4011,11 +4025,11 @@
                 document.getElementById('pnl-chart-count').textContent  = pts.length + ' min';
                 // Always show trade start time on left, "Now" on right
                 if (pts.length > 0) {
-                    document.getElementById('pnl-chart-start-label').textContent = '▶ ' + pts[0].t;
+                    document.getElementById('pnl-chart-start-label').textContent = '\u25b6 ' + pts[0].t;
                     document.getElementById('pnl-chart-end-label').textContent   = 'Now (' + pts[pts.length-1].t + ')';
                 }
             } catch(e) {
-                // Fail silently — chart just stays hidden
+                // Fail silently — chart card stays visible with last known data
             }
         }
 

@@ -942,7 +942,10 @@ def get_pnl_chart():
     chart_data = getattr(bot_engine, 'pnl_chart_data', [])
     has_trade = bool(bot_engine.execution.active_positions)
 
-    if len(chart_data) == 0:
+    # Always report active=true if positions exist, even if chart data is still empty
+    # This prevents the graph card from hiding during the first 60 seconds of a trade
+    # or after a Render restart when chart data was wiped but the trade is still live.
+    if len(chart_data) == 0 and not has_trade:
         return jsonify({"active": False, "points": [], "message": "Waiting for trade data..."})
 
     trail_state = bot_engine.risk_manager.get_trailing_state()
