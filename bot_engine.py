@@ -1,4 +1,5 @@
 import time
+import math
 import schedule
 import threading
 import random
@@ -26,6 +27,86 @@ from performance_tracker import PerformanceTracker
 from rule_verifier import verify_all_rules
 from dvol_provider import DVOLProvider
 from smart_hedging import SmartHedgingManager
+
+
+class TradeRuntimeState:
+    """Single Source of Truth for all dashboard-facing trade data.
+    
+    EVERY widget on the dashboard MUST read from this object.
+    No widget may independently calculate PnL, IV, Premium, Hedge Status, etc.
+    Only the bot_engine monitor_loop writes to this object.
+    """
+    def __init__(self):
+        self.last_update_ts = 0.0
+        self.btc_price = 0.0
+        # Options state
+        self.options_pnl_usd = 0.0
+        self.options_pnl_pct = 0.0
+        self.total_entry_premium = 0.0
+        self.current_option_value = 0.0
+        self.total_capital_used = 0.0
+        # Hedge state
+        self.hedge_pnl_usd = 0.0
+        self.hedge_size_btc = 0.0
+        self.hedge_type = "None"
+        self.hedge_entry_price = 0.0
+        self.hedge_active = False
+        # Combined PnL
+        self.total_pnl_usd = 0.0
+        self.total_pnl_pct = 0.0
+        self.total_pnl_inr = 0.0
+        # IV (from Delta Exchange active options)
+        self.live_iv = 0.0
+        self.live_iv_source = "NONE"
+        self.live_iv_timestamp = 0.0
+        # Greeks
+        self.net_delta = 0.0
+        self.total_gamma = 0.0
+        # Position details (list of dicts for each leg)
+        self.positions = []
+        # Data health
+        self.ws_connected = False
+        self.data_age_seconds = 0
+        self.api_latency_ms = 0
+        self.last_api_call_ts = 0.0
+        self.last_error = ""
+        # Trade metadata
+        self.trade_active = False
+        self.trade_age_seconds = 0
+        self.trail_state = {}
+
+    def to_dict(self):
+        return {
+            'last_update_ts': self.last_update_ts,
+            'btc_price': round(self.btc_price, 2),
+            'options_pnl_usd': round(self.options_pnl_usd, 4),
+            'options_pnl_pct': round(self.options_pnl_pct, 4),
+            'total_entry_premium': round(self.total_entry_premium, 6),
+            'current_option_value': round(self.current_option_value, 6),
+            'total_capital_used': round(self.total_capital_used, 2),
+            'hedge_pnl_usd': round(self.hedge_pnl_usd, 4),
+            'hedge_size_btc': round(self.hedge_size_btc, 6),
+            'hedge_type': self.hedge_type,
+            'hedge_entry_price': round(self.hedge_entry_price, 2),
+            'hedge_active': self.hedge_active,
+            'total_pnl_usd': round(self.total_pnl_usd, 4),
+            'total_pnl_pct': round(self.total_pnl_pct, 4),
+            'total_pnl_inr': round(self.total_pnl_inr, 2),
+            'live_iv': round(self.live_iv, 2),
+            'live_iv_source': self.live_iv_source,
+            'live_iv_timestamp': self.live_iv_timestamp,
+            'net_delta': round(self.net_delta, 4),
+            'total_gamma': round(self.total_gamma, 5),
+            'positions': self.positions,
+            'ws_connected': self.ws_connected,
+            'data_age_seconds': self.data_age_seconds,
+            'api_latency_ms': self.api_latency_ms,
+            'last_api_call_ts': self.last_api_call_ts,
+            'last_error': self.last_error,
+            'trade_active': self.trade_active,
+            'trade_age_seconds': self.trade_age_seconds,
+            'trail_state': self.trail_state
+        }
 
 
 class DeltaTradingEngine:
@@ -82,6 +163,9 @@ class DeltaTradingEngine:
         self.avg_7d_iv = 0.0
         self.iv_status = "Normal"
         self.last_iv_fetch_time = 0.0
+        
+        # ── SINGLE SOURCE OF TRUTH ──
+        self.runtime_state = TradeRuntimeState()
         
         # 24/7 Option Chain Monitor Cache (NEW)
         self.cached_option_chain = []
@@ -823,6 +907,10 @@ class DeltaTradingEngine:
                         if ws_data and 'mark_price' in ws_data:
                             candidate_price = float(ws_data['mark_price'])
                             
+                            # NaN Guard: Reject NaN/Inf prices from illiquid options
+                            if math.isnan(candidate_price) or math.isinf(candidate_price):
+                                candidate_price = 0.0
+                            
                             # Price Sanity Guard: allow up to 1000% spikes so SL can trigger
                             price_is_valid = (
                                 candidate_price > 0.01 and
@@ -1049,6 +1137,96 @@ class DeltaTradingEngine:
                             # Persist DPL state to cloud every 60s so it survives server restarts
                             dpl_state = self.risk_manager.get_trailing_state()
                             self.execution.save_state(dpl_state=dpl_state)
+
+                        # ── UPDATE SINGLE SOURCE OF TRUTH ──
+                        try:
+                            rs = self.runtime_state
+                            rs.last_update_ts = time.time()
+                            rs.trade_active = True
+                            rs.total_entry_premium = collected_premium
+                            rs.current_option_value = current_option_value
+                            rs.options_pnl_usd = options_profit
+                            rs.options_pnl_pct = options_pnl_pct
+                            rs.hedge_pnl_usd = hedge_pnl
+                            rs.total_pnl_usd = profit
+                            rs.total_pnl_pct = pnl_pct
+                            rs.total_pnl_inr = round(profit * 95.5, 2)
+                            rs.net_delta = net_delta
+                            rs.total_gamma = total_gamma
+                            rs.trail_state = self.risk_manager.get_trailing_state()
+                            rs.trade_age_seconds = time_in_trade_seconds
+                            rs.ws_connected = self.api_client.ws_connected
+                            rs.data_age_seconds = round(time.time() - self.api_client.last_price_update_time)
+                            rs.last_api_call_ts = self.api_client.last_price_update_time
+                            
+                            # Hedge state from execution layer
+                            rs.hedge_size_btc = self.execution.hedge_size_btc
+                            rs.hedge_entry_price = self.execution.hedge_entry_price
+                            rs.hedge_active = abs(self.execution.hedge_size_btc) > 0.0001
+                            rs.hedge_type = self.smart_hedging.hedge_type if self.smart_hedging.hedge_active else "None"
+                            
+                            # RUNTIME ASSERTION: If hedge_type is None, hedge_qty MUST be 0
+                            if rs.hedge_type == "None" and abs(rs.hedge_size_btc) > 0.0001:
+                                error_logger.error(f"CRITICAL STATE ERROR: hedge_type=None but hedge_size_btc={rs.hedge_size_btc}. Force-resetting hedge state.")
+                                self.execution.hedge_size_btc = 0.0
+                                self.execution.hedge_entry_price = 0.0
+                                rs.hedge_size_btc = 0.0
+                                rs.hedge_entry_price = 0.0
+                                rs.hedge_pnl_usd = 0.0
+                                rs.hedge_active = False
+                            
+                            # BTC Price
+                            btc_ws = self.api_client.get_realtime_ticker("BTCUSD")
+                            if btc_ws and 'mark_price' in btc_ws:
+                                rs.btc_price = float(btc_ws['mark_price'])
+                            elif self.btc_price_history:
+                                rs.btc_price = self.btc_price_history[-1][1]
+                            
+                            # Capital Used
+                            if rs.btc_price > 0:
+                                total_lots = sum(d.get('entry_size', d.get('size', 0)) for d in self.execution.active_positions.values())
+                                rs.total_capital_used = round(total_lots * LOT_TO_BTC * rs.btc_price, 2)
+                            
+                            # Live IV from Delta Exchange (active option legs)
+                            ivs = []
+                            for sym_iv in self.execution.active_positions.keys():
+                                ws_iv = self.api_client.get_realtime_ticker(sym_iv)
+                                if ws_iv:
+                                    iv_val = float(ws_iv.get('iv', 0) or 0)
+                                    if iv_val > 0:
+                                        ivs.append(iv_val)
+                            if ivs:
+                                rs.live_iv = round(sum(ivs) / len(ivs) * 100, 2)  # Convert decimal to %
+                                rs.live_iv_source = "DELTA_EXCHANGE"
+                                rs.live_iv_timestamp = time.time()
+                            elif self.current_iv > 0:
+                                rs.live_iv = self.current_iv  # Fallback to chain-wide IV
+                                rs.live_iv_source = "OPTION_CHAIN_AVG"
+                            
+                            # Build position details for dashboard
+                            pos_list = []
+                            for sym_p, data_p in self.execution.active_positions.items():
+                                ep = data_p.get('entry_price', 0)
+                                sz = data_p.get('entry_size', data_p.get('size', 0))
+                                cp = data_p.get('last_good_price', ep)
+                                btc_qty = sz * LOT_TO_BTC
+                                leg_pnl = (ep - cp) * btc_qty
+                                pos_list.append({
+                                    'symbol': sym_p,
+                                    'leg_type': data_p.get('leg_type', 'unknown'),
+                                    'strike': data_p.get('strike', 0),
+                                    'size': sz,
+                                    'entry_price': round(ep, 4),
+                                    'current_price': round(cp, 4),
+                                    'leg_pnl_usd': round(leg_pnl, 4),
+                                    'delta': round(data_p.get('last_known_delta', 0), 4),
+                                    'gamma': round(data_p.get('last_known_gamma', 0), 5),
+                                    'iv': round(float((self.api_client.get_realtime_ticker(sym_p) or {}).get('iv', 0) or 0) * 100, 2)
+                                })
+                            rs.positions = pos_list
+                            
+                        except Exception as rs_err:
+                            error_logger.error(f"Engine: Failed to update RuntimeState: {rs_err}")
 
                         # Prevent premature exit (Race Condition / Price Stability Guard)
                         if time_in_trade_seconds < getattr(config, 'MIN_HOLD_SECONDS', 30):

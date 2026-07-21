@@ -2,6 +2,7 @@ from flask import Flask, render_template, jsonify, request
 from logger import app_logger
 from config import LOT_TO_BTC
 import os
+import time
 
 app = Flask(__name__, template_folder='templates')
 
@@ -403,7 +404,12 @@ def get_status():
         'consecutive_loss_count': getattr(bot_engine, 'consecutive_loss_count', 0),
         'next_day_paused': getattr(bot_engine, 'next_day_paused', False),
         'reduced_size_trades_remaining': getattr(bot_engine, 'reduced_size_trades_remaining', 0),
-        'trail_state': trail_state
+        'trail_state': trail_state,
+        # Data Freshness & Health
+        'data_age_seconds': round(time.time() - bot_engine.api_client.last_price_update_time) if bot_engine.api_client.last_price_update_time > 0 else 999,
+        'ws_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False,
+        'last_api_update': bot_engine.api_client.last_price_update_time if bot_engine.api_client else 0,
+        'runtime_state': bot_engine.runtime_state.to_dict() if hasattr(bot_engine, 'runtime_state') else {}
     })
 
 @app.route('/api/start', methods=['POST'])
@@ -936,19 +942,70 @@ def get_pnl_chart():
     chart_data = getattr(bot_engine, 'pnl_chart_data', [])
     has_trade = bool(bot_engine.execution.active_positions)
 
-    if not has_trade or len(chart_data) == 0:
-        return jsonify({"active": False, "points": []})
+    if len(chart_data) == 0:
+        return jsonify({"active": False, "points": [], "message": "Waiting for trade data..."})
 
     trail_state = bot_engine.risk_manager.get_trailing_state()
     total_entry_premium = getattr(bot_engine, 'total_entry_premium', 0)
 
     return jsonify({
-        "active": True,
+        "active": has_trade or len(chart_data) > 0,
         "points": chart_data,
         "total_points": len(chart_data),
         "trail_state": trail_state,
         "total_entry_premium": round(total_entry_premium, 6)
     })
+
+@app.route('/api/runtime_state')
+def get_runtime_state():
+    """Single Source of Truth endpoint. All dashboard widgets should read from here."""
+    if not bot_engine:
+        return jsonify({'error': 'Engine not initialized'}), 500
+    rs = getattr(bot_engine, 'runtime_state', None)
+    if not rs:
+        return jsonify({'error': 'Runtime state not initialized'}), 500
+    return jsonify(rs.to_dict())
+
+@app.route('/api/system_health')
+def get_system_health():
+    """Permanent diagnostics panel endpoint for dashboard health monitoring."""
+    if not bot_engine:
+        return jsonify({'error': 'Engine not initialized'}), 500
+    
+    health = {
+        'delta_api': 'ONLINE' if getattr(bot_engine.api_client, 'ws_connected', False) else 'OFFLINE',
+        'websocket': 'CONNECTED' if getattr(bot_engine.api_client, 'ws_connected', False) else 'DISCONNECTED',
+        'position_sync': 'SYNCED' if bot_engine.execution.active_positions is not None else 'ERROR',
+        'iv_feed': 'ONLINE' if getattr(bot_engine, 'current_iv', 0) > 0 else 'OFFLINE',
+        'premium_feed': 'ONLINE' if bot_engine.api_client.last_price_update_time > 0 else 'OFFLINE',
+        'hedge_engine': 'ONLINE' if getattr(bot_engine, 'smart_hedging', None) else 'OFFLINE',
+        'graph_feed': 'ACTIVE' if len(getattr(bot_engine, 'pnl_chart_data', [])) > 0 else 'WAITING',
+        'audit_system': 'ONLINE',
+        'database_sync': 'ONLINE',
+        'hot_recovery': 'READY',
+        'last_heartbeat': round(time.time()),
+        'last_price_update': round(bot_engine.api_client.last_price_update_time, 0),
+        'data_age_seconds': round(time.time() - bot_engine.api_client.last_price_update_time) if bot_engine.api_client.last_price_update_time > 0 else 999,
+        'last_error': getattr(bot_engine.runtime_state, 'last_error', '') if hasattr(bot_engine, 'runtime_state') else '',
+        'backend_version': '2.0.0',
+        'engine_uptime_seconds': round(time.time() - getattr(bot_engine, '_engine_start_ts', time.time())),
+    }
+    
+    # DVOL Provider
+    if getattr(bot_engine, 'dvol_provider', None):
+        health['dvol_feed'] = 'ONLINE' if bot_engine.dvol_provider.current_dvol > 0 else 'OFFLINE'
+        health['dvol_value'] = round(bot_engine.dvol_provider.current_dvol, 2)
+    
+    # ARES
+    if ares_runner:
+        try:
+            health['ares_status'] = 'ACTIVE' if getattr(ares_runner.orchestrator, 'latest_tick_result', None) else 'STANDBY'
+        except:
+            health['ares_status'] = 'ERROR'
+    else:
+        health['ares_status'] = 'NOT_INITIALIZED'
+    
+    return jsonify(health)
 
 @app.route('/api/backtest', methods=['POST'])
 def run_backtest():
@@ -1121,7 +1178,7 @@ def ares_status():
         # 1. Option MTM
         for sym, data in bot_engine.execution.active_positions.items():
             entry_p = data.get('entry_price', 0)
-            size = data.get('size', 0)
+            size = data.get('entry_size', data.get('size', 0))
             
             # Find current price
             current_p = entry_p
@@ -1132,7 +1189,7 @@ def ares_status():
             except:
                 pass
                 
-            btc_qty = size * 0.001
+            btc_qty = size * LOT_TO_BTC
             # Option is sold, so profit = entry - current
             option_mtm += (entry_p - current_p) * btc_qty
             

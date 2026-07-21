@@ -103,6 +103,46 @@
             border-color: rgba(255, 255, 255, 0.08);
         }
 
+        /* Health Diagnostics Panel */
+        .health-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #cbd5e1;
+            padding: 4px 8px;
+            border-radius: 8px;
+            background: rgba(30,41,59,0.5);
+        }
+        .health-dot {
+            font-size: 10px;
+            color: #10b981;
+        }
+        .health-dot.offline {
+            color: #ef4444;
+            animation: blink 1s infinite;
+        }
+        .health-dot.stale {
+            color: #f59e0b;
+        }
+        @keyframes blink {
+            50% { opacity: 0.3; }
+        }
+        .stale-banner {
+            background: rgba(239,68,68,0.15);
+            border: 1px solid rgba(239,68,68,0.3);
+            color: #ef4444;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 13px;
+            display: none;
+        }
+        .stale-banner.active {
+            display: block;
+        }
+
         /* ----- TAB NAVIGATION ----- */
         .tab-nav {
             display: flex;
@@ -1539,7 +1579,32 @@
 
         <!-- TWO COLUMN GRID FOR OVERVIEW AND HEDGING -->
         <div style="display: flex; flex-direction: column; width: 100%; gap: 24px;">
-            
+            <!-- System Health Diagnostics Panel -->
+            <div class="glass-panel" id="system-health-panel" style="border: 1px solid rgba(16,185,129,0.15);">
+                <h2 style="display:flex; align-items:center; gap:10px;">🩺 System Health Monitor
+                    <span id="health-overall" style="font-size:12px; padding:3px 10px; border-radius:12px; background:rgba(16,185,129,0.15); color:#10b981;">ALL SYSTEMS ONLINE</span>
+                    <span id="health-data-age" style="font-size:11px; margin-left:auto; color:#94a3b8;">Data: --s old</span>
+                </h2>
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-top:12px;">
+                    <div class="health-item"><span class="health-dot" id="h-delta-api">●</span> Delta API</div>
+                    <div class="health-item"><span class="health-dot" id="h-websocket">●</span> WebSocket</div>
+                    <div class="health-item"><span class="health-dot" id="h-position-sync">●</span> Position Sync</div>
+                    <div class="health-item"><span class="health-dot" id="h-iv-feed">●</span> IV Feed</div>
+                    <div class="health-item"><span class="health-dot" id="h-premium-feed">●</span> Premium Feed</div>
+                    <div class="health-item"><span class="health-dot" id="h-hedge-engine">●</span> Hedge Engine</div>
+                    <div class="health-item"><span class="health-dot" id="h-graph-feed">●</span> Graph Feed</div>
+                    <div class="health-item"><span class="health-dot" id="h-audit">●</span> Audit System</div>
+                    <div class="health-item"><span class="health-dot" id="h-db-sync">●</span> Database</div>
+                    <div class="health-item"><span class="health-dot" id="h-hot-recovery">●</span> Hot Recovery</div>
+                </div>
+                <div style="display:flex; gap:20px; margin-top:12px; font-size:11px; color:#64748b;">
+                    <span>Heartbeat: <span id="h-heartbeat">--</span></span>
+                    <span>Last Sync: <span id="h-last-sync">--</span></span>
+                    <span>Backend: <span id="h-backend-ver">--</span></span>
+                    <span>IV Source: <span id="h-iv-source" style="color:#f59e0b;">--</span></span>
+                </div>
+            </div>
+
             <!-- Section 1: Live Trade Overview -->
             <div class="glass-panel">
                 <h2>📊 Live Trade Overview</h2>
@@ -4430,6 +4495,72 @@ function updateAresPremium() {
 
 setInterval(updateAresPremium, 3000);
 setTimeout(updateAresPremium, 500);
+
+// ── System Health Diagnostics Polling ──
+function updateSystemHealth() {
+    fetch('/api/system_health')
+        .then(r => r.json())
+        .then(h => {
+            const setDot = (id, status) => {
+                const dot = document.getElementById(id);
+                if (!dot) return;
+                dot.className = 'health-dot';
+                const isOnline = ['ONLINE', 'CONNECTED', 'SYNCED', 'ACTIVE', 'READY'].includes(status);
+                const isStale = status === 'STALE' || status === 'WAITING' || status === 'STANDBY';
+                if (isOnline) dot.classList.add('online');
+                else if (isStale) dot.classList.add('stale');
+                else dot.classList.add('offline');
+            };
+            
+            setDot('h-delta-api', h.delta_api);
+            setDot('h-websocket', h.websocket);
+            setDot('h-position-sync', h.position_sync);
+            setDot('h-iv-feed', h.iv_feed);
+            setDot('h-premium-feed', h.premium_feed);
+            setDot('h-hedge-engine', h.hedge_engine);
+            setDot('h-graph-feed', h.graph_feed);
+            setDot('h-audit', h.audit_system);
+            setDot('h-db-sync', h.database_sync);
+            setDot('h-hot-recovery', h.hot_recovery);
+            
+            // Data age
+            const age = h.data_age_seconds || 0;
+            const ageEl = document.getElementById('health-data-age');
+            if (ageEl) {
+                ageEl.innerText = 'Data: ' + age + 's old';
+                ageEl.style.color = age > 10 ? '#ef4444' : '#10b981';
+            }
+            
+            // Overall status
+            const overallEl = document.getElementById('health-overall');
+            if (overallEl) {
+                const allOnline = h.delta_api === 'ONLINE' && h.websocket === 'CONNECTED' && h.iv_feed === 'ONLINE';
+                overallEl.innerText = allOnline ? 'ALL SYSTEMS ONLINE' : (age > 10 ? '⚠️ STALE DATA' : '⚠️ PARTIAL OFFLINE');
+                overallEl.style.background = allOnline ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+                overallEl.style.color = allOnline ? '#10b981' : '#ef4444';
+            }
+            
+            // Metadata
+            if (document.getElementById('h-heartbeat')) document.getElementById('h-heartbeat').innerText = new Date(h.last_heartbeat * 1000).toLocaleTimeString();
+            if (document.getElementById('h-last-sync')) document.getElementById('h-last-sync').innerText = h.last_price_update ? new Date(h.last_price_update * 1000).toLocaleTimeString() : '--';
+            if (document.getElementById('h-backend-ver')) document.getElementById('h-backend-ver').innerText = h.backend_version || '--';
+        })
+        .catch(e => {});
+    
+    // Also fetch runtime state for IV source info
+    fetch('/api/runtime_state')
+        .then(r => r.json())
+        .then(rs => {
+            const ivSrc = document.getElementById('h-iv-source');
+            if (ivSrc && rs.live_iv_source) {
+                ivSrc.innerText = rs.live_iv_source + ' (' + rs.live_iv + '%)';
+                ivSrc.style.color = rs.live_iv_source === 'DELTA_EXCHANGE' ? '#10b981' : '#f59e0b';
+            }
+        })
+        .catch(e => {});
+}
+setInterval(updateSystemHealth, 5000);
+setTimeout(updateSystemHealth, 1000);
 
 </script>
 </body>

@@ -217,6 +217,12 @@ class ExecutionHandler:
         if size_btc <= 0:
             return None
             
+        # CRITICAL: Catch lot-vs-BTC unit conversion bugs
+        if size_btc > 2.0:
+            from logger import error_logger
+            error_logger.error(f"CRITICAL UNIT CONVERSION ERROR: Hedge size_btc={size_btc} is impossibly large (>2.0 BTC). Likely received lots instead of BTC. BLOCKING ORDER.")
+            return None
+            
         contract_size = abs(int(size_btc * 1000))  # Convert BTC to contracts
         if contract_size == 0:
             contract_size = 1

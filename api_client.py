@@ -143,6 +143,16 @@ class DeltaIndiaClient:
                         return
                     # Ensure mark_price is stored as float for consistent downstream math
                     data['mark_price'] = mp_float
+                    # Extract IV from Delta Exchange payload
+                    iv_raw = data.get('mark_iv') or data.get('implied_volatility') or data.get('iv')
+                    greeks_ws = data.get('greeks') or {}
+                    if not iv_raw:
+                        iv_raw = greeks_ws.get('iv') or greeks_ws.get('mark_iv') or 0
+                    try:
+                        iv_float = float(iv_raw) if iv_raw else 0.0
+                    except (ValueError, TypeError):
+                        iv_float = 0.0
+                    data['iv'] = iv_float
                     self.ticker_data[symbol] = data
                     self.last_price_update_time = time.time()
             except Exception as e:
@@ -252,10 +262,20 @@ class DeltaIndiaClient:
             app_logger.warning(f"API: HTTP fallback returned invalid mark_price={raw_price} for {symbol} — keeping old cache")
             return
             
+        # Extract IV from HTTP response
+        iv_raw = data.get('mark_iv') or data.get('implied_volatility') or data.get('iv')
+        if not iv_raw:
+            iv_raw = greeks.get('iv') or greeks.get('mark_iv') or 0
+        try:
+            iv_float = float(iv_raw) if iv_raw else 0.0
+        except (ValueError, TypeError):
+            iv_float = 0.0
+            
         formatted_data = {
             'symbol': symbol,
             'mark_price': mark_price_float,
-            'greeks': greeks
+            'greeks': greeks,
+            'iv': iv_float
         }
         
         self.ticker_data[symbol] = formatted_data
