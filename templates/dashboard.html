@@ -1890,6 +1890,32 @@
             </div>
         </div>
 
+        <!-- Live Real-Time P&L Chart Card -->
+        <div class="glass-panel" id="live-pnl-chart-card" style="margin-top: 24px; display: block;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    📊 Live P&L Trajectory
+                </h2>
+                <div style="display: flex; align-items: center; gap: 16px; font-size: 0.85rem; flex-wrap: wrap;">
+                    <div style="color: #94a3b8;">Peak: <span id="pnl-chart-peak" style="color: #10b981; font-weight: 700;">-</span></div>
+                    <div style="color: #94a3b8;">Trough: <span id="pnl-chart-trough" style="color: #ef4444; font-weight: 700;">-</span></div>
+                    <div style="color: #94a3b8;">Duration: <span id="pnl-chart-count" style="color: #38bdf8; font-weight: 700;">Waiting for trade...</span></div>
+                    <div id="sl-line-legend" style="display: none; align-items: center; gap: 6px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 2px 8px; font-size: 0.8rem; color: #f59e0b;">
+                        <span id="sl-line-legend-text">🔒 SL @ --%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="position: relative; width: 100%; height: 260px;">
+                <canvas id="pnlChartCanvas" style="width: 100%; height: 100%;"></canvas>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b; margin-top: 8px;">
+                <span id="pnl-chart-start-label">No active trade</span>
+                <span id="pnl-chart-end-label">-</span>
+            </div>
+        </div>
+
         <!-- Section 4: Controls Panel (Moved to top) -->
         <div class="glass-panel" style="border: 1px solid rgba(0, 210, 255, 0.2); background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(0, 210, 255, 0.05) 100%);">
             <h2>⚙️ Core Systems & Modules</h2>
