@@ -92,11 +92,6 @@ class PerformanceTracker:
         # Sync to cloud
         if db_manager.is_connected() and getattr(self, '_cloud_sync_safe', True):
             db_manager.save_all_data(data)
-            
-            # Sync to Secondary Cloud Backup (Append-only safety)
-            # Only save to backup if we actually have trades (prevents empty overrides)
-            if len(self.trades) > 0:
-                db_manager.save_backup_data(data)
 
     def update_high_water_mark(self, current_equity):
         """Updates the peak equity to calculate accurate Max Drawdown."""
