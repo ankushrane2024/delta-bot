@@ -219,6 +219,13 @@ def get_last_backup_time() -> str:
                 return f.read().strip()
         except:
             pass
+    # If file was wiped by Render, try to read it from the cloud memory
+    try:
+        cloud_data = load_all_data() or {}
+        if "last_backup_time" in cloud_data:
+            return cloud_data["last_backup_time"]
+    except:
+        pass
     return "Never"
 
 def _connect():
@@ -305,12 +312,13 @@ def save_all_data(trade_data: dict) -> bool:
     with _sync_lock:
         if not _connected: _connect()
         
-        # Merge unified state
+        now_str = get_ist_now().strftime("%d %b, %H:%M IST")
         unified = {
             "max_equity": trade_data.get("max_equity", 0.0),
             "trade_history": trade_data.get("trades", []),
             "daily_reports": trade_data.get("daily_reports", []),
-            "state": trade_data.get("state", {})
+            "state": trade_data.get("state", {}),
+            "last_backup_time": now_str
         }
         
         # Save local fallback
