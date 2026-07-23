@@ -1274,6 +1274,34 @@
             <div><strong>PAPER MODE ACTIVE</strong> - Realistic slippage + Smart Position Sizing enabled (No USDT balance required).</div>
         </div>
 
+        <div style="margin-top: 15px; margin-bottom: 15px;">
+            <!-- System Health Diagnostics Panel -->
+            <div class="glass-panel" id="system-health-panel" style="border: 1px solid rgba(16,185,129,0.15);">
+                <h2 style="display:flex; align-items:center; gap:10px;">🩺 System Health Monitor
+                    <span id="health-overall" style="font-size:12px; padding:3px 10px; border-radius:12px; background:rgba(16,185,129,0.15); color:#10b981;">ALL SYSTEMS ONLINE</span>
+                    <span id="health-data-age" style="font-size:11px; margin-left:auto; color:#94a3b8;">Data: --s old</span>
+                </h2>
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-top:12px;">
+                    <div class="health-item"><span class="health-dot" id="h-delta-api">●</span> Delta API</div>
+                    <div class="health-item"><span class="health-dot" id="h-websocket">●</span> WebSocket</div>
+                    <div class="health-item"><span class="health-dot" id="h-position-sync">●</span> Position Sync</div>
+                    <div class="health-item"><span class="health-dot" id="h-iv-feed">●</span> IV Feed</div>
+                    <div class="health-item"><span class="health-dot" id="h-premium-feed">●</span> Premium Feed</div>
+                    <div class="health-item"><span class="health-dot" id="h-hedge-engine">●</span> Hedge Engine</div>
+                    <div class="health-item"><span class="health-dot" id="h-graph-feed">●</span> Graph Feed</div>
+                    <div class="health-item"><span class="health-dot" id="h-audit">●</span> Audit System</div>
+                    <div class="health-item"><span class="health-dot" id="h-db-sync">●</span> Database</div>
+                    <div class="health-item"><span class="health-dot" id="h-hot-recovery">●</span> Hot Recovery</div>
+                </div>
+                <div style="display:flex; gap:20px; margin-top:12px; font-size:11px; color:#64748b;">
+                    <span>Heartbeat: <span id="h-heartbeat">--</span></span>
+                    <span>Last Sync: <span id="h-last-sync">--</span></span>
+                    <span>Backend: <span id="h-backend-ver">--</span></span>
+                    <span>IV Source: <span id="h-iv-source" style="color:#f59e0b;">--</span></span>
+                </div>
+            </div>
+        </div>
+
         <div id="next-day-paused-container" style="display: none;">
             <div style="padding: 14px 20px; border-radius: 12px; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); font-weight: 700; text-align: center; font-size: 1.1rem; animation: pulse-red 2.5s infinite;">
                 ⏸️ Trading Paused for Tomorrow (Daily Loss Limit Hit)
@@ -1914,31 +1942,7 @@
 
         <!-- TWO COLUMN GRID FOR OVERVIEW AND HEDGING -->
         <div style="display: flex; flex-direction: column; width: 100%; gap: 24px;">
-            <!-- System Health Diagnostics Panel -->
-            <div class="glass-panel" id="system-health-panel" style="border: 1px solid rgba(16,185,129,0.15);">
-                <h2 style="display:flex; align-items:center; gap:10px;">🩺 System Health Monitor
-                    <span id="health-overall" style="font-size:12px; padding:3px 10px; border-radius:12px; background:rgba(16,185,129,0.15); color:#10b981;">ALL SYSTEMS ONLINE</span>
-                    <span id="health-data-age" style="font-size:11px; margin-left:auto; color:#94a3b8;">Data: --s old</span>
-                </h2>
-                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-top:12px;">
-                    <div class="health-item"><span class="health-dot" id="h-delta-api">●</span> Delta API</div>
-                    <div class="health-item"><span class="health-dot" id="h-websocket">●</span> WebSocket</div>
-                    <div class="health-item"><span class="health-dot" id="h-position-sync">●</span> Position Sync</div>
-                    <div class="health-item"><span class="health-dot" id="h-iv-feed">●</span> IV Feed</div>
-                    <div class="health-item"><span class="health-dot" id="h-premium-feed">●</span> Premium Feed</div>
-                    <div class="health-item"><span class="health-dot" id="h-hedge-engine">●</span> Hedge Engine</div>
-                    <div class="health-item"><span class="health-dot" id="h-graph-feed">●</span> Graph Feed</div>
-                    <div class="health-item"><span class="health-dot" id="h-audit">●</span> Audit System</div>
-                    <div class="health-item"><span class="health-dot" id="h-db-sync">●</span> Database</div>
-                    <div class="health-item"><span class="health-dot" id="h-hot-recovery">●</span> Hot Recovery</div>
-                </div>
-                <div style="display:flex; gap:20px; margin-top:12px; font-size:11px; color:#64748b;">
-                    <span>Heartbeat: <span id="h-heartbeat">--</span></span>
-                    <span>Last Sync: <span id="h-last-sync">--</span></span>
-                    <span>Backend: <span id="h-backend-ver">--</span></span>
-                    <span>IV Source: <span id="h-iv-source" style="color:#f59e0b;">--</span></span>
-                </div>
-            </div>
+
 
             
 
