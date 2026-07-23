@@ -1282,7 +1282,7 @@
 
         <!-- ================= REORDERED SECTIONS ================= -->
         <!-- Section 1: Live Trade Overview -->
-            <div class="glass-panel">
+            <div class="glass-panel" id="live-overview-panel" style="display: none; margin-bottom: 24px;">
                 <h2>📊 Live Trade Overview</h2>
                 <span id="pos-btc-price" style="display:none;"></span>
                 <div id="pos-total-bar" style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px; display: none;">
@@ -3045,6 +3045,7 @@
                     }).join('');
 
                 } else {
+                    if (liveOverview) liveOverview.style.display = 'none';
                     totalBar.style.display = 'none';
                     posCards.innerHTML = `
                         <div class="pos-empty">
