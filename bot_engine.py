@@ -309,8 +309,8 @@ class DeltaTradingEngine:
             self._record_skip("Next day pause active (yesterday loss > 2.5%)")
             return
             
-        # Guard 4: Daily consecutive loss stop (NEW — Section 5)
-        if not force and self.daily_loss_hits >= MAX_CONSECUTIVE_LOSSES_DAY:
+        # Guard 4: Daily consecutive loss stop (NEW — Section 5) - DISABLED PER USER REQUEST
+        if False and not force and self.daily_loss_hits >= MAX_CONSECUTIVE_LOSSES_DAY:
             app_logger.warning("Engine: Max consecutive losses hit today. Skipping entry.")
             self.today_trade_status = "Trade Skipped"
             self.today_skip_reason = "Max daily consecutive losses reached"
