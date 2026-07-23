@@ -1282,10 +1282,10 @@
 
         <!-- ================= REORDERED SECTIONS ================= -->
         <!-- Section 1: Live Trade Overview -->
-            <div class="glass-panel" id="live-overview-panel" style="display: none; margin-bottom: 24px;">
+            <div class="glass-panel">
                 <h2>📊 Live Trade Overview</h2>
                 <span id="pos-btc-price" style="display:none;"></span>
-                <div id="pos-total-bar" style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px; display: none;">
+                <div id="pos-total-bar" style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px;">
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                         <div class="hero-pnl-card">
@@ -2859,7 +2859,6 @@
                 
                 if (data.positions && data.positions.length > 0) {
                     if (posContainer) posContainer.classList.add('active-trade-glow');
-                    totalBar.style.display = 'flex';
                     
                     // ── Apply EMA smoothing to prevent wild jumps on tab switch / refresh ──
                     // Formula: PnL = (Entry_Premium - Current_Premium) * Lots * 0.001 BTC
@@ -3045,8 +3044,6 @@
                     }).join('');
 
                 } else {
-                    if (liveOverview) liveOverview.style.display = 'none';
-                    totalBar.style.display = 'none';
                     posCards.innerHTML = `
                         <div class="pos-empty">
                             <div class="pos-empty-icon">📭</div>
