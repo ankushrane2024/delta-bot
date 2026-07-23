@@ -936,7 +936,7 @@
                             data: optPnl,
                             borderColor: '#10b981',
                             borderWidth: 2.5,
-                            pointRadius: 0,
+                            pointRadius: labels.length === 1 ? 4 : 0,
                             pointHoverRadius: 4,
                             tension: 0.35,
                             fill: {
@@ -951,7 +951,7 @@
                             borderColor: '#38bdf8',
                             borderWidth: 1.5,
                             borderDash: [5, 3],
-                            pointRadius: 0,
+                            pointRadius: labels.length === 1 ? 4 : 0,
                             pointHoverRadius: 4,
                             tension: 0.35,
                             fill: false
