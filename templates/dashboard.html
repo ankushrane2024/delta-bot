@@ -2862,6 +2862,7 @@
                 const posContainer = document.getElementById('active-positions-container');
                 
                 if (data.positions && data.positions.length > 0) {
+                    if (totalBar) totalBar.style.display = 'flex';
                     if (posContainer) posContainer.classList.add('active-trade-glow');
                     
                     // ── Apply EMA smoothing to prevent wild jumps on tab switch / refresh ──
@@ -3048,6 +3049,7 @@
                     }).join('');
 
                 } else {
+                    if (totalBar) totalBar.style.display = 'none';
                     posCards.innerHTML = `
                         <div class="pos-empty">
                             <div class="pos-empty-icon">📭</div>
