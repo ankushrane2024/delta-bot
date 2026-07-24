@@ -16,7 +16,7 @@ from utils import get_ist_now
 GITHUB_PAT = os.environ.get("GITHUB_PAT")
 GITHUB_GIST_ID = os.environ.get("GITHUB_GIST_ID")
 
-_MASTER_JSONBLOB_ID = "019f73ca-cf4b-7663-9864-9bf01fe15970"
+_MASTER_JSONBLOB_ID = "019f94b6-d3ab-7401-83c2-807c661984c0"
 JSONBLOB_ID = None
 
 # Local files for fallback and caching
@@ -48,6 +48,19 @@ def _load_config():
                     JSONBLOB_ID = data.get("jsonblob_id")
         except Exception as e:
             app_logger.error(f"DB: Failed to load config - {e}")
+            
+    # CRITICAL: Auto-discover GITHUB_GIST_ID to survive Render wipes
+    if GITHUB_PAT and not GITHUB_GIST_ID:
+        try:
+            res = requests.get("https://api.github.com/gists", headers=_get_headers(), timeout=5)
+            if res.status_code == 200:
+                for gist in res.json():
+                    if gist.get("description") == "Delta BTC Options Bot - Master DB":
+                        GITHUB_GIST_ID = gist.get("id")
+                        app_logger.info(f"DB: Auto-discovered Master Gist from GitHub: ...{GITHUB_GIST_ID[-8:]}")
+                        break
+        except Exception as e:
+            app_logger.error(f"DB: Failed to auto-discover Gist: {e}")
             
     # CRITICAL: Always override JSONBLOB_ID from Master Blob to survive Render wipes
     if not GITHUB_PAT:
