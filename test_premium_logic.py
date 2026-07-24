@@ -33,6 +33,9 @@ def test_premium_rejection():
     mock_put = {'symbol': 'P-BTC-50000', 'mark_price': 110.0}
     engine.strategy.find_strikes.return_value = (mock_call, mock_put)
     
+    # Initialize state needed by audit logger
+    engine.trail_state = {"highest_profit_pct": 0.0}
+    
     # Run entry cycle (force=True to bypass time/day checks)
     with patch('bot_engine.app_logger') as mock_logger:
         engine.run_entry_cycle(force=True)

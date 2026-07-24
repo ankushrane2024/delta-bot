@@ -266,3 +266,22 @@
 
 ---
 
+## Trade Diary - Date: 2026-07-23 (WIN)
+- **Entry Time (IST)**: `2026-07-23T23:10:46.705775+05:30`
+- **Exit Time (IST)**: `2026-07-23T23:10:53.876200+05:30`
+- **Symbols**: Call: `C-BTC-65000-250726` | Put: `P-BTC-63000-250726`
+- **Size Multiplier**: `1.00x` | **Total Premium Collected**: `$58.49`
+- **Net P&L**: `$0.17` | **Exit Reason**: `EOD Square-off`
+- **Account Equity After**: `$50000.17`
+
+### Volatility & Market Environment
+- **DVOL Index**: `38.45%` (Percentile: `50.0%`)
+- **Current IV**: `0.0%`
+- **Market Regime**: `Ranging` (ADX: `0.0`)
+
+### Smart Hedging Telemetry
+- **Hedging Triggered**: `False` (Type: `None`)
+- **Futures Hedge Size**: `0.0 BTC` | **Tightened SL**: `False`
+
+---
+

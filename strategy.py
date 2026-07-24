@@ -35,6 +35,46 @@ class ShortStrangleStrategy:
             return None, None
             
         tickers = res.get('result', [])
+        
+        # If no expiry date is forced, find the absolute closest available expiry date in the market.
+        if not expiry_date:
+            from datetime import datetime
+            from utils import get_ist_now
+            
+            available_expiries = set()
+            for t in tickers:
+                sym = t.get('symbol', '')
+                if '-BTC-' in sym:
+                    try:
+                        exp_str = sym.split('-')[-1]
+                        if len(exp_str) == 6 and exp_str.isdigit():
+                            available_expiries.add(exp_str)
+                    except:
+                        pass
+            
+            if available_expiries:
+                now_ist = get_ist_now()
+                valid_expiries = []
+                for exp_str in available_expiries:
+                    try:
+                        exp_date = datetime.strptime(exp_str, '%d%m%y')
+                        valid_expiries.append((exp_date, exp_str))
+                    except:
+                        pass
+                
+                if valid_expiries:
+                    valid_expiries.sort(key=lambda x: x[0])
+                    best_expiry = None
+                    for exp_date, exp_str in valid_expiries:
+                        if exp_date.date() >= now_ist.date():
+                            best_expiry = exp_str
+                            break
+                    if not best_expiry:
+                        best_expiry = valid_expiries[0][1]
+                        
+                    expiry_date = best_expiry
+                    app_logger.info(f"Strategy: Auto-detected nearest available expiry: {expiry_date}")
+                    
         expiry_tickers = []
         for t in tickers:
             symbol = t.get('symbol', '')

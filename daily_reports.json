@@ -1,3 +1,58 @@
 {
-    "reports": []
+    "reports": [],
+    "2026-07-23": {
+        "date": "2026-07-23",
+        "mode": "PAPER",
+        "summary": {
+            "total_trades": 2,
+            "win_rate": 100.0,
+            "net_pnl_usd": 0.6546384747103531,
+            "net_pnl_inr": 62.51797433483872,
+            "max_drawdown": 0.0,
+            "market_regime": "Unknown",
+            "regime_filter_enabled": false
+        },
+        "trades": [
+            {
+                "entry_time": "2026-07-23T22:40:22.656622+05:30",
+                "exit_time": "2026-07-23T22:40:29.288655+05:30",
+                "call_strike": "C-BTC-65600-240726",
+                "put_strike": "P-BTC-63800-240726",
+                "call_entry_price": 69.9931322762989,
+                "put_entry_price": 75.62244959502299,
+                "call_exit_price": 69.6961072,
+                "put_exit_price": 74.95819509,
+                "entry_premium": 72.80779093566093,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 0.48063979066093054,
+                "mode": "PAPER"
+            },
+            {
+                "entry_time": "2026-07-23T23:10:46.705775+05:30",
+                "exit_time": "2026-07-23T23:10:53.876200+05:30",
+                "call_strike": "C-BTC-65000-250726",
+                "put_strike": "P-BTC-63000-250726",
+                "call_entry_price": 54.10680785347731,
+                "put_entry_price": 62.87394045462154,
+                "call_exit_price": 51.49369205,
+                "put_exit_price": 65.13905889,
+                "entry_premium": 58.49037415404942,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 0.17399868404942254,
+                "mode": "PAPER"
+            }
+        ],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 0,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 0.0,
+            "iv": 0.39702127104774537,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-07-23.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-07-23.xlsx"
+    }
 }
