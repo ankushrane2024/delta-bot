@@ -145,7 +145,7 @@ class DeltaTradingEngine:
         self.pnl_chart_data = []  # Live P&L chart snapshots: [{t, pnl, hedge_pnl}]
         
         self.market_regime_filter_enabled = False
-        self.smart_hedge_provider = getattr(config, 'SMART_HEDGE_PROVIDER', 'ARES')
+        self.smart_hedge_provider = getattr(config, 'SMART_HEDGE_PROVIDER', 'SMART')
         self.smart_hedging_enabled = True  # FIX: Always enable smart hedging by default
         self.current_market_regime = "Unknown"
         self.current_adx_value = 0.0
@@ -832,8 +832,8 @@ class DeltaTradingEngine:
                         try:
                             psce_mon = self.premium_engine.evaluate_conditions(mode="MONITOR")
                             if psce_mon.get('zone') == "LOW EDGE" or not psce_mon.get('trade_allowed', False):
-                                app_logger.warning(f"PSCE Live Monitor: Premium conditions deteriorated! Zone: {psce_mon.get('zone')}. Notifying ARES.")
-                                # We do not exit directly, we log to audit. ARES reads this if needed.
+                                app_logger.warning(f"PSCE Live Monitor: Premium conditions deteriorated! Zone: {psce_mon.get('zone')}. Logging state.")
+                                # We do not exit directly, we log to audit.
                                 audit_snapshot = self._build_audit_snapshot(
                                     btc_price=psce_mon.get('metrics', {}).get('btc_price', 0.0),
                                     options_profit=0.0, hedge_pnl=0.0, pnl_pct=0.0,
@@ -1079,7 +1079,7 @@ class DeltaTradingEngine:
                         # For short positions, options profit = collected_premium - current_option_value
                         options_profit = collected_premium - current_option_value
                         
-                        # Add Hedge Profit to represent True Total PnL (Support both Legacy and ARES)
+                        # Add Hedge Profit to represent True Total PnL
                         hedge_pnl = 0.0
                         if getattr(self.execution, 'hedge_size_btc', 0) != 0:
                             ws_data = self.api_client.get_realtime_ticker("BTCUSDT")

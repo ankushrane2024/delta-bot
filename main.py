@@ -59,29 +59,7 @@ def main():
         pinger_thread = threading.Thread(target=keep_alive_pinger, args=(engine,), daemon=True)
         pinger_thread.start()
         
-        # 5. Initialize ARES ServiceRunner
-        if os.environ.get('ENABLE_ARES', 'true').lower() == 'true':
-            try:
-                from hedge.deployment.service_runner import ServiceRunner
-                from hedge.engines.adapters.option_bridge import OptionBridge
-                from web_server import set_ares_runner
-                
-                bridge = OptionBridge(engine)
-                ares_runner = ServiceRunner(mode_override='PAPER', option_bridge=bridge, bot_engine=engine)
-                set_ares_runner(ares_runner)
-                ares_thread = threading.Thread(target=ares_runner.run, daemon=True)
-                ares_thread.start()
-                app_logger.info("ARES ServiceRunner initialized in background thread in PAPER mode with OptionBridge.")
-            except Exception as e:
-                app_logger.error(f"Failed to initialize ARES ServiceRunner: {e}")
-                ares_runner = None
-        else:
-            app_logger.info("ARES is disabled via ENABLE_ARES flag.")
-            ares_runner = None
-            
-        # 6. Pass ARES Runner to Web Server
-        import web_server
-        web_server.ares_runner = ares_runner
+
         
         # 7. Start Flask server on the main thread
         port = int(os.environ.get('PORT', 5000))
