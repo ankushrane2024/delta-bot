@@ -2126,8 +2126,8 @@
                 }
 
                 // Update Stats
-                document.getElementById('equity-val').textContent = `$${data.equity.toLocaleString()}`;
-                document.getElementById('mode-val').textContent = data.mode;
+                if(document.getElementById('equity-val')) document.getElementById('equity-val').textContent = `$${data.equity.toLocaleString()}`;
+                if(document.getElementById('mode-val')) document.getElementById('mode-val').textContent = data.mode;
 
 
 
@@ -2159,12 +2159,12 @@
 
                 // Update IV & DVOL Panel
                 if (data.dvol_status) {
-                    document.getElementById('dvol-val').textContent = `${data.dvol_status.current_dvol.toFixed(2)}%`;
-                    document.getElementById('dvol-percentile-val').textContent = `${data.dvol_status.dvol_percentile.toFixed(1)}%`;
-                    document.getElementById('dvol-percentile-bar').style.width = `${data.dvol_status.dvol_percentile}%`;
+                    if(document.getElementById('dvol-val')) document.getElementById('dvol-val').textContent = `${data.dvol_status.current_dvol.toFixed(2)}%`;
+                    if(document.getElementById('dvol-percentile-val')) document.getElementById('dvol-percentile-val').textContent = `${data.dvol_status.dvol_percentile.toFixed(1)}%`;
+                    if(document.getElementById('dvol-percentile-bar')) document.getElementById('dvol-percentile-bar').style.width = `${data.dvol_status.dvol_percentile}%`;
                     
                     if (data.dvol_status.premium_range) {
-                        document.getElementById('premium-range-val').textContent = `$${data.dvol_status.premium_range[0]} - $${data.dvol_status.premium_range[1]}`;
+                        if(document.getElementById('premium-range-val')) document.getElementById('premium-range-val').textContent = `$${data.dvol_status.premium_range[0]} - $${data.dvol_status.premium_range[1]}`;
                     }
                     
                     const dvolBadge = document.getElementById('dvol-can-trade-badge');
@@ -2435,12 +2435,12 @@
 
                     // Update summary bar
                     const totalEntryPremium = data.total_entry_premium || 0;
-                    document.getElementById('pos-total-entry').textContent = totalEntryPremium.toFixed(4);
+                    if(document.getElementById('pos-total-entry')) document.getElementById('pos-total-entry').textContent = totalEntryPremium.toFixed(4);
                     
                     // Display Capital Used and reference BTC price
                     const totalCapitalUsed = data.total_capital_used || 0;
-                    document.getElementById('pos-total-capital').textContent = totalCapitalUsed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    document.getElementById('pos-btc-price').textContent = (data.btc_price || 70000).toLocaleString(undefined, {maximumFractionDigits: 0});
+                    if(document.getElementById('pos-total-capital')) document.getElementById('pos-total-capital').textContent = totalCapitalUsed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    if(document.getElementById('pos-btc-price')) document.getElementById('pos-btc-price').textContent = (data.btc_price || 70000).toLocaleString(undefined, {maximumFractionDigits: 0});
                     
                     // Recalculate precisely without smoothing artifacts
                     const optionsPnl = data.options_pnl_usd || 0;
@@ -2477,12 +2477,12 @@
                     const ts = data.trail_state || {};
                     if (ts.trailing_confirmed && ts.current_trailing_sl !== null && ts.current_trailing_sl !== undefined) {
                         dplBox.classList.add('active');
-                        document.getElementById('dpl-sl-value').textContent = `+${ts.current_trailing_sl}% Profit`;
-                        document.getElementById('dpl-peak-value').textContent = `+${ts.highest_profit_pct}%`;
+                        if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').textContent = `+${ts.current_trailing_sl}% Profit`;
+                        if(document.getElementById('dpl-peak-value')) document.getElementById('dpl-peak-value').textContent = `+${ts.highest_profit_pct}%`;
                     } else if (ts.highest_profit_pct > 0) {
                         dplBox.classList.add('active');
-                        document.getElementById('dpl-sl-value').textContent = 'Monitoring...';
-                        document.getElementById('dpl-peak-value').textContent = `+${ts.highest_profit_pct}%`;
+                        if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').textContent = 'Monitoring...';
+                        if(document.getElementById('dpl-peak-value')) document.getElementById('dpl-peak-value').textContent = `+${ts.highest_profit_pct}%`;
                     } else {
                         dplBox.classList.remove('active');
                     }
@@ -2490,7 +2490,7 @@
                     const mins = data.positions[0]?.mins_to_squareoff ?? 0;
                     const hh = Math.floor(mins / 60);
                     const mm = mins % 60;
-                    document.getElementById('pos-time-remaining').textContent = mins > 0 ? `${hh}h ${mm}m` : 'Market Closed';
+                    if(document.getElementById('pos-time-remaining')) document.getElementById('pos-time-remaining').textContent = mins > 0 ? `${hh}h ${mm}m` : 'Market Closed';
 
                     // Build one card per leg (using smoothed positions)
                     posCards.innerHTML = smoothedPositions.map(pos => {
@@ -3197,11 +3197,11 @@
                     pnlChart.data.datasets[1].data = [0];
                     pnlChart.data.datasets[2].data = [];
                     pnlChart.update('none');
-                    document.getElementById('pnl-chart-peak').textContent   = '-';
-                    document.getElementById('pnl-chart-trough').textContent = '-';
-                    document.getElementById('pnl-chart-count').textContent  = 'Waiting for trade...';
-                    document.getElementById('pnl-chart-start-label').textContent = 'No active trade';
-                    document.getElementById('pnl-chart-end-label').textContent   = '-';
+                    if(document.getElementById('pnl-chart-peak')) document.getElementById('pnl-chart-peak').textContent   = '-';
+                    if(document.getElementById('pnl-chart-trough')) document.getElementById('pnl-chart-trough').textContent = '-';
+                    if(document.getElementById('pnl-chart-count')) document.getElementById('pnl-chart-count').textContent  = 'Waiting for trade...';
+                    if(document.getElementById('pnl-chart-start-label')) document.getElementById('pnl-chart-start-label').textContent = 'No active trade';
+                    if(document.getElementById('pnl-chart-end-label')) document.getElementById('pnl-chart-end-label').textContent   = '-';
                     const slLegend = document.getElementById('sl-line-legend');
                     if (slLegend) slLegend.style.display = 'none';
                     return;
@@ -3243,14 +3243,14 @@
                 // Update summary stats — use ALL data points for true peak/trough
                 const peak   = Math.max(...optPnl);
                 const trough = Math.min(...optPnl);
-                document.getElementById('pnl-chart-peak').textContent   = (peak >= 0 ? '+' : '') + '$' + peak.toFixed(4);
-                document.getElementById('pnl-chart-trough').textContent = (trough >= 0 ? '+' : '') + '$' + trough.toFixed(4);
+                if(document.getElementById('pnl-chart-peak')) document.getElementById('pnl-chart-peak').textContent   = (peak >= 0 ? '+' : '') + '$' + peak.toFixed(4);
+                if(document.getElementById('pnl-chart-trough')) document.getElementById('pnl-chart-trough').textContent = (trough >= 0 ? '+' : '') + '$' + trough.toFixed(4);
                 // Show trade duration in minutes instead of raw count
-                document.getElementById('pnl-chart-count').textContent  = pts.length + ' min';
+                if(document.getElementById('pnl-chart-count')) document.getElementById('pnl-chart-count').textContent  = pts.length + ' min';
                 // Always show trade start time on left, "Now" on right
                 if (pts.length > 0) {
-                    document.getElementById('pnl-chart-start-label').textContent = '\u25b6 ' + pts[0].t;
-                    document.getElementById('pnl-chart-end-label').textContent   = 'Now (' + pts[pts.length-1].t + ')';
+                    if(document.getElementById('pnl-chart-start-label')) document.getElementById('pnl-chart-start-label').textContent = '\u25b6 ' + pts[0].t;
+                    if(document.getElementById('pnl-chart-end-label')) document.getElementById('pnl-chart-end-label').textContent   = 'Now (' + pts[pts.length-1].t + ')';
                 }
             } catch(e) {
                 // Fail silently — chart card stays visible with last known data
@@ -3403,10 +3403,10 @@
             try {
                 const res = await fetch('/api/get_lot_size');
                 const data = await res.json();
-                document.getElementById('active-lot-display').textContent = data.total_lots + ' lots';
-                document.getElementById('active-lot-perleg').textContent = data.per_leg + ' per leg';
+                if(document.getElementById('active-lot-display')) document.getElementById('active-lot-display').textContent = data.total_lots + ' lots';
+                if(document.getElementById('active-lot-perleg')) document.getElementById('active-lot-perleg').textContent = data.per_leg + ' per leg';
                 // Pre-fill the input with the current saved value
-                document.getElementById('lotSizeInput').value = data.total_lots;
+                if(document.getElementById('lotSizeInput')) document.getElementById('lotSizeInput').value = data.total_lots;
             } catch (e) {
                 console.warn('loadLotSize failed:', e);
             }
@@ -3436,8 +3436,8 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    document.getElementById('active-lot-display').textContent = data.total_lots + ' lots';
-                    document.getElementById('active-lot-perleg').textContent = data.per_leg + ' per leg';
+                    if(document.getElementById('active-lot-display')) document.getElementById('active-lot-display').textContent = data.total_lots + ' lots';
+                    if(document.getElementById('active-lot-perleg')) document.getElementById('active-lot-perleg').textContent = data.per_leg + ' per leg';
                     feedback.style.color = '#4ade80';
                     feedback.textContent = `✅ Saved! ${data.total_lots} total lots (${data.per_leg} per leg). Active immediately.`;
                 } else {
@@ -3522,17 +3522,17 @@
 
                 // Render metrics
                 const metrics = data.metrics;
-                document.getElementById('bt-winrate').textContent = `${metrics.win_rate.toFixed(1)}%`;
+                if(document.getElementById('bt-winrate')) document.getElementById('bt-winrate').textContent = `${metrics.win_rate.toFixed(1)}%`;
                 
                 const totalReturn = metrics.total_pnl_usd || 0.0;
                 const returnEl = document.getElementById('bt-return');
                 returnEl.textContent = `${totalReturn >= 0 ? '+' : ''}$${totalReturn.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
                 returnEl.style.color = totalReturn >= 0 ? 'var(--success)' : 'var(--danger)';
 
-                document.getElementById('bt-drawdown').textContent = `${(metrics.max_drawdown || 0.0).toFixed(1)}%`;
-                document.getElementById('bt-pf').textContent = (metrics.profit_factor || 0.0).toFixed(2);
-                document.getElementById('bt-sharpe').textContent = (metrics.sharpe_ratio || 0.0).toFixed(2);
-                document.getElementById('bt-hedges').textContent = metrics.hedge_trades || 0;
+                if(document.getElementById('bt-drawdown')) document.getElementById('bt-drawdown').textContent = `${(metrics.max_drawdown || 0.0).toFixed(1)}%`;
+                if(document.getElementById('bt-pf')) document.getElementById('bt-pf').textContent = (metrics.profit_factor || 0.0).toFixed(2);
+                if(document.getElementById('bt-sharpe')) document.getElementById('bt-sharpe').textContent = (metrics.sharpe_ratio || 0.0).toFixed(2);
+                if(document.getElementById('bt-hedges')) document.getElementById('bt-hedges').textContent = metrics.hedge_trades || 0;
 
                 resultsContainer.style.display = 'flex';
 
@@ -3643,8 +3643,8 @@
 function updateAresPremium() {
     // Update local clock
     const now = new Date();
-    document.getElementById('ares-time-main').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    document.getElementById('ares-date-main').innerText = now.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
+    if(document.getElementById('ares-time-main')) document.getElementById('ares-time-main').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    if(document.getElementById('ares-date-main')) document.getElementById('ares-date-main').innerText = now.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
 
     fetch('/api/premium_conditions')
         .then(r => r.json())
