@@ -166,6 +166,11 @@ def get_status():
         # Use entry_size if available to prevent inflated PnL calculations on re-entries, just like bot_engine.py
         size = data.get('entry_size', data.get('size', 0))
         leg_type = data.get('leg_type', 'unknown')
+        if leg_type == 'unknown':
+            if sym.startswith('C-BTC'):
+                leg_type = 'call'
+            elif sym.startswith('P-BTC'):
+                leg_type = 'put'
         entry_time_str = data.get('entry_time', '')
         strike = data.get('strike', 0)
         

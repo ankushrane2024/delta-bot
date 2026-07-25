@@ -116,7 +116,10 @@ class ExecutionHandler:
                         'entry_price': opt['mark_price'],
                         'size': size,
                         'product_id': opt['product_id'],
-                        'side': 'SELL'
+                        'side': 'SELL',
+                        'leg_type': 'call' if opt == call_opt else 'put',
+                        'strike': opt.get('strike_price', opt.get('strike', 0)),
+                        'entry_time': datetime.now(ZoneInfo('Asia/Kolkata')).isoformat()
                     }
                 else:
                     app_logger.error(f"Execution: Failed to sell {opt['symbol']}: {res}")
