@@ -977,6 +977,19 @@ class DeltaTradingEngine:
                     # Recover it from the active positions loaded from the cloud DB.
                     if self.total_entry_premium == 0 and len(self.execution.active_positions) > 0:
                         app_logger.warning("Engine: Hot-recovering transient trade state after restart...")
+                        
+                        # CRITICAL FIX: Re-subscribe option symbols to WebSocket so live prices flow in.
+                        # At startup, WS only subscribes to BTCUSD. After hot-recovery, the option symbols
+                        # (e.g. C-BTC-65200-260726, P-BTC-63200-260726) must also be subscribed
+                        # so get_realtime_ticker() returns live data instead of None (causing PnL/chart to freeze).
+                        try:
+                            option_symbols = list(self.execution.active_positions.keys())
+                            if option_symbols:
+                                self.api_client.subscribe_ws(option_symbols)
+                                app_logger.warning(f"Engine: Hot-recovery — Re-subscribed WS for options: {option_symbols}")
+                        except Exception as ws_sub_err:
+                            error_logger.error(f"Engine: Failed to re-subscribe WS during hot-recovery: {ws_sub_err}")
+                        
                         import db_manager
                         recovered_audit = db_manager.load_audit_log()
                         audit_system.recover_trade_session(recovered_audit)
