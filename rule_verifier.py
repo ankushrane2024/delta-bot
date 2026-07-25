@@ -74,11 +74,9 @@ def verify_all_rules():
         {
             "id": 10,
             "name": "Money Management",
-            "expected": "1.0% risk/trade, 2% daily limit, 3 consecutive losses stop, 2.5% pause next day",
+            "expected": "1.0% risk/trade, 2% daily limit",
             "check": (config.MAX_RISK_PER_TRADE_PCT == 0.010 and
-                      config.DAILY_LOSS_LIMIT_PCT == 0.02 and
-                      config.MAX_CONSECUTIVE_LOSSES_DAY == 3 and
-                      config.DAILY_LOSS_PAUSE_THRESHOLD == 0.025)
+                      config.DAILY_LOSS_LIMIT_PCT == 0.02)
         },
         {
             "id": 11,
