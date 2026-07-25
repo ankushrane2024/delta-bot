@@ -1190,47 +1190,53 @@
 
         <!-- ================= REORDERED SECTIONS ================= -->
         <!-- Section 1: Live Trade Overview -->
-            <div class="glass-panel">
-                <h2>📊 Live Trade Overview</h2>
+            <div class="glass-panel" style="padding: 24px; position: relative; border: 1px solid rgba(16, 185, 129, 0.2); background: radial-gradient(circle at top left, rgba(16,185,129,0.05) 0%, transparent 50%), rgba(0,0,0,0.4);">
+                <h2 style="margin-bottom: 20px; font-size: 1.1rem; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    📊 Live Trade Overview
+                </h2>
                 <span id="pos-btc-price" style="display:none;"></span>
-                <div id="pos-total-bar" style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px;">
+                <div id="pos-total-bar" style="display: flex; flex-direction: column; gap: 16px;">
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div class="hero-pnl-card">
-                            <span class="stat-label">NET P&L (Opt + Hdg)</span>
-                            <div id="pos-total-pnl-usd" class="stat-val pnl-pos" style="z-index: 1;">0.00 USDT</div>
+                    <!-- Main Header: INR P&L + Peak -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 16px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">NET P&L</span>
+                            <div id="pos-total-pnl-inr" class="stat-val pnl-pos" style="font-size: 2.5rem; font-weight: 800; text-shadow: 0 0 20px rgba(16,185,129,0.4); line-height: 1;">₹0.00</div>
+                            <div id="pos-total-pnl-usd-sub" style="font-size: 0.85rem; font-weight: 500; opacity: 0.9; margin-top: 6px; text-shadow: 0 0 10px rgba(16,185,129,0.2);">--</div>
                         </div>
-                        <div class="hero-pnl-card">
-                            <span class="stat-label">Total P&L (INR)</span>
-                            <div id="pos-total-pnl-inr" class="stat-val pnl-pos" style="font-size:1.8rem; padding-top: 10px; z-index: 1;">₹0.00</div>
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div class="stat-box-modern">
-                            <span class="stat-label">Capital Used</span>
-                            <span class="stat-val" style="font-size:1.4rem;">$<span id="pos-total-capital">0.00</span></span>
-                        </div>
-                        <div class="stat-box-modern">
-                            <span class="stat-label">Total Premium Collected</span>
-                            <span class="stat-val" style="font-size:1.4rem;">$<span id="pos-total-entry">0.00</span></span>
+                        
+                        <div id="dpl-indicator" style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                            <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
+                                <span style="color: #34d399; font-size: 0.75rem; font-weight: 500;">Peak:</span>
+                                <span id="dpl-peak-value" style="color: #34d399; font-size: 0.85rem; font-weight: 700; text-shadow: 0 0 10px rgba(16,185,129,0.5);">--</span>
+                            </div>
+                            <div style="font-size: 0.7rem; color: #38bdf8; display: flex; align-items: center; gap: 4px;">
+                                <span>SL Locked At:</span>
+                                <span id="dpl-sl-value" style="font-weight: 700;">--</span>
+                            </div>
                         </div>
                     </div>
-
-                    <div id="dpl-indicator" class="dpl-indicator">
-                        <div>
-                            <span class="stat-label" style="color: #38bdf8; font-size: 0.8rem;">🔒 Dynamic Profit Lock — SL Locked At</span>
-                            <div id="dpl-sl-value" class="dpl-sl-value">—</div>
+    
+                    <!-- 3 Column Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                        <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 0.7rem; color: var(--text-secondary);">Capital Used</span>
+                            <span style="font-size: 1.1rem; font-weight: 600; color: #10b981; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px rgba(16,185,129,0.3);">$<span id="pos-total-capital">0.00</span></span>
                         </div>
-                        <div style="text-align: right;">
-                            <span class="stat-label" style="color: #34d399; font-size: 0.75rem;">Peak Profit</span>
-                            <div id="dpl-peak-value" class="dpl-peak-value">—</div>
+                        <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 0.7rem; color: var(--text-secondary);">Premium Collected</span>
+                            <span style="font-size: 1.1rem; font-weight: 600; color: #10b981; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px rgba(16,185,129,0.3);">$<span id="pos-total-entry">0.00</span></span>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 0.7rem; color: var(--text-secondary);">Total P&L (USDT)</span>
+                            <span id="pos-total-pnl-usd" class="stat-val pnl-pos" style="font-size: 1.1rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px rgba(16,185,129,0.3);">0.00</span>
                         </div>
                     </div>
-
-                    <div class="stat-box-modern" style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2); flex-direction: row; justify-content: space-between; align-items: center;">
-                        <span class="stat-label" style="color: #34d399;">Time to Square-off</span>
-                        <span id="pos-time-remaining" class="stat-val" style="color: #34d399; font-size:1.4rem;">--</span>
+    
+                    <!-- Time Left -->
+                    <div style="margin-top: 4px; padding: 12px; border-radius: 8px; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
+                        <span style="color: #34d399; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">Time to Square-off</span>
+                        <span id="pos-time-remaining" style="color: #10b981; font-size: 1.2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px rgba(16,185,129,0.4);">--</span>
                     </div>
                 </div>
             </div>
@@ -2453,24 +2459,37 @@
                     const pnlPctSignPrem = totalPnlPctPrem >= 0 ? '+' : '';
                     const pnlPctSignCap = totalPnlPctCap >= 0 ? '+' : '';
                     
-                    const breakdownHtml = `<div style="font-size: 0.85rem; font-weight: 600; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
-                        <span style="color: ${optionsPnl >= 0 ? '#00e676' : '#ff5252'}">Opt: ${optionsPnl >= 0 ? '+' : ''}${optionsPnl.toFixed(2)}</span>
-                        <span style="color: #8892b0; font-size: 0.8rem;">+</span>
-                        <span style="color: ${hedgePnl >= 0 ? '#00e676' : '#ff5252'}">Hdg: ${hedgePnl >= 0 ? '+' : ''}${hedgePnl.toFixed(2)}</span>
-                    </div>`;
+                    const breakdownHtml = `
+                        <span style="color: ${optionsPnl >= 0 ? '#10b981' : '#ef4444'}">Opt: ${optionsPnl >= 0 ? '+' : ''}${optionsPnl.toFixed(2)}</span>
+                        <span style="color: var(--text-secondary); margin: 0 4px;">+</span>
+                        <span style="color: ${hedgePnl >= 0 ? '#10b981' : '#ef4444'}">Hdg: ${hedgePnl >= 0 ? '+' : ''}${hedgePnl.toFixed(2)}</span>
+                    `;
 
-                    const pnlUsdEl = document.getElementById('pos-total-pnl-usd');
-                    pnlUsdEl.innerHTML = `<div style="display: flex; flex-direction: column; gap: 2px; padding-top: 4px;">
-                        <span style="font-size: 1.6rem; font-weight: 800; line-height: 1;">${exactTotalPnlUsd >= 0 ? '+' : ''}${exactTotalPnlUsd.toFixed(4)} USDT</span>
-                        <span style="font-size: 0.8rem; font-weight: 500; opacity: 0.8; letter-spacing: 0.2px; color: var(--text-secondary);">(${pnlPctSignPrem}${totalPnlPctPrem.toFixed(2)}% Prem &nbsp;|&nbsp; ${pnlPctSignCap}${totalPnlPctCap.toFixed(2)}% Cap)</span>
-                        ${breakdownHtml}
-                    </div>`;
-                    pnlUsdEl.className = exactTotalPnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg';
-                    
                     const exactTotalPnlInr = exactTotalPnlUsd * 95.5;
                     const pnlInrEl = document.getElementById('pos-total-pnl-inr');
-                    pnlInrEl.textContent = '₹' + (exactTotalPnlInr >= 0 ? '+' : '') + exactTotalPnlInr.toFixed(2);
-                    pnlInrEl.className = exactTotalPnlInr >= 0 ? 'pnl-pos' : 'pnl-neg';
+                    if (pnlInrEl) {
+                        pnlInrEl.textContent = '₹' + (exactTotalPnlInr >= 0 ? '+' : '') + exactTotalPnlInr.toFixed(2);
+                        pnlInrEl.className = exactTotalPnlInr >= 0 ? 'pnl-pos' : 'pnl-neg';
+                        pnlInrEl.style.color = exactTotalPnlInr >= 0 ? '#10b981' : '#ef4444';
+                        pnlInrEl.style.textShadow = exactTotalPnlInr >= 0 ? '0 0 20px rgba(16,185,129,0.4)' : '0 0 20px rgba(239,68,68,0.4)';
+                    }
+
+                    const pnlUsdSubEl = document.getElementById('pos-total-pnl-usd-sub');
+                    if (pnlUsdSubEl) {
+                        pnlUsdSubEl.innerHTML = `
+                            <span style="color: ${exactTotalPnlUsd >= 0 ? '#10b981' : '#ef4444'};">(${pnlPctSignPrem}${totalPnlPctPrem.toFixed(2)}% Prem)</span>
+                            <span style="color: var(--text-secondary); margin: 0 8px;">|</span>
+                            ${breakdownHtml}
+                        `;
+                    }
+
+                    const pnlUsdEl = document.getElementById('pos-total-pnl-usd');
+                    if (pnlUsdEl) {
+                        pnlUsdEl.textContent = (exactTotalPnlUsd >= 0 ? '+' : '') + exactTotalPnlUsd.toFixed(4);
+                        pnlUsdEl.className = exactTotalPnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg';
+                        pnlUsdEl.style.color = exactTotalPnlUsd >= 0 ? '#10b981' : '#ef4444';
+                        pnlUsdEl.style.textShadow = exactTotalPnlUsd >= 0 ? '0 0 10px rgba(16,185,129,0.3)' : '0 0 10px rgba(239,68,68,0.3)';
+                    }
 
                     // === DPL Locked SL Indicator ===
                     const dplBox = document.getElementById('dpl-indicator');
