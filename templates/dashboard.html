@@ -3214,12 +3214,14 @@
                 const optPnl  = pts.map(p => p.pnl);
                 const totPnl  = pts.map(p => p.total);
 
-                // FIX: Chart.js won't draw a line with only 1 point when pointRadius is 0. 
-                // We duplicate the first point so a short line appears instantly.
+                // FIX: Chart.js won't draw a line with only 1 point when pointRadius is 0.
+                // We dynamically set pointRadius so a dot is visible for the first minute.
                 if (pts.length === 1) {
-                    labels.push('Now');
-                    optPnl.push(optPnl[0]);
-                    totPnl.push(totPnl[0]);
+                    pnlChart.data.datasets[0].pointRadius = 4;
+                    pnlChart.data.datasets[1].pointRadius = 4;
+                } else {
+                    pnlChart.data.datasets[0].pointRadius = 0;
+                    pnlChart.data.datasets[1].pointRadius = 0;
                 }
 
                 pnlChart.data.labels = labels;
