@@ -1066,6 +1066,8 @@ class DeltaTradingEngine:
                         if persisted_chart and isinstance(persisted_chart, list) and len(persisted_chart) > 0:
                             self.pnl_chart_data = list(persisted_chart)
                             app_logger.warning(f"Engine: Chart data RESTORED from cloud DB! {len(persisted_chart)} points recovered.")
+                            # CLEAR IT so we don't infinitely overwrite the live chart on every tick!
+                            self.execution._persisted_chart_data = None
                         elif len(self.pnl_chart_data) == 0:
                             # Fallback: seed a single point so the chart card is always visible
                             recovery_pnl = recovered_premium - current_total_value if recovered_premium > 0 else 0.0
