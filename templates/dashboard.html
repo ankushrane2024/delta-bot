@@ -2494,24 +2494,39 @@
                     // === DPL Locked SL Indicator ===
                     const dplBox = document.getElementById('dpl-indicator');
                     const ts = data.trail_state || {};
-                    let currentPeak = ts.highest_profit_pct || 0;
-                    let nextTargetText = "Target: +15% ➔ Lock +5%";
+                    let currentPeak = Math.max(ts.highest_profit_pct || 0, totalPnlPctPrem || 0);
                     
-                    if (currentPeak >= 28) nextTargetText = "Max Trail Reached";
-                    else if (currentPeak >= 25) nextTargetText = "Target: +28% ➔ Lock +23%";
-                    else if (currentPeak >= 20) nextTargetText = "Target: +25% ➔ Lock +17%";
-                    else if (currentPeak >= 15) nextTargetText = "Target: +20% ➔ Lock +12%";
+                    // Fallback to locally store the peak profit in case the backend resets or recovers
+                    window.localHighestProfitPct = Math.max(window.localHighestProfitPct || 0, currentPeak);
+                    currentPeak = window.localHighestProfitPct;
 
-                    if (ts.trailing_confirmed && ts.current_trailing_sl !== null && ts.current_trailing_sl !== undefined) {
-                        dplBox.classList.add('active');
-                        if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').innerHTML = `+${ts.current_trailing_sl}% <span style="font-size: 0.65rem; color: rgba(56, 189, 248, 0.7); font-weight: 500; margin-left: 6px;">(${nextTargetText})</span>`;
-                        if(document.getElementById('dpl-peak-value')) document.getElementById('dpl-peak-value').textContent = `+${ts.highest_profit_pct}%`;
-                    } else if (ts.highest_profit_pct > 0) {
-                        dplBox.classList.add('active');
-                        if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').innerHTML = `Monitoring... <span style="font-size: 0.65rem; color: rgba(56, 189, 248, 0.7); font-weight: 500; margin-left: 6px;">(${nextTargetText})</span>`;
-                        if(document.getElementById('dpl-peak-value')) document.getElementById('dpl-peak-value').textContent = `+${ts.highest_profit_pct}%`;
+                    let nextTargetText = "Target: +15% ➔ Lock +5%";
+                    let displaySl = ts.current_trailing_sl;
+
+                    if (currentPeak >= 28) {
+                        nextTargetText = "Max Trail Reached";
+                        if (displaySl === null || displaySl === undefined) displaySl = 23;
+                    }
+                    else if (currentPeak >= 25) {
+                        nextTargetText = "Target: +28% ➔ Lock +23%";
+                        if (displaySl === null || displaySl === undefined) displaySl = 17;
+                    }
+                    else if (currentPeak >= 20) {
+                        nextTargetText = "Target: +25% ➔ Lock +17%";
+                        if (displaySl === null || displaySl === undefined) displaySl = 12;
+                    }
+                    else if (currentPeak >= 15) {
+                        nextTargetText = "Target: +20% ➔ Lock +12%";
+                        if (displaySl === null || displaySl === undefined) displaySl = 5;
+                    }
+
+                    dplBox.classList.add('active'); // Always show it if trade is active
+                    if (displaySl !== null && displaySl !== undefined) {
+                        if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').innerHTML = `+${displaySl}% <span style="font-size: 0.65rem; color: rgba(56, 189, 248, 0.7); font-weight: 500; margin-left: 6px;">(${nextTargetText})</span>`;
+                        if(document.getElementById('dpl-peak-value')) document.getElementById('dpl-peak-value').textContent = `+${currentPeak.toFixed(2)}%`;
                     } else {
-                        dplBox.classList.remove('active');
+                        if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').innerHTML = `Monitoring... <span style="font-size: 0.65rem; color: rgba(56, 189, 248, 0.7); font-weight: 500; margin-left: 6px;">(${nextTargetText})</span>`;
+                        if(document.getElementById('dpl-peak-value')) document.getElementById('dpl-peak-value').textContent = `+${Math.max(currentPeak, 0).toFixed(2)}%`;
                     }
                     
                     const mins = data.positions[0]?.mins_to_squareoff ?? 0;
