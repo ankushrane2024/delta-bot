@@ -2500,25 +2500,32 @@
                     window.localHighestProfitPct = Math.max(window.localHighestProfitPct || 0, currentPeak);
                     currentPeak = window.localHighestProfitPct;
 
-                    let nextTargetText = "Target: +15% ➔ Lock +5%";
+                    let nextTargetText = "Target: +15% → Lock +5%";
                     let displaySl = ts.current_trailing_sl;
+
+                    // ONE-WAY RATCHET FOR SL (Never goes down even if backend resets or drops)
+                    if (displaySl !== null && displaySl !== undefined) {
+                        window.localDisplaySl = Math.max(window.localDisplaySl || -999, displaySl);
+                    }
 
                     if (currentPeak >= 28) {
                         nextTargetText = "Max Trail Reached";
-                        if (displaySl === null || displaySl === undefined) displaySl = 23;
+                        window.localDisplaySl = Math.max(window.localDisplaySl || -999, 23);
                     }
                     else if (currentPeak >= 25) {
-                        nextTargetText = "Target: +28% ➔ Lock +23%";
-                        if (displaySl === null || displaySl === undefined) displaySl = 17;
+                        nextTargetText = "Target: +28% → Lock +23%";
+                        window.localDisplaySl = Math.max(window.localDisplaySl || -999, 17);
                     }
                     else if (currentPeak >= 20) {
-                        nextTargetText = "Target: +25% ➔ Lock +17%";
-                        if (displaySl === null || displaySl === undefined) displaySl = 12;
+                        nextTargetText = "Target: +25% → Lock +17%";
+                        window.localDisplaySl = Math.max(window.localDisplaySl || -999, 12);
                     }
                     else if (currentPeak >= 15) {
-                        nextTargetText = "Target: +20% ➔ Lock +12%";
-                        if (displaySl === null || displaySl === undefined) displaySl = 5;
+                        nextTargetText = "Target: +20% → Lock +12%";
+                        window.localDisplaySl = Math.max(window.localDisplaySl || -999, 5);
                     }
+
+                    displaySl = (window.localDisplaySl !== undefined && window.localDisplaySl !== -999) ? window.localDisplaySl : displaySl;
 
                     dplBox.classList.add('active'); // Always show it if trade is active
                     if (displaySl !== null && displaySl !== undefined) {
