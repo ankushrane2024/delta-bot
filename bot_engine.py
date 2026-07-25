@@ -257,12 +257,7 @@ class DeltaTradingEngine:
             return
 
         # 1. Maximum 1 trade per day safety check (no same-day re-entry or RECOST)
-        if not force and self.trades_taken_today >= 1:
-            app_logger.warning("Engine: Maximum 1 trade per day rule met. Skipping entry.")
-            self.today_trade_status = "Trade Skipped"
-            self.today_skip_reason = "Maximum 1 trade per day limit met"
-            self._record_skip("Maximum 1 trade per day limit met")
-            return
+        # REMOVED BY USER REQUEST - The bot can now take multiple trades per day.
             
         # 1.5 MASTER GATE: Premium Selling Conditions Engine (PSCE)
         psce_eval = self.premium_engine.evaluate_conditions(mode="ENTRY")
