@@ -10,7 +10,7 @@ from config import (
     STARTING_CAPITAL, MANUAL_TOTAL_LOTS,
     CONSECUTIVE_LOSS_REDUCE_PCT, CONSECUTIVE_LOSS_THRESHOLD,
     CONSECUTIVE_LOSS_COOLDOWN_TRADES, DAILY_LOSS_REDUCE_THRESHOLD, DAILY_LOSS_REDUCE_PCT,
-    MAX_RISK_PER_TRADE_PCT, DAILY_LOSS_LIMIT_PCT, SL_PERCENT, HEDGE_RECHECK_INTERVAL,
+    MAX_RISK_PER_TRADE_PCT, SL_PERCENT, HEDGE_RECHECK_INTERVAL,
     DVOL_MID_SIZE_BOOST, LOT_TO_BTC
 )
 from utils import get_ist_now, get_next_expiry_date, should_check_hedge, adjust_time_to_system_tz
@@ -315,17 +315,11 @@ class DeltaTradingEngine:
                 self.today_skip_reason = "API connection failed - Trade skipped"
                 self._record_skip("API connection failed — check internet/API key")
                 return
-        # 2. Daily Loss Limit Check
+        # 2. Daily Loss Limit Check (REMOVED PER USER REQUEST)
         self.risk_manager.update_equity()
         if not force and self.daily_start_equity > 0:
             loss_pct = (self.daily_start_equity - self.risk_manager.current_equity) / self.daily_start_equity
             self.daily_loss_pct = max(0.0, loss_pct)
-            if loss_pct >= DAILY_LOSS_LIMIT_PCT:
-                app_logger.warning("Engine: Daily -3% account loss limit hit. Stopping trading for the day.")
-                self.today_trade_status = "Trade Skipped"
-                self.today_skip_reason = "Daily Loss Limit Hit (-3%)"
-                self._record_skip("Daily Loss Limit Hit (-3%) — trading stopped for today")
-                return
         # 3. Filters
         if not force:
             passed, reason = self.filters.get_filter_status()
@@ -1101,31 +1095,7 @@ class DeltaTradingEngine:
                         
                         pnl_pct = profit / collected_premium
                         
-                        # Emergency Trade Loss Limit (-45% on the active trade)
-                        if pnl_pct <= -0.45:
-                            app_logger.critical(f"Engine: EMERGENCY 45% LOSS LIMIT HIT on active trade! Loss: {pnl_pct*100:.2f}%. Triggering immediate full square-off.")
-                            notifier.notify_error(f"🚨 EMERGENCY 45% LOSS LIMIT HIT 🚨\nTrade loss reached {pnl_pct*100:.2f}%. Triggering immediate full square-off of all legs and hedges.")
-                            self.execution.close_all(reason="Emergency 45% Trade Loss Hit")
-                            self.reset_daily_state()
-                            self.today_trade_status = "Emergency Auto Closed"
-                            self.today_skip_reason = "Emergency 45% Trade Loss Hit"
-                            self.daily_loss_hits += 2 # Block future trades for the day
-                            continue
-                            
-                        # Continuous Daily Loss Limit Check (2% at any time)
-                        if self.daily_start_equity > 0:
-                            floating_equity = self.risk_manager.current_equity + profit
-                            loss_pct = (self.daily_start_equity - floating_equity) / self.daily_start_equity
-                            if loss_pct >= 0.02:
-                                app_logger.critical(f"Engine: Daily -2% loss limit hit on floating equity! Floating loss: {loss_pct*100:.2f}%. Triggering immediate emergency full square-off.")
-                                notifier.notify_error(f"🚨 DAILY LOSS LIMIT HIT (-2%) 🚨\nFloating equity loss reached {loss_pct*100:.2f}%. Triggering immediate full square-off.")
-                                self.execution.close_all(reason="Daily Loss Limit Hit (-2%)")
-                                self.reset_daily_state()
-                                self.today_trade_status = "Emergency Auto Closed"
-                                self.today_skip_reason = "Daily 2% Floating Loss Hit"
-                                self.daily_loss_hits += 2 # Block future trades for the day
-                                continue
-                        
+
                         action = self.risk_manager.check_sl_tp(collected_premium, current_option_value, pnl_pct)
                         
                         # Override action if ANY individual leg hit the Stop Loss
@@ -1589,10 +1559,6 @@ class DeltaTradingEngine:
                 loss_pct = (self.daily_start_equity - self.risk_manager.current_equity) / self.daily_start_equity
                 self.daily_loss_pct = max(0.0, loss_pct)
                 
-                if self.daily_loss_pct >= DAILY_LOSS_LIMIT_PCT:
-                    app_logger.critical(f"Engine: Daily loss limit hit: {self.daily_loss_pct*100:.2f}%")
-                    notifier.notify_daily_loss_limit(self.daily_loss_pct * 100, self.risk_manager.current_equity)
-                    
                 if self.daily_loss_pct >= DAILY_LOSS_REDUCE_THRESHOLD:
                     self.size_multiplier = min(1.0, self.size_multiplier)
 

@@ -112,7 +112,7 @@ DAILY_LOSS_REDUCE_PCT = 0.30          # Reduction percentage on 2% daily loss
 
 # --- Money Management & Capital Protection (Section 5) ---
 MAX_RISK_PER_TRADE_PCT = 0.010        # 1.0% of equity max risk per trade
-DAILY_LOSS_LIMIT_PCT = 0.02           # 2% daily loss → immediate square off + stop
+# Daily Loss Limit (2%) removed per user request
 # Max consecutive losses and Next day pause rules REMOVED as per user request
 # Never increase position size after a big loss day (enforced in bot_engine.py)
 

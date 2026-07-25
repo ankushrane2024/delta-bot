@@ -74,9 +74,8 @@ def verify_all_rules():
         {
             "id": 10,
             "name": "Money Management",
-            "expected": "1.0% risk/trade, 2% daily limit",
-            "check": (config.MAX_RISK_PER_TRADE_PCT == 0.010 and
-                      config.DAILY_LOSS_LIMIT_PCT == 0.02)
+            "expected": "1.0% risk/trade",
+            "check": config.MAX_RISK_PER_TRADE_PCT == 0.010
         },
         {
             "id": 11,
