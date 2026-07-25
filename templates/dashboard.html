@@ -2711,7 +2711,22 @@
                     }).join('');
 
                 } else {
-                    if (totalBar) totalBar.style.display = 'none';
+                    if (totalBar) totalBar.style.display = 'flex';
+                    if(document.getElementById('pos-total-entry')) document.getElementById('pos-total-entry').textContent = '0.0000';
+                    if(document.getElementById('pos-total-capital')) document.getElementById('pos-total-capital').textContent = '0.00';
+                    if(document.getElementById('pos-total-pnl-usd')) {
+                        const usdEl = document.getElementById('pos-total-pnl-usd');
+                        usdEl.textContent = '0.00';
+                        usdEl.className = 'stat-val pnl-pos';
+                    }
+                    if(document.getElementById('pos-total-pnl-inr')) {
+                        const inrEl = document.getElementById('pos-total-pnl-inr');
+                        inrEl.textContent = '₹0.00';
+                        inrEl.className = 'stat-val pnl-pos';
+                    }
+                    if(document.getElementById('pos-time-remaining')) document.getElementById('pos-time-remaining').textContent = '--';
+                    if(document.getElementById('dpl-peak-value')) document.getElementById('dpl-peak-value').textContent = '--';
+                    if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').textContent = '--';
                     posCards.innerHTML = `
                         <div class="pos-empty">
                             <div class="pos-empty-icon">📭</div>
