@@ -999,14 +999,17 @@ class DeltaTradingEngine:
                         oldest_entry_time = time.time()
                         for sym, data in self.execution.active_positions.items():
                             ltype = data.get('leg_type', '').lower()
-                            if 'call' in ltype or '-c' in sym.lower():
+                            is_call = 'call' in ltype or '-c' in sym.lower() or sym.lower().startswith('c-btc')
+                            is_put = 'put' in ltype or '-p' in sym.lower() or sym.lower().startswith('p-btc')
+                            
+                            if is_call:
                                 rcalls.append(sym)
-                            elif 'put' in ltype or '-p' in sym.lower():
+                            elif is_put:
                                 rputs.append(sym)
                             
-                            if 'call' in ltype or 'put' in ltype or '-c' in sym.lower() or '-p' in sym.lower():
+                            if is_call or is_put:
                                 entry_p = data.get('entry_price', 0)
-                                lots = data.get('entry_size', data['size'])
+                                lots = data.get('entry_size', data.get('size', 0))
                                 recovered_premium += entry_p * lots * LOT_TO_BTC
                                 
                                 # Extract time if available
