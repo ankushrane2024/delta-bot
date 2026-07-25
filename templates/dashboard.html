@@ -1190,7 +1190,7 @@
 
         <!-- ================= REORDERED SECTIONS ================= -->
         <!-- Section 1: Live Trade Overview -->
-            <div class="glass-panel" style="padding: 24px; position: relative; border: 1px solid rgba(16, 185, 129, 0.2); background: radial-gradient(circle at top left, rgba(16,185,129,0.05) 0%, transparent 50%), rgba(0,0,0,0.4);">
+            <div class="glass-panel" style="padding: 24px; position: relative; border: 1px solid rgba(16, 185, 129, 0.2); background: radial-gradient(circle at top left, rgba(16,185,129,0.05) 0%, transparent 50%), rgba(0,0,0,0.4); max-width: 850px; margin: 0 auto;">
                 <h2 style="margin-bottom: 20px; font-size: 1.1rem; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                     📊 Live Trade Overview
                 </h2>
@@ -2494,13 +2494,21 @@
                     // === DPL Locked SL Indicator ===
                     const dplBox = document.getElementById('dpl-indicator');
                     const ts = data.trail_state || {};
+                    let currentPeak = ts.highest_profit_pct || 0;
+                    let nextTargetText = "Target: +15% ➔ Lock +5%";
+                    
+                    if (currentPeak >= 28) nextTargetText = "Max Trail Reached";
+                    else if (currentPeak >= 25) nextTargetText = "Target: +28% ➔ Lock +23%";
+                    else if (currentPeak >= 20) nextTargetText = "Target: +25% ➔ Lock +17%";
+                    else if (currentPeak >= 15) nextTargetText = "Target: +20% ➔ Lock +12%";
+
                     if (ts.trailing_confirmed && ts.current_trailing_sl !== null && ts.current_trailing_sl !== undefined) {
                         dplBox.classList.add('active');
-                        if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').textContent = `+${ts.current_trailing_sl}% Profit`;
+                        if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').innerHTML = `+${ts.current_trailing_sl}% <span style="font-size: 0.65rem; color: rgba(56, 189, 248, 0.7); font-weight: 500; margin-left: 6px;">(${nextTargetText})</span>`;
                         if(document.getElementById('dpl-peak-value')) document.getElementById('dpl-peak-value').textContent = `+${ts.highest_profit_pct}%`;
                     } else if (ts.highest_profit_pct > 0) {
                         dplBox.classList.add('active');
-                        if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').textContent = 'Monitoring...';
+                        if(document.getElementById('dpl-sl-value')) document.getElementById('dpl-sl-value').innerHTML = `Monitoring... <span style="font-size: 0.65rem; color: rgba(56, 189, 248, 0.7); font-weight: 500; margin-left: 6px;">(${nextTargetText})</span>`;
                         if(document.getElementById('dpl-peak-value')) document.getElementById('dpl-peak-value').textContent = `+${ts.highest_profit_pct}%`;
                     } else {
                         dplBox.classList.remove('active');
