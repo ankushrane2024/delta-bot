@@ -2599,6 +2599,60 @@
                                 </div>
                             </div>
 
+                            ${(() => {
+                                const slUsedPct = parseFloat(premChangePct);
+                                let slStatusText = "🟢 Safe";
+                                let slStatusColor = "#34d399";
+                                let slLabel = slUsedPct > 0 ? "+" + slUsedPct.toFixed(1) : slUsedPct.toFixed(1);
+
+                                if (slUsedPct < 50) {
+                                    slStatusText = "🟢 Safe";
+                                    slStatusColor = "#34d399";
+                                } else if (slUsedPct < 80) {
+                                    slStatusText = "🟡 Warning";
+                                    slStatusColor = "#fbbf24";
+                                } else if (slUsedPct < 95) {
+                                    slStatusText = "🟠 High Risk";
+                                    slStatusColor = "#f97316";
+                                } else if (slUsedPct < 100) {
+                                    slStatusText = "🔴 Imminent";
+                                    slStatusColor = "#ef4444";
+                                } else {
+                                    slStatusText = "⛔ Triggered";
+                                    slStatusColor = "#b91c1c";
+                                }
+
+                                const slTriggerDisplay = (pos.entry_price * 2.0).toFixed(2);
+                                const slProgressWidth = Math.max(0, Math.min(100, slUsedPct));
+
+                                return `
+                                <div style="margin-top: 14px; padding: 14px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;">Stop Loss (100%)</div>
+                                        <div style="font-size: 0.75rem; font-weight: 600; color: ${slStatusColor}; background: ${slStatusColor}1A; padding: 3px 8px; border-radius: 4px; display: flex; align-items: center; gap: 4px;">${slStatusText}</div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px;">
+                                        <div>
+                                            <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-bottom: 4px;">SL Trigger</div>
+                                            <div style="font-size: 1rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #f87171;">${slTriggerDisplay}</div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-bottom: 4px;">SL Progress</div>
+                                            <div style="font-size: 1rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: ${slUsedPct > 0 ? '#f87171' : '#34d399'};">${slLabel}%</div>
+                                        </div>
+                                    </div>
+                                    <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; position: relative;">
+                                        <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${slProgressWidth}%; background: ${slStatusColor}; border-radius: 3px; transition: width 0.3s ease;"></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.65rem; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace;">
+                                        <span>0%</span>
+                                        <span style="color: ${slStatusColor};">${slProgressWidth.toFixed(1)}% of Stop Used</span>
+                                        <span>100%</span>
+                                    </div>
+                                </div>
+                                `;
+                            })()}
+
                             <div class="pos-divider"></div>
                             <div class="pos-footer">
                                 <div class="pos-footer-chip">🕐 Entry: <strong>${entryTimeDisplay} IST</strong></div>
