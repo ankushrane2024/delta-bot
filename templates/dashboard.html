@@ -2640,16 +2640,16 @@
                                     
                                     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
                                         <div>
-                                            <div style="font-size: 0.65rem; color: var(--text-tertiary); margin-bottom: 2px;">Trigger</div>
-                                            <div style="font-size: 0.85rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #f87171;">${slTriggerDisplay}</div>
+                                            <div style="font-size: 0.65rem; color: var(--text-tertiary); margin-bottom: 2px;">Progress</div>
+                                            <div style="font-size: 0.85rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: ${slUsedPct > 0 ? '#f87171' : '#10b981'};">${slLabel}%</div>
                                         </div>
                                         <div style="text-align: center;">
                                             <div style="font-size: 0.65rem; color: var(--text-tertiary); margin-bottom: 2px;">Status</div>
-                                            <div style="font-size: 0.85rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: ${slStatusColor};">${slProgressWidth.toFixed(1)}% Used</div>
+                                            <div style="font-size: 0.85rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: ${slStatusColor};">${slUsedPct.toFixed(1)}% Used</div>
                                         </div>
                                         <div style="text-align: right;">
-                                            <div style="font-size: 0.65rem; color: var(--text-tertiary); margin-bottom: 2px;">Progress</div>
-                                            <div style="font-size: 0.85rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: ${slUsedPct > 0 ? '#f87171' : '#10b981'};">${slLabel}%</div>
+                                            <div style="font-size: 0.65rem; color: var(--text-tertiary); margin-bottom: 2px;">Trigger</div>
+                                            <div style="font-size: 0.85rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #f87171;">${slTriggerDisplay}</div>
                                         </div>
                                     </div>
                                 </div>
