@@ -2490,7 +2490,7 @@
                     const mins = data.positions[0]?.mins_to_squareoff ?? 0;
                     const hh = Math.floor(mins / 60);
                     const mm = mins % 60;
-                    if(document.getElementById('pos-time-remaining')) document.getElementById('pos-time-remaining').textContent = mins > 0 ? `${hh}h ${mm}m` : 'Market Closed';
+                    if(document.getElementById('pos-time-remaining')) document.getElementById('pos-time-remaining').textContent = mins > 0 ? `${hh}h ${mm}m` : 'Awaiting SqOff';
 
                     // Build one card per leg (using smoothed positions)
                     posCards.innerHTML = smoothedPositions.map(pos => {

@@ -85,15 +85,18 @@ def get_status():
     trail_state = bot_engine.risk_manager.get_trailing_state()
     total_entry_premium = getattr(bot_engine, 'total_entry_premium', 0)
     
-    # Compute time remaining to 17:00 IST
+    # Compute time remaining to 17:00 IST (BTC Options trade 24/7)
+    # When past today's 17:00 IST, show countdown to NEXT day's 17:00 IST
     try:
         from utils import get_ist_now
         now_ist = get_ist_now()
         target_ist = now_ist.replace(hour=17, minute=0, second=0, microsecond=0)
         if now_ist >= target_ist:
+            # Past today's squareoff — calculate to next day's 17:00
+            target_ist = target_ist + timedelta(days=1)
+        mins_remaining = int((target_ist - now_ist).total_seconds() / 60)
+        if mins_remaining < 0:
             mins_remaining = 0
-        else:
-            mins_remaining = int((target_ist - now_ist).total_seconds() / 60)
     except Exception:
         mins_remaining = 0
     
