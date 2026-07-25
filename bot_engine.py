@@ -8,10 +8,10 @@ import config
 from config import (
     BOT_MODE, ENTRY_TIMES, EXIT_TIME_START, MAX_DAILY_LOSS_PCT,
     STARTING_CAPITAL, MANUAL_TOTAL_LOTS,
-    MAX_CONSECUTIVE_LOSSES_DAY, DAILY_LOSS_LIMIT_PCT, SL_PERCENT, HEDGE_RECHECK_INTERVAL,
-    DVOL_MID_SIZE_BOOST, CONSECUTIVE_LOSS_REDUCE_PCT, CONSECUTIVE_LOSS_THRESHOLD,
+    CONSECUTIVE_LOSS_REDUCE_PCT, CONSECUTIVE_LOSS_THRESHOLD,
     CONSECUTIVE_LOSS_COOLDOWN_TRADES, DAILY_LOSS_REDUCE_THRESHOLD, DAILY_LOSS_REDUCE_PCT,
-    MAX_RISK_PER_TRADE_PCT, DAILY_LOSS_PAUSE_THRESHOLD, LOT_TO_BTC
+    MAX_RISK_PER_TRADE_PCT, DAILY_LOSS_LIMIT_PCT, SL_PERCENT, HEDGE_RECHECK_INTERVAL,
+    DVOL_MID_SIZE_BOOST, LOT_TO_BTC
 )
 from utils import get_ist_now, get_next_expiry_date, should_check_hedge, adjust_time_to_system_tz
 from logger import app_logger, error_logger
@@ -301,21 +301,8 @@ class DeltaTradingEngine:
                     audit_snapshot, self.today_skip_reason
                 )
                 return
-        # Guard 3: Next day pause check (NEW — Section 5)
-        if not force and self.next_day_paused:
-            app_logger.warning("Engine: Paused today due to yesterday's >2.5% loss pause trigger")
-            self.today_trade_status = "Trade Skipped"
-            self.today_skip_reason = "Next day pause active (yesterday loss > 2.5%)"
-            self._record_skip("Next day pause active (yesterday loss > 2.5%)")
-            return
-            
-        # Guard 4: Daily consecutive loss stop (NEW — Section 5) - DISABLED PER USER REQUEST
-        if False and not force and self.daily_loss_hits >= MAX_CONSECUTIVE_LOSSES_DAY:
-            app_logger.warning("Engine: Max consecutive losses hit today. Skipping entry.")
-            self.today_trade_status = "Trade Skipped"
-            self.today_skip_reason = "Max daily consecutive losses reached"
-            self._record_skip("Max daily consecutive losses reached")
-            return
+        # Guard 3: Next day pause check - REMOVED PER USER REQUEST
+        # Guard 4: Daily consecutive loss stop - REMOVED PER USER REQUEST
 
         # Verify and Auto-Reconnect API in PAPER mode
         if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
@@ -1602,11 +1589,6 @@ class DeltaTradingEngine:
                 loss_pct = (self.daily_start_equity - self.risk_manager.current_equity) / self.daily_start_equity
                 self.daily_loss_pct = max(0.0, loss_pct)
                 
-                if self.daily_loss_pct >= DAILY_LOSS_PAUSE_THRESHOLD:
-                    self.next_day_paused = True
-                    app_logger.warning(f"Engine: Daily loss {self.daily_loss_pct*100:.2f}% >= 2.5%. Next day trading paused.")
-                    notifier.notify_next_day_paused(self.daily_loss_pct * 100)
-                    
                 if self.daily_loss_pct >= DAILY_LOSS_LIMIT_PCT:
                     app_logger.critical(f"Engine: Daily loss limit hit: {self.daily_loss_pct*100:.2f}%")
                     notifier.notify_daily_loss_limit(self.daily_loss_pct * 100, self.risk_manager.current_equity)
