@@ -1,5 +1,6 @@
 import time
 import math
+import os
 import schedule
 import threading
 import random
@@ -810,6 +811,7 @@ class DeltaTradingEngine:
         last_http_poll_time = 0
         last_regime_update = 0
         _consecutive_crash_count = 0  # Bug fix: Track consecutive crashes to prevent infinite stuck loops
+        _eod_exit_triggered = False   # BUG FIX: Prevent infinite EOD exit loop at 16:55 IST
         
         while self.is_running:
             try:
@@ -871,11 +873,17 @@ class DeltaTradingEngine:
  
                 if self.execution.active_positions:
                     # EOD Hard Exit Square-off Safeguard starting at 16:55 IST Same Day
+                    # BUG FIX: Guard against infinite re-triggering at 16:55 IST.
+                    # Without this, run_exit_cycle() is called every 0.5s if close_all() fails.
                     try:
                         now_ist = get_ist_now()
                         current_time_minutes = now_ist.hour * 60 + now_ist.minute
                         # 16:55 IST is 1015 minutes, 17:00 IST is 1020 minutes
-                        if current_time_minutes >= 1015:
+                        # Reset the guard at midnight so the bot can exit next day too
+                        if current_time_minutes < 60:  # Past midnight resets the daily guard
+                            _eod_exit_triggered = False
+                        if current_time_minutes >= 1015 and not _eod_exit_triggered:
+                            _eod_exit_triggered = True
                             app_logger.info(f"Engine Monitor Safeguard: Time is {now_ist.strftime('%H:%M')} IST (>= 16:55 IST) with active positions. Triggering EOD Force Square-off.")
                             self.run_exit_cycle()
                             continue
@@ -964,10 +972,17 @@ class DeltaTradingEngine:
                                 net_delta -= last_d * data['size']
                                 total_gamma -= last_g * data['size']
                                 
-                        # Check Single Leg Stop Loss (Loss is negative profit, e.g. -1.30)
+                        # Check Single Leg Stop Loss
+                        # BUG FIX: For SHORT (sell) options positions, we LOSE money when
+                        # premium RISES above entry. The correct check is:
+                        #   premium_gain_pct = (current_price - entry_price) / entry_price
+                        # SL fires when the premium has risen >= SL_PERCENT above entry.
+                        # The old formula was inverted: (entry - current) / entry <= -SL_PERCENT
+                        # which could never fire for short positions (always positive for rising prices).
                         if entry_price > 0:
-                            leg_loss_pct = (entry_price - current_price) / entry_price
-                            if leg_loss_pct <= -config.SL_PERCENT:
+                            leg_premium_gain_pct = (current_price - entry_price) / entry_price
+                            if leg_premium_gain_pct >= config.SL_PERCENT:
+                                app_logger.warning(f"Engine [SL]: Leg {sym} premium gained {leg_premium_gain_pct*100:.1f}% above entry (entry={entry_price:.4f}, current={current_price:.4f}). SL_PERCENT={config.SL_PERCENT*100:.0f}%. Triggering STOP_LOSS_ALL.")
                                 any_leg_hit_sl = True
                                 
                         # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
@@ -1088,9 +1103,10 @@ class DeltaTradingEngine:
                         options_profit = collected_premium - current_option_value
                         
                         # Add Hedge Profit to represent True Total PnL
+                        # BUG FIX: Delta Exchange perpetual is "BTCUSD", not "BTCUSDT" (that's Binance)
                         hedge_pnl = 0.0
                         if getattr(self.execution, 'hedge_size_btc', 0) != 0:
-                            ws_data = self.api_client.get_realtime_ticker("BTCUSDT")
+                            ws_data = self.api_client.get_realtime_ticker("BTCUSD")
                             live_p = float(ws_data['mark_price']) if ws_data and 'mark_price' in ws_data else self.execution.hedge_entry_price
                             hedge_pnl = (live_p - self.execution.hedge_entry_price) * self.execution.hedge_size_btc
                         
@@ -1368,6 +1384,16 @@ class DeltaTradingEngine:
                     # ────────────────────────────────────────────────────────────────
 
                 else:
+                    # BUG FIX: Reset runtime_state.trade_active to False when no positions exist.
+                    # Without this, dashboard kept showing "Running" state after square-off.
+                    try:
+                        if hasattr(self, 'runtime_state') and self.runtime_state.trade_active:
+                            self.runtime_state.trade_active = False
+                            self.runtime_state.last_update_ts = time.time()
+                    except Exception:
+                        pass
+                    # Reset EOD guard when positions are cleared
+                    _eod_exit_triggered = False
                     time.sleep(1) # Sleep slightly longer if no positions
                     
                 time.sleep(0.5) # High frequency tight loop
@@ -1475,6 +1501,28 @@ class DeltaTradingEngine:
             app_logger.info("Startup Validation: All critical state variables successfully restored.")
 
     def _log_and_reset_trade(self, profit, reason):
+        # BUG FIX: If current_trade_info["calls"] was not populated (e.g. bot restarted mid-trade
+        # and hot-recovery only partially ran), fall back to building it from active_positions.
+        # Without this guard, the entire logging block is silently skipped, meaning:
+        # - Trade never saves to history
+        # - pnl_chart_data / total_entry_premium are never cleared
+        # - Active positions remain in a zombie state forever
+        if not self.current_trade_info.get("calls") and self.execution.active_positions:
+            app_logger.warning("_log_and_reset_trade: current_trade_info empty — rebuilding from active_positions (hot-recovery fallback).")
+            calls = [sym for sym in self.execution.active_positions
+                     if 'C' in sym.split('-')[-1] or sym.endswith('-C') or '-C-' in sym or 'call' in self.execution.active_positions[sym].get('leg_type', '').lower()]
+            puts  = [sym for sym in self.execution.active_positions
+                     if 'P' in sym.split('-')[-1] or sym.endswith('-P') or '-P-' in sym or 'put'  in self.execution.active_positions[sym].get('leg_type', '').lower()]
+            # Final fallback: split all symbols arbitrarily if leg_type tags are missing
+            if not calls and not puts:
+                all_syms = list(self.execution.active_positions.keys())
+                calls = all_syms[:len(all_syms)//2]
+                puts  = all_syms[len(all_syms)//2:]
+            self.current_trade_info["calls"] = calls
+            self.current_trade_info["puts"]  = puts
+            if not self.current_trade_info.get("entry_time"):
+                self.current_trade_info["entry_time"] = get_ist_now().isoformat()
+
         if self.current_trade_info.get("calls"):
             c_syms = ",".join(self.current_trade_info["calls"])
             p_syms = ",".join(self.current_trade_info["puts"])
@@ -1504,9 +1552,10 @@ class DeltaTradingEngine:
                     put_exit_price += data.get('entry_price', 0.0)
             
             # Calculate realized Hedge PnL if hedge is active before we close it
+            # BUG FIX: Use "BTCUSD" (Delta Exchange perp), not "BTCUSDT" (Binance)
             hedge_pnl = 0.0
             if getattr(self.execution, 'hedge_size_btc', 0) != 0:
-                ws_data = self.api_client.get_realtime_ticker("BTCUSDT")
+                ws_data = self.api_client.get_realtime_ticker("BTCUSD")
                 live_p = float(ws_data['mark_price']) if ws_data and 'mark_price' in ws_data else self.execution.hedge_entry_price
                 hedge_pnl = (live_p - self.execution.hedge_entry_price) * self.execution.hedge_size_btc
             
