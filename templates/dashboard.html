@@ -1092,10 +1092,8 @@
     <!-- Tab Navigation -->
     <nav class="tab-nav">
         <button class="tab-btn active" id="tab-btn-live"      onclick="switchTab('live')"><span class="tab-live-dot"></span>Live Trade</button>
-        <button class="tab-btn"        id="tab-btn-analytics" onclick="switchTab('analytics')">&#128202; Analytics</button>
         <button class="tab-btn"        id="tab-btn-history"   onclick="window.location.href='/history'">📓 Trade History</button>
         <button class="tab-btn"        id="tab-btn-config"    onclick="switchTab('config')">&#9881;&#65039; Config</button>
-        <button class="tab-btn"        id="tab-btn-ares"      onclick="window.location.href='/ares/dashboard'">🤖 ARES Terminal</button>
     </nav>
 
     
@@ -1152,6 +1150,42 @@
         <div id="paper-mode-note" style="display: none; padding: 14px 20px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; font-size: 0.95rem; color: #38bdf8; display: flex; align-items: center; gap: 12px;">
             <span style="font-size: 1.4rem;">ℹ️</span>
             <div><strong>PAPER MODE ACTIVE</strong> - Realistic slippage + Smart Position Sizing enabled (No USDT balance required).</div>
+        </div>
+
+        <!-- Section: Market Regime Detector -->
+        <div class="glass-panel" id="regime-panel" style="margin-bottom: 24px; margin-top: 15px;">
+            <h2>= Market Regime Detector</h2>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 20px; gap: 15px; position: relative;">
+                
+                <!-- ADX Arc Gauge Container -->
+                <div style="position: relative; width: 160px; height: 100px; overflow: hidden; margin-top: 10px;">
+                    <svg viewBox="0 0 100 50" style="width: 100%; height: 100%; overflow: visible;">
+                        <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="12" stroke-linecap="round"></path>
+                        <!-- 125 is approx path length of half circle. 0 offset = full, 125 offset = empty -->
+                        <path id="adx-gauge-path" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--emerald)" stroke-width="12" stroke-linecap="round" stroke-dasharray="125" stroke-dashoffset="125" style="transition: stroke-dashoffset 1s ease-out, stroke 0.5s ease;"></path>
+                    </svg>
+                    
+                    <div style="position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); text-align: center;">
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">ADX</div>
+                        <div id="adx-gauge-val" style="font-size: 2rem; font-weight: 800; color: #fff; line-height: 1;">0.0</div>
+                    </div>
+                </div>
+
+                <div id="regime-main-label" style="font-size: 1.6rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; padding: 6px 20px; border-radius: 8px; background: rgba(16,185,129,0.1); color: var(--emerald); box-shadow: 0 0 20px rgba(16,185,129,0.2); transition: all 0.5s ease;">SIDEWAYS</div>
+
+                <div id="regime-recommendation" style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">Best for Short Strangle</div>
+                
+                <!-- Sparkline & Trend Strength -->
+                <div class="stat-box-modern" style="width: 100%; margin-top: 10px; padding: 12px; background: rgba(0,0,0,0.15);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Trend Strength (6H)</span>
+                        <span id="adx-trend-direction" style="font-size: 0.8rem; font-weight: 800; color: var(--text-secondary);">-</span>
+                    </div>
+                    <div style="height: 40px; width: 100%; position: relative;">
+                        <svg id="adx-sparkline" viewBox="0 0 100 40" preserveAspectRatio="none" style="width: 100%; height: 100%; overflow: visible; stroke: var(--text-secondary); stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; transition: all 0.5s ease;"></svg>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div style="margin-top: 15px; margin-bottom: 15px;">
@@ -1643,44 +1677,7 @@
 
 
 
-<!-- TAB 2: ANALYTICS -->
-    <div class="tab-pane" id="tab-analytics">
-
-        <!-- Section: Market Regime Detector -->
-        <div class="glass-panel" id="regime-panel" style="margin-bottom: 24px;">
-            <h2>= Market Regime Detector</h2>
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 20px; gap: 15px; position: relative;">
-                
-                <!-- ADX Arc Gauge Container -->
-                <div style="position: relative; width: 160px; height: 100px; overflow: hidden; margin-top: 10px;">
-                    <svg viewBox="0 0 100 50" style="width: 100%; height: 100%; overflow: visible;">
-                        <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="12" stroke-linecap="round"></path>
-                        <!-- 125 is approx path length of half circle. 0 offset = full, 125 offset = empty -->
-                        <path id="adx-gauge-path" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--emerald)" stroke-width="12" stroke-linecap="round" stroke-dasharray="125" stroke-dashoffset="125" style="transition: stroke-dashoffset 1s ease-out, stroke 0.5s ease;"></path>
-                    </svg>
-                    
-                    <div style="position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); text-align: center;">
-                        <div style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">ADX</div>
-                        <div id="adx-gauge-val" style="font-size: 2rem; font-weight: 800; color: #fff; line-height: 1;">0.0</div>
-                    </div>
-                </div>
-
-                <div id="regime-main-label" style="font-size: 1.6rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; padding: 6px 20px; border-radius: 8px; background: rgba(16,185,129,0.1); color: var(--emerald); box-shadow: 0 0 20px rgba(16,185,129,0.2); transition: all 0.5s ease;">SIDEWAYS</div>
-
-                <div id="regime-recommendation" style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">Best for Short Strangle</div>
-                
-                <!-- Sparkline & Trend Strength -->
-                <div class="stat-box-modern" style="width: 100%; margin-top: 10px; padding: 12px; background: rgba(0,0,0,0.15);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Trend Strength (6H)</span>
-                        <span id="adx-trend-direction" style="font-size: 0.8rem; font-weight: 800; color: var(--text-secondary);">-</span>
-                    </div>
-                    <div style="height: 40px; width: 100%; position: relative;">
-                        <svg id="adx-sparkline" viewBox="0 0 100 40" preserveAspectRatio="none" style="width: 100%; height: 100%; overflow: visible; stroke: var(--text-secondary); stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; transition: all 0.5s ease;"></svg>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- Moved Market Regime Detector to Live Trade Tab -->
 
 
         <style>
@@ -1892,7 +1889,7 @@
         
 
 
-    </div><!-- /tab-analytics -->
+    <!-- Removed Analytics Container -->
 
     <!-- POSITIONS (pinned back in Live tab) -->
     <div class="tab-pane" id="tab-live-positions" style="display:none;">
