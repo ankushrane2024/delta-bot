@@ -8,6 +8,7 @@ app = Flask(__name__, template_folder='templates')
 
 # Global reference to the engine
 bot_engine = None
+ares_runner = None
 
 def init_web_server(engine):
     global bot_engine
@@ -265,6 +266,9 @@ def get_status():
     total_pnl_usd = round(options_pnl_usd + hedge_pnl_usd, 2)
     total_pnl_inr = round(total_pnl_usd * 95.5, 2)
     
+    if total_entry_premium <= 0 and positions:
+        total_entry_premium = sum(pos.get('leg_entry_premium_total', 0) for pos in positions)
+
     total_pnl_pct_premium = (total_pnl_usd / total_entry_premium * 100) if total_entry_premium > 0 else 0.0
     total_capital_used = round(sum(pos['leg_capital_used'] for pos in positions), 2) if positions else 0.0
     total_pnl_pct_capital = (total_pnl_usd / total_capital_used * 100) if total_capital_used > 0 else 0.0
@@ -843,7 +847,7 @@ def get_pnl_chart():
     if not bot_engine:
         return jsonify({"points": [], "active": False})
 
-    chart_data = getattr(bot_engine, 'pnl_chart_data', [])
+    chart_data = list(getattr(bot_engine, 'pnl_chart_data', []))
     has_trade = bool(bot_engine.execution.active_positions)
 
     # Always report active=true if positions exist, even if chart data is still empty
@@ -852,8 +856,42 @@ def get_pnl_chart():
     if len(chart_data) == 0 and not has_trade:
         return jsonify({"active": False, "points": [], "message": "Waiting for trade data..."})
 
-    trail_state = bot_engine.risk_manager.get_trailing_state()
     total_entry_premium = getattr(bot_engine, 'total_entry_premium', 0)
+
+    # Hot-restart empty chart fallback
+    if len(chart_data) == 0 and has_trade:
+        try:
+            from utils import get_ist_now
+            # Calculate current value
+            collected_premium = 0.0
+            current_option_value = 0.0
+            for sym, data in bot_engine.execution.active_positions.items():
+                lots = data.get('entry_size', data.get('size', 0))
+                ep = data.get('entry_price', 0)
+                cp = data.get('last_good_price', ep)
+                collected_premium += ep * lots * LOT_TO_BTC
+                current_option_value += cp * lots * LOT_TO_BTC
+                
+            opt_profit = collected_premium - current_option_value
+            hedge_pnl = 0.0
+            if getattr(bot_engine.execution, 'hedge_size_btc', 0) != 0:
+                ws_data = bot_engine.api_client.get_realtime_ticker("BTCUSDT")
+                live_p = float(ws_data['mark_price']) if ws_data and 'mark_price' in ws_data else bot_engine.execution.hedge_entry_price
+                hedge_pnl = (live_p - bot_engine.execution.hedge_entry_price) * bot_engine.execution.hedge_size_btc
+                
+            if total_entry_premium <= 0:
+                total_entry_premium = collected_premium
+                
+            chart_data.append({
+                "t": get_ist_now().strftime("%H:%M"),
+                "pnl": round(opt_profit, 4),
+                "hedge": round(hedge_pnl, 4),
+                "total": round(opt_profit + hedge_pnl, 4)
+            })
+        except Exception as e:
+            app_logger.error(f"Error creating synthetic chart point: {e}")
+
+    trail_state = bot_engine.risk_manager.get_trailing_state()
 
     return jsonify({
         "active": has_trade or len(chart_data) > 0,

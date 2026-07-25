@@ -110,6 +110,10 @@ class TradeRuntimeState:
 
 
 class DeltaTradingEngine:
+    @property
+    def mode(self):
+        return getattr(self.execution, 'mode', 'OFF')
+
     def __init__(self):
         self.api_client = DeltaIndiaClient()
         self.dvol_provider = DVOLProvider()
@@ -984,12 +988,12 @@ class DeltaTradingEngine:
                         oldest_entry_time = time.time()
                         for sym, data in self.execution.active_positions.items():
                             ltype = data.get('leg_type', '').lower()
-                            if 'call' in ltype or 'c' in sym[-3:].lower():
+                            if 'call' in ltype or '-c' in sym.lower():
                                 rcalls.append(sym)
-                            elif 'put' in ltype or 'p' in sym[-3:].lower():
+                            elif 'put' in ltype or '-p' in sym.lower():
                                 rputs.append(sym)
                             
-                            if 'call' in ltype or 'put' in ltype or 'c' in sym[-3:].lower() or 'p' in sym[-3:].lower():
+                            if 'call' in ltype or 'put' in ltype or '-c' in sym.lower() or '-p' in sym.lower():
                                 entry_p = data.get('entry_price', 0)
                                 lots = data.get('entry_size', data['size'])
                                 recovered_premium += entry_p * lots * LOT_TO_BTC
@@ -1065,6 +1069,13 @@ class DeltaTradingEngine:
                     
                     profit = 0.0
                     pnl_pct = 0.0
+                    
+                    if self.total_entry_premium <= 0 and len(self.execution.active_positions) > 0:
+                        collected = 0.0
+                        for sym, data in self.execution.active_positions.items():
+                            lots = data.get('entry_size', data.get('size', 0))
+                            collected += data.get('entry_price', 0) * lots * LOT_TO_BTC
+                        self.total_entry_premium = collected
                     
                     if self.total_entry_premium > 0:
                         # PnL Check

@@ -2702,9 +2702,6 @@
                             if (popup && popupText) {
                                 popupText.textContent = data.today_skip_reason;
                                 popup.style.display = 'block';
-                                
-                                // Auto-hide after 15 seconds
-                                setTimeout(() => { popup.style.display = 'none'; }, 15000);
                             }
                         }
                     } else if (data.schedule_info && data.schedule_info.today_status === "Trade Taken") {
