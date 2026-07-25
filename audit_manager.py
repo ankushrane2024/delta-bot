@@ -25,7 +25,7 @@ class AuditManager:
         self.session_events = []
         self.pending_sync = []
         self.last_sync_time = time.time()
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.enabled = True
         self.metrics = {
             "sync_latency": [],
