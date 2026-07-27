@@ -82,11 +82,15 @@ class ExecutionHandler:
             for opt in [call_opt, put_opt]:
                 # Apply realistic entry slippage (0.2% to 0.8% of premium)
                 raw_mark = float(opt.get('mark_price', 0))
+                # CRITICAL BUG FIX (2026-07-27): For SHORT (SELL) positions, the seller always
+                # receives a WORSE (lower) price than the mark price due to slippage.
+                # The old code ADDED slippage to mark_price, which was mathematically wrong
+                # and inflated the entry premium, masking real losses.
                 entry_slippage = random.uniform(0.002, 0.008) * raw_mark if raw_mark > 0 else 0.5
-                simulated_entry_price = raw_mark + entry_slippage
+                simulated_entry_price = max(0.01, raw_mark - entry_slippage)  # Seller gets lower price
                 leg_type = 'call' if 'call' in opt.get('contract_type', '').lower() or 'C' in opt.get('symbol', '')[-3:] else 'put'
                 
-                app_logger.info(f"Execution [PAPER]: Simulating sell of {opt['symbol']} @ {simulated_entry_price:.4f} (slippage: +{entry_slippage:.2f})")
+                app_logger.info(f"Execution [PAPER]: Simulating sell of {opt['symbol']} @ {simulated_entry_price:.4f} (slippage: -{entry_slippage:.2f} from mark {raw_mark:.4f})")
                 self.active_positions[opt['symbol']] = {
                     'entry_price': simulated_entry_price,
                     'entry_price_raw': raw_mark,
@@ -112,8 +116,46 @@ class ExecutionHandler:
                 results.append(res)
                 if res.get('success'):
                     app_logger.info(f"Execution: Successfully sold {opt['symbol']}")
+                    
+                    # ── CRITICAL FIX (2026-07-27): Use REAL fill price, NOT pre-trade mark_price ──
+                    # Delta Exchange returns the fill price in the order result under
+                    # 'average_fill_price' or 'limit_price'. Using the pre-trade mark_price
+                    # creates a false PnL baseline — all live PnL calculations will be wrong.
+                    order_result = res.get('result', {})
+                    real_fill_price = 0.0
+                    
+                    # Priority 1: Actual fill price from exchange order response
+                    fill_candidates = [
+                        order_result.get('average_fill_price'),
+                        order_result.get('avg_fill_price'),
+                        order_result.get('limit_price'),
+                        order_result.get('price'),
+                    ]
+                    for candidate in fill_candidates:
+                        try:
+                            val = float(candidate) if candidate is not None else 0.0
+                            if val > 0.01:
+                                real_fill_price = val
+                                app_logger.info(f"Execution [LIVE]: Real fill price for {opt['symbol']}: ${real_fill_price:.4f}")
+                                break
+                        except (ValueError, TypeError):
+                            continue
+                    
+                    # Priority 2: Fresh WebSocket mark_price (post-fill live data)
+                    if real_fill_price <= 0.01:
+                        ws_data = self.api_client.get_realtime_ticker(opt['symbol'])
+                        if ws_data and 'mark_price' in ws_data:
+                            real_fill_price = float(ws_data['mark_price'])
+                            app_logger.warning(f"Execution [LIVE]: Fill price not in API response for {opt['symbol']}, using fresh WS mark_price: ${real_fill_price:.4f}")
+                    
+                    # Priority 3: Pre-trade snapshot (last resort — log a visible warning)
+                    if real_fill_price <= 0.01:
+                        real_fill_price = float(opt['mark_price'])
+                        app_logger.error(f"Execution [LIVE]: FALLBACK to pre-trade mark_price for {opt['symbol']}: ${real_fill_price:.4f}. PnL baseline may be slightly off!")
+                    
                     self.active_positions[opt['symbol']] = {
-                        'entry_price': opt['mark_price'],
+                        'entry_price': real_fill_price,
+                        'entry_price_raw': float(opt['mark_price']),  # Keep pre-trade snapshot for reference
                         'size': size,
                         'product_id': opt['product_id'],
                         'side': 'SELL',

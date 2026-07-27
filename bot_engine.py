@@ -389,6 +389,12 @@ class DeltaTradingEngine:
             
         per_entry_size = max(1, int(adjusted_lots / 2))
         
+        # CRITICAL FIX (2026-07-27): Lock _trade_start_ts BEFORE execute_strangle() is called.
+        # The monitor_loop runs in a parallel thread. If _trade_start_ts is set after execution,
+        # the monitor loop can see active_positions exist but _trade_start_ts=None, yielding
+        # time_in_trade=0s on the first few ticks — bypassing the grace period suppression.
+        self._trade_start_ts = time.time()
+        
         # Execute
         self.execution.execute_strangle(call_opt, put_opt, per_entry_size)
         self.today_trade_status = "Trade Taken"
@@ -398,7 +404,6 @@ class DeltaTradingEngine:
         # Save trade details for tracking
         self.current_trade_info["entry_time"] = get_ist_now().isoformat()
         self.current_trade_info["btc_entry_price"] = call_opt.get('underlying_price', 0.0)
-        self._trade_start_ts = time.time()
         audit_system.start_trade_session(self.current_trade_info["btc_entry_price"])
         self.current_trade_info["calls"].append(call_opt['symbol'])
         self.current_trade_info["puts"].append(put_opt['symbol'])
@@ -958,9 +963,15 @@ class DeltaTradingEngine:
                         # premium RISES above entry. The correct check is:
                         #   premium_gain_pct = (current_price - entry_price) / entry_price
                         # SL fires when the premium has risen >= SL_PERCENT above entry.
-                        # The old formula was inverted: (entry - current) / entry <= -SL_PERCENT
-                        # which could never fire for short positions (always positive for rising prices).
-                        if entry_price > 0:
+                        #
+                        # CRITICAL BUG FIX (2026-07-27): The per-leg SL check was running BEFORE
+                        # the grace period suppression logic. This caused the bot to set
+                        # any_leg_hit_sl=True instantly on trade entry due to the wide bid-ask
+                        # spread on crypto options (entry price includes slippage, but first live
+                        # tick is the lower mark/mid price, making it look like a 100%+ SL hit).
+                        # FIX: Skip per-leg SL check entirely for the first MIN_HOLD_SECONDS.
+                        _trade_age_for_sl = time.time() - (getattr(self, '_trade_start_ts', None) or time.time())
+                        if entry_price > 0 and _trade_age_for_sl >= getattr(config, 'MIN_HOLD_SECONDS', 30):
                             leg_premium_gain_pct = (current_price - entry_price) / entry_price
                             if leg_premium_gain_pct >= config.SL_PERCENT:
                                 app_logger.warning(f"Engine [SL]: Leg {sym} premium gained {leg_premium_gain_pct*100:.1f}% above entry (entry={entry_price:.4f}, current={current_price:.4f}). SL_PERCENT={config.SL_PERCENT*100:.0f}%. Triggering STOP_LOSS_ALL.")
@@ -1116,13 +1127,15 @@ class DeltaTradingEngine:
 
                         action = self.risk_manager.check_sl_tp(collected_premium, current_option_value, pnl_pct)
                         
-                        # Override action if ANY individual leg hit the Stop Loss
-                        if any_leg_hit_sl:
-                            action = "STOP_LOSS_ALL"
-                        
                         # Safely compute time in trade (fallback to time.time() if None to yield 0s)
                         start_ts = getattr(self, '_trade_start_ts', None) or time.time()
                         time_in_trade_seconds = time.time() - start_ts
+                        
+                        # Override action if ANY individual leg hit the Stop Loss
+                        # IMPORTANT: This must come AFTER time_in_trade_seconds is computed,
+                        # so that the grace period suppression below can also suppress this override.
+                        if any_leg_hit_sl:
+                            action = "STOP_LOSS_ALL"
                         
                         # Detailed debug logging required for profit verification
                         hedge_log = f" | Hedge PnL: +${self.smart_hedging.get_live_hedge_pnl():.2f}" if self.smart_hedging.hedge_active else ""
@@ -1252,11 +1265,15 @@ class DeltaTradingEngine:
                             error_logger.error(f"Engine: Failed to update RuntimeState: {rs_err}")
 
                         # Prevent premature exit (Race Condition / Price Stability Guard)
-                        if time_in_trade_seconds < getattr(config, 'MIN_HOLD_SECONDS', 30):
-                            # Hard-suppress ALL exits for the first 15 seconds to survive initial spread crossing
-                            if action is not None and time_in_trade_seconds < 15:
-                                app_logger.warning(f"Engine [DEBUG] Hard-Suppressing {action} because time_in_trade ({time_in_trade_seconds:.1f}s) < 15s (spread stabilization)")
-                                action = None
+                        # CRITICAL BUG FIX (2026-07-27): Suppress ALL exits for the full
+                        # MIN_HOLD_SECONDS (30s) grace period, not just first 15s.
+                        # The old code suppressed for 15s but then allowed any_leg_hit_sl
+                        # (set from the per-leg SL check) to fire between 15s and 30s.
+                        # Now the per-leg SL check is also gated by MIN_HOLD_SECONDS, and
+                        # this block provides a final safety net for the combined action.
+                        if action is not None and time_in_trade_seconds < getattr(config, 'MIN_HOLD_SECONDS', 30):
+                            app_logger.warning(f"Engine [GRACE] Suppressing '{action}' — trade age {time_in_trade_seconds:.1f}s < MIN_HOLD_SECONDS ({getattr(config, 'MIN_HOLD_SECONDS', 30)}s). Spread stabilization window active.")
+                            action = None
                         
                         # --- AUDIT SYSTEM INTEGRATION ---
                         try:
