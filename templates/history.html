@@ -469,6 +469,18 @@
                 
                 if (!data.trades || data.trades.length === 0) {
                     document.getElementById('history-container').innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No trades recorded yet.</div>';
+                    
+                    // Clear summary stats
+                    document.getElementById('stat-trades').innerText = '0';
+                    document.getElementById('stat-wins').innerText = '0 / 0';
+                    document.getElementById('stat-winrate').innerText = '0%';
+                    document.getElementById('stat-pnl').innerText = '$0.00';
+                    document.getElementById('stat-pnl').style.color = 'var(--text-primary)';
+                    
+                    // Clear charts if they exist
+                    if (window.equityChart) { window.equityChart.destroy(); window.equityChart = null; }
+                    if (window.pnlChart) { window.pnlChart.destroy(); window.pnlChart = null; }
+                    
                     return;
                 }
 
