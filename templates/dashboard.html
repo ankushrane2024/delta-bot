@@ -1656,7 +1656,7 @@
                     </div>
                     <div>
                         <h2 style="margin: 0; color: #fff; font-size: 1.25rem; letter-spacing: 1px; background: linear-gradient(90deg, #a855f7, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">HEDGE PROTECTION ENGINE</h2>
-                        <div style="font-size: 0.75rem; color: #94a3b8; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;">Local Sandbox Mode Active</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;">LIVE ENGINE ACTIVE</div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 12px; align-items: center;">
@@ -2418,45 +2418,45 @@
                     }
                 }
 
-                // Update HPE Sandbox Panel
-                if (data.local_hpe_status && Object.keys(data.local_hpe_status).length > 0) {
-                    const hpe = data.local_hpe_status;
+                // Update HPE Panel with Live Engine Status
+                if (data.hedge_status) {
+                    const hpe = data.hedge_status;
                     const stateVal = document.getElementById('hpe-state-val');
                     if (stateVal) {
-                        stateVal.textContent = hpe.state;
-                        stateVal.style.color = (hpe.state === 'HEDGING') ? '#10b981' : ((hpe.state === 'MONITORING') ? '#fbbf24' : '#38bdf8');
+                        stateVal.textContent = hpe.hedge_active ? 'HEDGING' : 'MONITORING';
+                        stateVal.style.color = hpe.hedge_active ? '#10b981' : '#38bdf8';
                     }
-                    if(document.getElementById('hpe-standby-reason')) document.getElementById('hpe-standby-reason').textContent = hpe.standby_reason || '';
-                    if(document.getElementById('hpe-trigger-val')) document.getElementById('hpe-trigger-val').textContent = hpe.trigger_status;
+                    if(document.getElementById('hpe-standby-reason')) document.getElementById('hpe-standby-reason').textContent = hpe.hedge_active ? 'Live Market Protection Active' : 'Waiting for trigger conditions...';
+                    if(document.getElementById('hpe-trigger-val')) document.getElementById('hpe-trigger-val').textContent = hpe.hedge_active ? '? TRIGGERED' : 'IDLE';
                     
                     const lossVal = document.getElementById('hpe-loss-val');
+                    const currentLossPct = data.total_pnl_pct_capital || 0;
                     if(lossVal) {
-                        lossVal.textContent = `${hpe.combined_loss.toFixed(2)}%`;
-                        lossVal.style.color = (hpe.combined_loss <= -10.0) ? '#f43f5e' : '#10b981';
+                        lossVal.textContent = `${currentLossPct.toFixed(2)}%`;
+                        lossVal.style.color = (currentLossPct <= -10.0) ? '#f43f5e' : '#10b981';
                     }
                     
                     const lossBar = document.getElementById('hpe-loss-bar');
                     if(lossBar) {
-                        // Clamp loss between 0 and 15 for visualization
-                        let pct = Math.min(Math.max((Math.abs(hpe.combined_loss) / 15.0) * 100, 0), 100);
+                        let pct = Math.min(Math.max((Math.abs(currentLossPct) / 15.0) * 100, 0), 100);
                         lossBar.style.width = `${pct}%`;
                     }
 
-                    const sideStr = hpe.hedge_side || 'NONE';
+                    const sideStr = (hpe.hedge_type || 'NONE').toUpperCase();
                     if(document.getElementById('hpe-side-val')) {
                         const el = document.getElementById('hpe-side-val');
                         el.textContent = sideStr;
-                        if(sideStr === 'BUY') el.style.color = '#10b981';
-                        else if(sideStr === 'SELL') el.style.color = '#f43f5e';
+                        if(sideStr === 'LONG' || sideStr === 'BUY') el.style.color = '#10b981';
+                        else if(sideStr === 'SHORT' || sideStr === 'SELL') el.style.color = '#f43f5e';
                         else el.style.color = '#64748b';
                     }
                     
                     const closeBtn = document.getElementById('hpe-close-btn');
                     if(closeBtn) {
-                        closeBtn.style.display = (sideStr === 'BUY' || sideStr === 'SELL') ? 'block' : 'none';
+                        closeBtn.style.display = hpe.hedge_active ? 'block' : 'none';
                     }
                     
-                    if(document.getElementById('hpe-qty-val')) document.getElementById('hpe-qty-val').textContent = `${(hpe.hedge_btc_qty || 0).toFixed(4)} BTC`;
+                    if(document.getElementById('hpe-qty-val')) document.getElementById('hpe-qty-val').textContent = `${(hpe.hedge_size_btc || 0).toFixed(4)} BTC`;
                     
                     if(document.getElementById('hpe-entry-price-val')) {
                         const ep = hpe.hedge_entry_price || 0;
@@ -2470,8 +2470,9 @@
                     const hpePnl = document.getElementById('hpe-pnl-val');
                     const hpePnlUsd = document.getElementById('hpe-pnl-usd-val');
                     if(hpePnl) {
-                        hpePnl.textContent = `${(hpe.hedge_pnl || 0).toFixed(2)}%`;
-                        hpePnl.style.color = (hpe.hedge_pnl > 0) ? '#10b981' : ((hpe.hedge_pnl < 0) ? '#f43f5e' : '#94a3b8');
+                        const pctVal = hpe.hedge_percentage || 0;
+                        hpePnl.textContent = `${pctVal.toFixed(2)}%`;
+                        hpePnl.style.color = (pctVal > 0) ? '#10b981' : ((pctVal < 0) ? '#f43f5e' : '#94a3b8');
                     }
                     if(hpePnlUsd) {
                         const usdVal = hpe.hedge_pnl_usd || 0;
@@ -2481,7 +2482,8 @@
 
                     if(document.getElementById('hpe-st-val')) {
                         const el = document.getElementById('hpe-st-val');
-                        el.textContent = hpe.supertrend;
+                        el.textContent = 'AUTO';
+
                         el.style.color = (hpe.supertrend === 'BUY') ? '#10b981' : ((hpe.supertrend === 'SELL') ? '#f43f5e' : '#64748b');
                     }
                     if(document.getElementById('hpe-adx-val')) {
