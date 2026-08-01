@@ -75,10 +75,10 @@ MIN_ENTRY_PREMIUM = 100.0      # Minimum required premium for entry
 MIN_HOLD_SECONDS = 30          # Minimum seconds to hold before any exit is allowed
 
 # --- ARES Dynamic Profit Lock ---
-# Trailing confirmation: lock SL at +5% as soon as 15% profit is hit
-TRAILING_CONFIRM_THRESHOLD = 0.15    # 15%: Begin tracking
-TRAILING_CONFIRM_TARGET = 0.15       # 15%: Lock SL at +5% immediately
-CAPITAL_PROTECTION_SL = 0.05         # Lock SL at +5% once 15% is reached
+# Trailing confirmation: lock SL at +5% as soon as 19% profit is confirmed
+TRAILING_CONFIRM_THRESHOLD = 0.15    # 15%: Begin tracking (confirmation window opens)
+TRAILING_CONFIRM_TARGET = 0.19       # 19%: Confirm and lock SL at +5% (was incorrectly 0.15)
+CAPITAL_PROTECTION_SL = 0.05         # Lock SL at +5% once 19% is confirmed
 
 # Progressive profit lock tiers: (profit_threshold, sl_level)
 PROFIT_LOCK_TIERS = [

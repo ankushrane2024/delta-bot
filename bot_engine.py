@@ -422,6 +422,10 @@ class DeltaTradingEngine:
         # LOT_TO_BTC = 0.001 BTC per lot (Delta Exchange BTC Options contract size)
         btc_quantity = per_entry_size * LOT_TO_BTC
         total_premium_for_this_entry = (call_entry + put_entry) * btc_quantity
+        # FIX: Always reset DPL trailing state before recording a new trade's premium.
+        # This is a defence-in-depth guard: even if _reset_daily_state() was skipped
+        # (e.g. intra-day re-entry), the ratchet state cannot bleed from a prior trade.
+        self.risk_manager.reset_trailing_state()
         self.total_entry_premium = total_premium_for_this_entry
 
         # CRITICAL: Lock entry_size into active_positions so PnL always uses the correct lot count.
@@ -1442,7 +1446,10 @@ class DeltaTradingEngine:
         # Reset PAPER-specific state at EOD
         self.consecutive_losses = 0
         self.paper_trading_paused = False
-        app_logger.info("Engine: Daily state reset.")
+        # FIX: Reset DPL trailing state at EOD so stale SL levels from a profitable
+        # prior trade do not bleed into the next day's first trade and fire immediately.
+        self.risk_manager.reset_trailing_state()
+        app_logger.info("Engine: Daily state reset (DPL trailing state cleared).")
 
     def _build_audit_snapshot(self, btc_price, options_profit, hedge_pnl, pnl_pct, time_in_trade_seconds, action, reason):
         trail_state = self.risk_manager.get_trailing_state()
