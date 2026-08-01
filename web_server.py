@@ -470,10 +470,9 @@ def force_shadow_hedge():
 @app.route('/api/close_shadow_hedge', methods=['POST'])
 def close_shadow_hedge():
     try:
-        import os
-        with open('close_hedge.flag', 'w') as f:
-            f.write("1")
-        app_logger.info("Web: Manual Shadow Hedge Close triggered.")
+        if bot_engine and getattr(bot_engine, 'smart_hedging', None):
+            bot_engine.smart_hedging.close_hedge()
+        app_logger.info("Web: Manual Live Hedge Close triggered.")
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
