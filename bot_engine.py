@@ -235,17 +235,28 @@ class DeltaTradingEngine:
             time.sleep(1)
 
     def get_saved_lot_size(self):
-        """Read lot_size.json if exists, else fallback to MANUAL_TOTAL_LOTS from config."""
-        import json, os, os
+        """Read lot_size.json if exists, else fallback to MANUAL_TOTAL_LOTS from config.
+        In LIVE mode, reads live_lots (default 1) instead of total_lots (paper lots).
+        """
+        import json, os
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
             path = os.path.join(base_dir, 'lot_size.json')
             if os.path.exists(path):
                 with open(path, 'r') as f:
                     data = json.load(f)
+                # LIVE mode uses its own separate lot size (default 1 for safety)
+                if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
+                    live_lots = int(data.get('live_lots', 1))
+                    app_logger.info(f"Engine [LIVE]: Using live lot size: {live_lots} lot(s)")
+                    return live_lots
                 return int(data.get('total_lots', MANUAL_TOTAL_LOTS))
         except Exception as e:
             app_logger.error(f"Engine: Failed to read lot_size.json – {e}")
+        # In LIVE mode fallback, always use 1 lot for safety
+        if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
+            app_logger.warning("Engine [LIVE]: lot_size.json unavailable, defaulting to 1 lot for safety")
+            return 1
         return int(MANUAL_TOTAL_LOTS)
 
     def run_entry_cycle(self, force=False):

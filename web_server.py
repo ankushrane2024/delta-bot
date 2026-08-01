@@ -664,7 +664,168 @@ def save_lot_size():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ─── Live Trading Mode Endpoints ──────────────────────────────────────────────
+
+@app.route('/api/live_mode', methods=['GET'])
+def get_live_mode():
+    """Return current live mode state, live lots, and pre-flight checklist."""
+    import json
+    try:
+        data = {}
+        if os.path.exists(LOT_SIZE_FILE):
+            with open(LOT_SIZE_FILE, 'r') as f:
+                data = json.load(f)
+
+        live_mode = bool(data.get('live_mode', False))
+        live_lots = int(data.get('live_lots', 1))
+        paper_lots = int(data.get('total_lots', 1000))
+
+        # Pre-flight checklist
+        from config import DELTA_API_KEY, DELTA_API_SECRET
+        api_key_ok = bool(DELTA_API_KEY) and DELTA_API_KEY not in ('testnet_key', '', 'YOUR_KEY_HERE')
+        api_secret_ok = bool(DELTA_API_SECRET) and DELTA_API_SECRET not in ('testnet_secret', '', 'YOUR_SECRET_HERE')
+        has_positions = bool(bot_engine and bot_engine.execution.active_positions) if bot_engine else False
+
+        current_mode = getattr(bot_engine.execution, 'mode', 'PAPER') if bot_engine else 'PAPER'
+
+        return jsonify({
+            'live_mode': live_mode,
+            'live_lots': live_lots,
+            'paper_lots': paper_lots,
+            'current_execution_mode': current_mode,
+            'preflight': {
+                'api_key_valid': api_key_ok,
+                'api_secret_valid': api_secret_ok,
+                'no_active_positions': not has_positions,
+                'portfolio_margin_enabled': True,  # User confirmed enabled
+            },
+            'safe_to_activate': api_key_ok and api_secret_ok and not has_positions
+        })
+    except Exception as e:
+        app_logger.error(f"Web [live_mode GET]: Error – {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/toggle_live_mode', methods=['POST'])
+def toggle_live_mode():
+    """Toggle the bot between PAPER and LIVE execution mode at runtime.
+    
+    Safety guards:
+    1. Refuses if API key is testnet placeholder
+    2. Refuses to activate LIVE if there are active positions (must close first)
+    3. On deactivate: switches back to PAPER, positions stay tracked (close manually or wait for EOD)
+    """
+    if not bot_engine:
+        return jsonify({'success': False, 'error': 'Engine not initialized'}), 500
+
+    import json
+    try:
+        body = request.get_json(force=True) or {}
+        activate = bool(body.get('activate', False))
+
+        # ── Safety Gate 1: Validate real API credentials ──────────────────────
+        from config import DELTA_API_KEY, DELTA_API_SECRET
+        if activate:
+            if not DELTA_API_KEY or DELTA_API_KEY in ('testnet_key', '', 'YOUR_KEY_HERE'):
+                return jsonify({
+                    'success': False,
+                    'error': 'Cannot activate LIVE mode: API Key is a testnet placeholder. Set a real key in .env and restart.'
+                }), 400
+            if not DELTA_API_SECRET or DELTA_API_SECRET in ('testnet_secret', '', 'YOUR_SECRET_HERE'):
+                return jsonify({
+                    'success': False,
+                    'error': 'Cannot activate LIVE mode: API Secret is a testnet placeholder. Set a real secret in .env and restart.'
+                }), 400
+
+        # ── Safety Gate 2: No active positions when switching ─────────────────
+        if activate and bot_engine.execution.active_positions:
+            return jsonify({
+                'success': False,
+                'error': 'Cannot switch to LIVE mode while positions are open. Close all positions first.'
+            }), 400
+
+        # ── Switch execution mode at runtime ──────────────────────────────────
+        new_mode = 'LIVE' if activate else 'PAPER'
+        bot_engine.execution.mode = new_mode
+
+        # ── Persist to lot_size.json ──────────────────────────────────────────
+        data = {}
+        if os.path.exists(LOT_SIZE_FILE):
+            with open(LOT_SIZE_FILE, 'r') as f:
+                data = json.load(f)
+        data['live_mode'] = activate
+        with open(LOT_SIZE_FILE, 'w') as f:
+            json.dump(data, f, indent=4)
+
+        action_text = "ACTIVATED 🔴 LIVE" if activate else "DEACTIVATED → PAPER"
+        app_logger.warning(f"Web [toggle_live_mode]: Live mode {action_text}. New execution mode: {new_mode}")
+
+        # Notify via Telegram if notifier available
+        try:
+            from notifier import notifier
+            if activate:
+                notifier.notify_error(
+                    f"🔴 LIVE TRADING MODE ACTIVATED\n"
+                    f"Real orders will now execute on Delta Exchange.\n"
+                    f"Live Lot Size: {data.get('live_lots', 1)} lot(s)\n"
+                    f"Portfolio Margin: ENABLED\n"
+                    f"⚠️ Real capital at risk!"
+                )
+            else:
+                notifier.notify_error(
+                    f"📄 Switched back to PAPER MODE\n"
+                    f"No real orders will be placed."
+                )
+        except Exception:
+            pass
+
+        return jsonify({
+            'success': True,
+            'live_mode': activate,
+            'current_execution_mode': new_mode,
+            'message': f'Mode switched to {new_mode}'
+        })
+
+    except Exception as e:
+        app_logger.error(f"Web [toggle_live_mode]: Error – {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/save_live_lots', methods=['POST'])
+def save_live_lots():
+    """Save the live-specific lot size (separate from paper lots)."""
+    import json
+    try:
+        body = request.get_json(force=True)
+        if not body or 'live_lots' not in body:
+            return jsonify({'success': False, 'error': 'Missing live_lots field'}), 400
+
+        new_live_lots = int(body['live_lots'])
+        if new_live_lots < 1:
+            return jsonify({'success': False, 'error': 'Live lot size must be at least 1'}), 400
+        if new_live_lots > 500:
+            return jsonify({'success': False, 'error': 'Live lot size capped at 500 for safety. Increase manually if needed.'}), 400
+
+        data = {}
+        if os.path.exists(LOT_SIZE_FILE):
+            with open(LOT_SIZE_FILE, 'r') as f:
+                data = json.load(f)
+        data['live_lots'] = new_live_lots
+        with open(LOT_SIZE_FILE, 'w') as f:
+            json.dump(data, f, indent=4)
+
+        app_logger.info(f"Web [save_live_lots]: Live lot size set to {new_live_lots} ({new_live_lots} per leg x 2 = {new_live_lots * 2} total contracts)")
+        return jsonify({'success': True, 'live_lots': new_live_lots})
+
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'error': 'Invalid value – must be a whole number'}), 400
+    except Exception as e:
+        app_logger.error(f"Web [save_live_lots]: Error – {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ─── Tomorrow's Trade Probability ─────────────────────────────────────────────
+
 
 @app.route('/api/trade_probability')
 def trade_probability():

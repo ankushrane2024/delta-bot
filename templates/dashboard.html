@@ -1147,12 +1147,381 @@
                     </div>
         </div>
 
-        <div id="paper-mode-note" style="display: none; padding: 14px 20px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; font-size: 0.95rem; color: #38bdf8; display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 1.4rem;">ℹ️</span>
-            <div><strong>PAPER MODE ACTIVE</strong> - Realistic slippage + Smart Position Sizing enabled (No USDT balance required).</div>
         </div>
 
+        <!-- ══════════════════════════════════════════════════════════════════
+             LIVE TRADING CONTROL PANEL
+             ══════════════════════════════════════════════════════════════════ -->
+        <style>
+            /* ── Live Mode Toggle Switch ────────────────────────────────────── */
+            .live-toggle-wrap {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+            }
+            .live-toggle-switch {
+                position: relative;
+                width: 72px;
+                height: 38px;
+                flex-shrink: 0;
+            }
+            .live-toggle-switch input { opacity: 0; width: 0; height: 0; }
+            .live-toggle-slider {
+                position: absolute;
+                inset: 0;
+                background: rgba(255,255,255,0.08);
+                border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 38px;
+                cursor: pointer;
+                transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            }
+            .live-toggle-slider::before {
+                content: '';
+                position: absolute;
+                height: 28px;
+                width: 28px;
+                left: 4px;
+                bottom: 4px;
+                background: #94a3b8;
+                border-radius: 50%;
+                transition: transform 0.3s cubic-bezier(0.68,-0.55,0.27,1.55), background 0.3s ease;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            }
+            .live-toggle-switch input:checked + .live-toggle-slider {
+                background: rgba(239, 68, 68, 0.2);
+                border-color: rgba(239, 68, 68, 0.5);
+                box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+            }
+            .live-toggle-switch input:checked + .live-toggle-slider::before {
+                transform: translateX(34px);
+                background: #ef4444;
+                box-shadow: 0 0 12px rgba(239, 68, 68, 0.6), 0 2px 8px rgba(0,0,0,0.4);
+            }
+            /* ── Blinking LIVE badge ─────────────────────────────────────────── */
+            @keyframes livePulse {
+                0%, 100% { opacity: 1; box-shadow: 0 0 16px rgba(239,68,68,0.6); }
+                50% { opacity: 0.7; box-shadow: 0 0 4px rgba(239,68,68,0.2); }
+            }
+            .live-mode-active-badge {
+                animation: livePulse 1.5s ease-in-out infinite;
+            }
+            /* ── Preflight checklist items ───────────────────────────────────── */
+            .preflight-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+                padding: 6px 10px;
+                border-radius: 8px;
+                background: rgba(255,255,255,0.03);
+            }
+            .preflight-ok { color: #10b981; }
+            .preflight-fail { color: #ef4444; }
+            /* ── Confirm modal ───────────────────────────────────────────────── */
+            #live-confirm-modal {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 99998;
+                background: rgba(0,0,0,0.8);
+                backdrop-filter: blur(8px);
+                justify-content: center;
+                align-items: center;
+            }
+            #live-confirm-modal.show { display: flex; }
+            .live-modal-box {
+                background: linear-gradient(135deg, #0f172a, #1e1030);
+                border: 2px solid rgba(239,68,68,0.4);
+                border-radius: 20px;
+                padding: 36px 40px;
+                max-width: 460px;
+                width: 90%;
+                box-shadow: 0 0 60px rgba(239,68,68,0.15), 0 20px 60px rgba(0,0,0,0.6);
+                animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            @keyframes modalSlideIn {
+                from { transform: scale(0.85) translateY(20px); opacity: 0; }
+                to { transform: scale(1) translateY(0); opacity: 1; }
+            }
+        </style>
+
+        <!-- Live Mode Confirm Modal -->
+        <div id="live-confirm-modal">
+            <div class="live-modal-box">
+                <div style="text-align:center; margin-bottom:28px;">
+                    <div style="font-size:3rem; margin-bottom:12px;">⚠️</div>
+                    <div style="font-size:1.5rem; font-weight:800; color:#ef4444; letter-spacing:-0.5px;">ACTIVATE LIVE TRADING</div>
+                    <div style="font-size:0.9rem; color:#94a3b8; margin-top:8px; line-height:1.6;">
+                        Real orders will be placed on <strong style="color:#f1f5f9;">Delta Exchange</strong>.<br>
+                        Real USDT capital is at risk. Start with <strong style="color:#ef4444;">1 lot</strong>.
+                    </div>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Type <strong style="color:#ef4444;">CONFIRM LIVE</strong> to proceed</div>
+                    <input id="live-confirm-input" type="text" placeholder="CONFIRM LIVE"
+                           style="width:100%; box-sizing:border-box; padding:14px 16px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); border-radius:10px; color:#f1f5f9; font-size:1rem; font-weight:700; letter-spacing:1px; outline:none; text-transform:uppercase;"
+                           oninput="checkLiveConfirm()" />
+                    <div id="live-confirm-error" style="font-size:0.8rem; color:#ef4444; margin-top:6px; min-height:16px;"></div>
+                </div>
+                <div style="display:flex; gap:12px;">
+                    <button onclick="cancelLiveActivation()"
+                            style="flex:1; padding:14px; border:1px solid rgba(255,255,255,0.1); border-radius:10px; background:rgba(255,255,255,0.05); color:#94a3b8; font-weight:700; cursor:pointer; font-size:0.95rem; transition:all 0.2s;">
+                        Cancel
+                    </button>
+                    <button id="live-confirm-btn" onclick="confirmLiveActivation()"
+                            disabled
+                            style="flex:1; padding:14px; border:none; border-radius:10px; background:linear-gradient(135deg,#dc2626,#b91c1c); color:#fff; font-weight:800; cursor:pointer; font-size:0.95rem; opacity:0.4; transition:all 0.2s; letter-spacing:0.5px;">
+                        🔴 GO LIVE
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Trading Control Panel -->
+        <div class="glass-panel" id="live-trading-panel" style="border: 1px solid rgba(239,68,68,0.15); margin-bottom:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+                <!-- Left: Toggle + Title -->
+                <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+                    <!-- Mode Badge -->
+                    <div id="live-mode-status-badge" style="font-size:0.7rem; font-weight:800; letter-spacing:2px; padding:6px 14px; border-radius:20px; background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.25); color:#38bdf8; text-transform:uppercase; white-space:nowrap;">
+                        📄 PAPER
+                    </div>
+                    <div>
+                        <div style="font-weight:800; font-size:1.05rem; color:#f8fafc;">Live Trading Mode</div>
+                        <div style="font-size:0.82rem; color:#94a3b8; margin-top:2px;">Toggle to execute real orders on Delta Exchange (Portfolio Margin)</div>
+                    </div>
+                    <!-- Toggle -->
+                    <label class="live-toggle-switch" title="Toggle Live Trading">
+                        <input type="checkbox" id="live-mode-toggle" onchange="handleLiveModeToggle(this)" />
+                        <span class="live-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <!-- Right: Lot Size Inputs -->
+                <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
+                    <!-- Paper Lots (read-only display) -->
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Paper Lots</div>
+                        <div id="paper-lots-display" style="font-size:1.3rem; font-weight:800; color:#38bdf8;">1000</div>
+                        <div style="font-size:0.72rem; color:#64748b;">Use lot panel above</div>
+                    </div>
+                    <!-- Live Lots (editable) -->
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <div style="font-size:0.72rem; color:#ef4444; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Live Lots</div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input id="live-lots-input" type="number" min="1" max="500" value="1" placeholder="1"
+                                   style="width:70px; padding:8px 10px; text-align:center; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:8px; color:#f1f5f9; font-size:1rem; font-weight:800; outline:none;" />
+                            <button onclick="saveLiveLots()"
+                                    style="padding:8px 14px; border:none; border-radius:8px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; font-weight:700; cursor:pointer; font-size:0.85rem; transition:all 0.2s;"
+                                    onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">
+                                Save
+                            </button>
+                        </div>
+                        <div id="live-lots-feedback" style="font-size:0.72rem; min-height:14px; color:#10b981;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pre-flight Checklist (expands on hover or always visible) -->
+            <div style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px;">
+                <div style="font-size:0.75rem; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-bottom:10px;">Pre-flight Checklist</div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                    <div class="preflight-item" id="pf-api-key">
+                        <span id="pf-api-key-icon">⚪</span> API Key
+                    </div>
+                    <div class="preflight-item" id="pf-api-secret">
+                        <span id="pf-api-secret-icon">⚪</span> API Secret
+                    </div>
+                    <div class="preflight-item" id="pf-portfolio-margin">
+                        <span>✅</span> <span class="preflight-ok">Portfolio Margin</span>
+                    </div>
+                    <div class="preflight-item" id="pf-no-positions">
+                        <span id="pf-positions-icon">⚪</span> No Open Positions
+                    </div>
+                    <div class="preflight-item" id="pf-overall">
+                        <span id="pf-overall-icon">⚪</span> <span id="pf-overall-text">Checking...</span>
+                    </div>
+                </div>
+                <div id="live-panel-error" style="display:none; margin-top:10px; padding:10px 14px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:0.85rem; color:#ef4444; font-weight:600;"></div>
+            </div>
+        </div>
+
+        <script>
+        // ── Live Mode Panel JS ──────────────────────────────────────────────────
+        let _liveModeActive = false;
+
+        async function loadLiveModeState() {
+            try {
+                const res = await fetch('/api/live_mode');
+                const d = await res.json();
+                _liveModeActive = d.live_mode || false;
+                updateLivePanelUI(d);
+            } catch(e) {
+                console.warn('live_mode fetch failed', e);
+            }
+        }
+
+        function updateLivePanelUI(d) {
+            const toggle = document.getElementById('live-mode-toggle');
+            const badge  = document.getElementById('live-mode-status-badge');
+            if (!toggle || !badge) return;
+
+            toggle.checked = d.live_mode || false;
+
+            if (d.live_mode) {
+                badge.textContent = '🔴 LIVE';
+                badge.className = 'live-mode-active-badge';
+                badge.style.cssText = 'font-size:0.7rem; font-weight:800; letter-spacing:2px; padding:6px 14px; border-radius:20px; background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#ef4444; text-transform:uppercase; white-space:nowrap;';
+                document.getElementById('live-trading-panel').style.borderColor = 'rgba(239,68,68,0.4)';
+                document.getElementById('live-trading-panel').style.boxShadow = '0 0 30px rgba(239,68,68,0.08)';
+            } else {
+                badge.textContent = '📄 PAPER';
+                badge.style.cssText = 'font-size:0.7rem; font-weight:800; letter-spacing:2px; padding:6px 14px; border-radius:20px; background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.25); color:#38bdf8; text-transform:uppercase; white-space:nowrap;';
+                document.getElementById('live-trading-panel').style.borderColor = 'rgba(239,68,68,0.15)';
+                document.getElementById('live-trading-panel').style.boxShadow = '';
+            }
+
+            // Paper lots display
+            const plDisp = document.getElementById('paper-lots-display');
+            if (plDisp && d.paper_lots) plDisp.textContent = d.paper_lots;
+
+            // Live lots input
+            const llInput = document.getElementById('live-lots-input');
+            if (llInput && d.live_lots !== undefined) llInput.value = d.live_lots;
+
+            // Preflight
+            if (d.preflight) {
+                setPreflight('pf-api-key-icon', d.preflight.api_key_valid);
+                setPreflight('pf-api-secret-icon', d.preflight.api_secret_valid);
+                setPreflight('pf-positions-icon', d.preflight.no_active_positions);
+                const allOk = d.safe_to_activate;
+                const overallIcon = document.getElementById('pf-overall-icon');
+                const overallText = document.getElementById('pf-overall-text');
+                if (overallIcon) overallIcon.textContent = allOk ? '✅' : '❌';
+                if (overallText) {
+                    overallText.textContent = allOk ? 'Ready for LIVE' : 'Not ready';
+                    overallText.style.color = allOk ? '#10b981' : '#ef4444';
+                }
+            }
+        }
+
+        function setPreflight(iconId, ok) {
+            const el = document.getElementById(iconId);
+            if (el) el.textContent = ok ? '✅' : '❌';
+        }
+
+        function handleLiveModeToggle(checkbox) {
+            if (checkbox.checked) {
+                // Show confirm modal before activating
+                checkbox.checked = false; // revert until confirmed
+                document.getElementById('live-confirm-input').value = '';
+                document.getElementById('live-confirm-error').textContent = '';
+                document.getElementById('live-confirm-btn').disabled = true;
+                document.getElementById('live-confirm-btn').style.opacity = '0.4';
+                document.getElementById('live-confirm-modal').classList.add('show');
+            } else {
+                // Deactivate immediately
+                deactivateLiveMode();
+            }
+        }
+
+        function checkLiveConfirm() {
+            const val = document.getElementById('live-confirm-input').value.trim().toUpperCase();
+            const btn = document.getElementById('live-confirm-btn');
+            const match = val === 'CONFIRM LIVE';
+            btn.disabled = !match;
+            btn.style.opacity = match ? '1' : '0.4';
+            btn.style.cursor  = match ? 'pointer' : 'not-allowed';
+        }
+
+        function cancelLiveActivation() {
+            document.getElementById('live-confirm-modal').classList.remove('show');
+            document.getElementById('live-mode-toggle').checked = false;
+        }
+
+        async function confirmLiveActivation() {
+            document.getElementById('live-confirm-modal').classList.remove('show');
+            const errDiv = document.getElementById('live-panel-error');
+            try {
+                const res  = await fetch('/api/toggle_live_mode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ activate: true })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    errDiv.style.display = 'none';
+                    _liveModeActive = true;
+                    await loadLiveModeState();
+                } else {
+                    errDiv.textContent = '❌ ' + data.error;
+                    errDiv.style.display = 'block';
+                    document.getElementById('live-mode-toggle').checked = false;
+                }
+            } catch(e) {
+                errDiv.textContent = '❌ Network error: ' + e.message;
+                errDiv.style.display = 'block';
+                document.getElementById('live-mode-toggle').checked = false;
+            }
+        }
+
+        async function deactivateLiveMode() {
+            const errDiv = document.getElementById('live-panel-error');
+            try {
+                const res  = await fetch('/api/toggle_live_mode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ activate: false })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    errDiv.style.display = 'none';
+                    _liveModeActive = false;
+                    await loadLiveModeState();
+                } else {
+                    errDiv.textContent = '❌ ' + data.error;
+                    errDiv.style.display = 'block';
+                }
+            } catch(e) {
+                errDiv.textContent = '❌ Network error: ' + e.message;
+                errDiv.style.display = 'block';
+            }
+        }
+
+        async function saveLiveLots() {
+            const input    = document.getElementById('live-lots-input');
+            const feedback = document.getElementById('live-lots-feedback');
+            const lots     = parseInt(input.value);
+            if (!lots || lots < 1) { feedback.textContent = '❌ Must be ≥ 1'; feedback.style.color='#ef4444'; return; }
+            try {
+                const res  = await fetch('/api/save_live_lots', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ live_lots: lots })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    feedback.textContent = `✅ Saved! ${lots} lot(s)`;
+                    feedback.style.color = '#10b981';
+                    setTimeout(() => { feedback.textContent = ''; }, 3000);
+                } else {
+                    feedback.textContent = '❌ ' + data.error;
+                    feedback.style.color = '#ef4444';
+                }
+            } catch(e) {
+                feedback.textContent = '❌ Network error';
+                feedback.style.color = '#ef4444';
+            }
+        }
+
+        // Load live mode state on page load
+        document.addEventListener('DOMContentLoaded', loadLiveModeState);
+        // Refresh preflight every 10 seconds
+        setInterval(loadLiveModeState, 10000);
+        </script>
+
         <!-- Section: Market Regime Detector -->
+
         <div class="glass-panel" id="regime-panel" style="margin-bottom: 24px; margin-top: 15px;">
             <h2>= Market Regime Detector</h2>
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 20px; gap: 15px; position: relative;">

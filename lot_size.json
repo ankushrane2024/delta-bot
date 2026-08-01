@@ -1,3 +1,5 @@
 {
-    "total_lots": 1000
+    "total_lots": 1000,
+    "live_lots": 1,
+    "live_mode": false
 }
