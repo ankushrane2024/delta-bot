@@ -23,6 +23,13 @@ def ping():
     # Lightweight endpoint for Keep-Alive pinger and UptimeRobot
     return "OK", 200
 
+@app.after_request
+def add_header(response):
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
 @app.route('/api/premium_conditions')
 def get_premium_conditions():
     if not bot_engine:
@@ -47,6 +54,29 @@ def get_premium_conditions():
         "decision": "DATA UNAVAILABLE",
         "reasons": ["API Error: Could not reach PSCE Engine."]
     })
+
+def _read_local_hpe_state():
+    import json
+    import os
+    res = {}
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(base_dir, 'local_hpe_state.json')
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                res = json.load(f)
+                
+        # Read history
+        res['history'] = []
+        hist_path = os.path.join(base_dir, 'hpe_history.json')
+        if os.path.exists(hist_path):
+            with open(hist_path, 'r') as f:
+                res['history'] = json.load(f)
+                
+        return res
+    except Exception as e:
+        app_logger.error(f"Error reading local HPE state: {e}")
+    return res
 
 @app.route('/api/status')
 def get_status():
@@ -316,6 +346,7 @@ def get_status():
         # New advanced metrics
         'dvol_status': dvol_status,
         'hedge_status': hedge_status,
+        'local_hpe_status': _read_local_hpe_state(),
         'size_multiplier': round(getattr(bot_engine, 'size_multiplier', 1.0), 2),
         'consecutive_loss_count': getattr(bot_engine, 'consecutive_loss_count', 0),
         'next_day_paused': getattr(bot_engine, 'next_day_paused', False),
@@ -424,6 +455,28 @@ def toggle_regime():
     app_logger.info(f"Web: Market Regime Filter {state}")
     
     return jsonify({'status': 'success', 'enabled': bot_engine.market_regime_filter_enabled})
+
+@app.route('/api/force_shadow_hedge', methods=['POST'])
+def force_shadow_hedge():
+    try:
+        import os
+        with open('force_hedge.flag', 'w') as f:
+            f.write("1")
+        app_logger.info("Web: Manual Shadow Hedge triggered.")
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/close_shadow_hedge', methods=['POST'])
+def close_shadow_hedge():
+    try:
+        import os
+        with open('close_hedge.flag', 'w') as f:
+            f.write("1")
+        app_logger.info("Web: Manual Shadow Hedge Close triggered.")
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/toggle_hedge', methods=['POST'])
 def toggle_hedge():

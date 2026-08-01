@@ -7,7 +7,7 @@ from config import (
 )
 from logger import app_logger
 from notifier import notifier
-
+from filters import TradingFilters
 
 class SmartHedgingManager:
     """
@@ -58,6 +58,7 @@ class SmartHedgingManager:
         self.dvol = dvol_provider
         self.risk_manager = risk_manager
         self.api_client = api_client
+        self.filters = TradingFilters(self.api_client, self.dvol)
 
         # ─── Core State (accessed externally) ─────────────────────
         self.hedge_active = False
@@ -524,24 +525,233 @@ class SmartHedgingManager:
         return None
 
     # ═══════════════════════════════════════════════════════════════
-    # POST-ENTRY HEDGE CHECK (background thread)
+    # POST-ENTRY HEDGE CHECK
     # ═══════════════════════════════════════════════════════════════
 
     def run_post_entry_hedge(self, positions):
-        """Hedge is permanently disabled. Do nothing."""
-        return
+        """Cache entry premiums at the start of a new trade."""
+        if positions:
+            self.set_entry_premiums(positions)
 
     # ═══════════════════════════════════════════════════════════════
     # CORE: MANAGE HEDGE (called every 5-15 seconds by bot_engine)
     # ═══════════════════════════════════════════════════════════════
 
-    def manage_hedge(self, positions, unrealized_loss_pct, profit_usd=0.0, adx_value=0.0, atr_usd=100.0):
-        """Hedge is permanently disabled. Do nothing."""
-        return
+    def manage_hedge(self, positions, unrealized_loss_pct, profit_usd=0.0,
+                     adx_value=0.0, atr_usd=100.0, supertrend_dir='NEUTRAL'):
+        """
+        Full hedge pipeline — called every 5s (volatile) or 15s (normal).
+
+        If no hedge is active:
+            → _check_and_trigger_hedge() evaluates entry conditions.
+        If hedge is active:
+            → _manage_active_hedge() manages exit + DCA + breakeven SL.
+        """
+        if not positions:
+            return
+
+        # Update check timestamp
+        self.last_check_time = time.time()
+
+        # Detect which option leg is bleeding and direction to hedge
+        bleeding_leg, bleed_pct, bleed_usd, direction = self._detect_bleeding_leg(positions)
+
+        if not self.hedge_active:
+            # ── No hedge open: evaluate whether to open one ──
+            self._check_and_trigger_hedge(
+                positions, bleeding_leg, bleed_pct,
+                bleed_usd, direction, unrealized_loss_pct,
+                profit_usd, adx_value, atr_usd
+            )
+        else:
+            # ── Hedge is open: manage it ──────────────────────
+            # Rule 0: Sync hedge_active flag with execution layer
+            if abs(self.execution.hedge_size_btc) < 0.0001:
+                app_logger.warning("Hedge: hedge_active=True but execution layer has 0 size. Force-reset.")
+                self.close_hedge()
+                return
+
+            # ── ADX Sideways Exit (merged from local_hpe_engine) ────
+            # If the market goes flat (ADX < 20), the trend that justified the
+            # hedge has stalled. Close immediately to stop the hedge from
+            # accumulating losses against a directionless market.
+            if adx_value > 0 and adx_value < 20:
+                app_logger.info(
+                    f"Hedge: ADX SIDEWAYS EXIT. ADX={adx_value:.1f} < 20. "
+                    f"Market has gone choppy. Closing hedge."
+                )
+                self._close_hedge_with_reason(
+                    f"ADX sideways exit (ADX={adx_value:.1f} < 20)",
+                    options_pnl_usd=profit_usd - self.get_live_hedge_pnl()
+                )
+                return
+
+            # ── Supertrend Reversal Exit (merged from local_hpe_engine) ──
+            # If trend flips against the hedge direction, close immediately.
+            st_flipped = (
+                (self._hedge_direction == 'buy'  and supertrend_dir == 'SELL') or
+                (self._hedge_direction == 'sell' and supertrend_dir == 'BUY')
+            )
+            if st_flipped and supertrend_dir != 'NEUTRAL':
+                app_logger.info(
+                    f"Hedge: SUPERTREND REVERSAL EXIT. Was {self._hedge_direction}, "
+                    f"Supertrend now {supertrend_dir}. Trend reversed. Closing hedge."
+                )
+                self._close_hedge_with_reason(
+                    f"Supertrend reversal ({self._hedge_direction} → {supertrend_dir})",
+                    options_pnl_usd=profit_usd - self.get_live_hedge_pnl()
+                )
+                return
+
+            # ── DCA Tier Scaling (merged from local_hpe_engine) ────────
+            # Automatically scale up hedge coverage as losses deepen.
+            # Tier 2: 75% total coverage when total loss >= 12%
+            # Tier 3: 100% total coverage when total loss >= 20%
+            if self._dca_tier == 1 and unrealized_loss_pct >= 0.12:
+                self._dca_scale_up(2, 0.75, positions, unrealized_loss_pct, profit_usd, atr_usd)
+            elif self._dca_tier == 2 and unrealized_loss_pct >= 0.20:
+                self._dca_scale_up(3, 1.00, positions, unrealized_loss_pct, profit_usd, atr_usd)
+
+            # ── Breakeven SL (merged from local_hpe_engine) ────────────
+            # Once hedge hits +5% profit, lock SL at 0% — never give it back.
+            hedge_pnl = self.get_live_hedge_pnl()
+            collected_premium = self._get_collected_premium_usd(positions)
+            hedge_pnl_pct = (hedge_pnl / abs(self.hedge_avg_entry_price * self.execution.hedge_size_btc) * 100
+                             if self.hedge_avg_entry_price > 0 and abs(self.execution.hedge_size_btc) > 0 else 0.0)
+
+            if hedge_pnl_pct > self._hedge_peak_pnl_pct:
+                self._hedge_peak_pnl_pct = hedge_pnl_pct
+
+            if not self._breakeven_sl_active and self._hedge_peak_pnl_pct >= 5.0:
+                self._breakeven_sl_active = True
+                app_logger.info(
+                    f"Hedge: 🔒 BREAKEVEN SL LOCKED! Hedge hit +{self._hedge_peak_pnl_pct:.1f}% profit. "
+                    f"SL now locked at 0%. Hedge will never close at a loss."
+                )
+
+            if self._breakeven_sl_active and hedge_pnl_pct <= 0.0:
+                app_logger.info(
+                    f"Hedge: BREAKEVEN SL HIT. Hedge P&L fell to {hedge_pnl_pct:.1f}% "
+                    f"(peak was +{self._hedge_peak_pnl_pct:.1f}%). Closing with protected profit."
+                )
+                self._close_hedge_with_reason(
+                    f"Breakeven SL hit (protected profit, peak was +{self._hedge_peak_pnl_pct:.1f}%)",
+                    options_pnl_usd=profit_usd - hedge_pnl
+                )
+                return
+
+            # ── Hard SL -10% (merged from local_hpe_engine) ────────────
+            # If breakeven was never triggered and hedge is losing badly, cut it.
+            if not self._breakeven_sl_active and hedge_pnl_pct <= -10.0:
+                app_logger.warning(
+                    f"Hedge: HARD SL HIT. Hedge P&L={hedge_pnl_pct:.1f}% <= -10% "
+                    f"and breakeven was never locked. Closing to limit damage."
+                )
+                self._close_hedge_with_reason(
+                    f"Hard SL hit ({hedge_pnl_pct:.1f}%)",
+                    options_pnl_usd=profit_usd - hedge_pnl
+                )
+                return
+
+            # ── Standard exit rules (total P&L recovery) ───────────────
+            self._manage_active_hedge(
+                positions, bleeding_leg, bleed_pct,
+                bleed_usd, direction, unrealized_loss_pct,
+                profit_usd, atr_usd
+            )
+
+    def _dca_scale_up(self, new_tier, target_coverage_ratio,
+                      positions, unrealized_loss_pct, profit_usd, atr_usd):
+        """
+        DCA scale-up: add more hedge to reach the target coverage tier.
+        new_tier: 2 or 3
+        target_coverage_ratio: 0.75 (tier 2) or 1.00 (tier 3)
+        """
+        bleed_usd = abs(profit_usd) if profit_usd < 0 else 1.0
+        full_size = self._calculate_hedge_size(bleed_usd, positions, atr_usd)
+        target_size = full_size * target_coverage_ratio
+        current_size = abs(self.execution.hedge_size_btc)
+        add_btc = target_size - current_size
+
+        if add_btc < self.HEDGE_MIN_SIZE_BTC:
+            # Already at or above target tier — just advance tier marker
+            self._dca_tier = new_tier
+            app_logger.info(
+                f"Hedge: DCA Tier {new_tier} check — already at sufficient size "
+                f"({current_size:.4f} BTC >= target {target_size:.4f} BTC). Tier advanced."
+            )
+            return
+
+        result = self._place_hedge(add_btc, self._hedge_direction, f"DCA-TIER-{new_tier}")
+        if result and result.get('success'):
+            self._dca_tier = new_tier
+            self.hedge_size_btc = self.execution.hedge_size_btc
+            self._last_escalation_time = time.time()
+            self._last_sizing_loss_usd = bleed_usd
+            self._log_hedge_event(
+                event_type     = "ESCALATE",
+                trigger_reason = f"DCA Tier {new_tier} ({target_coverage_ratio*100:.0f}% coverage) "
+                                 f"— loss reached {unrealized_loss_pct*100:.1f}%",
+                direction      = self._hedge_direction or "buy",
+                size_btc       = add_btc,
+                total_btc      = abs(self.execution.hedge_size_btc),
+                btc_price      = self._get_btc_mark_price(),
+                options_pnl_usd= profit_usd,
+                hedge_pnl_usd  = self.get_live_hedge_pnl(),
+            )
+            app_logger.info(
+                f"Hedge: ✅ DCA TIER {new_tier} ACTIVATED! Added {add_btc:.4f} BTC → "
+                f"Total: {abs(self.execution.hedge_size_btc):.4f} BTC "
+                f"({target_coverage_ratio*100:.0f}% coverage)"
+            )
+            notifier.notify_hedge_escalated(
+                timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
+                from_pct=self._dca_tier - 1,
+                to_pct=new_tier,
+                loss_pct=unrealized_loss_pct * 100
+            )
+        else:
+            app_logger.error(f"Hedge: DCA Tier {new_tier} scale-up FAILED.")
 
     # ═══════════════════════════════════════════════════════════════
     # TRIGGER LOGIC — Should we open a new hedge?
     # ═══════════════════════════════════════════════════════════════
+
+    def _is_rejection_candle(self, st_data, direction):
+        """
+        Analyzes the candle mathematically to detect if it is a fakeout/rejection.
+        direction='UP' (checking for upside breakout fakeout, i.e., Shooting Star)
+        direction='DOWN' (checking for downside breakout fakeout, i.e., Hammer/Pin bar)
+        Returns True if it's a rejection, False otherwise.
+        """
+        c_open = st_data['open']
+        c_high = st_data['high']
+        c_low = st_data['low']
+        c_close = st_data['close']
+        
+        total_size = c_high - c_low
+        body = abs(c_open - c_close)
+        upper_wick = c_high - max(c_open, c_close)
+        lower_wick = min(c_open, c_close) - c_low
+        
+        # Avoid division by zero on perfect Dojis
+        if total_size == 0: return False
+        
+        if direction == 'UP':
+            # Looking for a Shooting Star / Gravestone Doji (Fakeout at Resistance)
+            # 1. Upper wick is larger than the body
+            # 2. Upper wick makes up at least 40% of the total candle size
+            if upper_wick > body and (upper_wick / total_size) > 0.4:
+                return True
+                
+        elif direction == 'DOWN':
+            # Looking for a Hammer / Dragonfly Doji (Fakeout at Support)
+            # 1. Lower wick is larger than the body
+            # 2. Lower wick makes up at least 40% of the total candle size
+            if lower_wick > body and (lower_wick / total_size) > 0.4:
+                return True
+                
+        return False
 
     def _check_and_trigger_hedge(self, positions, bleeding_leg, bleed_pct,
                                   bleed_usd, direction, unrealized_loss_pct,
@@ -569,7 +779,66 @@ class SmartHedgingManager:
             self._bleed_confirm_count = 0
             return
 
-
+        # ── PIVOT & SUPERTREND BREAKOUT STRATEGY (ADDITIONAL TRIGGER) ──
+        if bleeding_leg and unrealized_loss_pct > 0.0:
+            pivots = self.filters.get_pivot_points()
+            st = self.filters.get_supertrend()
+            
+            if pivots and st:
+                is_upside_breakout = False
+                is_downside_breakout = False
+                broken_level_name = ""
+                broken_level_val = 0.0
+                
+                # Check if the last closed 5m candle crossed any pivot level
+                for name, val in pivots.items():
+                    # Upside Breakout: Candle opened below the level, closed above it, and Supertrend is BUY
+                    if st['open'] < val and st['close'] > val and st['trend'] == 'BUY':
+                        if self._is_rejection_candle(st, 'UP'):
+                            app_logger.warning(
+                                f"Hedge: 🛑 FAKEOUT DETECTED at {name} (${val:.2f})! "
+                                f"Massive upper wick (Shooting Star). Hedge blocked."
+                            )
+                            continue
+                            
+                        is_upside_breakout = True
+                        broken_level_name = name
+                        broken_level_val = val
+                        break
+                    
+                    # Downside Breakout: Candle opened above the level, closed below it, and Supertrend is SELL
+                    elif st['open'] > val and st['close'] < val and st['trend'] == 'SELL':
+                        if self._is_rejection_candle(st, 'DOWN'):
+                            app_logger.warning(
+                                f"Hedge: 🛑 FAKEOUT DETECTED at {name} (${val:.2f})! "
+                                f"Massive lower wick (Hammer/Pin Bar). Hedge blocked."
+                            )
+                            continue
+                            
+                        is_downside_breakout = True
+                        broken_level_name = name
+                        broken_level_val = val
+                        break
+                
+                if is_upside_breakout or is_downside_breakout:
+                    app_logger.warning(
+                        f"Hedge: 🚀 PIVOT BREAKOUT DETECTED! "
+                        f"Candle closed through {broken_level_name} (${broken_level_val:.2f}) "
+                        f"| Supertrend={st['trend']} "
+                        f"| Skipping bleed thresholds. Hedging now."
+                    )
+                    notifier.notify_warning(
+                        f"🚀 PIVOT BREAKOUT HEDGE 🚀\n"
+                        f"Candle broke {broken_level_name} (${broken_level_val:.2f}) with {st['trend']} trend.\n"
+                        f"Loss is {unrealized_loss_pct*100:.1f}%."
+                    )
+                    self._bleed_confirm_count = 0
+                    self._bleed_confirm_leg = None
+                    self._open_new_hedge(
+                        positions, bleeding_leg, unrealized_loss_pct,
+                        total_loss_usd, direction, profit_usd, atr_usd
+                    )
+                    return
 
         # ── HYBRID TREND CONFIRMATION FILTER ──
         # To avoid whipsaws, we require EITHER a closed 5m candle > 1.5 ATR (Small Alert)
@@ -743,6 +1012,11 @@ class SmartHedgingManager:
             self._hedge_peak_pnl = 0.0
             self._hedge_direction = direction
             self._hedge_size_factor = 1.0
+            # DCA tier starts at 1; will scale to 2 at 12% loss, 3 at 20%
+            self._dca_tier = 1
+            # Breakeven SL starts inactive; activates once hedge hits +5% profit
+            self._breakeven_sl_active = False
+            self._hedge_peak_pnl_pct = 0.0
 
             # Snapshot: options P&L when hedge was placed
             # When hedge just opened, profit_usd = options-only (no hedge P&L yet)
@@ -1102,6 +1376,10 @@ class SmartHedgingManager:
         self._hedge_entry_time = 0.0
         self._last_sizing_loss_usd = 0.0
         self._last_escalation_time = 0.0
+        # Reset merged-engine state vars
+        self._dca_tier = 0
+        self._breakeven_sl_active = False
+        self._hedge_peak_pnl_pct = 0.0
         app_logger.info("Hedge: State fully reset.")
 
     # ═══════════════════════════════════════════════════════════════

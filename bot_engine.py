@@ -1366,10 +1366,17 @@ class DeltaTradingEngine:
                         )
                         adx_value = self.current_adx_value if hasattr(self, 'current_adx_value') else 0.0
                         atr_usd = self.filters.get_btc_atr() if hasattr(self, 'filters') and self.filters else 100.0
+                        # Fetch Supertrend direction for reversal exit rule (cached, no API call if data is fresh)
+                        try:
+                            _st_data = self.filters.get_supertrend() if hasattr(self, 'filters') and self.filters else None
+                            supertrend_dir = _st_data['trend'] if _st_data else 'NEUTRAL'
+                        except Exception:
+                            supertrend_dir = 'NEUTRAL'
                         if self.smart_hedging_enabled:
                             try:
                                 self.smart_hedging.manage_hedge(
-                                    self.execution.active_positions, unrealized_loss_pct, profit, adx_value, atr_usd
+                                    self.execution.active_positions, unrealized_loss_pct, profit,
+                                    adx_value, atr_usd, supertrend_dir=supertrend_dir
                                 )
                                 self.hedging_triggered_today = self.smart_hedging.hedge_active
                             except Exception as hedge_err:

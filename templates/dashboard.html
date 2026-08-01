@@ -1639,11 +1639,140 @@
         <div style="display: flex; flex-direction: column; width: 100%; gap: 24px;">
 
 
+        <!-- =========================================================================
+             HEDGE PROTECTION ENGINE (HPE) SANDBOX PANEL
+             Premium, high-end design matching user requests
+             ========================================================================= -->
+        <div class="glass-panel" style="border: 1px solid rgba(139, 92, 246, 0.4); background: linear-gradient(135deg, rgba(20, 25, 40, 0.8) 0%, rgba(15, 20, 30, 0.95) 100%); position: relative; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.6), inset 0 0 40px rgba(139, 92, 246, 0.05);">
+            <!-- Background Glows -->
+            <div style="position: absolute; top: -50%; left: -20%; width: 60%; height: 200%; background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%); pointer-events: none;"></div>
+            <div style="position: absolute; bottom: -50%; right: -20%; width: 60%; height: 200%; background: radial-gradient(circle, rgba(6,182,212,0.1) 0%, transparent 70%); pointer-events: none;"></div>
+
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 16px; margin-bottom: 24px; position: relative; z-index: 1;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.4); display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);">
+                        🛡️
+                    </div>
+                    <div>
+                        <h2 style="margin: 0; color: #fff; font-size: 1.25rem; letter-spacing: 1px; background: linear-gradient(90deg, #a855f7, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">HEDGE PROTECTION ENGINE</h2>
+                        <div style="font-size: 0.75rem; color: #94a3b8; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;">Local Sandbox Mode Active</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button onclick="forceShadowHedge()" style="background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.8); color: #fecdd3; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; font-size: 0.75rem; transition: all 0.2s; text-shadow: 0 0 10px rgba(244, 63, 94, 0.5);">
+                        ⚠️ Force Manual Hedge
+                    </button>
+                    <div id="hpe-status-pulse" style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; animation: pulse-green 2s infinite;"></div>
+                    <span id="hpe-status-text" style="font-size: 0.85rem; font-weight: 700; color: #10b981; text-transform: uppercase; letter-spacing: 1px;">ONLINE</span>
+                </div>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; position: relative; z-index: 1;">
+                
+                <!-- Status Card -->
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Engine State</div>
+                    <div id="hpe-state-val" style="font-size: 1.8rem; font-weight: 800; color: #38bdf8; text-shadow: 0 0 15px rgba(56, 189, 248, 0.3);">DORMANT</div>
+                    <div id="hpe-standby-reason" style="font-size: 0.75rem; color: #fbbf24; margin-top: 4px; font-style: italic; min-height: 18px;">Initializing...</div>
+                    <div style="margin-top: 12px; font-size: 0.8rem; color: #64748b; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between;">
+                        <span>Trigger</span>
+                        <span id="hpe-trigger-val" style="color: #10b981; font-weight: 600;">Safe (>-10%)</span>
+                    </div>
+                </div>
+
+                <!-- Combined Loss Card -->
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Combined Loss</div>
+                    <div id="hpe-loss-val" style="font-size: 2.2rem; font-weight: 800; color: #f43f5e; text-shadow: 0 0 15px rgba(244, 63, 94, 0.3);">0.00%</div>
+                    <div style="margin-top: 8px; width: 100%; background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; overflow: hidden;">
+                        <div id="hpe-loss-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #f59e0b, #ef4444); transition: width 0.3s;"></div>
+                    </div>
+                </div>
+
+                <!-- Active Hedge Details -->
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Active Shadow Hedge</div>
+                    <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                        <div style="display: flex; align-items: baseline; gap: 8px;">
+                            <span id="hpe-side-val" style="font-size: 1.8rem; font-weight: 800; color: #64748b;">NONE</span>
+                            <span id="hpe-qty-val" style="font-size: 1rem; color: #94a3b8;">0 BTC</span>
+                        </div>
+                        <button id="hpe-close-btn" onclick="closeShadowHedge()" style="display: none; background: rgba(244, 63, 94, 0.2); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.4); padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">SQUARE OFF</button>
+                    </div>
+                    <div style="margin-top: 12px; font-size: 0.8rem; color: #64748b; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Entry Price</span>
+                            <span id="hpe-entry-price-val" style="color: #cbd5e1; font-weight: 600;">$0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Current BTC</span>
+                            <span id="hpe-current-price-val" style="color: #cbd5e1; font-weight: 600;">$0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px; margin-top: 2px;">
+                            <span>Hedge PnL</span>
+                            <div>
+                                <span id="hpe-pnl-usd-val" style="color: #94a3b8; font-weight: 600; margin-right: 8px;">$0.00</span>
+                                <span id="hpe-pnl-val" style="color: #94a3b8; font-weight: 600;">0.00%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Indicator Analysis -->
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Trend Indicators</div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
+                        <span style="font-size: 0.8rem; color: #cbd5e1;">Supertrend</span>
+                        <span id="hpe-st-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">OFF</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
+                        <span style="font-size: 0.8rem; color: #cbd5e1;">ADX (Strength)</span>
+                        <span id="hpe-adx-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">OFF</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
+                        <span style="font-size: 0.8rem; color: #cbd5e1;">Pivot Level</span>
+                        <span id="hpe-pivot-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">OFF</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; color: #cbd5e1;">Whipsaw Filter</span>
+                        <span id="hpe-whipsaw-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">OFF</span>
+                    </div>
+                </div>
+
+            </div>
             
+            <div style="margin-top: 20px; text-align: center; font-size: 0.7rem; color: rgba(255,255,255,0.3); letter-spacing: 1px;">
+                SYNTHETIC PAPER TRADE MODE (NO REAL ORDERS PLACED)
+            </div>
 
+            <!-- HPE History Section -->
+            <div style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                <h3 style="font-size: 1rem; margin-bottom: 15px; color: #cbd5e1; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.2rem;">📜</span> HPE Shadow History Log
+                </h3>
+                <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead style="background: rgba(255,255,255,0.03); font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">
+                            <tr>
+                                <th style="padding: 12px 16px; font-weight: 600;">Time</th>
+                                <th style="padding: 12px 16px; font-weight: 600;">Side & Qty</th>
+                                <th style="padding: 12px 16px; font-weight: 600;">Entry Price</th>
+                                <th style="padding: 12px 16px; font-weight: 600;">Exit Reason</th>
+                                <th style="padding: 12px 16px; font-weight: 600; text-align: right;">Hedge PnL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hpe-history-tbody" style="font-size: 0.85rem;">
+                            <!-- JS Injected -->
+                            <tr><td colspan="5" style="padding: 20px; text-align: center; color: #64748b;">No shadow hedges recorded yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-
-        
+        </div>
 
         <!-- Section 4: Controls Panel (Moved to top) -->
         <div class="glass-panel" style="border: 1px solid rgba(0, 210, 255, 0.2); background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(0, 210, 255, 0.05) 100%);">
@@ -2286,6 +2415,116 @@
                     const slTight = document.getElementById('sl-tightened-badge');
                     if (slTight) {
                         slTight.style.display = data.hedge_status.sl_tightened ? 'block' : 'none';
+                    }
+                }
+
+                // Update HPE Sandbox Panel
+                if (data.local_hpe_status && Object.keys(data.local_hpe_status).length > 0) {
+                    const hpe = data.local_hpe_status;
+                    const stateVal = document.getElementById('hpe-state-val');
+                    if (stateVal) {
+                        stateVal.textContent = hpe.state;
+                        stateVal.style.color = (hpe.state === 'HEDGING') ? '#10b981' : ((hpe.state === 'MONITORING') ? '#fbbf24' : '#38bdf8');
+                    }
+                    if(document.getElementById('hpe-standby-reason')) document.getElementById('hpe-standby-reason').textContent = hpe.standby_reason || '';
+                    if(document.getElementById('hpe-trigger-val')) document.getElementById('hpe-trigger-val').textContent = hpe.trigger_status;
+                    
+                    const lossVal = document.getElementById('hpe-loss-val');
+                    if(lossVal) {
+                        lossVal.textContent = `${hpe.combined_loss.toFixed(2)}%`;
+                        lossVal.style.color = (hpe.combined_loss <= -10.0) ? '#f43f5e' : '#10b981';
+                    }
+                    
+                    const lossBar = document.getElementById('hpe-loss-bar');
+                    if(lossBar) {
+                        // Clamp loss between 0 and 15 for visualization
+                        let pct = Math.min(Math.max((Math.abs(hpe.combined_loss) / 15.0) * 100, 0), 100);
+                        lossBar.style.width = `${pct}%`;
+                    }
+
+                    const sideStr = hpe.hedge_side || 'NONE';
+                    if(document.getElementById('hpe-side-val')) {
+                        const el = document.getElementById('hpe-side-val');
+                        el.textContent = sideStr;
+                        if(sideStr === 'BUY') el.style.color = '#10b981';
+                        else if(sideStr === 'SELL') el.style.color = '#f43f5e';
+                        else el.style.color = '#64748b';
+                    }
+                    
+                    const closeBtn = document.getElementById('hpe-close-btn');
+                    if(closeBtn) {
+                        closeBtn.style.display = (sideStr === 'BUY' || sideStr === 'SELL') ? 'block' : 'none';
+                    }
+                    
+                    if(document.getElementById('hpe-qty-val')) document.getElementById('hpe-qty-val').textContent = `${(hpe.hedge_btc_qty || 0).toFixed(4)} BTC`;
+                    
+                    if(document.getElementById('hpe-entry-price-val')) {
+                        const ep = hpe.hedge_entry_price || 0;
+                        document.getElementById('hpe-entry-price-val').textContent = ep > 0 ? `$${ep.toFixed(2)}` : '---';
+                    }
+                    if(document.getElementById('hpe-current-price-val')) {
+                        const cp = hpe.hedge_current_price || 0;
+                        document.getElementById('hpe-current-price-val').textContent = cp > 0 ? `$${cp.toFixed(2)}` : '---';
+                    }
+                    
+                    const hpePnl = document.getElementById('hpe-pnl-val');
+                    const hpePnlUsd = document.getElementById('hpe-pnl-usd-val');
+                    if(hpePnl) {
+                        hpePnl.textContent = `${(hpe.hedge_pnl || 0).toFixed(2)}%`;
+                        hpePnl.style.color = (hpe.hedge_pnl > 0) ? '#10b981' : ((hpe.hedge_pnl < 0) ? '#f43f5e' : '#94a3b8');
+                    }
+                    if(hpePnlUsd) {
+                        const usdVal = hpe.hedge_pnl_usd || 0;
+                        hpePnlUsd.textContent = `${usdVal > 0 ? '+' : ''}$${usdVal.toFixed(2)}`;
+                        hpePnlUsd.style.color = (usdVal > 0) ? '#10b981' : ((usdVal < 0) ? '#f43f5e' : '#94a3b8');
+                    }
+
+                    if(document.getElementById('hpe-st-val')) {
+                        const el = document.getElementById('hpe-st-val');
+                        el.textContent = hpe.supertrend;
+                        el.style.color = (hpe.supertrend === 'BUY') ? '#10b981' : ((hpe.supertrend === 'SELL') ? '#f43f5e' : '#64748b');
+                    }
+                    if(document.getElementById('hpe-adx-val')) {
+                        const el = document.getElementById('hpe-adx-val');
+                        el.textContent = hpe.adx.toFixed(1);
+                        el.style.color = (hpe.adx > 20) ? '#10b981' : '#f43f5e';
+                    }
+                    if(document.getElementById('hpe-pivot-val')) {
+                        const el = document.getElementById('hpe-pivot-val');
+                        el.textContent = hpe.pivot_status;
+                        el.style.color = (hpe.pivot_status.includes('BREAKOUT')) ? '#10b981' : '#64748b';
+                    }
+                    if(document.getElementById('hpe-whipsaw-val')) {
+                        const el = document.getElementById('hpe-whipsaw-val');
+                        let rej = hpe.rejection_signal || "SAFE";
+                        el.textContent = rej;
+                        if (rej === "SAFE") {
+                            el.style.color = '#10b981';
+                        } else {
+                            el.style.color = '#fbbf24';
+                            el.style.textShadow = '0 0 8px rgba(251,191,36,0.4)';
+                        }
+                    }
+
+                    // Render History
+                    if(data.local_hpe_status.history && document.getElementById('hpe-history-tbody')) {
+                        const tbody = document.getElementById('hpe-history-tbody');
+                        const hist = data.local_hpe_status.history;
+                        if(hist.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center; color: #64748b;">No shadow hedges recorded yet.</td></tr>';
+                        } else {
+                            tbody.innerHTML = hist.map(h => {
+                                const pnlColor = h.pnl_pct > 0 ? '#10b981' : (h.pnl_pct < 0 ? '#f43f5e' : '#94a3b8');
+                                const pnlStr = h.pnl_pct > 0 ? '+' : '';
+                                return `<tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                    <td style="padding: 12px 16px; color: #cbd5e1;">${h.close_time}</td>
+                                    <td style="padding: 12px 16px; color: #38bdf8;">${h.side} ${h.qty.toFixed(4)}</td>
+                                    <td style="padding: 12px 16px; font-family: monospace; color: #94a3b8;">${h.entry_price.toFixed(2)}</td>
+                                    <td style="padding: 12px 16px; color: #cbd5e1;">${h.exit_reason}</td>
+                                    <td style="padding: 12px 16px; text-align: right; color: ${pnlColor}; font-weight: 700;">${pnlStr}${h.pnl_pct.toFixed(2)}%<br><span style="font-size: 0.75rem; font-weight: normal; color: #64748b;">$${h.pnl_usd.toFixed(2)}</span></td>
+                                </tr>`;
+                            }).join('');
+                        }
                     }
                 }
 
@@ -3082,6 +3321,40 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
+            }
+        }
+
+        async function forceShadowHedge() {
+            if(!confirm("Are you sure you want to FORCE trigger the Shadow Hedge? This will bypass all indicators and instantly calculate & open a simulated hedge position.")) return;
+            
+            try {
+                const res = await fetch('/api/force_shadow_hedge', { method: 'POST' });
+                const data = await res.json();
+                if(data.status === 'success') {
+                    alert("Manual Shadow Hedge triggered successfully! The Engine State will update momentarily.");
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch(e) {
+                console.error(e);
+                alert("Failed to trigger Manual Hedge.");
+            }
+        }
+        
+        async function closeShadowHedge() {
+            if(!confirm("Are you sure you want to manually SQUARE OFF the active Shadow Hedge? This will instantly close the hedge and remove its protection.")) return;
+            
+            try {
+                const res = await fetch('/api/close_shadow_hedge', { method: 'POST' });
+                const data = await res.json();
+                if(data.status === 'success') {
+                    alert("Shadow Hedge Square Off triggered successfully!");
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch(e) {
+                console.error(e);
+                alert("Failed to close Manual Hedge.");
             }
         }
 

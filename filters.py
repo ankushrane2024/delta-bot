@@ -188,41 +188,38 @@ class TradingFilters:
         from datetime import datetime
         
         try:
-            # Fetch 200 candles (15m) = 50 hours of data to ensure stable smoothing
-            end_time = int(time.time())
-            start_time = end_time - (60 * 3600)
+            # Fetch 1000 candles (15m) from Binance to ensure stable smoothing and perfect TradingView match
+            import requests
+            res = requests.get('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=1000', timeout=10)
             
-            res = self.api_client.get_candles("BTCUSD", "15m", start=start_time, end=end_time)
-            
-            if not (res and res.get('success')):
-                app_logger.warning("Filter: Failed to fetch candles for Market Regime.")
+            if res.status_code != 200:
+                app_logger.warning("Filter: Failed to fetch candles for Market Regime from Binance.")
                 return "Unknown", 0.0, []
                 
-            candles = res.get('result', [])
+            candles = res.json()
             if not candles or len(candles) < 50:
                 app_logger.warning("Filter: Not enough candle data.")
                 return "Unknown", 0.0, []
                 
-            df = pd.DataFrame(candles)
+            # Binance klines format: [Open time, Open, High, Low, Close, Volume, Close time, Quote asset volume, Number of trades, Taker buy base asset volume, Taker buy quote asset volume, Ignore]
+            df = pd.DataFrame(candles, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'qav', 'num_trades', 'tbbav', 'tbqav', 'ignore'])
             df['high']  = df['high'].astype(float)
             df['low']   = df['low'].astype(float)
             df['close'] = df['close'].astype(float)
-            df['time']  = pd.to_datetime(df['time'], unit='s')
+            df['time']  = pd.to_datetime(df['time'], unit='ms')
             df = df.sort_values(by='time').reset_index(drop=True)
             
             # --- ADX + DI ---
-            tr = pd.concat([df['high'] - df['low'], 
-                            abs(df['high'] - df['close'].shift()), 
-                            abs(df['low'] - df['close'].shift())], axis=1).max(axis=1)
-            
-            plus_dm = np.where((df['high'].diff() > df['low'].diff().abs()) & (df['high'].diff() > 0), df['high'].diff(), 0)
-            minus_dm = np.where((df['low'].diff().abs() > df['high'].diff()) & (df['low'].diff() < 0), -df['low'].diff(), 0)
-            
-            tr14 = tr.rolling(14).sum()
-            df['+DI'] = 100 * (pd.Series(plus_dm).rolling(14).sum() / tr14)
-            df['-DI'] = 100 * (pd.Series(minus_dm).rolling(14).sum() / tr14)
-            dx = 100 * abs(df['+DI'] - df['-DI']) / (df['+DI'] + df['-DI'])
-            df['ADX'] = dx.rolling(14).mean()
+            import pandas_ta as ta
+            adx_df = df.ta.adx(high='high', low='low', close='close', length=14)
+            if adx_df is not None:
+                df['ADX'] = adx_df['ADX_14']
+                df['+DI'] = adx_df['DMP_14']
+                df['-DI'] = adx_df['DMN_14']
+            else:
+                df['ADX'] = 0.0
+                df['+DI'] = 0.0
+                df['-DI'] = 0.0
             
             # --- Bollinger Bands ---
             df['BB_mid'] = df['close'].rolling(20).mean()
@@ -301,6 +298,68 @@ class TradingFilters:
             app_logger.error(f"Filter: Error calculating Regime: {e}")
             return "Unknown", 0.0, []
 
+    def get_price_rejection_signal(self):
+        """Analyzes the latest closed 15m candle for extreme V-shape wick rejection piercing Bollinger Bands."""
+        import pandas as pd
+        import time
+        import requests
+        try:
+            res = requests.get('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=30', timeout=5)
+            if res.status_code != 200:
+                return "SAFE"
+                
+            candles = res.json()
+            if not candles or len(candles) < 25:
+                return "SAFE"
+                
+            df = pd.DataFrame(candles, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'qav', 'num_trades', 'tbbav', 'tbqav', 'ignore'])
+            for col in ['open', 'high', 'low', 'close']:
+                df[col] = df[col].astype(float)
+                
+            # Calculate 20-period Bollinger Bands
+            df['BB_mid'] = df['close'].rolling(20).mean()
+            df['BB_std'] = df['close'].rolling(20).std()
+            df['BB_lower'] = df['BB_mid'] - 2 * df['BB_std']
+            df['BB_upper'] = df['BB_mid'] + 2 * df['BB_std']
+            
+            df = df.dropna()
+            if df.empty: return "SAFE"
+            
+            # Look at the latest completely formed candle (or the currently forming one if we want instant reaction)
+            # Let's look at the current forming candle since we want early detection.
+            latest = df.iloc[-1]
+            
+            c_open = latest['open']
+            c_close = latest['close']
+            c_high = latest['high']
+            c_low = latest['low']
+            bb_lower = latest['BB_lower']
+            bb_upper = latest['BB_upper']
+            
+            candle_range = c_high - c_low
+            if candle_range == 0: return "SAFE"
+            
+            body_top = max(c_open, c_close)
+            body_bottom = min(c_open, c_close)
+            
+            lower_wick = body_bottom - c_low
+            upper_wick = c_high - body_top
+            
+            # BULLISH REJECTION: Dump that pierced lower BB but formed a massive lower wick (Hammer)
+            # Wick is > 60% of total candle, AND low is below lower BB
+            if c_low < bb_lower and (lower_wick / candle_range) > 0.55:
+                return "BULLISH_REJECTION"
+                
+            # BEARISH REJECTION: Pump that pierced upper BB but formed massive upper wick (Shooting Star)
+            if c_high > bb_upper and (upper_wick / candle_range) > 0.55:
+                return "BEARISH_REJECTION"
+                
+            return "SAFE"
+            
+        except Exception as e:
+            app_logger.error(f"Filter: Rejection Error: {e}")
+            return "SAFE"
+
     def get_btc_atr(self, period=14, resolution="15m"):
         """Calculates the Average True Range (ATR) of BTCUSDT over the specified resolution."""
         try:
@@ -340,3 +399,112 @@ class TradingFilters:
         except Exception as e:
             app_logger.error(f"Filter: Error calculating ATR: {e}")
         return 100.0 # Safe fallback
+
+    def get_pivot_points(self):
+        """Calculates Standard Daily Pivot Points (P, R1, R2, S1, S2)."""
+        import time
+        import requests
+        try:
+            end_time = int(time.time())
+            start_time = end_time - (3 * 86400)
+            res = requests.get(f'https://api.delta.exchange/v2/history/candles?symbol=BTCUSDT&resolution=1d&start={start_time}&end={end_time}', timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                if data.get('success'):
+                    candles = data.get('result', [])
+                    candles.sort(key=lambda x: x['time'])
+                    if len(candles) >= 2:
+                        prev_day = candles[-2]
+                        H = float(prev_day['high'])
+                        L = float(prev_day['low'])
+                        C = float(prev_day['close'])
+                        P = (H + L + C) / 3
+                        R1 = P + 0.382 * (H - L)
+                        R2 = P + 0.618 * (H - L)
+                        R3 = P + 1.000 * (H - L)
+                        S1 = P - 0.382 * (H - L)
+                        S2 = P - 0.618 * (H - L)
+                        S3 = P - 1.000 * (H - L)
+                        return {'P': P, 'R1': R1, 'R2': R2, 'R3': R3, 'S1': S1, 'S2': S2, 'S3': S3}
+        except Exception as e:
+            app_logger.error(f"Filter: Error calculating Pivot Points: {e}")
+        return None
+
+    def get_supertrend(self, period=10, multiplier=3):
+        """Calculates 5m Supertrend."""
+        import time
+        import requests
+        import pandas as pd
+        import numpy as np
+        try:
+            end_time = int(time.time())
+            start_time = end_time - (100 * 5 * 60)
+            res = requests.get(f'https://api.delta.exchange/v2/history/candles?symbol=BTCUSDT&resolution=5m&start={start_time}&end={end_time}', timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                if data.get('success'):
+                    candles = data.get('result', [])
+                    if len(candles) < period * 2:
+                        return None
+                    
+                    df = pd.DataFrame(candles)
+                    df['open'] = df['open'].astype(float)
+                    df['high'] = df['high'].astype(float)
+                    df['low'] = df['low'].astype(float)
+                    df['close'] = df['close'].astype(float)
+                    df = df.sort_values(by='time').reset_index(drop=True)
+                    
+                    df['tr0'] = abs(df['high'] - df['low'])
+                    df['tr1'] = abs(df['high'] - df['close'].shift())
+                    df['tr2'] = abs(df['low'] - df['close'].shift())
+                    df['tr'] = df[['tr0', 'tr1', 'tr2']].max(axis=1)
+                    df['atr'] = df['tr'].ewm(alpha=1/period, adjust=False).mean()
+                    
+                    hl2 = (df['high'] + df['low']) / 2
+                    df['basic_ub'] = hl2 + (multiplier * df['atr'])
+                    df['basic_lb'] = hl2 - (multiplier * df['atr'])
+                    
+                    df['final_ub'] = 0.0
+                    df['final_lb'] = 0.0
+                    for i in range(period, len(df)):
+                        if df['basic_ub'].iloc[i] < df['final_ub'].iloc[i-1] or df['close'].iloc[i-1] > df['final_ub'].iloc[i-1]:
+                            df.loc[df.index[i], 'final_ub'] = df['basic_ub'].iloc[i]
+                        else:
+                            df.loc[df.index[i], 'final_ub'] = df['final_ub'].iloc[i-1]
+                        
+                        if df['basic_lb'].iloc[i] > df['final_lb'].iloc[i-1] or df['close'].iloc[i-1] < df['final_lb'].iloc[i-1]:
+                            df.loc[df.index[i], 'final_lb'] = df['basic_lb'].iloc[i]
+                        else:
+                            df.loc[df.index[i], 'final_lb'] = df['final_lb'].iloc[i-1]
+
+                    df['supertrend'] = 0.0
+                    for i in range(period, len(df)):
+                        if df['supertrend'].iloc[i-1] == df['final_ub'].iloc[i-1] and df['close'].iloc[i] < df['final_ub'].iloc[i]:
+                            df.loc[df.index[i], 'supertrend'] = df['final_ub'].iloc[i]
+                        elif df['supertrend'].iloc[i-1] == df['final_ub'].iloc[i-1] and df['close'].iloc[i] > df['final_ub'].iloc[i]:
+                            df.loc[df.index[i], 'supertrend'] = df['final_lb'].iloc[i]
+                        elif df['supertrend'].iloc[i-1] == df['final_lb'].iloc[i-1] and df['close'].iloc[i] > df['final_lb'].iloc[i]:
+                            df.loc[df.index[i], 'supertrend'] = df['final_lb'].iloc[i]
+                        elif df['supertrend'].iloc[i-1] == df['final_lb'].iloc[i-1] and df['close'].iloc[i] < df['final_lb'].iloc[i]:
+                            df.loc[df.index[i], 'supertrend'] = df['final_ub'].iloc[i]
+                        else:
+                            df.loc[df.index[i], 'supertrend'] = df['final_ub'].iloc[i] if df['close'].iloc[i] < df['final_ub'].iloc[i] else df['final_lb'].iloc[i]
+
+                    df['trend'] = np.where(df['close'] > df['supertrend'], 'BUY', 'SELL')
+                    
+                    if len(df) >= 2:
+                        latest_closed = df.iloc[-2]
+                    else:
+                        latest_closed = df.iloc[-1]
+                    
+                    return {
+                        'trend': latest_closed['trend'], 
+                        'value': float(latest_closed['supertrend']), 
+                        'close': float(latest_closed['close']),
+                        'open': float(latest_closed['open']),
+                        'high': float(latest_closed['high']),
+                        'low': float(latest_closed['low'])
+                    }
+        except Exception as e:
+            app_logger.error(f"Filter: Error calculating Supertrend: {e}")
+        return None

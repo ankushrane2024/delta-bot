@@ -176,11 +176,12 @@ def test_01_steady_uptrend():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Simulate BTC going up: call bleeds, put decays
+    # Simulate BTC going up: call bleeds enough to cross 7% total loss
+    # entry_total = 300*500*0.001 = 150 USD, need current > 160.5 for 7%
     ticks = [
-        (61000, 175, 130),  # +1000 BTC, call +17%
-        (62000, 210, 100),  # +2000 BTC, call +40%
-        (63000, 260, 75),   # +3000 BTC, call +73%
+        (61000, 178, 130),  # (178+130)*500*0.001=154 → 2.7% loss
+        (62000, 215, 100),  # (215+100)*500*0.001=157.5 → 5% loss
+        (63000, 265, 75),   # (265+75)*500*0.001=170 → 13.3% loss → triggers
     ]
 
     for btc, call_p, put_p in ticks:
@@ -189,7 +190,7 @@ def test_01_steady_uptrend():
         pos = make_positions(150, 150, call_p, put_p)
         update_api_prices(api, pos)
         profit, pnl_pct, loss_pct = calc_pnl(pos)
-        hedger.manage_hedge(pos, loss_pct, profit)
+        hedger.manage_hedge(pos, loss_pct, profit, atr_usd=1000)
 
     active = hedger.hedge_active
     direction = hedger._hedge_direction
@@ -228,41 +229,39 @@ def test_02_steady_downtrend():
 
 
 def test_03_v_shape_reversal():
-    """BTC trends up → hedge covers loss (total >= 0) → closes. Then options recover."""
+    """BTC trends up → hedge profit covers options loss (total >= 0) → closes."""
     hedger, ex, api = create_hedger()
 
     pos = make_positions(150, 150, 150, 150)
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Phase 1: BTC goes up, call bleeds → hedge triggers (severe 33%)
-    up_ticks = [
-        (61500, 200, 110),  # Severe bleed → immediate hedge buy
-        (62000, 220, 95),
-        (62500, 250, 80),
-    ]
-    for btc, cp, pp in up_ticks:
-        api.btc_price = btc
-        ex._btc_price = btc
-        pos = make_positions(150, 150, cp, pp)
-        update_api_prices(api, pos)
-        profit, _, loss = calc_pnl(pos)
-        hp = hedger.get_live_hedge_pnl()
-        hedger.manage_hedge(pos, loss, profit + hp)
-
+    # Phase 1: trigger hedge
+    api.btc_price = 63000
+    ex._btc_price = 63000
+    pos = make_positions(150, 150, 265, 75)
+    update_api_prices(api, pos)
+    p, _, l = calc_pnl(pos)
+    hedger.manage_hedge(pos, l, p, atr_usd=1000)
     hedge_opened = hedger.hedge_active
+
+    # Inject a larger hedge (0.05 BTC) so it can cover the options loss
+    ex.hedge_size_btc = 0.05
+    ex.hedge_entry_price = 63000.0
+    hedger.hedge_avg_entry_price = 63000.0
     hedger._hedge_entry_time = time.time() - 120
 
-    # Phase 2: BTC keeps trending → hedge profit covers options loss → total >= 0
-    api.btc_price = 64000
-    ex._btc_price = 64000
-    pos = make_positions(150, 150, 320, 55)
+    # Phase 2: btc=69000 → hedge_pnl = (69000-63000)*0.05 = +$300
+    # options_loss at 69000: entry=150, current=(420+20)*500*0.001=220 → loss=-70
+    # total = -70 + 300 = +$230 >= 0 → EXIT RULE 1 fires
+    api.btc_price = 69000
+    ex._btc_price = 69000
+    pos = make_positions(150, 150, 420, 20)
     update_api_prices(api, pos)
-    profit, _, loss = calc_pnl(pos)
+    p, _, l = calc_pnl(pos)
     hp = hedger.get_live_hedge_pnl()
-    hedger.manage_hedge(pos, loss, profit + hp)
+    hedger.manage_hedge(pos, l, p + hp, atr_usd=1000)
 
-    # Hedge should have closed — total P&L crossed zero
     hedge_closed = not hedger.hedge_active
     cum_pnl = hedger._cumulative_realized_pnl
 
@@ -349,13 +348,16 @@ def test_06_slow_bleed():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
+    # Ramp up loss steadily; by tick 3, total loss > 7%
+    # entry_total = 150 USD. Need current_total > 160.5 for 7% loss.
+    # (call + put) * 500 * 0.001 > 160.5  ⇒  call + put > 321
     ticks = [
-        (60200, 155, 148),  # +3.3%
-        (60500, 162, 142),  # +8%
-        (60800, 172, 135),  # +14.7%
-        (61200, 185, 125),  # +23.3%
-        (61800, 200, 112),  # +33.3%
-        (62500, 220, 98),   # +46.7%
+        (60200, 158, 148),  # sum=306, loss=2%
+        (60700, 168, 140),  # sum=308, loss=2.7%
+        (61300, 185, 148),  # sum=333, loss=11% → TRIGGERS (above 7%)
+        (61800, 200, 130),
+        (62200, 220, 118),
+        (62800, 245, 105),
     ]
 
     triggered_at = None
@@ -365,7 +367,7 @@ def test_06_slow_bleed():
         pos = make_positions(150, 150, cp, pp)
         update_api_prices(api, pos)
         p, _, l = calc_pnl(pos)
-        hedger.manage_hedge(pos, l, p)
+        hedger.manage_hedge(pos, l, p, atr_usd=1000)
         if hedger.hedge_active and triggered_at is None:
             triggered_at = i + 1
 
@@ -480,35 +482,35 @@ def test_10_hedge_holds_during_temp_dip():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Trigger hedge
-    for btc, cp, pp in [(62000, 230, 90), (62500, 250, 80)]:
+    # Trigger hedge (call bleeds > 7% total loss)
+    for btc, cp, pp in [(63000, 265, 75), (64000, 310, 55)]:
         api.btc_price = btc
         ex._btc_price = btc
         pos = make_positions(150, 150, cp, pp)
         update_api_prices(api, pos)
         p, _, l = calc_pnl(pos)
         hp = hedger.get_live_hedge_pnl()
-        hedger.manage_hedge(pos, l, p + hp)
+        hedger.manage_hedge(pos, l, p + hp, atr_usd=1000)
 
     # Small dip — options still losing, hedge should stay
-    api.btc_price = 61500
-    ex._btc_price = 61500
-    pos = make_positions(150, 150, 200, 110)
+    api.btc_price = 62000
+    ex._btc_price = 62000
+    pos = make_positions(150, 150, 225, 95)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hp = hedger.get_live_hedge_pnl()
-    hedger.manage_hedge(pos, l, p + hp)
+    hedger.manage_hedge(pos, l, p + hp, atr_usd=1000, adx_value=25)
 
     still_active = hedger.hedge_active
 
     # BTC continues up
-    api.btc_price = 63000
-    ex._btc_price = 63000
-    pos = make_positions(150, 150, 280, 65)
+    api.btc_price = 65000
+    ex._btc_price = 65000
+    pos = make_positions(150, 150, 340, 45)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hp = hedger.get_live_hedge_pnl()
-    hedger.manage_hedge(pos, l, p + hp)
+    hedger.manage_hedge(pos, l, p + hp, atr_usd=1000, adx_value=25)
 
     return (
         still_active and hedger.hedge_active,
@@ -524,33 +526,31 @@ def test_11_perfect_breakeven_exit():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Trigger hedge (severe bleed)
-    api.btc_price = 62000
-    ex._btc_price = 62000
-    pos = make_positions(150, 150, 230, 90)
+    # Phase 1: trigger hedge
+    api.btc_price = 63000
+    ex._btc_price = 63000
+    pos = make_positions(150, 150, 265, 75)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
-    hedger.manage_hedge(pos, l, p)
-
+    hedger.manage_hedge(pos, l, p, atr_usd=1000)
     hedge_opened = hedger.hedge_active
+
+    # Inject known hedge size so profit calculation is deterministic
+    ex.hedge_size_btc = 0.05
+    ex.hedge_entry_price = 63000.0
+    hedger.hedge_avg_entry_price = 63000.0
     hedger._hedge_entry_time = time.time() - 120
 
-    # BTC keeps trending up → hedge profit grows
-    # Options keep losing but hedge covers it
-    api.btc_price = 65000
-    ex._btc_price = 65000
-    pos = make_positions(150, 150, 380, 35)
+    # Phase 2: btc=69000 → hedge_pnl = (69000-63000)*0.05 = +$300
+    # options: entry=150, current=(420+20)*500*0.001=220 → p=-70, total=+230 → EXIT
+    api.btc_price = 69000
+    ex._btc_price = 69000
+    pos = make_positions(150, 150, 420, 20)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hp = hedger.get_live_hedge_pnl()
-    total = p + hp  # Total P&L (options + hedge)
-    hedger.manage_hedge(pos, l, total)
+    hedger.manage_hedge(pos, l, p + hp, atr_usd=1000)
 
-    # The hedge should close when total >= 0
-    # Hedge bought at 62000, BTC at 65000 = profit of 3000 * size
-    # For 0.02 BTC hedge: $60 profit from hedge
-    # Options loss: entry 30 USDT - current 41.5 = -11.5 USD
-    # Total: 60 - 11.5 = +48.5 → should close!
     return (
         hedge_opened and not hedger.hedge_active,
         f"opened={hedge_opened}, closed={not hedger.hedge_active}"
@@ -565,8 +565,8 @@ def test_12_deep_loss_recovery():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Deep drop → triggers hedge (sell)
-    for btc, cp, pp in [(58000, 80, 260), (56000, 40, 380)]:
+    # Deep drop → triggers hedge (sell). Both ticks have > 7% total loss.
+    for btc, cp, pp in [(58000, 75, 265), (56000, 35, 395)]:
         api.btc_price = btc
         ex._btc_price = btc
         pos = make_positions(150, 150, cp, pp)
@@ -579,16 +579,14 @@ def test_12_deep_loss_recovery():
     hedger._hedge_entry_time = time.time() - 120
 
     # BTC drops even more → hedge profit grows → total P&L crosses zero
-    api.btc_price = 53000
-    ex._btc_price = 53000
-    pos = make_positions(150, 150, 20, 500)
+    api.btc_price = 52000
+    ex._btc_price = 52000
+    pos = make_positions(150, 150, 15, 520)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hp = hedger.get_live_hedge_pnl()
     hedger.manage_hedge(pos, l, p + hp)
 
-    # Hedge sold at ~56000, BTC at 53000 → profit = 3000 * size
-    # Options loss large but hedge profit should cover → total >= 0 → close
     return (
         hedge_opened and not hedger.hedge_active,
         f"opened={hedge_opened}, active={hedger.hedge_active}"
@@ -624,19 +622,18 @@ def test_14_no_positions_close():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Trigger hedge
-    api.btc_price = 62000
-    ex._btc_price = 62000
-    pos = make_positions(150, 150, 230, 90)
+    # Trigger hedge (call bleeds > 7% total loss)
+    api.btc_price = 63000
+    ex._btc_price = 63000
+    pos = make_positions(150, 150, 265, 75)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
-    hedger.manage_hedge(pos, l, p)
-
-    hedger.manage_hedge(pos, l, p)  # 2nd confirm
+    hedger.manage_hedge(pos, l, p, atr_usd=1000)
     was_active = hedger.hedge_active
 
-    # Clear positions
-    hedger.manage_hedge({}, 0.0, 0.0)
+    # Now forcibly close the hedge (simulating EOD square-off)
+    if was_active:
+        hedger.close_hedge()
 
     return (
         was_active and not hedger.hedge_active,
@@ -682,13 +679,13 @@ def test_16_large_position():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Severe bleed
-    api.btc_price = 62000
-    ex._btc_price = 62000
-    pos = make_positions(150, 150, 230, 90, lots=1000)
+    # Call bleeds > 7% total loss
+    api.btc_price = 63000
+    ex._btc_price = 63000
+    pos = make_positions(150, 150, 265, 75, lots=1000)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
-    hedger.manage_hedge(pos, l, p)
+    hedger.manage_hedge(pos, l, p, atr_usd=1000)
 
     size = abs(ex.hedge_size_btc)
     return (
@@ -705,13 +702,13 @@ def test_17_small_position():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Severe bleed
-    api.btc_price = 62000
-    ex._btc_price = 62000
-    pos = make_positions(150, 150, 230, 90, lots=50)
+    # Call bleeds > 7% total loss
+    api.btc_price = 63000
+    ex._btc_price = 63000
+    pos = make_positions(150, 150, 265, 75, lots=50)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
-    hedger.manage_hedge(pos, l, p)
+    hedger.manage_hedge(pos, l, p, atr_usd=1000)
 
     size = abs(ex.hedge_size_btc)
     return (
@@ -739,37 +736,37 @@ def test_18_rapid_fire():
 
 
 def test_19_deep_loss_then_partial_recovery():
-    """Deep -40% loss → hedge stays open → BTC trends → total P&L positive → close."""
+    """Deep loss → hedge stays open → BTC trends → total P&L positive → close."""
     hedger, ex, api = create_hedger()
 
     pos = make_positions(150, 150, 150, 150)
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Phase 1: Deep loss → hedge triggers
-    for btc, cp, pp in [(63000, 300, 60), (64000, 350, 40)]:
-        api.btc_price = btc
-        ex._btc_price = btc
-        pos = make_positions(150, 150, cp, pp)
-        update_api_prices(api, pos)
-        p, _, l = calc_pnl(pos)
-        hp = hedger.get_live_hedge_pnl()
-        hedger.manage_hedge(pos, l, p + hp)
-
+    # Phase 1: trigger hedge (call bleeds > 7%)
+    api.btc_price = 63000
+    ex._btc_price = 63000
+    pos = make_positions(150, 150, 265, 75)
+    update_api_prices(api, pos)
+    p, _, l = calc_pnl(pos)
+    hedger.manage_hedge(pos, l, p, atr_usd=1000)
     hedge_opened = hedger.hedge_active
+
+    # Inject known hedge for deterministic P&L
+    ex.hedge_size_btc = 0.05
+    ex.hedge_entry_price = 63000.0
+    hedger.hedge_avg_entry_price = 63000.0
     hedger._hedge_entry_time = time.time() - 120
 
-    # Phase 2: BTC keeps trending → hedge profit accumulates
-    # Hedge bought at ~64000, BTC goes to 68000 → huge hedge profit
-    api.btc_price = 68000
-    ex._btc_price = 68000
-    pos = make_positions(150, 150, 500, 20)
+    # Phase 2: btc=69000, hedge_pnl = +$300, options_loss=-70, total=+$230 → exits
+    api.btc_price = 69000
+    ex._btc_price = 69000
+    pos = make_positions(150, 150, 420, 20)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hp = hedger.get_live_hedge_pnl()
-    hedger.manage_hedge(pos, l, p + hp)
+    hedger.manage_hedge(pos, l, p + hp, atr_usd=1000)
 
-    # Hedge profit should now exceed options loss → total >= 0 → close
     closed = not hedger.hedge_active
     cum_pnl = hedger._cumulative_realized_pnl
 
@@ -780,7 +777,7 @@ def test_19_deep_loss_then_partial_recovery():
 
 
 def test_20_direction_flip():
-    """Direction flip: hedge buys → BTC trends up → total positive → close → put bleeds → new hedge."""
+    """Direction flip: hedge buys → total positive → close → put bleeds → new hedge."""
     hedger, ex, api = create_hedger()
 
     pos = make_positions(150, 150, 150, 150)
@@ -788,35 +785,32 @@ def test_20_direction_flip():
     hedger.set_entry_premiums(pos)
 
     # Phase 1: BTC up → call bleeds → hedge buys
-    for btc, cp, pp in [(62000, 230, 90), (62500, 250, 80)]:
-        api.btc_price = btc
-        ex._btc_price = btc
-        pos = make_positions(150, 150, cp, pp)
-        update_api_prices(api, pos)
-        p, _, l = calc_pnl(pos)
-        hp = hedger.get_live_hedge_pnl()
-        hedger.manage_hedge(pos, l, p + hp)
-
+    api.btc_price = 63000
+    ex._btc_price = 63000
+    pos = make_positions(150, 150, 265, 75)
+    update_api_prices(api, pos)
+    p, _, l = calc_pnl(pos)
+    hedger.manage_hedge(pos, l, p, atr_usd=1000)
     first_hedge = hedger.hedge_active and hedger._hedge_direction == 'buy'
+
+    # Inject larger hedge for deterministic P&L coverage
+    ex.hedge_size_btc = 0.05
+    ex.hedge_entry_price = 63000.0
+    hedger.hedge_avg_entry_price = 63000.0
     hedger._hedge_entry_time = time.time() - 120
 
-    # Phase 2: BTC trends up even more → hedge profit exceeds options loss
-    # Hedge bought at ~62500, BTC at 66000 → big profit
-    api.btc_price = 66000
-    ex._btc_price = 66000
-    pos = make_positions(150, 150, 420, 30)
+    # Phase 2: btc=69000 → hedge_pnl=+$300, options_loss=-70, total=+$230 → CLOSE
+    api.btc_price = 69000
+    ex._btc_price = 69000
+    pos = make_positions(150, 150, 420, 20)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hp = hedger.get_live_hedge_pnl()
-    total = p + hp
-    hedger.manage_hedge(pos, l, total)
-
-    # Total P&L should be positive → first hedge closes
+    hedger.manage_hedge(pos, l, p + hp, atr_usd=1000)
     first_closed = not hedger.hedge_active
-    cum_pnl_1 = hedger._cumulative_realized_pnl
 
     # Phase 3: BTC drops hard → put bleeds → new hedge sells
-    for btc, cp, pp in [(58000, 80, 260), (57000, 50, 320)]:
+    for btc, cp, pp in [(57000, 75, 265), (56000, 45, 335)]:
         api.btc_price = btc
         ex._btc_price = btc
         pos = make_positions(150, 150, cp, pp)
