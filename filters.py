@@ -401,34 +401,89 @@ class TradingFilters:
         return 100.0 # Safe fallback
 
     def get_pivot_points(self):
-        """Calculates Standard Daily Pivot Points (P, R1, R2, S1, S2)."""
+        """
+        Returns two types of structural levels:
+
+        1. SWING_HIGH / SWING_LOW (strongest signals — from 15m candles):
+           These represent the pre-trade consolidation range (the 'green box'
+           you see on the chart before the current move started).
+           - Fetches last 52 x 15m candles.
+           - Skips the last 4 candles (current forming move).
+           - SWING_HIGH = max(high) of candles [-52:-4] = 12h pre-move high
+           - SWING_LOW  = min(low)  of candles [-52:-4] = 12h pre-move low
+           A 15m candle CLOSE BELOW SWING_LOW = confirmed downtrend structural break.
+           A 15m candle CLOSE ABOVE SWING_HIGH = confirmed uptrend structural break.
+
+        2. P, R1, R2, R3, S1, S2, S3 (standard pivot math from previous daily candle):
+           Classic pivot levels traders watch on intraday charts.
+        """
         import time
         import requests
         try:
             end_time = int(time.time())
-            start_time = end_time - (3 * 86400)
-            res = requests.get(f'https://api.delta.exchange/v2/history/candles?symbol=BTCUSDT&resolution=1d&start={start_time}&end={end_time}', timeout=10)
-            if res.status_code == 200:
-                data = res.json()
-                if data.get('success'):
-                    candles = data.get('result', [])
-                    candles.sort(key=lambda x: x['time'])
-                    if len(candles) >= 2:
-                        prev_day = candles[-2]
+
+            # ── SWING LEVELS: 15m candles (recent pre-trade consolidation) ──
+            swing_start = end_time - (52 * 15 * 60)   # 52 candles back
+            res_15m = requests.get(
+                f'https://api.delta.exchange/v2/history/candles?symbol=BTCUSDT'
+                f'&resolution=15m&start={swing_start}&end={end_time}',
+                timeout=10
+            )
+            swing_high = None
+            swing_low  = None
+            if res_15m.status_code == 200:
+                data_15m = res_15m.json()
+                if data_15m.get('success'):
+                    candles_15m = sorted(data_15m.get('result', []), key=lambda x: x['time'])
+                    # Skip last 4 candles (current move); use the 48 before that
+                    consolidation = candles_15m[:-4] if len(candles_15m) > 4 else candles_15m
+                    if consolidation:
+                        swing_high = max(float(c['high']) for c in consolidation)
+                        swing_low  = min(float(c['low'])  for c in consolidation)
+                        app_logger.debug(
+                            f"Pivot: SWING_HIGH=${swing_high:.0f}, SWING_LOW=${swing_low:.0f} "
+                            f"(from {len(consolidation)} x 15m pre-move candles)"
+                        )
+
+            # ── DAILY PIVOT MATH: previous day's candle ──
+            daily_start = end_time - (3 * 86400)
+            res_1d = requests.get(
+                f'https://api.delta.exchange/v2/history/candles?symbol=BTCUSDT'
+                f'&resolution=1d&start={daily_start}&end={end_time}',
+                timeout=10
+            )
+            if res_1d.status_code == 200:
+                data_1d = res_1d.json()
+                if data_1d.get('success'):
+                    candles_1d = sorted(data_1d.get('result', []), key=lambda x: x['time'])
+                    if len(candles_1d) >= 2:
+                        prev_day = candles_1d[-2]
                         H = float(prev_day['high'])
                         L = float(prev_day['low'])
                         C = float(prev_day['close'])
-                        P = (H + L + C) / 3
+                        P  = (H + L + C) / 3
                         R1 = P + 0.382 * (H - L)
                         R2 = P + 0.618 * (H - L)
                         R3 = P + 1.000 * (H - L)
                         S1 = P - 0.382 * (H - L)
                         S2 = P - 0.618 * (H - L)
                         S3 = P - 1.000 * (H - L)
-                        return {'P': P, 'R1': R1, 'R2': R2, 'R3': R3, 'S1': S1, 'S2': S2, 'S3': S3}
+                        result = {
+                            # ── Structural swing levels (15m, strongest signals) ──
+                            'SWING_HIGH': swing_high,  # Pre-move high — close above = uptrend break
+                            'SWING_LOW':  swing_low,   # Pre-move low  — close below = downtrend break
+                            # ── Classic daily pivot math ──
+                            'P':  P,
+                            'R1': R1, 'R2': R2, 'R3': R3,
+                            'S1': S1, 'S2': S2, 'S3': S3,
+                        }
+                        return result
+
         except Exception as e:
             app_logger.error(f"Filter: Error calculating Pivot Points: {e}")
         return None
+
+
 
     def get_supertrend(self, period=10, multiplier=3):
         """Calculates 5m Supertrend."""

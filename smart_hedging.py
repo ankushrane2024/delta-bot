@@ -33,11 +33,12 @@ class SmartHedgingManager:
     """
 
     # ─── TRIGGER THRESHOLDS ───────────────────────────────────────
-    BLEED_TRIGGER_PCT = 0.07          # 7% Total Portfolio Loss triggers hedge
-    BLEED_SEVERE_PCT = 0.12           # 12%+ skip confirmation, hedge now
-    BLEED_FLASH_CRASH_PCT = 0.15      # 15%+ flash crash, instant hedge
-    BLEED_CONFIRM_CHECKS = 2          # 2 consecutive checks for moderate
-    EMERGENCY_LOSS_PCT = 0.15         # 15% total portfolio loss = emergency
+    BLEED_TRIGGER_PCT     = 0.11      # 11% Total Portfolio Loss triggers hedge
+    BLEED_SEVERE_PCT      = 0.20      # 20%+ skip confirmation, hedge immediately
+    BLEED_FLASH_CRASH_PCT = 0.30      # 30%+ flash crash, instant hedge
+    BLEED_CONFIRM_CHECKS  = 2         # 2 consecutive checks for moderate bleed
+    EMERGENCY_LOSS_PCT    = 0.20      # 20% total portfolio loss = emergency override
+    ADX_MIN_ENTRY         = 20        # ADX must be >= 20 to confirm trend on entry
 
     # ─── SIZING ───────────────────────────────────────────────────
     HEDGE_MIN_SIZE_BTC = 0.01         # Minimum hedge 0.01 BTC
@@ -46,8 +47,15 @@ class SmartHedgingManager:
 
     # ─── EXIT RULES (ZERO-LOSS) ───────────────────────────────────
     LOSS_RECOVERY_PCT = 0.50          # Options loss halved = significant recovery
-    LOSS_NEAR_ZERO_PCT = 0.02         # Hedge closes when Total Loss recovers back to 2%
+    LOSS_NEAR_ZERO_PCT = 0.04         # Hedge closes when Total Loss recovers back to -4%
     MIN_HEDGE_HOLD_SECONDS = 45       # Don't exit within 45s of opening
+    COOLDOWN_SECONDS = 1800           # 30 min cooldown after any exit (2 x 15m candles)
+
+    # ─── DCA SCALING TIERS ────────────────────────────────────────
+    DCA_TIER2_LOSS_PCT    = 0.15      # Scale to Tier 2 at -15% portfolio loss
+    DCA_TIER3_LOSS_PCT    = 0.20      # Scale to Tier 3 at -20% portfolio loss
+    DCA_TIER2_COVERAGE    = 0.66      # Tier 2 = 66% coverage
+    DCA_TIER3_COVERAGE    = 1.00      # Tier 3 = 100% coverage
 
     # ─── ESCALATION ───────────────────────────────────────────────
     ESCALATION_GROWTH_PCT = 0.50      # Add more if loss grew 50%+ since last sizing
@@ -89,6 +97,7 @@ class SmartHedgingManager:
         # ─── Breakeven Exit Tracking ──────────────────────────────
         self._options_pnl_at_hedge_entry = 0.0   # Snapshot of options P&L when hedge placed
         self._hedge_entry_time = 0.0              # When hedge was opened
+        self._hedge_cooldown_until = 0.0           # No new hedges before this timestamp (30-min cooldown)
         self.hedge_placed_time = 0.0              # Alias for compat
 
         # ─── Escalation Tracking ──────────────────────────────────
@@ -550,6 +559,15 @@ class SmartHedgingManager:
         if not positions:
             return
 
+        # ── 30-MIN COOLDOWN: block new hedges after any exit ──────
+        if not self.hedge_active and time.time() < self._hedge_cooldown_until:
+            remaining = int(self._hedge_cooldown_until - time.time())
+            app_logger.info(
+                f"Hedge: ⏳ COOLDOWN ACTIVE — {remaining}s remaining. "
+                f"No new hedges until cooldown expires (prevents whipsaw rapid-fire)."
+            )
+            return
+
         # Update check timestamp
         self.last_check_time = time.time()
 
@@ -607,10 +625,10 @@ class SmartHedgingManager:
             # Automatically scale up hedge coverage as losses deepen.
             # Tier 2: 75% total coverage when total loss >= 12%
             # Tier 3: 100% total coverage when total loss >= 20%
-            if self._dca_tier == 1 and unrealized_loss_pct >= 0.12:
-                self._dca_scale_up(2, 0.75, positions, unrealized_loss_pct, profit_usd, atr_usd)
-            elif self._dca_tier == 2 and unrealized_loss_pct >= 0.20:
-                self._dca_scale_up(3, 1.00, positions, unrealized_loss_pct, profit_usd, atr_usd)
+            if self._dca_tier == 1 and unrealized_loss_pct >= self.DCA_TIER2_LOSS_PCT:
+                self._dca_scale_up(2, self.DCA_TIER2_COVERAGE, positions, unrealized_loss_pct, profit_usd, atr_usd)
+            elif self._dca_tier == 2 and unrealized_loss_pct >= self.DCA_TIER3_LOSS_PCT:
+                self._dca_scale_up(3, self.DCA_TIER3_COVERAGE, positions, unrealized_loss_pct, profit_usd, atr_usd)
 
             # ── Breakeven SL (merged from local_hpe_engine) ────────────
             # Once hedge hits +5% profit, lock SL at 0% — never give it back.
@@ -779,58 +797,110 @@ class SmartHedgingManager:
             self._bleed_confirm_count = 0
             return
 
-        # ── PIVOT & SUPERTREND BREAKOUT STRATEGY (ADDITIONAL TRIGGER) ──
+        # ── RULE: ADX >= 20 — Confirm this is a real directional move ──
+        # If ADX < 20, market is choppy/sideways. Hedge would whipsaw.
+        if adx_value > 0 and adx_value < self.ADX_MIN_ENTRY:
+            app_logger.info(
+                f"Hedge: ⛔ ADX GATE BLOCKED — ADX={adx_value:.1f} < {self.ADX_MIN_ENTRY} "
+                f"(sideways/choppy market). No hedge opened."
+            )
+            self._bleed_confirm_count = 0
+            return
+
+        # ── PIVOT & STRUCTURAL BREAKOUT STRATEGY (ACCELERATED ENTRY) ──
+        # Checks two tiers of breakout levels:
+        #   TIER 1 (Strongest): PREV_HIGH / PREV_LOW — actual structural breaks
+        #     → Close BELOW Previous Day Low  + Supertrend SELL → CONFIRM downtrend
+        #     → Close ABOVE Previous Day High + Supertrend BUY  → CONFIRM uptrend
+        #   TIER 2 (Standard): Pivot math levels P, R1, R2, S1, S2, S3
+        # Fakeout rejection wick check is applied to both tiers.
         if bleeding_leg and unrealized_loss_pct > 0.0:
             pivots = self.filters.get_pivot_points()
             st = self.filters.get_supertrend()
-            
+
             if pivots and st:
                 is_upside_breakout = False
                 is_downside_breakout = False
                 broken_level_name = ""
                 broken_level_val = 0.0
-                
-                # Check if the last closed 5m candle crossed any pivot level
-                for name, val in pivots.items():
-                    # Upside Breakout: Candle opened below the level, closed above it, and Supertrend is BUY
-                    if st['open'] < val and st['close'] > val and st['trend'] == 'BUY':
-                        if self._is_rejection_candle(st, 'UP'):
-                            app_logger.warning(
-                                f"Hedge: 🛑 FAKEOUT DETECTED at {name} (${val:.2f})! "
-                                f"Massive upper wick (Shooting Star). Hedge blocked."
-                            )
-                            continue
-                            
-                        is_upside_breakout = True
-                        broken_level_name = name
-                        broken_level_val = val
-                        break
-                    
-                    # Downside Breakout: Candle opened above the level, closed below it, and Supertrend is SELL
-                    elif st['open'] > val and st['close'] < val and st['trend'] == 'SELL':
-                        if self._is_rejection_candle(st, 'DOWN'):
-                            app_logger.warning(
-                                f"Hedge: 🛑 FAKEOUT DETECTED at {name} (${val:.2f})! "
-                                f"Massive lower wick (Hammer/Pin Bar). Hedge blocked."
-                            )
-                            continue
-                            
+                is_structure_break = False  # True = PREV_HIGH/LOW, False = pivot math
+
+                # ── TIER 1: Structural Level Breaks (checked first — strongest signal) ──
+                # SWING_LOW break: 15m candle opened above it, closed below it, SELL trend
+                # SWING_HIGH break: 15m candle opened below it, closed above it, BUY trend
+                swing_low  = pivots.get('SWING_LOW')
+                swing_high = pivots.get('SWING_HIGH')
+
+                if swing_low and st['open'] > swing_low and st['close'] < swing_low and st['trend'] == 'SELL':
+                    if self._is_rejection_candle(st, 'DOWN'):
+                        app_logger.warning(
+                            f"Hedge: 🛑 FAKEOUT at SWING_LOW (${swing_low:.2f})! "
+                            f"Hammer/Pin Bar wick detected. Structure break REJECTED."
+                        )
+                    else:
                         is_downside_breakout = True
-                        broken_level_name = name
-                        broken_level_val = val
-                        break
-                
+                        broken_level_name = "SWING_LOW"
+                        broken_level_val = swing_low
+                        is_structure_break = True
+
+                elif swing_high and st['open'] < swing_high and st['close'] > swing_high and st['trend'] == 'BUY':
+                    if self._is_rejection_candle(st, 'UP'):
+                        app_logger.warning(
+                            f"Hedge: 🛑 FAKEOUT at SWING_HIGH (${swing_high:.2f})! "
+                            f"Shooting Star wick detected. Structure break REJECTED."
+                        )
+                    else:
+                        is_upside_breakout = True
+                        broken_level_name = "SWING_HIGH"
+                        broken_level_val = swing_high
+                        is_structure_break = True
+
+                # ── TIER 2: Pivot Math Level Breaks (if no structure break found) ──
+                if not (is_upside_breakout or is_downside_breakout):
+                    pivot_order = ['P', 'R1', 'R2', 'R3', 'S1', 'S2', 'S3']
+                    for name in pivot_order:
+                        val = pivots.get(name)
+                        if val is None:
+                            continue
+                        # Upside: candle opened below level, closed above, BUY trend
+                        if st['open'] < val and st['close'] > val and st['trend'] == 'BUY':
+                            if self._is_rejection_candle(st, 'UP'):
+                                app_logger.warning(
+                                    f"Hedge: 🛑 FAKEOUT at {name} (${val:.2f})! "
+                                    f"Shooting Star wick detected. Hedge blocked."
+                                )
+                                continue
+                            is_upside_breakout = True
+                            broken_level_name = name
+                            broken_level_val = val
+                            break
+
+                        # Downside: candle opened above level, closed below, SELL trend
+                        elif st['open'] > val and st['close'] < val and st['trend'] == 'SELL':
+                            if self._is_rejection_candle(st, 'DOWN'):
+                                app_logger.warning(
+                                    f"Hedge: 🛑 FAKEOUT at {name} (${val:.2f})! "
+                                    f"Hammer/Pin Bar wick detected. Hedge blocked."
+                                )
+                                continue
+                            is_downside_breakout = True
+                            broken_level_name = name
+                            broken_level_val = val
+                            break
+
                 if is_upside_breakout or is_downside_breakout:
+                    tier_label = "🏗️ STRUCTURE BREAK" if is_structure_break else "📐 PIVOT BREAK"
                     app_logger.warning(
-                        f"Hedge: 🚀 PIVOT BREAKOUT DETECTED! "
-                        f"Candle closed through {broken_level_name} (${broken_level_val:.2f}) "
+                        f"Hedge: {tier_label} — {broken_level_name} (${broken_level_val:.2f}) "
+                        f"| Candle: O=${st['open']:.0f} C=${st['close']:.0f} "
                         f"| Supertrend={st['trend']} "
-                        f"| Skipping bleed thresholds. Hedging now."
+                        f"| Loss={unrealized_loss_pct*100:.1f}% | Bypassing bleed threshold → HEDGE NOW"
                     )
                     notifier.notify_warning(
-                        f"🚀 PIVOT BREAKOUT HEDGE 🚀\n"
-                        f"Candle broke {broken_level_name} (${broken_level_val:.2f}) with {st['trend']} trend.\n"
-                        f"Loss is {unrealized_loss_pct*100:.1f}%."
+                        f"{tier_label} 🚨\n"
+                        f"{broken_level_name} (${broken_level_val:.2f}) broken!\n"
+                        f"Supertrend: {st['trend']} | Loss: {unrealized_loss_pct*100:.1f}%\n"
+                        f"Opening immediate hedge."
                     )
                     self._bleed_confirm_count = 0
                     self._bleed_confirm_leg = None
@@ -839,6 +909,7 @@ class SmartHedgingManager:
                         total_loss_usd, direction, profit_usd, atr_usd
                     )
                     return
+
 
         # ── HYBRID TREND CONFIRMATION FILTER ──
         # To avoid whipsaws, we require EITHER a closed 5m candle > 1.5 ATR (Small Alert)
@@ -1347,6 +1418,14 @@ class SmartHedgingManager:
             f"Hedge: Closing — {reason}. Final P&L: ${final_pnl:+.2f} | "
             f"Cumulative realized: ${self._cumulative_realized_pnl:+.2f}"
         )
+
+        # ── START 30-MIN COOLDOWN after any rule-based exit ─────────
+        self._hedge_cooldown_until = time.time() + self.COOLDOWN_SECONDS
+        cooldown_min = self.COOLDOWN_SECONDS // 60
+        app_logger.info(
+            f"Hedge: ⏳ {cooldown_min}-min cooldown started. "
+            f"No new hedges until {time.strftime('%H:%M:%S', time.localtime(self._hedge_cooldown_until))}."
+        )
         self.close_hedge()
 
     def close_hedge(self):
@@ -1376,6 +1455,9 @@ class SmartHedgingManager:
         self._hedge_entry_time = 0.0
         self._last_sizing_loss_usd = 0.0
         self._last_escalation_time = 0.0
+        # NOTE: _hedge_cooldown_until is NOT reset here.
+        # It is only set by _close_hedge_with_reason() (rule-based exits).
+        # Manual/EOD closes via close_hedge() directly do NOT start a cooldown.
         # Reset merged-engine state vars
         self._dca_tier = 0
         self._breakeven_sl_active = False

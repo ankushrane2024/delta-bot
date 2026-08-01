@@ -176,12 +176,14 @@ def test_01_steady_uptrend():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Simulate BTC going up: call bleeds enough to cross 7% total loss
-    # entry_total = 300*500*0.001 = 150 USD, need current > 160.5 for 7%
+    # Simulate BTC going up: call bleeds enough to cross 11% total loss
+    # entry_total = 300*500*0.001 = 150 USD, need 2 ticks above 11% (loss > 16.5)
+    # tick2: (240+100)*500*0.001=170 → 13.3% → confirm_count=1
+    # tick3: (265+75)*500*0.001=170  → 13.3% → confirm_count=2 → TRIGGER
     ticks = [
-        (61000, 178, 130),  # (178+130)*500*0.001=154 → 2.7% loss
-        (62000, 215, 100),  # (215+100)*500*0.001=157.5 → 5% loss
-        (63000, 265, 75),   # (265+75)*500*0.001=170 → 13.3% loss → triggers
+        (61000, 178, 130),  # 2.7% loss  (below threshold)
+        (62000, 240, 100),  # 13.3% loss (confirm_count=1)
+        (63000, 265, 75),   # 13.3% loss (confirm_count=2 → triggers)
     ]
 
     for btc, call_p, put_p in ticks:
@@ -208,10 +210,13 @@ def test_02_steady_downtrend():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
+    # Need 2 consecutive ticks above 11% to trigger 2-check confirmation
+    # tick2: (90+260)*500*0.001=175 → 16.7% → confirm_count=1
+    # tick3: (60+280)*500*0.001=170 → 13.3% → confirm_count=2 → TRIGGER
     ticks = [
-        (59000, 120, 185),
-        (58000, 90, 230),
-        (57000, 60, 280),
+        (59000, 120, 185),  # 3.3% loss (below threshold)
+        (58000, 90, 260),   # 16.7% loss (confirm_count=1)
+        (57000, 60, 280),   # 13.3% loss (confirm_count=2 → triggers)
     ]
 
     for btc, call_p, put_p in ticks:
@@ -236,10 +241,11 @@ def test_03_v_shape_reversal():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Phase 1: trigger hedge
+    # Phase 1: SEVERE tick (>= 20%) → instant hedge, no 2-check needed
+    # (300+75)*500*0.001=187.5, entry=150 → 25% loss → SEVERE → instant
     api.btc_price = 63000
     ex._btc_price = 63000
-    pos = make_positions(150, 150, 265, 75)
+    pos = make_positions(150, 150, 300, 75)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hedger.manage_hedge(pos, l, p, atr_usd=1000)
@@ -526,10 +532,11 @@ def test_11_perfect_breakeven_exit():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Phase 1: trigger hedge
+    # Phase 1: SEVERE tick (>= 20%) → instant hedge, no 2-check needed
+    # (300+75)*500*0.001=187.5, entry=150 → 25% loss → SEVERE → instant
     api.btc_price = 63000
     ex._btc_price = 63000
-    pos = make_positions(150, 150, 265, 75)
+    pos = make_positions(150, 150, 300, 75)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hedger.manage_hedge(pos, l, p, atr_usd=1000)
@@ -622,10 +629,10 @@ def test_14_no_positions_close():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Trigger hedge (call bleeds > 7% total loss)
+    # Phase 1: SEVERE tick → instant hedge (no 2-check confirmation)
     api.btc_price = 63000
     ex._btc_price = 63000
-    pos = make_positions(150, 150, 265, 75)
+    pos = make_positions(150, 150, 300, 75)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hedger.manage_hedge(pos, l, p, atr_usd=1000)
@@ -679,10 +686,10 @@ def test_16_large_position():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Call bleeds > 7% total loss
+    # SEVERE tick → instant hedge (25% loss, lots=1000)
     api.btc_price = 63000
     ex._btc_price = 63000
-    pos = make_positions(150, 150, 265, 75, lots=1000)
+    pos = make_positions(150, 150, 300, 75, lots=1000)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hedger.manage_hedge(pos, l, p, atr_usd=1000)
@@ -702,10 +709,10 @@ def test_17_small_position():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Call bleeds > 7% total loss
+    # SEVERE tick → instant hedge (25% loss, lots=50)
     api.btc_price = 63000
     ex._btc_price = 63000
-    pos = make_positions(150, 150, 265, 75, lots=50)
+    pos = make_positions(150, 150, 300, 75, lots=50)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hedger.manage_hedge(pos, l, p, atr_usd=1000)
@@ -743,10 +750,10 @@ def test_19_deep_loss_then_partial_recovery():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Phase 1: trigger hedge (call bleeds > 7%)
+    # Phase 1: SEVERE tick → instant hedge (25% loss)
     api.btc_price = 63000
     ex._btc_price = 63000
-    pos = make_positions(150, 150, 265, 75)
+    pos = make_positions(150, 150, 300, 75)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hedger.manage_hedge(pos, l, p, atr_usd=1000)
@@ -784,10 +791,10 @@ def test_20_direction_flip():
     update_api_prices(api, pos)
     hedger.set_entry_premiums(pos)
 
-    # Phase 1: BTC up → call bleeds → hedge buys
+    # Phase 1: SEVERE tick → instant hedge buy
     api.btc_price = 63000
     ex._btc_price = 63000
-    pos = make_positions(150, 150, 265, 75)
+    pos = make_positions(150, 150, 300, 75)
     update_api_prices(api, pos)
     p, _, l = calc_pnl(pos)
     hedger.manage_hedge(pos, l, p, atr_usd=1000)
@@ -809,8 +816,12 @@ def test_20_direction_flip():
     hedger.manage_hedge(pos, l, p + hp, atr_usd=1000)
     first_closed = not hedger.hedge_active
 
-    # Phase 3: BTC drops hard → put bleeds → new hedge sells
-    for btc, cp, pp in [(57000, 75, 265), (56000, 45, 335)]:
+    # Phase 3: BTC drops → put SEVERE bleed → new hedge sells
+    # Cooldown is bypassed in test (real 30-min cooldown works in live).
+    # In production, you'd wait 30 min between cycles — here we zero it.
+    hedger._hedge_cooldown_until = 0.0
+    # (75+300)*500*0.001=187.5, entry=150 → 25% SEVERE → instant sell hedge
+    for btc, cp, pp in [(57000, 75, 300), (56000, 45, 335)]:
         api.btc_price = btc
         ex._btc_price = btc
         pos = make_positions(150, 150, cp, pp)
