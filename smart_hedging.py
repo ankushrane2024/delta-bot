@@ -438,12 +438,10 @@ class SmartHedgingManager:
     # HEDGE SIZING — DOLLAR-LOSS MATCHED
     # ═══════════════════════════════════════════════════════════════
 
-    def _calculate_hedge_size(self, bleed_usd, positions, atr_usd=100.0):
+    def _calculate_base_exposure(self, bleed_usd, positions):
         """
-        Calculates hedge size in BTC to match the dollar loss.
-
-        Method 1 (preferred): loss / BTC_move = effective exposure
-        Method 2 (fallback): position_size × delta_estimate
+        Calculates the exact 100% raw hedge size required based on the speed of the loss.
+        This is the core math: if we lost $30 over a $500 BTC move, our exposure is 0.06 BTC.
         """
         btc_price = self._get_btc_mark_price()
         if btc_price <= 0:
@@ -451,53 +449,32 @@ class SmartHedgingManager:
 
         abs_bleed = abs(bleed_usd) if bleed_usd > 0 else 1.0
 
-        # The Gamma & Recovery Multiplier
-        # Why 2.0x? 
-        # A 2.0x multiplier ensures the linear futures profit outpaces the accelerating Gamma loss of the options,
-        # guaranteeing a strictly positive Net P&L (covering 100%+ of the loss) if a severe crash hits the 130% SL.
-        GAMMA_RECOVERY_MULTIPLIER = 2.0
+        # 1. Identify bleeding leg max cap (e.g. 50 lots = 0.05 BTC)
+        leg_name = self._bleeding_leg
+        max_cap_btc = self.HEDGE_MAX_SIZE_BTC
+        if leg_name and leg_name in positions:
+            max_cap_btc = positions[leg_name].get('size', 0) * 0.001
 
-        # Method 1: BTC has moved enough to calculate real exposure
+        # 2. Calculate effective exposure (Speed of Loss)
         btc_move_usd = 0.0
         if self._entry_btc_price > 0:
             btc_move_usd = abs(btc_price - self._entry_btc_price)
 
-        # Ensure we don't divide by a tiny number and create a massive oversized hedge during IV spikes
-        # A meaningful move to base delta on is at least 0.5 ATR, or a hard floor of $300
-        safe_btc_move = max(btc_move_usd, max(300.0, atr_usd * 0.5))
+        # Floor at $300 to prevent division by zero or massive spikes on tiny wicks
+        safe_btc_move = max(btc_move_usd, 300.0)
         effective_exposure = abs_bleed / safe_btc_move
             
-        # --- HYBRID GRID SIZING LOGIC ---
-        realtime_atr_dist = btc_move_usd / atr_usd if atr_usd > 0 else 0
-        
-        last_candle_close = self._get_last_closed_5m_candle()
-        candle_move_usd = abs(last_candle_close - self._entry_btc_price) if last_candle_close > 0 else 0
-        candle_atr_dist = candle_move_usd / atr_usd if atr_usd > 0 else 0
-        
-        scale_factor = 0.50  # Default to Tier 1
-        
-        if realtime_atr_dist >= 2.0:
-            scale_factor = 1.0  # Rule 2: RED ALERT - Full 100% Hedge
-        elif candle_atr_dist >= 1.5:
-            scale_factor = 0.50 # Rule 1: Small Alert - 50% Hedge
-        elif realtime_atr_dist >= 1.5:
-            # If managed to pass trend filter for some other reason, fallback
-            scale_factor = 0.50
-        
-        hedge_btc = effective_exposure * GAMMA_RECOVERY_MULTIPLIER * scale_factor
         app_logger.info(
-            f"Hedge: Sizing [Hybrid Grid] | Loss=${abs_bleed:.2f} | "
-            f"BTC moved=${btc_move_usd:.0f} (Safe Divisor: ${safe_btc_move:.0f}) | "
-            f"Base Exp={effective_exposure:.4f} BTC | "
-            f"Grid Tier={scale_factor*100:.0f}% | Final Hedge={hedge_btc:.4f} BTC"
+            f"Hedge: Sizing Math | Loss=${abs_bleed:.2f} | "
+            f"BTC moved=${btc_move_usd:.0f} | Base Exp={effective_exposure:.4f} BTC | "
+            f"Max Leg Cap={max_cap_btc:.4f} BTC"
         )
 
-        # Clamp to min/max
-        hedge_btc = max(self.HEDGE_MIN_SIZE_BTC, hedge_btc)
-        hedge_btc = min(self.HEDGE_MAX_SIZE_BTC, hedge_btc)
+        # 3. Strict Clamp to leg size
+        final_base = min(effective_exposure, max_cap_btc)
 
         self._last_sizing_loss_usd = abs_bleed
-        return hedge_btc
+        return max(self.HEDGE_MIN_SIZE_BTC, final_base)
 
     # ═══════════════════════════════════════════════════════════════
     # PLACE HEDGE ORDER (with weighted avg entry tracking)
@@ -683,11 +660,11 @@ class SmartHedgingManager:
         """
         DCA scale-up: add more hedge to reach the target coverage tier.
         new_tier: 2 or 3
-        target_coverage_ratio: 0.75 (tier 2) or 1.00 (tier 3)
+        target_coverage_ratio: 0.66 (tier 2) or 1.00 (tier 3)
         """
         bleed_usd = abs(profit_usd) if profit_usd < 0 else 1.0
-        full_size = self._calculate_hedge_size(bleed_usd, positions, atr_usd)
-        target_size = full_size * target_coverage_ratio
+        base_size = self._calculate_base_exposure(bleed_usd, positions)
+        target_size = base_size * target_coverage_ratio
         current_size = abs(self.execution.hedge_size_btc)
         add_btc = target_size - current_size
 
@@ -1067,8 +1044,9 @@ class SmartHedgingManager:
 
     def _open_new_hedge(self, positions, bleeding_leg, bleed_pct,
                          bleed_usd, direction, profit_usd, atr_usd=100.0):
-        """Opens a new hedge position with Grid scaling sizing."""
-        hedge_size = self._calculate_hedge_size(bleed_usd, positions, atr_usd)
+        """Opens a new hedge position at Tier 1 (33% coverage)."""
+        base_size = self._calculate_base_exposure(bleed_usd, positions)
+        hedge_size = max(self.HEDGE_MIN_SIZE_BTC, base_size * 0.33)  # Tier 1 = 33%
         result = self._place_hedge(hedge_size, direction, "OPEN")
 
         if result and result.get('success'):
@@ -1336,8 +1314,8 @@ class SmartHedgingManager:
 
             if (growth >= self.ESCALATION_GROWTH_PCT and
                     time_since_last >= self.ESCALATION_COOLDOWN_S):
-                # Calculate the FULL target size using Grid Math
-                target_total_hedge = self._calculate_hedge_size(bleed_usd, positions, atr_usd)
+                # Calculate the FULL target size using exact math
+                target_total_hedge = self._calculate_base_exposure(bleed_usd, positions)
                 current_size = abs(self.execution.hedge_size_btc)
                 
                 # Add only what we need to reach the target tier size

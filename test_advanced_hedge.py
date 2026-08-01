@@ -584,7 +584,12 @@ def test_12_deep_loss_recovery():
 
     hedge_opened = hedger.hedge_active
     hedger._hedge_entry_time = time.time() - 120
-
+    
+    # Inject deterministic hedge size so profit math crosses zero
+    ex.hedge_size_btc = -0.08  # short 0.08 BTC
+    ex.hedge_entry_price = 56000.0
+    hedger.hedge_avg_entry_price = 56000.0
+    
     # BTC drops even more → hedge profit grows → total P&L crosses zero
     api.btc_price = 52000
     ex._btc_price = 52000
