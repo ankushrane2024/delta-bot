@@ -188,30 +188,30 @@ class TradingFilters:
         from datetime import datetime
         
         try:
-            # Fetch 1000 candles (15m) from Bybit (Binance blocks Render IPs with 451 Unavailable For Legal Reasons)
+            # Fetch 720 candles (15m) from Kraken (Binance/Bybit block Render cloud IPs with 403/451)
             import requests
             headers = {'User-Agent': 'Mozilla/5.0'}
-            res = requests.get('https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=15&limit=1000', headers=headers, timeout=10)
+            res = requests.get('https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=15', headers=headers, timeout=10)
             
             if res.status_code != 200:
-                app_logger.warning(f"Filter: Failed to fetch candles for Market Regime from Bybit. Status code: {res.status_code}")
+                app_logger.warning(f"Filter: Failed to fetch candles for Market Regime from Kraken. Status code: {res.status_code}")
                 return "Unknown", 0.0, []
                 
             data = res.json()
-            if not data or 'result' not in data or 'list' not in data['result']:
-                app_logger.warning("Filter: Not enough candle data from Bybit.")
+            if not data or 'error' in data and data['error'] or 'result' not in data:
+                app_logger.warning("Filter: Not enough candle data from Kraken.")
                 return "Unknown", 0.0, []
                 
-            candles = data['result']['list']
-            # Bybit returns NEWEST first, so we MUST reverse it for Pandas/TA
-            candles.reverse()
+            # Kraken returns a dict with the pair name as key (usually 'XXBTZUSD' for XBTUSD)
+            pair_key = list(data['result'].keys())[0]
+            if pair_key == 'last': pair_key = list(data['result'].keys())[1]
+            candles = data['result'][pair_key]
             
-            # Bybit klines format: [startTime, open, high, low, close, volume, turnover]
-            df = pd.DataFrame(candles, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
-            df['high']  = df['high'].astype(float)
-            df['low']   = df['low'].astype(float)
-            df['close'] = df['close'].astype(float)
-            df['time']  = pd.to_datetime(df['time'].astype(float), unit='ms')
+            # Kraken format: [time(sec), open, high, low, close, vwap, volume, count]
+            df = pd.DataFrame(candles, columns=['time', 'open', 'high', 'low', 'close', 'vwap', 'volume', 'count'])
+            for col in ['open', 'high', 'low', 'close']:
+                df[col] = df[col].astype(float)
+            df['time']  = pd.to_datetime(df['time'].astype(float), unit='s')
             df = df.sort_values(by='time').reset_index(drop=True)
             
             # --- ADX + DI ---
@@ -310,18 +310,19 @@ class TradingFilters:
         import requests
         try:
             headers = {'User-Agent': 'Mozilla/5.0'}
-            res = requests.get('https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=15&limit=30', headers=headers, timeout=5)
+            res = requests.get('https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=15', headers=headers, timeout=5)
             if res.status_code != 200:
                 return "SAFE"
                 
             data = res.json()
-            if not data or 'result' not in data or 'list' not in data['result']:
+            if not data or 'error' in data and data['error'] or 'result' not in data:
                 return "SAFE"
                 
-            candles = data['result']['list']
-            candles.reverse()
+            pair_key = list(data['result'].keys())[0]
+            if pair_key == 'last': pair_key = list(data['result'].keys())[1]
+            candles = data['result'][pair_key][-30:] # Take last 30
             
-            df = pd.DataFrame(candles, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
+            df = pd.DataFrame(candles, columns=['time', 'open', 'high', 'low', 'close', 'vwap', 'volume', 'count'])
             for col in ['open', 'high', 'low', 'close']:
                 df[col] = df[col].astype(float)
                 
