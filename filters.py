@@ -190,10 +190,11 @@ class TradingFilters:
         try:
             # Fetch 1000 candles (15m) from Binance to ensure stable smoothing and perfect TradingView match
             import requests
-            res = requests.get('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=1000', timeout=10)
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+            res = requests.get('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=1000', headers=headers, timeout=10)
             
             if res.status_code != 200:
-                app_logger.warning("Filter: Failed to fetch candles for Market Regime from Binance.")
+                app_logger.warning(f"Filter: Failed to fetch candles for Market Regime from Binance. Status code: {res.status_code}")
                 return "Unknown", 0.0, []
                 
             candles = res.json()
