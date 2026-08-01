@@ -58,8 +58,8 @@ class ExecutionHandler:
             if dpl_state:
                 data_to_save['__dpl_state__'] = dpl_state
             if chart_data is not None:
-                # Only persist the last 60 chart points to stay within DB size limits
-                data_to_save['__chart_data__'] = chart_data[-60:] if len(chart_data) > 60 else chart_data
+                # Save the ENTIRE chart data so full trade history survives server restarts
+                data_to_save['__chart_data__'] = chart_data
             db_manager.save_active_positions(data_to_save)
 
     def execute_strangle(self, call_opt, put_opt, size):
