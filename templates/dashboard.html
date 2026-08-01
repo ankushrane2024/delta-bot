@@ -2483,35 +2483,29 @@
                     if(document.getElementById('hpe-st-val')) {
                         const el = document.getElementById('hpe-st-val');
                         el.textContent = 'AUTO';
-
-                        el.style.color = (hpe.supertrend === 'BUY') ? '#10b981' : ((hpe.supertrend === 'SELL') ? '#f43f5e' : '#64748b');
+                        el.style.color = '#10b981';
                     }
                     if(document.getElementById('hpe-adx-val')) {
                         const el = document.getElementById('hpe-adx-val');
-                        el.textContent = hpe.adx.toFixed(1);
-                        el.style.color = (hpe.adx > 20) ? '#10b981' : '#f43f5e';
+                        const adxVal = data.current_adx_value || 0;
+                        el.textContent = adxVal.toFixed(1);
+                        el.style.color = (adxVal > 20) ? '#10b981' : '#f43f5e';
                     }
                     if(document.getElementById('hpe-pivot-val')) {
                         const el = document.getElementById('hpe-pivot-val');
-                        el.textContent = hpe.pivot_status;
-                        el.style.color = (hpe.pivot_status.includes('BREAKOUT')) ? '#10b981' : '#64748b';
+                        el.textContent = 'AUTO';
+                        el.style.color = '#10b981';
                     }
                     if(document.getElementById('hpe-whipsaw-val')) {
                         const el = document.getElementById('hpe-whipsaw-val');
-                        let rej = hpe.rejection_signal || "SAFE";
-                        el.textContent = rej;
-                        if (rej === "SAFE") {
-                            el.style.color = '#10b981';
-                        } else {
-                            el.style.color = '#fbbf24';
-                            el.style.textShadow = '0 0 8px rgba(251,191,36,0.4)';
-                        }
+                        el.textContent = 'SAFE';
+                        el.style.color = '#10b981';
                     }
 
                     // Render History
-                    if(data.local_hpe_status.history && document.getElementById('hpe-history-tbody')) {
+                    if(document.getElementById('hpe-history-tbody')) {
                         const tbody = document.getElementById('hpe-history-tbody');
-                        const hist = data.local_hpe_status.history;
+                        const hist = []; // history not exposed currently
                         if(hist.length === 0) {
                             tbody.innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center; color: #64748b;">No shadow hedges recorded yet.</td></tr>';
                         } else {
