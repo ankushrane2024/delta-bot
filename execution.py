@@ -1,6 +1,7 @@
 from config import HEDGE_SYMBOL, HEDGE_RETRY_COUNT, HEDGE_RETRY_DELAY, HEDGE_LIMIT_ORDER_SPREAD
 from logger import app_logger, trade_logger
 import math
+import config
 import db_manager
 
 class ExecutionHandler:
@@ -161,8 +162,43 @@ class ExecutionHandler:
                         'side': 'SELL',
                         'leg_type': 'call' if opt == call_opt else 'put',
                         'strike': opt.get('strike_price', opt.get('strike', 0)),
-                        'entry_time': datetime.now(ZoneInfo('Asia/Kolkata')).isoformat()
+                        'entry_time': datetime.now(ZoneInfo('Asia/Kolkata')).isoformat(),
+                        'exchange_sl_order_id': None  # Will be set below
                     }
+
+                    # ── EXCHANGE-NATIVE CRASH-BACKUP STOP ORDER ──────────────────
+                    # Set at 2× entry premium (200% gain). This is WELL above the
+                    # bot's own SL at 100% (SL_PERCENT). It ONLY fires if the bot/
+                    # server is completely dead and cannot close the position itself.
+                    # Under normal operation the bot closes first at 100% and then
+                    # cancels this backup stop order automatically.
+                    try:
+                        backup_sl_price = round(real_fill_price * (1 + (config.SL_PERCENT * 2.0)), 4)
+                        sl_res = self.api_client.place_stop_order(
+                            product_id=opt['product_id'],
+                            side='buy',          # buy to close a short sell
+                            size=size,
+                            stop_price=backup_sl_price
+                        )
+                        if sl_res and sl_res.get('success'):
+                            sl_order_id = sl_res.get('result', {}).get('id')
+                            self.active_positions[opt['symbol']]['exchange_sl_order_id'] = sl_order_id
+                            app_logger.info(
+                                f"Execution [LIVE]: Exchange backup SL placed for {opt['symbol']} "
+                                f"at ${backup_sl_price:.4f} (2× entry ${real_fill_price:.4f}). "
+                                f"Order ID: {sl_order_id}. "
+                                f"NOTE: Bot's own SL fires at 1× entry first. "
+                                f"This stop only triggers if bot is offline."
+                            )
+                        else:
+                            app_logger.warning(
+                                f"Execution [LIVE]: Could not place exchange backup SL for {opt['symbol']}: {sl_res}. "
+                                f"Bot's software SL remains the primary protection."
+                            )
+                    except Exception as sl_err:
+                        app_logger.error(f"Execution [LIVE]: Exception placing backup SL for {opt['symbol']}: {sl_err}")
+                    # ─────────────────────────────────────────────────────────────
+
                 else:
                     app_logger.error(f"Execution: Failed to sell {opt['symbol']}: {res}")
         
@@ -173,9 +209,24 @@ class ExecutionHandler:
         app_logger.info(f"Execution: Closing all positions due to {reason}")
         self.release_hedge_lock(self.hedge_owner) # Release lock regardless of owner
 
-        
         for symbol, data in list(self.active_positions.items()):
             if self.mode == 'LIVE':
+                # ── Cancel exchange backup SL before closing (prevents double-exit) ──
+                sl_order_id = data.get('exchange_sl_order_id')
+                if sl_order_id:
+                    try:
+                        cancel_res = self.api_client.cancel_order(
+                            product_id=data['product_id'],
+                            order_id=sl_order_id
+                        )
+                        if cancel_res and cancel_res.get('success'):
+                            app_logger.info(f"Execution [LIVE]: Cancelled exchange backup SL order {sl_order_id} for {symbol} before closing.")
+                        else:
+                            app_logger.warning(f"Execution [LIVE]: Could not cancel backup SL {sl_order_id} for {symbol}: {cancel_res}. Proceeding with close anyway.")
+                    except Exception as cancel_err:
+                        app_logger.error(f"Execution [LIVE]: Exception cancelling backup SL for {symbol}: {cancel_err}")
+                # ────────────────────────────────────────────────────────────────
+
                 res = self.api_client.place_order(data['product_id'], 'buy', data['size'])
                 if res.get('success'):
                     app_logger.info(f"Execution: Successfully closed {symbol}")

@@ -104,6 +104,45 @@ class DeltaIndiaClient:
             data["limit_price"] = str(limit_price)
         return self.request("POST", "/v2/orders", data=data)
 
+    def place_stop_order(self, product_id, side, size, stop_price):
+        """Places a stop-market order (exchange-native SL backup).
+        
+        This is set at 2x the entry premium and ONLY fires if the bot is dead.
+        Under normal operation, the bot's own monitor_loop closes the position
+        at 1x (SL_PERCENT=100%) and cancels this stop before it can trigger.
+
+        Args:
+            product_id: Delta Exchange product ID
+            side: 'buy' (to close a short options sell)
+            size: number of lots
+            stop_price: the price at which the stop triggers (2x entry premium)
+        """
+        data = {
+            "product_id": product_id,
+            "side": side,
+            "size": int(size),
+            "order_type": "market_order",       # When triggered, execute at market
+            "stop_order_type": "stop_loss_order",
+            "stop_price": str(round(stop_price, 4)),
+            "isTrailingStopLoss": False
+        }
+        app_logger.info(f"API: Placing exchange backup stop-SL | product={product_id} side={side} size={size} stop_price={stop_price}")
+        return self.request("POST", "/v2/orders", data=data)
+
+    def cancel_order(self, product_id, order_id):
+        """Cancels an open order by ID. Used to cancel the backup SL before normal close.
+
+        Args:
+            product_id: Delta Exchange product ID
+            order_id: The order ID to cancel (stored as exchange_sl_order_id per leg)
+        """
+        data = {
+            "product_id": product_id,
+            "id": order_id
+        }
+        app_logger.info(f"API: Cancelling order {order_id} for product {product_id}")
+        return self.request("DELETE", "/v2/orders", data=data)
+
     def get_positions(self):
         return self.request("GET", "/v2/positions")
 
