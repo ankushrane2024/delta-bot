@@ -12977,3 +12977,34 @@ Rule 11: Exit Time - [PASS]
 2026-07-26 15:20:18 IST - BotCore - INFO - Filter: Market is SIDEWAYS / Sideways (ADX: 22.27, RSI: 78.1)
 2026-07-26 15:20:22 IST - BotCore - INFO - Filter: Market is SIDEWAYS / Sideways (ADX: 22.27, RSI: 78.1)
 2026-07-26 15:20:26 IST - BotCore - INFO - Filter: Market is SIDEWAYS / Sideways (ADX: 22.27, RSI: 78.1)
+2026-08-01 12:09:51 IST - BotCore - INFO - API: Time synced. Offset: -1s
+2026-08-01 12:09:52 IST - BotCore - WARNING - DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.
+2026-08-01 12:09:52 IST - BotCore - INFO - DB: Connected to JSONBlob Fallback: ...a2ad4ea8
+2026-08-01 12:09:53 IST - BotCore - INFO - Tracker: Syncing local JSON up to Cloud DB...
+2026-08-01 12:09:54 IST - BotCore - INFO - Rule Compliance: 92% (12/13)
+Rule 1: Entry Times - [PASS]
+   Expected: 9:00, 9:30 AM IST
+Rule 2: Strike Selection (IV-Based + 5 OTM) - [PASS]
+   Expected: DVOL-based premium ranges, Min 5 strikes OTM, Put <= 1.30xCall, Net Delta <= 0.10
+Rule 21: Premium Validation Threshold - [PASS]
+   Expected: Minimum $100 premium per leg. If below, SKIP trade entirely.
+Rule 3: Lot Size (Manual + Dynamic) - [PASS]
+   Expected: Manual from dashboard + DVOL/loss-based dynamic sizing
+Rule 4: Stop Loss & Target - [PASS]
+   Expected: Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)
+Rule 5: Partial Profit - [PASS]
+   Expected: Disabled (Replaced by DPL)
+Rule 6: Dynamic Trailing SL - [FAIL]
+   Expected: Lock +5% at 15% Profit, then ratchets
+Rule 7: DVOL Percentile Filter - [PASS]
+   Expected: Trade only if DVOL Percentile 10%-90%
+Rule 8: ARES Protection Engine (Dynamic Hedge) - [PASS]
+   Expected: Delta-Neutral Sizing based on Live Greeks. Active Regime & ADX Monitoring.
+Rule 81: ARES Trend Reversal & De-Hedge Rule - [PASS]
+   Expected: Hedge is dynamically reduced or fully closed (UNHEDGE_BUFFER=10) if trend reverses, locking hedge profit and preventing hedge losses.
+Rule 9: Dynamic Position Sizing - [PASS]
+   Expected: DVOL 40-55% +20%, 2 losses -20%, Daily >2% -30%
+Rule 10: Money Management - [PASS]
+   Expected: 1.0% risk/trade
+Rule 11: Exit Time - [PASS]
+   Expected: Prepare 16:55 IST, Hard Exit 17:00 IST
