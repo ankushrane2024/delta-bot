@@ -340,6 +340,10 @@
     <nav class="tab-nav" style="display: flex;">
         <button class="tab-btn" onclick="window.location.href='/'">Live Dashboard</button>
         <button class="tab-btn active">📊 Trade History</button>
+        <select id="mode-selector" onchange="loadHistory()" style="margin-left: 15px; padding: 6px 12px; background: rgba(16, 20, 30, 0.9); color: white; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; outline: none; cursor: pointer; font-family: 'Inter', sans-serif;">
+            <option value="PAPER">Paper Trades</option>
+            <option value="LIVE">Live Trades 🔴</option>
+        </select>
         <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
             <span id="last-backup-info" style="color: #10b981; font-size: 0.85em; margin-right: 15px;">✅ Last Backup: Checking...</span>
             <button class="tab-btn" onclick="backupHistory()" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.4); color: #10b981;">💾 Backup Data</button>
@@ -459,7 +463,8 @@
 
         async function loadHistory() {
             try {
-                const response = await fetch('/api/history');
+                const mode = document.getElementById('mode-selector').value || 'PAPER';
+                const response = await fetch(`/api/history?mode=${mode}`);
                 const data = await response.json();
                 
                 if (!data.trades || data.trades.length === 0) {

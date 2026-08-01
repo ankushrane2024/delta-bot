@@ -964,23 +964,28 @@ def history_page():
 
 @app.route('/api/history')
 def get_trade_history():
+    mode = request.args.get('mode', 'PAPER').upper()
     import db_manager
     if db_manager.is_connected():
         data = db_manager.load_all_data()
-        if data and "trades" in data:
-            return jsonify(data)
+        if data:
+            if mode == 'LIVE':
+                return jsonify({"trades": data.get("live_trades", []), "max_equity": data.get("live_max_equity", 0.0)})
+            else:
+                return jsonify({"trades": data.get("trades", []), "max_equity": data.get("max_equity", 0.0)})
             
     # Fallback to local JSON if cloud fails
     import os, json
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    history_file = os.path.join(base_dir, 'trade_history.json')
+    filename = 'live_trade_history.json' if mode == 'LIVE' else 'trade_history.json'
+    history_file = os.path.join(base_dir, filename)
     if os.path.exists(history_file):
         try:
             with open(history_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 return jsonify(data)
         except Exception as e:
-            app_logger.error(f"Failed to read trade_history.json: {e}")
+            app_logger.error(f"Failed to read {filename}: {e}")
     return jsonify({"max_equity": 0.0, "trades": []})
 
 @app.route('/api/last_backup_time')

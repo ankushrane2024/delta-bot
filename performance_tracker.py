@@ -19,10 +19,10 @@ class PerformanceTracker:
     FALLBACK:  Local trade_history.json — used as backup/offline cache
     """
 
-    def __init__(self, filename="trade_history.json"):
-        self.filename = filename
+    def __init__(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.filepath = os.path.join(base_dir, filename)
+        self.paper_filepath = os.path.join(base_dir, "trade_history.json")
+        self.live_filepath = os.path.join(base_dir, "live_trade_history.json")
 
         # Load current state
         self._reload()
@@ -35,46 +35,59 @@ class PerformanceTracker:
             if cloud_data is None:
                 # Network or SSL error occurred
                 cloud_error = True
-            elif cloud_data and "trades" in cloud_data:
+            if cloud_data and ("trades" in cloud_data or "live_trades" in cloud_data):
                 self.max_equity = cloud_data.get("max_equity", 0.0)
                 self.trades = cloud_data.get("trades", [])
+                self.live_max_equity = cloud_data.get("live_max_equity", 0.0)
+                self.live_trades = cloud_data.get("live_trades", [])
                 # Also keep local JSON in sync as a backup copy
                 self._write_local_backup()
                 return
 
         # Fallback to local
-        data = self._load_local()
-        self.max_equity = data.get("max_equity", 0.0)
-        self.trades = data.get("trades", [])
+        self.max_equity, self.trades = self._load_local(self.paper_filepath)
+        self.live_max_equity, self.live_trades = self._load_local(self.live_filepath)
         
         # If we loaded from local but cloud is connected, sync up to cloud
         # ONLY IF there was no network error loading from the cloud.
-        if db_manager.is_connected() and len(self.trades) > 0 and not cloud_error:
+        if db_manager.is_connected() and (len(self.trades) > 0 or len(self.live_trades) > 0) and not cloud_error:
             app_logger.info("Tracker: Syncing local JSON up to Cloud DB...")
-            db_manager.save_all_data({"max_equity": self.max_equity, "trades": self.trades})
+            db_manager.save_all_data({
+                "max_equity": self.max_equity, 
+                "trades": self.trades,
+                "live_max_equity": self.live_max_equity,
+                "live_trades": self.live_trades
+            })
             
         # SAFETY CHECK: If cloud load failed, disable cloud saving to prevent wiping data
         self._cloud_sync_safe = not cloud_error
         if cloud_error:
             app_logger.critical("Tracker: Cloud DB load failed! Disabling cloud writes to prevent data loss.")
 
-    def _load_local(self) -> dict:
-        """Load from local JSON file."""
-        if os.path.exists(self.filepath):
+    def _load_local(self, filepath) -> tuple:
+        """Load from local JSON file. Returns (max_equity, trades_list)."""
+        if os.path.exists(filepath):
             try:
-                with open(self.filepath, 'r') as f:
-                    return json.load(f)
+                with open(filepath, 'r') as f:
+                    data = json.load(f)
+                    return data.get("max_equity", 0.0), data.get("trades", [])
             except Exception as e:
-                app_logger.error(f"Tracker: Could not load local history. {e}")
-        return {"max_equity": 0.0, "trades": []}
+                app_logger.error(f"Tracker: Could not load local history {filepath}. {e}")
+        return 0.0, []
 
     def _write_local_backup(self):
         """Write a local JSON backup of the current trade history."""
         try:
-            with open(self.filepath, 'w') as f:
+            with open(self.paper_filepath, 'w') as f:
                 json.dump({
                     "max_equity": self.max_equity,
                     "trades": self.trades
+                }, f, indent=4, default=str)
+                
+            with open(self.live_filepath, 'w') as f:
+                json.dump({
+                    "max_equity": self.live_max_equity,
+                    "trades": self.live_trades
                 }, f, indent=4, default=str)
         except Exception as e:
             app_logger.warning(f"Tracker: Could not write local backup: {e}")
@@ -83,7 +96,9 @@ class PerformanceTracker:
         """Save to both Cloud (primary) and local JSON (backup)."""
         data = {
             "max_equity": self.max_equity,
-            "trades": self.trades
+            "trades": self.trades,
+            "live_max_equity": self.live_max_equity,
+            "live_trades": self.live_trades
         }
         
         # Save to local backup always
@@ -93,10 +108,19 @@ class PerformanceTracker:
         if db_manager.is_connected() and getattr(self, '_cloud_sync_safe', True):
             db_manager.save_all_data(data)
 
-    def update_high_water_mark(self, current_equity):
+    def update_high_water_mark(self, current_equity, is_live=False):
         """Updates the peak equity to calculate accurate Max Drawdown."""
-        if current_equity > self.max_equity:
-            self.max_equity = current_equity
+        updated = False
+        if is_live:
+            if current_equity > self.live_max_equity:
+                self.live_max_equity = current_equity
+                updated = True
+        else:
+            if current_equity > self.max_equity:
+                self.max_equity = current_equity
+                updated = True
+                
+        if updated:
             self._save()
 
     def log_pro_trader_journal(self, trade_record, current_iv, dvol_status, size_multiplier, hedge_status):
@@ -202,9 +226,14 @@ class PerformanceTracker:
         }
 
         # Update local state
-        self.trades.append(trade_record)
-        if current_equity > self.max_equity:
-            self.max_equity = current_equity
+        if mode == 'LIVE':
+            self.live_trades.append(trade_record)
+            if current_equity > self.live_max_equity:
+                self.live_max_equity = current_equity
+        else:
+            self.trades.append(trade_record)
+            if current_equity > self.max_equity:
+                self.max_equity = current_equity
             
         # Save to Cloud + Local Backup
         self._save()
@@ -217,19 +246,23 @@ class PerformanceTracker:
         # Write pro-trader journal
         self.log_pro_trader_journal(trade_record, current_iv, dvol_status, size_multiplier, hedge_status)
 
-    def get_metrics(self, current_equity):
+    def get_metrics(self, current_equity, mode='PAPER'):
         """Calculates advanced performance metrics, splitting Today vs Overall."""
         today = get_ist_date()
 
-        self.update_high_water_mark(current_equity)
+        self.update_high_water_mark(current_equity, is_live=(mode == 'LIVE'))
+        
+        target_trades = self.live_trades if mode == 'LIVE' else self.trades
+        target_max_equity = self.live_max_equity if mode == 'LIVE' else self.max_equity
+        
         current_drawdown_pct = 0.0
-        if self.max_equity > 0:
-            current_drawdown_pct = ((self.max_equity - current_equity) / self.max_equity) * 100.0
+        if target_max_equity > 0:
+            current_drawdown_pct = ((target_max_equity - current_equity) / target_max_equity) * 100.0
 
         # Max drawdown historical
         peak = 0.0
         max_drawdown_pct = 0.0
-        for t in self.trades:
+        for t in target_trades:
             eq = t.get("equity_after", 0)
             if eq > peak:
                 peak = eq
@@ -241,19 +274,19 @@ class PerformanceTracker:
         if current_drawdown_pct > max_drawdown_pct:
             max_drawdown_pct = current_drawdown_pct
 
-        today_trades = [t for t in self.trades if t.get("date") == today]
+        today_trades = [t for t in target_trades if t.get("date") == today]
         today_total = len(today_trades)
         today_wins = len([t for t in today_trades if t.get("pnl", 0) > 0])
         today_pnl = sum([t.get("pnl", 0) for t in today_trades])
         today_win_rate = (today_wins / today_total * 100) if today_total > 0 else 0.0
 
-        overall_total = len(self.trades)
-        overall_wins = len([t for t in self.trades if t.get("pnl", 0) > 0])
-        overall_pnl = sum([t.get("pnl", 0) for t in self.trades])
+        overall_total = len(target_trades)
+        overall_wins = len([t for t in target_trades if t.get("pnl", 0) > 0])
+        overall_pnl = sum([t.get("pnl", 0) for t in target_trades])
         overall_win_rate = (overall_wins / overall_total * 100) if overall_total > 0 else 0.0
 
-        trades_filter_off = [t for t in self.trades if not t.get("regime_filter_enabled", False)]
-        trades_filter_on = [t for t in self.trades if t.get("regime_filter_enabled", False)]
+        trades_filter_off = [t for t in target_trades if not t.get("regime_filter_enabled", False)]
+        trades_filter_on = [t for t in target_trades if t.get("regime_filter_enabled", False)]
 
         def calc_stats(trade_list):
             total = len(trade_list)

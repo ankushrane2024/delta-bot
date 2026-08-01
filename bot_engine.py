@@ -698,7 +698,8 @@ class DeltaTradingEngine:
         """Automatically called at 17:30 IST to generate and send report."""
         success, msg = self.generate_actual_report()
         if success:
-            metrics = self.performance_tracker.get_metrics(self.risk_manager.current_equity)
+            current_mode = getattr(self.execution, 'mode', 'PAPER')
+            metrics = self.performance_tracker.get_metrics(self.risk_manager.current_equity, mode=current_mode)
             overall = metrics.get('overall', {})
             notifier.notify_compliance_report(overall.get('win_rate', 0), overall.get('pnl', 0), overall.get('current_drawdown', 0))
         else:
@@ -718,9 +719,10 @@ class DeltaTradingEngine:
         
         try:
             # 1. Collect trades for the date, filtered by current execution mode
+            target_trades = self.performance_tracker.live_trades if current_mode == 'LIVE' else self.performance_tracker.trades
             today_trades_raw = [
-                t for t in self.performance_tracker.trades 
-                if t.get("date") == date_str and t.get("mode", "PAPER") == current_mode
+                t for t in target_trades 
+                if t.get("date") == date_str
             ]
             
             # Map to report generator format
@@ -748,7 +750,7 @@ class DeltaTradingEngine:
             net_pnl_usd = sum([t.get("pnl_usd", 0) for t in today_trades])
             net_pnl_inr = net_pnl_usd * report_generator.USD_INR_RATE
             
-            metrics = self.performance_tracker.get_metrics(self.risk_manager.current_equity)
+            metrics = self.performance_tracker.get_metrics(self.risk_manager.current_equity, mode=current_mode)
             max_dd = metrics.get('overall', {}).get('max_drawdown', 0.0)
             
             # 3. Market conditions
@@ -1688,8 +1690,10 @@ class DeltaTradingEngine:
                     'call_symbol': c_syms,
                     'put_symbol': p_syms,
                 }
+                is_live_trade = getattr(self.execution, 'mode', 'PAPER') == 'LIVE'
+                trade_list = self.performance_tracker.live_trades if is_live_trade else self.performance_tracker.trades
                 chart_path = chart_generator.generate_trade_close_chart(
-                    trades=self.performance_tracker.trades,
+                    trades=trade_list,
                     current_trade=current_trade_info
                 )
                 if chart_path and os.path.exists(chart_path):
@@ -1710,11 +1714,16 @@ class DeltaTradingEngine:
 
             # Send full trade_history.json to Telegram as ultimate backup
             try:
-                history_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trade_history.json')
+                is_live_trade = getattr(self.execution, 'mode', 'PAPER') == 'LIVE'
+                backup_filename = 'live_trade_history.json' if is_live_trade else 'trade_history.json'
+                history_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), backup_filename)
+                
                 if os.path.exists(history_file):
-                    trade_count = len(self.performance_tracker.trades)
-                    notifier.send_document(history_file, caption=f"💾 <b>Trade History Backup</b>\n{trade_count} trades saved | Equity: ${self.risk_manager.current_equity:.2f}")
-                    app_logger.info("Engine: trade_history.json backup sent to Telegram.")
+                    trade_list = self.performance_tracker.live_trades if is_live_trade else self.performance_tracker.trades
+                    trade_count = len(trade_list)
+                    mode_label = "LIVE " if is_live_trade else "PAPER "
+                    notifier.send_document(history_file, caption=f"💾 <b>{mode_label}Trade History Backup</b>\n{trade_count} trades saved | Equity: ${self.risk_manager.current_equity:.2f}")
+                    app_logger.info(f"Engine: {backup_filename} backup sent to Telegram.")
             except Exception as backup_err:
                 app_logger.error(f"Engine: History backup send failed: {backup_err}")
 

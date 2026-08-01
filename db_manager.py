@@ -300,6 +300,17 @@ def load_all_data() -> dict:
                  with open(BOT_STATE_FILE, 'r') as f:
                     bs = json.load(f)
                     local_data['trades'] = bs.get("trade_history", [])
+
+            if os.path.exists("live_trade_history.json"):
+                with open("live_trade_history.json", 'r') as f:
+                    lh = json.load(f)
+                    local_data['live_trades'] = lh.get("trades", [])
+                    local_data['live_max_equity'] = lh.get("max_equity", 0.0)
+            elif os.path.exists(BOT_STATE_FILE):
+                 with open(BOT_STATE_FILE, 'r') as f:
+                    bs = json.load(f)
+                    local_data['live_trades'] = bs.get("live_trade_history", [])
+                    local_data['live_max_equity'] = bs.get("live_max_equity", 0.0)
                     
             if os.path.exists("daily_reports.json"):
                 with open("daily_reports.json", 'r') as f:
@@ -329,6 +340,8 @@ def save_all_data(trade_data: dict) -> bool:
         unified = {
             "max_equity": trade_data.get("max_equity", 0.0),
             "trade_history": trade_data.get("trades", []),
+            "live_max_equity": trade_data.get("live_max_equity", 0.0),
+            "live_trade_history": trade_data.get("live_trades", []),
             "daily_reports": trade_data.get("daily_reports", []),
             "state": trade_data.get("state", {}),
             "last_backup_time": now_str
@@ -338,6 +351,7 @@ def save_all_data(trade_data: dict) -> bool:
         try:
             with open(BOT_STATE_FILE, 'w') as f: json.dump(unified, f, indent=4)
             with open("trade_history.json", 'w') as f: json.dump({"trades": unified["trade_history"], "max_equity": unified["max_equity"]}, f, indent=4)
+            with open("live_trade_history.json", 'w') as f: json.dump({"trades": unified["live_trade_history"], "max_equity": unified["live_max_equity"]}, f, indent=4)
             with open("daily_reports.json", 'w') as f: json.dump({"reports": unified["daily_reports"]}, f, indent=4)
         except Exception as e:
             app_logger.error(f"DB: Local save failed: {e}")
