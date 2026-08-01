@@ -38,7 +38,7 @@
         }
 
         header {
-            max-width: 1200px;
+            max-width: 1800px;
             width: 100%;
             display: flex;
             justify-content: space-between;
@@ -49,7 +49,7 @@
         h1 { font-weight: 800; margin: 0; display: flex; align-items: center; gap: 15px;}
         
         .tab-nav {
-            max-width: 1200px;
+            max-width: 1800px;
             width: 100%;
             display: flex;
             gap: 4px;
@@ -78,7 +78,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1800px;
             width: 100%;
             display: flex;
             flex-direction: column;
@@ -511,10 +511,14 @@
                 const dailyTrades = Object.values(dailyAgg);
 
                 // ══════════════════════════════════════════════
-                // EQUITY CURVE CHART (Daily Aggregated)
                 // ══════════════════════════════════════════════
-                const eqLabels = ['Start', ...dailyTrades.map(t => t.date)];
-                const eqData = [10000, ...dailyTrades.map(t => t.equity_after)];
+                // EQUITY CURVE CHART (Per-Trade)
+                // ══════════════════════════════════════════════
+                const eqLabels = ['Start', ...chronoTrades.map(t => {
+                    const d = new Date(t.entry_time || t.date || Date.now());
+                    return d.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
+                })];
+                const eqData = [10000, ...chronoTrades.map(t => t.equity_after || 10000)];
 
                 const eqCtx = document.getElementById('equityChart').getContext('2d');
                 
@@ -583,10 +587,14 @@
                 }
 
                 // ══════════════════════════════════════════════
-                // DAILY P&L BAR CHART (Aggregated)
                 // ══════════════════════════════════════════════
-                const barLabels = dailyTrades.map(t => t.date);
-                const barData = dailyTrades.map(t => t.pnl);
+                // DAILY P&L BAR CHART (Per-Trade)
+                // ══════════════════════════════════════════════
+                const barLabels = chronoTrades.map(t => {
+                    const d = new Date(t.entry_time || t.date || Date.now());
+                    return d.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
+                });
+                const barData = chronoTrades.map(t => (t.pnl + (t.hedge_pnl || 0)));
                 const barColors = barData.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(239, 68, 68, 0.85)');
                 const barBorders = barData.map(v => v >= 0 ? '#10b981' : '#ef4444');
 
