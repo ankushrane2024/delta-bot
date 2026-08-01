@@ -214,17 +214,32 @@ class TradingFilters:
             df['time']  = pd.to_datetime(df['time'].astype(float), unit='s')
             df = df.sort_values(by='time').reset_index(drop=True)
             
-            # --- ADX + DI ---
-            import pandas_ta as ta
-            adx_df = df.ta.adx(high='high', low='low', close='close', length=14)
-            if adx_df is not None:
-                df['ADX'] = adx_df['ADX_14']
-                df['+DI'] = adx_df['DMP_14']
-                df['-DI'] = adx_df['DMN_14']
-            else:
-                df['ADX'] = 0.0
-                df['+DI'] = 0.0
-                df['-DI'] = 0.0
+            # --- ADX + DI (Native Pandas to avoid numba/llvmlite build failures) ---
+            def calc_adx(high, low, close, length=14):
+                tr1 = high - low
+                tr2 = (high - close.shift()).abs()
+                tr3 = (low - close.shift()).abs()
+                tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+                
+                up = high - high.shift()
+                down = low.shift() - low
+                
+                pos_dm = pd.Series(np.where((up > down) & (up > 0), up, 0.0), index=high.index)
+                neg_dm = pd.Series(np.where((down > up) & (down > 0), down, 0.0), index=high.index)
+                
+                # Smoothed Moving Average (Wilder's)
+                atr = tr.ewm(alpha=1/length, adjust=False).mean()
+                pos_di = 100 * (pos_dm.ewm(alpha=1/length, adjust=False).mean() / atr)
+                neg_di = 100 * (neg_dm.ewm(alpha=1/length, adjust=False).mean() / atr)
+                
+                dx = 100 * (pos_di - neg_di).abs() / (pos_di + neg_di).replace(0, 1)
+                adx = dx.ewm(alpha=1/length, adjust=False).mean()
+                return adx, pos_di, neg_di
+
+            adx, pos_di, neg_di = calc_adx(df['high'], df['low'], df['close'])
+            df['ADX'] = adx
+            df['+DI'] = pos_di
+            df['-DI'] = neg_di
             
             # --- Bollinger Bands ---
             df['BB_mid'] = df['close'].rolling(20).mean()

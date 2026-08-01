@@ -11,5 +11,3 @@ reportlab
 openpyxl
 matplotlib
 psutil
-pandas_ta
-pandas_ta
