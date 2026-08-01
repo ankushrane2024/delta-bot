@@ -246,18 +246,10 @@ class SmartHedgingManager:
         except Exception as e:
             app_logger.debug(f"Hedge: WS BTC price failed: {e}")
 
-        # ── Try 2: REST API (reliable) ──
-        try:
-            res = self.api_client.get_tickers({'symbol': HEDGE_SYMBOL})
-            if res and res.get('success') and res.get('result'):
-                for item in res['result']:
-                    if item.get('symbol') == HEDGE_SYMBOL:
-                        price = float(item.get('mark_price', 0))
-                        if price > 100:
-                            self._last_known_btc_price = price
-                            return price
-        except Exception as e:
-            app_logger.debug(f"Hedge: REST BTC price failed: {e}")
+        # ── Try 2: REST API (REMOVED) ──
+        # Synchronous REST API fallback is removed because if Delta API is unreachable,
+        # this blocks for 15 seconds, causing catastrophic hangs for the web dashboard 
+        # (which polls every 4 seconds) and deadlocking the entire system.
 
         # ── Try 3: Cached price ──
         if self._last_known_btc_price > 100:

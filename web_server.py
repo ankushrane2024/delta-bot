@@ -155,16 +155,9 @@ def get_status():
                 pass
                 
     if not btc_price or btc_price <= 0:
-        # Fallback 2: fetch from API tickers
-        try:
-            res_btc = bot_engine.api_client.get_tickers({'symbol': 'BTCUSD'})
-            if res_btc.get('success') and res_btc.get('result'):
-                for ticker in res_btc['result']:
-                    if ticker.get('symbol') == 'BTCUSD':
-                        btc_price = float(ticker.get('mark_price') or ticker.get('close') or ticker.get('last_price') or 0)
-                        break
-        except Exception as btc_err:
-            app_logger.debug(f"Web status: Failed to get BTC price from REST fallback: {btc_err}")
+        # Fallback 2: fetch from API tickers (REMOVED)
+        # Synchronous API calls from the web thread cause catastrophic UI hangs.
+        pass
             
     if not btc_price or btc_price <= 0:
         # Fallback 3: check if bot_engine has cached btc price in btc_price_history
@@ -172,20 +165,9 @@ def get_status():
             btc_price = bot_engine.btc_price_history[-1][1]
             
     if not btc_price or btc_price <= 0:
-        # Fallback 4: Binance public API
-        try:
-            import urllib.request
-            import json
-            req = urllib.request.Request(
-                'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',
-                headers={'User-Agent': 'Mozilla/5.0'}
-            )
-            with urllib.request.urlopen(req, timeout=3) as response:
-                data = json.loads(response.read().decode())
-                if 'price' in data:
-                    btc_price = float(data['price'])
-        except Exception:
-            pass
+        # Fallback 4: Binance public API (REMOVED)
+        # Synchronous API calls from the web thread cause catastrophic UI hangs.
+        pass
             
     # Absolute fallback (e.g. 70000) so we never crash/divide by zero
     if not btc_price or btc_price <= 0:
