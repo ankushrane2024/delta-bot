@@ -801,8 +801,8 @@ def save_live_lots():
             return jsonify({'success': False, 'error': 'Missing live_lots field'}), 400
 
         new_live_lots = int(body['live_lots'])
-        if new_live_lots < 1:
-            return jsonify({'success': False, 'error': 'Live lot size must be at least 1'}), 400
+        if new_live_lots < 2:
+            return jsonify({'success': False, 'error': 'Live lot size must be at least 2 (= 1 lot per leg)'}), 400
         if new_live_lots > 500:
             return jsonify({'success': False, 'error': 'Live lot size capped at 500 for safety. Increase manually if needed.'}), 400
 

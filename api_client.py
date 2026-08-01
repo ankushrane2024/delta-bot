@@ -72,7 +72,14 @@ class DeltaIndiaClient:
             
         try:
             response = self.session.request(method, url, headers=headers, data=body, timeout=15)
-            res_json = response.json()
+            try:
+                res_json = response.json()
+            except Exception:
+                if response.ok:
+                    res_json = {"success": True, "result": response.text}
+                else:
+                    res_json = {"success": False, "error": {"message": response.text, "code": "http_error"}}
+                    
             if not res_json.get('success') and 'error' in res_json:
                 error_logger.warning(f"API Error Response: {method} {path} - {res_json['error']}")
             return res_json
