@@ -285,6 +285,8 @@ def load_all_data() -> dict:
             
             if 'trade_history' in data and 'trades' not in data:
                 data['trades'] = data.pop('trade_history')
+            if 'live_trade_history' in data and 'live_trades' not in data:
+                data['live_trades'] = data.pop('live_trade_history')
             return data
             
         # 2. Fallback to Local
