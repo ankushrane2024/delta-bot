@@ -470,12 +470,16 @@
                 if (!data.trades || data.trades.length === 0) {
                     document.getElementById('history-container').innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No trades recorded yet.</div>';
                     
-                    // Clear summary stats
-                    document.getElementById('stat-trades').innerText = '0';
-                    document.getElementById('stat-wins').innerText = '0 / 0';
-                    document.getElementById('stat-winrate').innerText = '0%';
-                    document.getElementById('stat-pnl').innerText = '$0.00';
-                    document.getElementById('stat-pnl').style.color = 'var(--text-primary)';
+                    // Clear summary stats by writing default zero-state HTML
+                    document.getElementById('summary-row').innerHTML = `
+                        <div class="stat-card"><div class="stat-label">TOTAL TRADES</div><div class="stat-value">0</div></div>
+                        <div class="stat-card"><div class="stat-label">WINS / LOSSES</div><div class="stat-value" style="color: var(--text-primary);">0 / 0</div></div>
+                        <div class="stat-card"><div class="stat-label">WIN RATE</div><div class="stat-value">0%</div></div>
+                        <div class="stat-card"><div class="stat-label">NET P&L</div><div class="stat-value">$0.00</div></div>
+                        <div class="stat-card"><div class="stat-label">EQUITY</div><div class="stat-value">$${data.max_equity ? data.max_equity.toFixed(2) : '0.00'}</div></div>
+                        <div class="stat-card"><div class="stat-label">MAX DRAWDOWN</div><div class="stat-value" style="color: var(--danger);">0.00%</div></div>
+                        <div class="stat-card"><div class="stat-label">PROFIT FACTOR</div><div class="stat-value" style="color: var(--warning);">0.00</div></div>
+                    `;
                     
                     // Clear charts if they exist
                     if (window.equityChart) { window.equityChart.destroy(); window.equityChart = null; }
