@@ -188,26 +188,30 @@ class TradingFilters:
         from datetime import datetime
         
         try:
-            # Fetch 1000 candles (15m) from Binance to ensure stable smoothing and perfect TradingView match
+            # Fetch 1000 candles (15m) from Bybit (Binance blocks Render IPs with 451 Unavailable For Legal Reasons)
             import requests
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-            res = requests.get('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=1000', headers=headers, timeout=10)
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            res = requests.get('https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=15&limit=1000', headers=headers, timeout=10)
             
             if res.status_code != 200:
-                app_logger.warning(f"Filter: Failed to fetch candles for Market Regime from Binance. Status code: {res.status_code}")
+                app_logger.warning(f"Filter: Failed to fetch candles for Market Regime from Bybit. Status code: {res.status_code}")
                 return "Unknown", 0.0, []
                 
-            candles = res.json()
-            if not candles or len(candles) < 50:
-                app_logger.warning("Filter: Not enough candle data.")
+            data = res.json()
+            if not data or 'result' not in data or 'list' not in data['result']:
+                app_logger.warning("Filter: Not enough candle data from Bybit.")
                 return "Unknown", 0.0, []
                 
-            # Binance klines format: [Open time, Open, High, Low, Close, Volume, Close time, Quote asset volume, Number of trades, Taker buy base asset volume, Taker buy quote asset volume, Ignore]
-            df = pd.DataFrame(candles, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'qav', 'num_trades', 'tbbav', 'tbqav', 'ignore'])
+            candles = data['result']['list']
+            # Bybit returns NEWEST first, so we MUST reverse it for Pandas/TA
+            candles.reverse()
+            
+            # Bybit klines format: [startTime, open, high, low, close, volume, turnover]
+            df = pd.DataFrame(candles, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
             df['high']  = df['high'].astype(float)
             df['low']   = df['low'].astype(float)
             df['close'] = df['close'].astype(float)
-            df['time']  = pd.to_datetime(df['time'], unit='ms')
+            df['time']  = pd.to_datetime(df['time'].astype(float), unit='ms')
             df = df.sort_values(by='time').reset_index(drop=True)
             
             # --- ADX + DI ---
@@ -305,15 +309,19 @@ class TradingFilters:
         import time
         import requests
         try:
-            res = requests.get('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=30', timeout=5)
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            res = requests.get('https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=15&limit=30', headers=headers, timeout=5)
             if res.status_code != 200:
                 return "SAFE"
                 
-            candles = res.json()
-            if not candles or len(candles) < 25:
+            data = res.json()
+            if not data or 'result' not in data or 'list' not in data['result']:
                 return "SAFE"
                 
-            df = pd.DataFrame(candles, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'qav', 'num_trades', 'tbbav', 'tbqav', 'ignore'])
+            candles = data['result']['list']
+            candles.reverse()
+            
+            df = pd.DataFrame(candles, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
             for col in ['open', 'high', 'low', 'close']:
                 df[col] = df[col].astype(float)
                 
