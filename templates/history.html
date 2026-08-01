@@ -482,8 +482,8 @@
                     `;
                     
                     // Clear charts if they exist
-                    if (window.equityChart) { window.equityChart.destroy(); window.equityChart = null; }
-                    if (window.pnlChart) { window.pnlChart.destroy(); window.pnlChart = null; }
+                    if (equityChart) { equityChart.destroy(); equityChart = null; }
+                    if (pnlBarChart) { pnlBarChart.destroy(); pnlBarChart = null; }
                     
                     return;
                 }
