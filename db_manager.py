@@ -26,7 +26,7 @@ CONFIG_FILE = "cloud_db_config.json"
 _LAST_BACKUP_TIME_FILE = ".last_backup_time"
 
 _connected = False
-_sync_lock = threading.Lock()
+_sync_lock = threading.RLock()
 
 def _get_headers():
     if not GITHUB_PAT:
