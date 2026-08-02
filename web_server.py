@@ -1160,9 +1160,14 @@ def get_live_equity_api():
         if bot_engine and bot_engine.api_client:
             res = bot_engine.api_client.get_balances()
             if res and res.get('success'):
+                # Prefer INR, fallback to USDT
+                equity_val = 0.0
                 for b in res.get('result', []):
-                    if b.get('asset_symbol') == 'USDT':
-                        return jsonify({"equity": float(b.get('equity', b.get('balance', b.get('available_balance', 0))))})
+                    if b.get('asset_symbol') in ('INR', 'USDT'):
+                        val = float(b.get('equity', b.get('balance', b.get('available_balance', 0))))
+                        if val > equity_val:
+                            equity_val = val
+                return jsonify({"equity": equity_val})
     except Exception as e:
         app_logger.error(f"Failed to fetch live equity for history tab: {e}")
     return jsonify({"equity": 0.0})
