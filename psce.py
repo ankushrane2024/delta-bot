@@ -259,7 +259,8 @@ class PremiumSellingConditionsEngine:
             # --- 5. SIMPLE DECISION LOGIC ---
             min_iv = self.config.get('min_iv_threshold', 20.0)
             reasons = []
-            reasons.append(f"Live IV: {current_iv:.1f}% ({iv_status})")
+            formatted_iv = f"{current_iv + 1e-9:.1f}"
+            reasons.append(f"Live IV: {formatted_iv}% ({iv_status})")
             reasons.append(f"IV is {stability_status} today.")
             reasons.append(premium_state)
             
@@ -268,7 +269,7 @@ class PremiumSellingConditionsEngine:
                 zone = "RED"
                 decision = "SKIP TRADE"
                 trade_allowed = False
-                decision_reason = f"Extremely Low IV — {current_iv:.1f}% is below {min_iv:.0f}% minimum. Premiums are too compressed."
+                decision_reason = f"Extremely Low IV — {formatted_iv}% is below {min_iv:.0f}% minimum. Premiums are too compressed."
                 reasons.append(decision_reason)
                 # Edge score: map IV to 0-100 scale where min_iv = 0
                 edge_score = max(0.0, (current_iv / min_iv) * 25.0)  # Below threshold = low score
@@ -277,7 +278,7 @@ class PremiumSellingConditionsEngine:
                 zone = "HEALTHY"
                 decision = "SELL STRADDLE"
                 trade_allowed = True
-                decision_reason = f"IV {current_iv:.1f}% is above {min_iv:.0f}% threshold — trade conditions are favorable."
+                decision_reason = f"IV {formatted_iv}% is above {min_iv:.0f}% threshold — trade conditions are favorable."
                 reasons.append(decision_reason)
                 # Edge score: map IV range. 20% = 50, 40% = 75, 60%+ = 90+
                 edge_score = min(100.0, 50.0 + ((current_iv - min_iv) / 40.0) * 50.0)

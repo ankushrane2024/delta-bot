@@ -10,7 +10,7 @@ from typing import List, Tuple, Dict, Any
 logger = logging.getLogger("trading_bot")
 
 class DVOLProvider:
-    def __init__(self, cache_file: str = "dvol_history.json", update_interval: int = 60):
+    def __init__(self, cache_file: str = "dvol_history.json", update_interval: int = 5):
         self.cache_file = cache_file
         self.update_interval = update_interval
         self.lock = threading.RLock()
@@ -20,6 +20,7 @@ class DVOLProvider:
         self.dvol_history = []
         self.dvol_percentile = 50.0  # Default fallback
         self.last_update_time = 0.0
+        self.last_history_update_time = 0.0
         self.is_running = False
         self.thread = None
         
@@ -62,7 +63,11 @@ class DVOLProvider:
             curr_dvol = self.fetch_current_dvol()
             
             # 2. Fetch 30 days of history
-            history = self.fetch_dvol_history(days=30)
+            history = None
+            if time.time() - self.last_history_update_time > 3600 or not self.dvol_history:
+                history = self.fetch_dvol_history(days=30)
+                if history:
+                    self.last_history_update_time = time.time()
             
             with self.lock:
                 if curr_dvol is not None:
@@ -92,13 +97,13 @@ class DVOLProvider:
         """Call Deribit public API for current BTC DVOL."""
         url = "https://www.deribit.com/api/v2/public/get_volatility_index_data"
         end_ts = int(time.time() * 1000)
-        # Fetch last 2 hours at 60-minute resolution
-        start_ts = end_ts - 2 * 60 * 60 * 1000
+        # Fetch last 5 minutes at 1-second resolution
+        start_ts = end_ts - 5 * 60 * 1000
         params = {
             "currency": "BTC",
             "start_timestamp": start_ts,
             "end_timestamp": end_ts,
-            "resolution": "60"
+            "resolution": "1"
         }
         try:
             response = requests.get(url, params=params, timeout=10)
