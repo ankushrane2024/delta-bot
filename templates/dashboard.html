@@ -2050,6 +2050,17 @@
                     <span id="hpe-status-text" style="font-size: 0.85rem; font-weight: 700; color: #10b981; text-transform: uppercase; letter-spacing: 1px;">ONLINE</span>
                 </div>
             </div>
+            <!-- X-RAY VISION TERMINAL -->
+            <div style="margin-bottom: 20px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 12px; padding: 16px; box-shadow: 0 0 20px rgba(56, 189, 248, 0.1) inset; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #38bdf8; box-shadow: 0 0 10px #38bdf8;"></div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <div style="width: 8px; height: 8px; background: #38bdf8; border-radius: 50%; box-shadow: 0 0 8px #38bdf8;"></div>
+                    <span style="font-family: monospace; font-size: 0.8rem; color: #38bdf8; font-weight: 700; letter-spacing: 2px;">X-RAY ENGINE LOG</span>
+                </div>
+                <div id="hpe-xray-log-val" style="font-family: monospace; font-size: 1.1rem; color: #f8fafc; font-weight: 500; text-shadow: 0 0 5px rgba(255,255,255,0.2);">
+                    Initializing Engine Sandbox...
+                </div>
+            </div>
 
             <!-- Dashboard Grid -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; position: relative; z-index: 1;">
@@ -2059,9 +2070,15 @@
                     <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Engine State</div>
                     <div id="hpe-state-val" style="font-size: 1.8rem; font-weight: 800; color: #38bdf8; text-shadow: 0 0 15px rgba(56, 189, 248, 0.3);">DORMANT</div>
                     <div id="hpe-standby-reason" style="font-size: 0.75rem; color: #fbbf24; margin-top: 4px; font-style: italic; min-height: 18px;">Initializing...</div>
-                    <div style="margin-top: 12px; font-size: 0.8rem; color: #64748b; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between;">
-                        <span>Trigger</span>
-                        <span id="hpe-trigger-val" style="color: #10b981; font-weight: 600;">Safe (>-10%)</span>
+                    <div style="margin-top: 12px; font-size: 0.8rem; color: #64748b; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Swing High</span>
+                            <span id="hpe-swing-high-val" style="color: #cbd5e1; font-weight: 600;">WAITING</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Swing Low</span>
+                            <span id="hpe-swing-low-val" style="color: #cbd5e1; font-weight: 600;">WAITING</span>
+                        </div>
                     </div>
                 </div>
 
@@ -2103,25 +2120,32 @@
                     </div>
                 </div>
 
-                <!-- Indicator Analysis -->
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
-                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Trend Indicators</div>
+                <!-- Linear Pipeline Checklist -->
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Hedge Pipeline Gates</div>
                     
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
-                        <span style="font-size: 0.8rem; color: #cbd5e1;">Supertrend</span>
-                        <span id="hpe-st-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">OFF</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div id="gate-1-icon" style="width: 16px; height: 16px; border-radius: 50%; background: #334155; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #fff; font-weight: bold;">1</div>
+                            <span style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">Combined Loss &ge; 15%</span>
+                        </div>
+                        <span id="hpe-gate-1-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">WAITING</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
-                        <span style="font-size: 0.8rem; color: #cbd5e1;">ADX (Strength)</span>
-                        <span id="hpe-adx-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">OFF</span>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div id="gate-2-icon" style="width: 16px; height: 16px; border-radius: 50%; background: #334155; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #fff; font-weight: bold;">2</div>
+                            <span style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">Trend Confirmed (ADX &ge; 20 & Supertrend)</span>
+                        </div>
+                        <span id="hpe-gate-2-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">WAITING</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 8px;">
-                        <span style="font-size: 0.8rem; color: #cbd5e1;">Pivot Level</span>
-                        <span id="hpe-pivot-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">OFF</span>
-                    </div>
+
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.8rem; color: #cbd5e1;">Whipsaw Filter</span>
-                        <span id="hpe-whipsaw-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">OFF</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div id="gate-3-icon" style="width: 16px; height: 16px; border-radius: 50%; background: #334155; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #fff; font-weight: bold;">3</div>
+                            <span style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">Breakout / Momentum</span>
+                        </div>
+                        <span id="hpe-gate-3-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">WAITING</span>
                     </div>
                 </div>
 
@@ -2812,6 +2836,22 @@
                     if(document.getElementById('hpe-standby-reason')) document.getElementById('hpe-standby-reason').textContent = hpe.hedge_active ? 'Live Market Protection Active' : 'Waiting for trigger conditions...';
                     if(document.getElementById('hpe-trigger-val')) document.getElementById('hpe-trigger-val').textContent = hpe.hedge_active ? '? TRIGGERED' : 'IDLE';
                     
+                    // Update X-Ray Vision Monologue
+                    if(document.getElementById('hpe-xray-log-val')) {
+                        document.getElementById('hpe-xray-log-val').textContent = hpe.decision_reason || 'Initializing Engine Sandbox...';
+                    }
+
+                    // Update Swing Marks
+                    if(hpe.conditions) {
+                        const cond = hpe.conditions;
+                        if(document.getElementById('hpe-swing-high-val')) {
+                            document.getElementById('hpe-swing-high-val').textContent = cond.static_swing_high ? `$${cond.static_swing_high.toFixed(2)}` : 'WAITING';
+                        }
+                        if(document.getElementById('hpe-swing-low-val')) {
+                            document.getElementById('hpe-swing-low-val').textContent = cond.static_swing_low ? `$${cond.static_swing_low.toFixed(2)}` : 'WAITING';
+                        }
+                    }
+                    
                     const lossVal = document.getElementById('hpe-loss-val');
                     const currentLossPct = data.total_pnl_pct_capital || 0;
                     if(lossVal) {
@@ -2863,26 +2903,53 @@
                         hpePnlUsd.style.color = (usdVal > 0) ? '#10b981' : ((usdVal < 0) ? '#f43f5e' : '#94a3b8');
                     }
 
-                    if(document.getElementById('hpe-st-val')) {
-                        const el = document.getElementById('hpe-st-val');
-                        el.textContent = 'AUTO';
-                        el.style.color = '#10b981';
-                    }
-                    if(document.getElementById('hpe-adx-val')) {
-                        const el = document.getElementById('hpe-adx-val');
-                        const adxVal = data.current_adx_value || 0;
-                        el.textContent = adxVal.toFixed(1);
-                        el.style.color = (adxVal > 20) ? '#10b981' : '#f43f5e';
-                    }
-                    if(document.getElementById('hpe-pivot-val')) {
-                        const el = document.getElementById('hpe-pivot-val');
-                        el.textContent = 'AUTO';
-                        el.style.color = '#10b981';
-                    }
-                    if(document.getElementById('hpe-whipsaw-val')) {
-                        const el = document.getElementById('hpe-whipsaw-val');
-                        el.textContent = 'SAFE';
-                        el.style.color = '#10b981';
+                    if(hpe.conditions) {
+                        const cond = hpe.conditions;
+                        
+                        // Gate 1: Loss >= 15%
+                        const g1 = document.getElementById('hpe-gate-1-val');
+                        const g1Icon = document.getElementById('gate-1-icon');
+                        if(g1 && cond.latest_loss_pct !== undefined) {
+                            if(cond.latest_loss_pct >= 0.15) {
+                                g1.textContent = 'CLEARED';
+                                g1.style.color = '#10b981';
+                                g1Icon.style.background = '#10b981';
+                            } else {
+                                g1.textContent = `${(cond.latest_loss_pct * 100).toFixed(1)}% / 15.0%`;
+                                g1.style.color = '#64748b';
+                                g1Icon.style.background = '#334155';
+                            }
+                        }
+
+                        // Gate 2: ADX >= 20
+                        const g2 = document.getElementById('hpe-gate-2-val');
+                        const g2Icon = document.getElementById('gate-2-icon');
+                        if(g2 && cond.latest_adx !== undefined) {
+                            if(cond.latest_adx >= 20) {
+                                g2.textContent = 'CLEARED';
+                                g2.style.color = '#10b981';
+                                g2Icon.style.background = '#10b981';
+                            } else {
+                                g2.textContent = `${cond.latest_adx.toFixed(1)} / 20.0`;
+                                g2.style.color = '#f59e0b'; // Choppy warning color
+                                g2Icon.style.background = '#334155';
+                            }
+                        }
+
+                        // Gate 3: Breakout
+                        const g3 = document.getElementById('hpe-gate-3-val');
+                        const g3Icon = document.getElementById('gate-3-icon');
+                        if(g3) {
+                            if(hpe.hedge_active) {
+                                g3.textContent = 'CONFIRMED';
+                                g3.style.color = '#10b981';
+                                g3Icon.style.background = '#10b981';
+                            } else {
+                                g3.textContent = 'WAITING';
+                                g3.style.color = '#64748b';
+                                g3Icon.style.background = '#334155';
+                            }
+                        }
                     }
 
                     // Render History

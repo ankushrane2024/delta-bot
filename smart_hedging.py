@@ -100,6 +100,16 @@ class SmartHedgingManager:
         self._hedge_cooldown_until = 0.0           # No new hedges before this timestamp (30-min cooldown)
         self.hedge_placed_time = 0.0              # Alias for compat
 
+        # ─── Live State Variables for UI ──────────────────────────
+        self.latest_loss_pct = 0.0
+        self.latest_adx = 0.0
+        self.latest_bleed_pct = 0.0
+        self._static_swing_high = None
+        self._static_swing_low = None
+        self._latest_st_close = 0.0
+        self.brain_status = "Initializing..."
+
+
         # ─── Escalation Tracking ──────────────────────────────────
         self._last_sizing_loss_usd = 0.0
         self._last_escalation_time = 0.0
@@ -131,7 +141,21 @@ class SmartHedgingManager:
             ),
             "hedge_pnl_usd": round(self.get_live_hedge_pnl(), 2),
             "bleeding_leg": self._bleeding_leg or "None",
-            "hedge_peak_pnl": round(self._hedge_peak_pnl, 2)
+            "hedge_peak_pnl": round(self._hedge_peak_pnl, 2),
+            "decision_reason": self.brain_status,
+            "conditions": {
+                "is_losing_15": self.latest_loss_pct >= 0.15,
+                "adx_confirmed": self.latest_adx >= 20,
+                "bleed_met": self.latest_bleed_pct >= self.BLEED_TRIGGER_PCT,
+                "bleed_severe": self.latest_bleed_pct >= self.BLEED_SEVERE_PCT,
+                "bleed_flash": self.latest_bleed_pct >= self.BLEED_FLASH_CRASH_PCT,
+                "latest_loss_pct": self.latest_loss_pct,
+                "latest_adx": self.latest_adx,
+                "latest_bleed_pct": self.latest_bleed_pct,
+                "static_swing_high": self._static_swing_high,
+                "static_swing_low": self._static_swing_low,
+                "latest_st_close": self._latest_st_close
+            }
         }
 
     # ═══════════════════════════════════════════════════════════════
@@ -297,6 +321,11 @@ class SmartHedgingManager:
                 self._entry_premiums[sym] = ep
         self._entry_btc_price = self._get_btc_mark_price()
         
+        # ── Capture Static Pre-Trade Consolidation Box ──
+        pivots = self.filters.get_pivot_points()
+        self._static_swing_high = pivots.get('SWING_HIGH')
+        self._static_swing_low = pivots.get('SWING_LOW')
+        
         # CLEAR THE LOG AT THE START OF A NEW TRADE ONLY
         self.hedge_event_log = []
         
@@ -432,8 +461,9 @@ class SmartHedgingManager:
 
     def _calculate_base_exposure(self, bleed_usd, positions):
         """
-        Calculates the exact 100% raw hedge size required based on the speed of the loss.
-        This is the core math: if we lost $30 over a $500 BTC move, our exposure is 0.06 BTC.
+        Calculates the exact hedge size required to cover the remaining loss up to the 100% Stop Loss.
+        If a leg is down 30% ($30), there is 70% ($70) remaining until it hits the 100% SL.
+        We size the hedge so that it will generate $70 of profit by the time the premium doubles.
         """
         btc_price = self._get_btc_mark_price()
         if btc_price <= 0:
@@ -441,28 +471,52 @@ class SmartHedgingManager:
 
         abs_bleed = abs(bleed_usd) if bleed_usd > 0 else 1.0
 
-        # 1. Identify bleeding leg max cap (e.g. 50 lots = 0.05 BTC)
+        # 1. Identify bleeding leg and its entry premium
         leg_name = self._bleeding_leg
+        entry_premium = 0.0
+        lot_size = self.execution.live_lots if self.execution.live_mode else self.execution.simulator_lots
         max_cap_btc = self.HEDGE_MAX_SIZE_BTC
+
         if leg_name and leg_name in positions:
+            entry_premium = positions[leg_name].get('entry_price', 0.0)
             max_cap_btc = positions[leg_name].get('size', 0) * 0.001
 
-        # 2. Calculate effective exposure (Speed of Loss)
-        btc_move_usd = 0.0
-        if self._entry_btc_price > 0:
-            btc_move_usd = abs(btc_price - self._entry_btc_price)
+        if entry_premium <= 0:
+            # Fallback to old delta-approx if entry premium is unknown
+            safe_btc_move = max(abs(btc_price - self._entry_btc_price), 300.0)
+            return min(max(self.HEDGE_MIN_SIZE_BTC, abs_bleed / safe_btc_move), max_cap_btc)
 
-        # Floor at $300 to prevent division by zero or massive spikes on tiny wicks
-        safe_btc_move = max(btc_move_usd, 300.0)
-        effective_exposure = abs_bleed / safe_btc_move
+        # 2. Calculate remaining loss to 100% SL
+        # 100% SL means losing the entire entry premium.
+        total_risk_usd = entry_premium * lot_size * 0.001
+        
+        # We've already lost `abs_bleed`. The remaining loss is `total_risk_usd - abs_bleed`.
+        remaining_loss_usd = max(total_risk_usd - abs_bleed, 1.0) # Ensure it's > 0
+        
+        # 3. Estimate BTC move to hit 100% SL
+        # If premium went from entry to (entry + current_bleed), and btc moved X, 
+        # then to go from (entry + current_bleed) to (entry * 2), BTC needs to move Y.
+        btc_moved_so_far = abs(btc_price - self._entry_btc_price)
+        safe_btc_moved_so_far = max(btc_moved_so_far, 100.0) # Avoid div by zero
+        
+        # Rate of premium expansion per dollar of BTC move:
+        premium_usd_per_btc = abs_bleed / safe_btc_moved_so_far
+        
+        # BTC move required to lose the remaining amount:
+        required_btc_move = remaining_loss_usd / premium_usd_per_btc
+        safe_required_btc_move = max(required_btc_move, 150.0) # Floor at $150 move
+        
+        # 4. Calculate hedge size to cover 80% of remaining loss over that distance
+        target_profit_usd = remaining_loss_usd * 0.80
+        effective_exposure = target_profit_usd / safe_required_btc_move
             
         app_logger.info(
-            f"Hedge: Sizing Math | Loss=${abs_bleed:.2f} | "
-            f"BTC moved=${btc_move_usd:.0f} | Base Exp={effective_exposure:.4f} BTC | "
-            f"Max Leg Cap={max_cap_btc:.4f} BTC"
+            f"Hedge: Sizing Math | Leg Risk=${total_risk_usd:.0f} | Lost=${abs_bleed:.0f} | "
+            f"Remaining=${remaining_loss_usd:.0f} | Est. BTC to SL=${safe_required_btc_move:.0f} | "
+            f"Base Exp={effective_exposure:.4f} BTC | Max Leg Cap={max_cap_btc:.4f} BTC"
         )
 
-        # 3. Strict Clamp to leg size
+        # 5. Strict Clamp to leg size
         final_base = min(effective_exposure, max_cap_btc)
 
         self._last_sizing_loss_usd = abs_bleed
@@ -543,15 +597,21 @@ class SmartHedgingManager:
         # Detect which option leg is bleeding and direction to hedge
         bleeding_leg, bleed_pct, bleed_usd, direction = self._detect_bleeding_leg(positions)
 
+        # Update UI state variables
+        self.latest_loss_pct = unrealized_loss_pct
+        self.latest_adx = adx_value
+        self.latest_bleed_pct = bleed_pct
+
         if not self.hedge_active:
             # ── No hedge open: evaluate whether to open one ──
             self._check_and_trigger_hedge(
                 positions, bleeding_leg, bleed_pct,
                 bleed_usd, direction, unrealized_loss_pct,
-                profit_usd, adx_value, atr_usd
+                profit_usd, adx_value, atr_usd, supertrend_dir
             )
         else:
             # ── Hedge is open: manage it ──────────────────────
+            self.brain_status = f"🟢 LIVE HEDGE ACTIVE! Monitoring for exit triggers (ADX, Trend, Trailing SL)..."
             # Rule 0: Sync hedge_active flag with execution layer
             if abs(self.execution.hedge_size_btc) < 0.0001:
                 app_logger.warning("Hedge: hedge_active=True but execution layer has 0 size. Force-reset.")
@@ -742,33 +802,28 @@ class SmartHedgingManager:
 
     def _check_and_trigger_hedge(self, positions, bleeding_leg, bleed_pct,
                                   bleed_usd, direction, unrealized_loss_pct,
-                                  profit_usd, adx_value=0.0, atr_usd=100.0):
+                                  profit_usd, adx_value=0.0, atr_usd=100.0, supertrend_dir='NEUTRAL'):
         """
-        Decides whether to open a new hedge based on:
-        1. Net trade must be losing (no hedge when profitable)
-        2. Flash crash (≥40%) → instant hedge
-        3. Severe bleed (≥25%) → skip confirmation
-        4. Moderate bleed (≥15%) → 2-check confirmation
-        5. Emergency (≥15% total portfolio loss) → force hedge
-
-        NO ATR BLOCKING — removed entirely.
+        Decides whether to open a new hedge based on user's exact rules.
         """
-        # Calculate total dollar loss to size the hedge correctly
         total_loss_usd = abs(profit_usd) if profit_usd < 0 else 0.0
 
-        # ── RULE: Never hedge when net trade is profitable ──
-        if unrealized_loss_pct <= 0.0:
+        # ── GLOBAL GATE 1: Combined Premium Loss >= 15% ──
+        if unrealized_loss_pct < 0.15:
+            self.brain_status = f"Monitoring... Portfolio loss is safe ({unrealized_loss_pct*100:.1f}% < 15%)."
             if bleeding_leg:
                 app_logger.info(
                     f"Hedge: {bleeding_leg} bleeding {bleed_pct*100:.1f}%, "
-                    f"BUT net trade is PROFITABLE. No hedge needed."
+                    f"BUT Combined Loss is only {unrealized_loss_pct*100:.1f}% (Needs >= 15%). No hedge."
                 )
             self._bleed_confirm_count = 0
             return
 
-        # ── RULE: ADX >= 20 — Confirm this is a real directional move ──
-        # If ADX < 20, market is choppy/sideways. Hedge would whipsaw.
+        self.brain_status = f"🚨 15% Loss Detected! Evaluating Trend Momentum..."
+
+        # ── GLOBAL GATE 2: ADX >= 20 (Confirm Trend) ──
         if adx_value > 0 and adx_value < self.ADX_MIN_ENTRY:
+            self.brain_status = f"🚨 15% Loss Detected! But ADX={adx_value:.1f} < 20 (Choppy Market). Waiting for Trend Momentum..."
             app_logger.info(
                 f"Hedge: ⛔ ADX GATE BLOCKED — ADX={adx_value:.1f} < {self.ADX_MIN_ENTRY} "
                 f"(sideways/choppy market). No hedge opened."
@@ -776,239 +831,91 @@ class SmartHedgingManager:
             self._bleed_confirm_count = 0
             return
 
-        # ── PIVOT & STRUCTURAL BREAKOUT STRATEGY (ACCELERATED ENTRY) ──
-        # Checks two tiers of breakout levels:
-        #   TIER 1 (Strongest): PREV_HIGH / PREV_LOW — actual structural breaks
-        #     → Close BELOW Previous Day Low  + Supertrend SELL → CONFIRM downtrend
-        #     → Close ABOVE Previous Day High + Supertrend BUY  → CONFIRM uptrend
-        #   TIER 2 (Standard): Pivot math levels P, R1, R2, S1, S2, S3
-        # Fakeout rejection wick check is applied to both tiers.
-        if bleeding_leg and unrealized_loss_pct > 0.0:
+        self.brain_status = f"⏳ Trend Confirmed (ADX {adx_value:.1f} >= 20). Waiting for Breakout..."
+
+        # ── GATE 3: Trend & Breakout Confirmation ──
+        # To proceed, we need EITHER a Structure Break OR an ATR Velocity momentum move.
+        is_breakout_confirmed = False
+        
+        # Check A: Double-Confirmed Structure Break
+        if bleeding_leg:
             pivots = self.filters.get_pivot_points()
-            st = self.filters.get_supertrend()
+            last_closed_15m = None
+            try:
+                res_15m = self.api_client.get_candles(HEDGE_SYMBOL, "15m")
+                if res_15m and res_15m.get('success') and res_15m.get('result'):
+                    c15m = res_15m['result']
+                    if len(c15m) >= 2:
+                        last_closed_15m = c15m[-2] # Second to last is closed
+            except Exception as e:
+                pass
 
-            if pivots and st:
-                is_upside_breakout = False
-                is_downside_breakout = False
-                broken_level_name = ""
-                broken_level_val = 0.0
-                is_structure_break = False  # True = PREV_HIGH/LOW, False = pivot math
+            if pivots and last_closed_15m and self._static_swing_high and self._static_swing_low:
+                c_close = float(last_closed_15m.get('close', 0))
+                c_open = float(last_closed_15m.get('open', 0))
+                c_high = float(last_closed_15m.get('high', 0))
+                c_low = float(last_closed_15m.get('low', 0))
+                mock_st = {'open': c_open, 'close': c_close, 'high': c_high, 'low': c_low}
+                self._latest_st_close = c_close
 
-                # ── TIER 1: Structural Level Breaks (checked first — strongest signal) ──
-                # SWING_LOW break: 15m candle opened above it, closed below it, SELL trend
-                # SWING_HIGH break: 15m candle opened below it, closed above it, BUY trend
-                swing_low  = pivots.get('SWING_LOW')
-                swing_high = pivots.get('SWING_HIGH')
-
-                if swing_low and st['open'] > swing_low and st['close'] < swing_low and st['trend'] == 'SELL':
-                    if self._is_rejection_candle(st, 'DOWN'):
-                        app_logger.warning(
-                            f"Hedge: 🛑 FAKEOUT at SWING_LOW (${swing_low:.2f})! "
-                            f"Hammer/Pin Bar wick detected. Structure break REJECTED."
-                        )
-                    else:
-                        is_downside_breakout = True
-                        broken_level_name = "SWING_LOW"
-                        broken_level_val = swing_low
-                        is_structure_break = True
-
-                elif swing_high and st['open'] < swing_high and st['close'] > swing_high and st['trend'] == 'BUY':
-                    if self._is_rejection_candle(st, 'UP'):
-                        app_logger.warning(
-                            f"Hedge: 🛑 FAKEOUT at SWING_HIGH (${swing_high:.2f})! "
-                            f"Shooting Star wick detected. Structure break REJECTED."
-                        )
-                    else:
-                        is_upside_breakout = True
-                        broken_level_name = "SWING_HIGH"
-                        broken_level_val = swing_high
-                        is_structure_break = True
-
-                # ── TIER 2: Pivot Math Level Breaks (if no structure break found) ──
-                if not (is_upside_breakout or is_downside_breakout):
-                    pivot_order = ['P', 'R1', 'R2', 'R3', 'S1', 'S2', 'S3']
-                    for name in pivot_order:
-                        val = pivots.get(name)
-                        if val is None:
-                            continue
-                        # Upside: candle opened below level, closed above, BUY trend
-                        if st['open'] < val and st['close'] > val and st['trend'] == 'BUY':
-                            if self._is_rejection_candle(st, 'UP'):
-                                app_logger.warning(
-                                    f"Hedge: 🛑 FAKEOUT at {name} (${val:.2f})! "
-                                    f"Shooting Star wick detected. Hedge blocked."
-                                )
-                                continue
-                            is_upside_breakout = True
-                            broken_level_name = name
-                            broken_level_val = val
+                # Check upside double-break
+                if c_close > self._static_swing_high and supertrend_dir == 'BUY' and not self._is_rejection_candle(mock_st, 'UP'):
+                    for r in ['R1', 'R2', 'R3']:
+                        val = pivots.get(r)
+                        if val and c_close > val:
+                            is_breakout_confirmed = True
+                            app_logger.warning(f"Hedge: 🏗️ Upside Structure Break confirmed at {r}")
                             break
 
-                        # Downside: candle opened above level, closed below, SELL trend
-                        elif st['open'] > val and st['close'] < val and st['trend'] == 'SELL':
-                            if self._is_rejection_candle(st, 'DOWN'):
-                                app_logger.warning(
-                                    f"Hedge: 🛑 FAKEOUT at {name} (${val:.2f})! "
-                                    f"Hammer/Pin Bar wick detected. Hedge blocked."
-                                )
-                                continue
-                            is_downside_breakout = True
-                            broken_level_name = name
-                            broken_level_val = val
+                # Check downside double-break
+                if not is_breakout_confirmed and c_close < self._static_swing_low and supertrend_dir == 'SELL' and not self._is_rejection_candle(mock_st, 'DOWN'):
+                    for s in ['S1', 'S2', 'S3']:
+                        val = pivots.get(s)
+                        if val and c_close < val:
+                            is_breakout_confirmed = True
+                            app_logger.warning(f"Hedge: 🏗️ Downside Structure Break confirmed at {s}")
                             break
 
-                if is_upside_breakout or is_downside_breakout:
-                    tier_label = "🏗️ STRUCTURE BREAK" if is_structure_break else "📐 PIVOT BREAK"
-                    app_logger.warning(
-                        f"Hedge: {tier_label} — {broken_level_name} (${broken_level_val:.2f}) "
-                        f"| Candle: O=${st['open']:.0f} C=${st['close']:.0f} "
-                        f"| Supertrend={st['trend']} "
-                        f"| Loss={unrealized_loss_pct*100:.1f}% | Bypassing bleed threshold → HEDGE NOW"
-                    )
-                    notifier.notify_warning(
-                        f"{tier_label} 🚨\n"
-                        f"{broken_level_name} (${broken_level_val:.2f}) broken!\n"
-                        f"Supertrend: {st['trend']} | Loss: {unrealized_loss_pct*100:.1f}%\n"
-                        f"Opening immediate hedge."
-                    )
-                    self._bleed_confirm_count = 0
-                    self._bleed_confirm_leg = None
-                    self._open_new_hedge(
-                        positions, bleeding_leg, unrealized_loss_pct,
-                        total_loss_usd, direction, profit_usd, atr_usd
-                    )
-                    return
+        # Check B: ATR Velocity (Momentum)
+        if not is_breakout_confirmed:
+            btc_price = self._get_btc_mark_price()
+            if self._entry_btc_price > 0 and btc_price > 0:
+                realtime_move = abs(btc_price - self._entry_btc_price)
+                last_candle_close = self._get_last_closed_5m_candle()
+                candle_move = abs(last_candle_close - self._entry_btc_price) if last_candle_close > 0 else 0
+                
+                if realtime_move >= (atr_usd * 2.0) or candle_move >= (atr_usd * 1.5):
+                    is_breakout_confirmed = True
+                    app_logger.warning("Hedge: ⚡ ATR Velocity Momentum confirmed")
 
-
-        # ── HYBRID TREND CONFIRMATION FILTER ──
-        # To avoid whipsaws, we require EITHER a closed 5m candle > 1.5 ATR (Small Alert)
-        # OR an instant real-time move > 2.0 ATR (Red Alert).
-        btc_price = self._get_btc_mark_price()
-        if self._entry_btc_price > 0 and btc_price > 0:
-            realtime_move = abs(btc_price - self._entry_btc_price)
-            last_candle_close = self._get_last_closed_5m_candle()
-            candle_move = abs(last_candle_close - self._entry_btc_price) if last_candle_close > 0 else 0
-            
-            # Rule 2: RED ALERT - Realtime > 2.0 ATR
-            red_alert_threshold = atr_usd * 2.0
-            is_red_alert = realtime_move >= red_alert_threshold
-            
-            # Rule 1: Small Alert - Candle Close > 1.5 ATR
-            small_alert_threshold = atr_usd * 1.5
-            is_small_alert = candle_move >= small_alert_threshold
-            
-            if bleeding_leg and not (is_red_alert or is_small_alert):
-                if bleed_pct >= self.BLEED_TRIGGER_PCT:
-                    app_logger.warning(
-                        f"Hedge: WAITING FOR CONFIRMATION! {bleeding_leg} bleeding {bleed_pct*100:.1f}%. "
-                        f"Realtime move: ${realtime_move:.1f} (Needs > ${red_alert_threshold:.1f}). "
-                        f"5m Candle move: ${candle_move:.1f} (Needs > ${small_alert_threshold:.1f}). "
-                        f"Hedge REJECTED to prevent fakeout."
-                    )
-                self._bleed_confirm_count = 0
-                return
-
-        # ── FLASH CRASH: ≥ 40% bleed → instant hedge ──
-        if bleeding_leg and unrealized_loss_pct >= self.BLEED_FLASH_CRASH_PCT:
+        # ── PIPELINE EXECUTION ──
+        if is_breakout_confirmed:
+            self.brain_status = "🟢 PIPELINE CLEARED! Calculating sizing and deploying Hedge!"
             app_logger.critical(
-                f"Hedge: ⚡ FLASH CRASH! Total loss {unrealized_loss_pct*100:.1f}% "
-                f">= {self.BLEED_FLASH_CRASH_PCT*100:.0f}%. "
-                f"HEDGING IMMEDIATELY!"
+                f"Hedge: 🟢 PIPELINE COMPLETE 🟢 "
+                f"Combined Loss: {unrealized_loss_pct*100:.1f}% | ADX: {adx_value:.1f} | "
+                f"Breakout Confirmed. Sizing hedge for {bleeding_leg} (-{bleed_pct*100:.1f}%)."
             )
-            notifier.notify_error(
-                f"⚡ FLASH CRASH HEDGE ⚡\n"
-                f"Total loss {unrealized_loss_pct*100:.1f}%!\n"
-                f"Immediate hedge — no confirmation wait."
+            notifier.notify_warning(
+                f"🚨 HEDGE PIPELINE TRIGGERED 🚨\n"
+                f"Loss: {unrealized_loss_pct*100:.1f}%\n"
+                f"Leg: {bleeding_leg} bleeding {bleed_pct*100:.1f}%\n"
+                f"Breakout confirmed. Opening Hedge."
             )
             self._bleed_confirm_count = 0
             self._bleed_confirm_leg = None
             self._open_new_hedge(
-                positions, bleeding_leg, unrealized_loss_pct,
+                positions, bleeding_leg, bleed_pct,
                 total_loss_usd, direction, profit_usd, atr_usd
             )
-            return
-
-        # ── SEVERE BLEED: ≥ 25% → skip confirmation ──
-        if bleeding_leg and unrealized_loss_pct >= self.BLEED_SEVERE_PCT:
-            app_logger.warning(
-                f"Hedge: SEVERE BLEED! Total loss at "
-                f"{unrealized_loss_pct*100:.1f}% >= {self.BLEED_SEVERE_PCT*100:.0f}%. "
-                f"Skipping confirmation. Hedging now."
+        else:
+            app_logger.info(
+                f"Hedge: Awaiting Breakout Confirmation. "
+                f"Loss={unrealized_loss_pct*100:.1f}%, ADX={adx_value:.1f}, "
+                f"Leg={bleeding_leg} (-{bleed_pct*100:.1f}%)."
             )
-            self._bleed_confirm_count = 0
-            self._bleed_confirm_leg = None
-            self._open_new_hedge(
-                positions, bleeding_leg, unrealized_loss_pct,
-                total_loss_usd, direction, profit_usd, atr_usd
-            )
-            return
-
-        # ── MODERATE BLEED: ≥ 15% → need 2 consecutive confirmations ──
-        if bleeding_leg and unrealized_loss_pct >= self.BLEED_TRIGGER_PCT:
-            if bleeding_leg == self._bleed_confirm_leg:
-                self._bleed_confirm_count += 1
-            else:
-                self._bleed_confirm_count = 1
-                self._bleed_confirm_leg = bleeding_leg
-
-            if self._bleed_confirm_count >= self.BLEED_CONFIRM_CHECKS:
-                app_logger.info(
-                    f"Hedge: CONFIRMED! Total loss "
-                    f"{unrealized_loss_pct*100:.1f}% for {self._bleed_confirm_count} "
-                    f"consecutive checks. "
-                    f"Opening hedge..."
-                )
-                self._bleed_confirm_count = 0
-                self._bleed_confirm_leg = None
-                self._open_new_hedge(
-                    positions, bleeding_leg, unrealized_loss_pct,
-                    total_loss_usd, direction, profit_usd, atr_usd
-                )
-            else:
-                app_logger.info(
-                    f"Hedge: Total loss {unrealized_loss_pct*100:.1f}% "
-                    f"— confirm {self._bleed_confirm_count}/{self.BLEED_CONFIRM_CHECKS}. "
-                    f"Waiting for sustained bleed..."
-                )
-            return
-
-        # ── EMERGENCY: total portfolio loss ≥ 15% ──
-        if unrealized_loss_pct >= self.EMERGENCY_LOSS_PCT:
-            emergency_direction = direction or 'buy'
-            emergency_leg = bleeding_leg or 'unknown'
-
-            # Try to determine direction from position data
-            if not direction:
-                try:
-                    for sym, data in positions.items():
-                        ep = data.get('entry_price', 0)
-                        lgp = data.get('last_good_price', ep)
-                        is_call = (
-                            sym.startswith('C-') or
-                            data.get('leg_type', '') == 'call'
-                        )
-                        if lgp > ep * 1.05:
-                            emergency_direction = 'buy' if is_call else 'sell'
-                            emergency_leg = 'call' if is_call else 'put'
-                            break
-                except Exception:
-                    pass
-
-            app_logger.critical(
-                f"Hedge: ⚠️ EMERGENCY! Total loss {unrealized_loss_pct*100:.1f}% "
-                f">= {self.EMERGENCY_LOSS_PCT*100:.0f}%. Per-leg bleed: "
-                f"{bleed_pct*100:.1f}%. FORCE-HEDGING {emergency_direction}!"
-            )
-            notifier.notify_error(
-                f"🚨 EMERGENCY HEDGE 🚨\n"
-                f"Total loss: {unrealized_loss_pct*100:.1f}%\n"
-                f"Emergency hedging in {emergency_direction} direction."
-            )
-            self._open_new_hedge(
-                positions, emergency_leg, unrealized_loss_pct,
-                total_loss_usd, emergency_direction, profit_usd, atr_usd
-            )
-            return
+            
+        return
 
         # ── No trigger — reset and monitor ──
         if self._bleed_confirm_count > 0:
@@ -1432,6 +1339,7 @@ class SmartHedgingManager:
         self._dca_tier = 0
         self._breakeven_sl_active = False
         self._hedge_peak_pnl_pct = 0.0
+        self.brain_status = "Standby (Hedge Reset)"
         app_logger.info("Hedge: State fully reset.")
 
     # ═══════════════════════════════════════════════════════════════
