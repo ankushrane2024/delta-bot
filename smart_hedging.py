@@ -107,7 +107,7 @@ class SmartHedgingManager:
         self._static_swing_high = None
         self._static_swing_low = None
         self._latest_st_close = 0.0
-        self.brain_status = "Initializing..."
+        self.brain_status = "Standby: Waiting for active options trades to monitor..."
 
 
         # ─── Escalation Tracking ──────────────────────────────────
@@ -1339,7 +1339,7 @@ class SmartHedgingManager:
         self._dca_tier = 0
         self._breakeven_sl_active = False
         self._hedge_peak_pnl_pct = 0.0
-        self.brain_status = "Standby (Hedge Reset)"
+        self.brain_status = "Standby: Waiting for active options trades to monitor..."
         app_logger.info("Hedge: State fully reset.")
 
     # ═══════════════════════════════════════════════════════════════
