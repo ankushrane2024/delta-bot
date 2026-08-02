@@ -1162,7 +1162,7 @@ def get_live_equity_api():
             if res and res.get('success'):
                 for b in res.get('result', []):
                     if b.get('asset_symbol') == 'USDT':
-                        return jsonify({"equity": float(b.get('available_balance', 0))})
+                        return jsonify({"equity": float(b.get('equity', b.get('balance', b.get('available_balance', 0))))})
     except Exception as e:
         app_logger.error(f"Failed to fetch live equity for history tab: {e}")
     return jsonify({"equity": 0.0})
