@@ -338,6 +338,22 @@ def save_all_data(trade_data: dict) -> bool:
     with _sync_lock:
         if not _connected: _connect()
         
+        # --- VAULT PROTECTION: Prevent accidental wipe of history ---
+        existing_data = load_all_data() or {}
+        old_paper = existing_data.get("trades", existing_data.get("trade_history", []))
+        new_paper = trade_data.get("trades", [])
+        old_live = existing_data.get("live_trades", existing_data.get("live_trade_history", []))
+        new_live = trade_data.get("live_trades", [])
+        
+        if len(new_paper) < len(old_paper):
+            app_logger.error(f"VAULT PROTECTION: Attempt to shrink paper trades from {len(old_paper)} to {len(new_paper)} blocked. Forcing merge.")
+            trade_data["trades"] = old_paper + [t for t in new_paper if t not in old_paper]
+            
+        if len(new_live) < len(old_live):
+            app_logger.error(f"VAULT PROTECTION: Attempt to shrink live trades from {len(old_live)} to {len(new_live)} blocked. Forcing merge.")
+            trade_data["live_trades"] = old_live + [t for t in new_live if t not in old_live]
+        # -----------------------------------------------------------
+        
         now_str = get_ist_now().strftime("%d %b, %H:%M IST")
         unified = {
             "max_equity": trade_data.get("max_equity", 0.0),
