@@ -391,8 +391,18 @@ def emergency_close():
         return jsonify({'error': 'Engine not initialized'}), 500
 
     # Calculate closed P&L and log it to performance tracker before wiping positions
-    if bot_engine.execution.active_positions and bot_engine.total_entry_premium > 0:
+    if bot_engine.execution.active_positions:
         current_total_value = 0
+        collected_premium = bot_engine.total_entry_premium
+        
+        # If hot-recovery didn't run (e.g. network crash loop), reconstruct premium manually
+        if collected_premium <= 0:
+            collected_premium = sum(
+                data.get('entry_price', 0) * data.get('size', 0) * LOT_TO_BTC
+                for data in bot_engine.execution.active_positions.values()
+            )
+            bot_engine.total_entry_premium = collected_premium
+
         for sym, data in bot_engine.execution.active_positions.items():
             ws_data = bot_engine.api_client.get_realtime_ticker(sym)
             if ws_data and 'mark_price' in ws_data:

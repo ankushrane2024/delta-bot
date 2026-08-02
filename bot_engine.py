@@ -190,6 +190,12 @@ class DeltaTradingEngine:
         # Connect WebSockets for zero-latency feeds
         self.api_client.start_ws()
         
+        # Sync live positions from exchange on boot (LIVE mode only)
+        try:
+            self.execution.sync_live_positions()
+        except Exception as e:
+            app_logger.error(f"Engine: Error syncing live positions on boot: {e}")
+        
         # In PAPER mode, restore the simulated equity from trade history if available
         # This prevents the equity curve from dropping back to starting capital after a restart
         if BOT_MODE == 'PAPER' and getattr(self, 'performance_tracker', None):
@@ -885,6 +891,9 @@ class DeltaTradingEngine:
                         # Reset the guard at midnight so the bot can exit next day too
                         if current_time_minutes < 60:  # Past midnight resets the daily guard
                             _eod_exit_triggered = False
+                            
+                        # If we passed 17:00 (1020 minutes) and there are still active positions, FORCE CLOSE.
+                        # This catches missed scheduled jobs (e.g. if the bot rebooted at 17:01).
                         if current_time_minutes >= 1015 and not _eod_exit_triggered:
                             _eod_exit_triggered = True
                             app_logger.info(f"Engine Monitor Safeguard: Time is {now_ist.strftime('%H:%M')} IST (>= 16:55 IST) with active positions. Triggering EOD Force Square-off.")
