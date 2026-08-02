@@ -6,6 +6,26 @@ import time
 
 app = Flask(__name__, template_folder='templates')
 
+try:
+    import numpy as np
+    from flask.json.provider import DefaultJSONProvider
+
+    class NumpyJSONProvider(DefaultJSONProvider):
+        def default(self, obj):
+            if isinstance(obj, np.bool_):
+                return bool(obj)
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return super().default(obj)
+    
+    app.json = NumpyJSONProvider(app)
+except ImportError:
+    pass
+
 # Global reference to the engine
 bot_engine = None
 ares_runner = None
