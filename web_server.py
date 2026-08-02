@@ -1005,9 +1005,9 @@ def get_trade_history():
                 state = data
                 
             if mode == 'LIVE':
-                return jsonify({"trades": state.get("live_trade_history", []), "max_equity": state.get("live_max_equity", 0.0)})
+                return jsonify({"trades": state.get("live_trades", []), "max_equity": state.get("live_max_equity", 0.0)})
             else:
-                return jsonify({"trades": state.get("trade_history", []), "max_equity": state.get("max_equity", 0.0)})
+                return jsonify({"trades": state.get("trades", []), "max_equity": state.get("max_equity", 0.0)})
             
     # Fallback to local JSON if cloud fails
     import os, json
