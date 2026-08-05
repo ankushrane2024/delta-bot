@@ -3892,7 +3892,7 @@
         }
 
         // Poll every 2 seconds
-        setInterval(fetchStatus, 4000);
+        setInterval(fetchStatus, 60000);
         fetchStatus();
 
         // ════════════════════════════════════════════════════
@@ -4101,7 +4101,7 @@
         }
 
         // Poll chart every 3 seconds (slightly offset from status poll)
-        setInterval(fetchPnlChart, 3000);
+        setInterval(fetchPnlChart, 60000);
         fetchPnlChart();
 
         // --- News & Events ---
@@ -4239,7 +4239,7 @@
         setInterval(fetchNews, 6 * 60 * 60 * 1000);
 
         updateJournal();
-        setInterval(updateJournal, 20000);
+        setInterval(updateJournal, 120000);
 
         // ── Manual Lot Size Settings ───────────────────────────────────────────
         async function loadLotSize() {
@@ -4574,7 +4574,7 @@ function updateAresPremium() {
         });
 }
 
-setInterval(updateAresPremium, 3000);
+setInterval(updateAresPremium, 60000);
 setTimeout(updateAresPremium, 500);
 
 // ── System Health Diagnostics Polling ──
@@ -4651,7 +4651,7 @@ function updateSystemHealth() {
         })
         .catch(e => {});
 }
-setInterval(updateSystemHealth, 5000);
+setInterval(updateSystemHealth, 60000);
 setTimeout(updateSystemHealth, 1000);
 
 </script>
