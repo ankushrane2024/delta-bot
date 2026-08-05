@@ -151,7 +151,7 @@ class DeltaTradingEngine:
         
         self.market_regime_filter_enabled = False
         self.smart_hedge_provider = getattr(config, 'SMART_HEDGE_PROVIDER', 'SMART')
-        self.smart_hedging_enabled = True  # FIX: Always enable smart hedging by default
+        self.smart_hedging_enabled = False  # FIX: Disabled by user request
         self.current_market_regime = "Unknown"
         self.current_adx_value = 0.0
         self.adx_history = []
