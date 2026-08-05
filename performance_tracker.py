@@ -60,8 +60,9 @@ class PerformanceTracker:
             })
             
         # SAFETY CHECK: If cloud load failed, disable cloud saving to prevent wiping data
-        self._cloud_sync_safe = not cloud_error
-        if cloud_error:
+        # BUT if db_manager bootstrapped a new JSONBlob, it IS safe.
+        self._cloud_sync_safe = not cloud_error or db_manager.JSONBLOB_ID is not None
+        if cloud_error and not db_manager.JSONBLOB_ID:
             app_logger.critical("Tracker: Cloud DB load failed! Disabling cloud writes to prevent data loss.")
 
     def _load_local(self, filepath) -> tuple:
