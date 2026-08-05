@@ -4483,6 +4483,16 @@
 <script>
 
 // ARES Premium UI Updater
+let aresLocalDataAge = 0;
+setInterval(() => {
+    if(document.getElementById('ares-data-age')) {
+        aresLocalDataAge++;
+        const ageEl = document.getElementById('ares-data-age');
+        ageEl.innerText = aresLocalDataAge + "s";
+        ageEl.className = 'ares-metric-val ' + (aresLocalDataAge > 300 ? 'text-red' : 'text-green');
+    }
+}, 1000);
+
 function updateAresPremium() {
     // Update local clock
     const now = new Date();
@@ -4542,10 +4552,10 @@ function updateAresPremium() {
             }
 
             // New transparency fields
-            const dataAge = data.data_age_seconds || 0;
+            aresLocalDataAge = data.data_age_seconds || 0;
             const ageEl = el('ares-data-age');
-            ageEl.innerText = dataAge + "s";
-            ageEl.className = 'ares-metric-val ' + (dataAge > 300 ? 'text-red' : 'text-green');
+            ageEl.innerText = aresLocalDataAge + "s";
+            ageEl.className = 'ares-metric-val ' + (aresLocalDataAge > 300 ? 'text-red' : 'text-green');
             el('ares-iv-timestamp').innerText = data.iv_data_timestamp || '--';
 
             const fdEl = el('ares-final-decision');
