@@ -31,5 +31,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD ./healthcheck.sh || exit 1
 
-# Start the application using the entrypoint script
-CMD ["./startup.sh"]
+# Start the application directly
+CMD ["python", "main.py"]
