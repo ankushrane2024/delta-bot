@@ -359,8 +359,8 @@ class DeltaTradingEngine:
                     self._record_skip(f"Market Regime = TRENDING (ADX {adx:.2f} > 25) — Sideways market required")
                     return
         # Find Strikes with DVOL Integration (MODIFIED)
-        # Let strategy auto-detect the nearest available expiry by passing None
-        call_opt, put_opt = self.strategy.find_strikes(expiry_date=None, dvol_provider=self.dvol_provider, force=force)
+        expiry = get_next_expiry_date()
+        call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, dvol_provider=self.dvol_provider, force=force)
         
         # User requested: "If no suitable strikes found → Skip the trade (do not force entry)"
         # Removed all fallback mechanisms that bypass premium filters.
