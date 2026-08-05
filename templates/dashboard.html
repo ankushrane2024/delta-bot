@@ -4510,10 +4510,30 @@ function updateAresPremium() {
             if (data.metrics) {
                 el('ares-btc-price').innerText = "$" + parseFloat(data.metrics.btc_price).toLocaleString();
                 el('ares-atm-iv').innerText = parseFloat(data.metrics.atm_iv).toFixed(1) + "%";
-                el('ares-iv-pct').innerText = parseFloat(data.metrics.iv_percentile).toFixed(0) + "%";
-                el('ares-bar-pct').style.width = Math.min(100, Math.max(0, parseFloat(data.metrics.iv_percentile))) + "%";
-                el('ares-iv-rank').innerText = parseFloat(data.metrics.iv_rank).toFixed(0);
-                el('ares-bar-rank').style.width = Math.min(100, Math.max(0, parseFloat(data.metrics.iv_rank))) + "%";
+
+                // A2 FIX: iv_percentile and iv_rank can be null when the 30-day history
+                // window isn't populated yet (< 5 entries). Show "Insufficient data" instead
+                // of 0% / -0 to avoid misleading the user.
+                // Root cause trace: server sends null sentinel; client guards it here.
+                if (data.metrics.iv_percentile === null || data.metrics.iv_percentile === undefined) {
+                    el('ares-iv-pct').innerText = "Insufficient data";
+                    el('ares-bar-pct').style.width = "0%";
+                } else {
+                    el('ares-iv-pct').innerText = parseFloat(data.metrics.iv_percentile).toFixed(0) + "%";
+                    el('ares-bar-pct').style.width = Math.min(100, Math.max(0, parseFloat(data.metrics.iv_percentile))) + "%";
+                }
+
+                // A2 FIX: iv_rank clamped to [0,100] server-side, but also guarded here
+                // to prevent -0 display (toFixed(0) of e.g. -0.4 = "-0").
+                if (data.metrics.iv_rank === null || data.metrics.iv_rank === undefined) {
+                    el('ares-iv-rank').innerText = "Insufficient data";
+                    el('ares-bar-rank').style.width = "0%";
+                } else {
+                    const rankVal = Math.max(0, parseFloat(data.metrics.iv_rank));
+                    el('ares-iv-rank').innerText = rankVal.toFixed(0);
+                    el('ares-bar-rank').style.width = Math.min(100, rankVal) + "%";
+                }
+
                 el('ares-iv-trend').innerText = data.metrics.iv_trend_5d;
                 el('ares-iv-change').innerText = data.metrics.iv_change_1h;
                 
@@ -4540,7 +4560,14 @@ function updateAresPremium() {
             if (isRed) shield.classList.add('zone-red');
             if (isYellow) shield.classList.add('zone-yellow');
 
-            el('ares-zone-main').innerText = isRed ? "LOW EDGE" : (isYellow ? "CAUTION" : "HEALTHY");
+            // A1 FIX: Zone badge text matches the SAME 3-tier threshold scale as the
+            // IV Zone Meter component at the bottom of this panel:
+            //   RED / LOW EDGE: IV < 20% (server zone = "RED")
+            //   MEDIUM IV:      20% <= IV < 50% (server zone = "MEDIUM")
+            //   HEALTHY IV:     IV >= 50% (server zone = "HEALTHY")
+            // Previously this was hardcoded to "HEALTHY" for any non-red/yellow case.
+            const zoneText = isRed ? "LOW EDGE" : (data.zone === "MEDIUM" ? "MEDIUM IV" : "HEALTHY IV");
+            el('ares-zone-main').innerText = zoneText;
             el('ares-zone-main').style.color = mainColor;
             el('ares-zone-sub').innerText = data.trade_allowed ? "OPTIMAL FOR PREMIUM SELLING" : "UNFAVORABLE FOR STRANGLES";
             el('ares-zone-sub').style.color = mainColor;
@@ -4553,8 +4580,16 @@ function updateAresPremium() {
             
             el('ares-cf-risk').innerText = isRed ? "HIGH" : (isYellow ? "MEDIUM" : "LOW");
             el('ares-cf-risk').style.color = mainColor;
-            el('ares-cf-reward').innerText = isRed ? "★☆☆☆☆" : (isYellow ? "★★★☆☆" : "★★★★★");
-            el('ares-cf-market').innerText = data.premium_state.includes("Excellent") ? "RANGE" : "DIRECTIONAL";
+
+            // A3 FIX: Market Condition is now derived from server-side data (trend + edge score)
+            // instead of the previous heuristic (premium_state.includes("Excellent")).
+            // When DIRECTIONAL, reward stars are also penalized (3 stars instead of 5).
+            const mktCond = data.market_condition || (data.premium_state.includes("Excellent") ? "RANGE" : "DIRECTIONAL");
+            el('ares-cf-market').innerText = mktCond;
+            el('ares-cf-market').style.color = mktCond === "DIRECTIONAL" ? "#f59e0b" : mainColor;
+
+            // Reward stars: RED=1, YELLOW=3, DIRECTIONAL (non-red)=3, RANGE+HEALTHY=5
+            el('ares-cf-reward').innerText = isRed ? "★☆☆☆☆" : (isYellow ? "★★★☆☆" : (mktCond === "DIRECTIONAL" ? "★★★☆☆" : "★★★★★"));
 
             // Reasons mapping (matching the 5 icons design roughly)
             const iconMap = ["✓", "〰", "📊", "🛡️", "🕒"];

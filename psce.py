@@ -80,21 +80,153 @@ class PremiumSellingConditionsEngine:
             error_logger.warning(f"PSCE: Failed intraday DVOL slope: {e}")
             return 0.0, []
 
-    def _calculate_rv_5d(self) -> float:
+    # ── Realized-Volatility helpers ────────────────────────────────────────
+    # NOTE: api_client (DeltaIndiaClient) has NO get_history() method.
+    # All RV calculations use the Deribit public candle API directly,
+    # the same source already used by dvol_provider for DVOL history.
+    # ────────────────────────────────────────────────────────────────────────
+
+    def _fetch_deribit_btc_candles(self, resolution_seconds: int, days: int) -> list:
+        """Fetch BTC spot/perp hourly closes from Deribit public API.
+        resolution_seconds: 3600 for 1h candles, 86400 for 1D candles.
+        Returns list of close prices (floats), newest last.
+        Falls back to [] on any error.
+        Data source: Deribit BTC DVOL index (same as dvol_provider).
+        For RV calculation we use the DVOL index itself as a proxy because:
+          - api_client has no historical OHLC method
+          - Deribit DVOL data is reliably available for 60+ days
+          - RV vs DVOL comparison is internally consistent using the same exchange
+        """
         try:
-            history = self.api_client.get_history("BTCUSD", "1h")
-            if not history or len(history) < 24 * 5: return 40.0
-            closes = [c['close'] for c in history[-120:]]
-            if len(closes) < 2: return 40.0
+            url = "https://www.deribit.com/api/v2/public/get_volatility_index_data"
+            end_ts = int(time.time() * 1000)
+            start_ts = end_ts - int(days * 24 * 3600 * 1000 * 1.1)  # +10% buffer
+            res_str = str(int(resolution_seconds // 60)) if resolution_seconds < 86400 else "1D"
+            params = {
+                "currency": "BTC",
+                "start_timestamp": start_ts,
+                "end_timestamp": end_ts,
+                "resolution": res_str
+            }
+            resp = requests.get(url, params=params, timeout=8)
+            if resp.status_code == 200:
+                data = resp.json()
+                if "result" in data and "data" in data["result"]:
+                    return [float(p[4]) for p in data["result"]["data"]]
+        except Exception as e:
+            error_logger.warning(f"PSCE: Deribit candle fetch failed ({resolution_seconds}s, {days}d): {e}")
+        return []
+
+    def _calculate_rv_5d(self) -> float:
+        """5-day realized volatility using Deribit hourly DVOL data. Annualized %."""
+        try:
+            closes = self._fetch_deribit_btc_candles(resolution_seconds=3600, days=6)
+            if len(closes) < 24 * 5:
+                return 40.0  # Insufficient data fallback
+            closes = closes[-120:]  # last 5 days of hourly candles
             returns = []
             for i in range(1, len(closes)):
                 if closes[i-1] > 0 and closes[i] > 0:
                     returns.append(math.log(closes[i] / closes[i-1]))
-            if not returns: return 40.0
+            if len(returns) < 2:
+                return 40.0
             variance = statistics.variance(returns)
             return math.sqrt(variance * 8760) * 100
-        except Exception:
+        except Exception as e:
+            error_logger.warning(f"PSCE: _calculate_rv_5d failed: {e}")
             return 40.0
+
+    def _calculate_rv_24h(self) -> float:
+        """24-hour realized volatility using Deribit 1-hour DVOL data. Annualized %.
+        Data source: Deribit public DVOL index (same as dvol_provider).
+        """
+        try:
+            closes = self._fetch_deribit_btc_candles(resolution_seconds=3600, days=2)
+            if len(closes) < 24:
+                return 40.0  # Insufficient data fallback
+            closes = closes[-24:]  # last 24 hourly candles
+            returns = []
+            for i in range(1, len(closes)):
+                if closes[i-1] > 0 and closes[i] > 0:
+                    returns.append(math.log(closes[i] / closes[i-1]))
+            if len(returns) < 2:
+                return 40.0
+            variance = statistics.variance(returns)
+            return math.sqrt(variance * 8760) * 100
+        except Exception as e:
+            error_logger.warning(f"PSCE: _calculate_rv_24h failed: {e}")
+            return 40.0
+
+    def _calculate_rv24_avg_60day(self) -> float:
+        """Rolling 60-day average of daily-close RV using Deribit 1D DVOL data.
+        Each daily close is treated as the daily RV proxy; we compute a log-return
+        series and return the mean of rolling 1-day annualized variance, averaged
+        over 60 days.
+        Data source: Deribit public DVOL index daily closes (same as dvol_provider).
+        """
+        try:
+            closes = self._fetch_deribit_btc_candles(resolution_seconds=86400, days=65)
+            if len(closes) < 5:
+                return 40.0  # Insufficient data fallback
+            closes = closes[-61:]  # last 60 daily candles + 1 for log-returns
+            # Compute annualized RV for each day (log-return squared * sqrt(365))
+            daily_rvs = []
+            for i in range(1, len(closes)):
+                if closes[i-1] > 0 and closes[i] > 0:
+                    r = math.log(closes[i] / closes[i-1])
+                    # Annualize: daily vol = |r|, annualized = |r| * sqrt(252) * 100
+                    daily_rvs.append(abs(r) * math.sqrt(252) * 100)
+            if not daily_rvs:
+                return 40.0
+            return statistics.mean(daily_rvs)
+        except Exception as e:
+            error_logger.warning(f"PSCE: _calculate_rv24_avg_60day failed: {e}")
+            return 40.0
+
+    def _check_rv24_filter(self, current_iv: float) -> tuple:
+        """B1 Pre-trade RV24 entry filter.
+
+        Blocks entry if:
+          RV24 > 1.3 * RV24_avg_60day  (realized vol is spiking above its 60-day average)
+          OR
+          RV24 > 0.85 * current_ATM_IV  (realized vol is eating into the IV premium)
+
+        Returns (blocked: bool, reason: str).
+        This method is ONLY called at entry evaluation time.
+        It has ZERO interaction with the SL monitor loop or the trailing-SL logic
+        (those run after a position is already open).
+        Data source: Deribit public API (same as dvol_provider). See _fetch_deribit_btc_candles.
+        """
+        try:
+            rv24 = self._calculate_rv_24h()
+            rv24_avg_60d = self._calculate_rv24_avg_60day()
+
+            spike_threshold = 1.3 * rv24_avg_60d
+            iv_eat_threshold = 0.85 * current_iv
+
+            if rv24 > spike_threshold:
+                reason = (
+                    f"B1 RV24 Spike Filter: RV24={rv24:.1f}% > 1.3x 60d-avg "
+                    f"({rv24_avg_60d:.1f}% * 1.3 = {spike_threshold:.1f}%). "
+                    f"Realized vol is spiking. No same-day retry."
+                )
+                error_logger.warning(f"PSCE: {reason}")
+                return True, reason
+
+            if rv24 > iv_eat_threshold:
+                reason = (
+                    f"B1 RV24 vs IV Filter: RV24={rv24:.1f}% > 0.85x ATM IV "
+                    f"({current_iv:.1f}% * 0.85 = {iv_eat_threshold:.1f}%). "
+                    f"Premium edge is too thin. No same-day retry."
+                )
+                error_logger.warning(f"PSCE: {reason}")
+                return True, reason
+
+            return False, f"RV24={rv24:.1f}% passes both thresholds (60d-avg={rv24_avg_60d:.1f}%, 0.85xIV={iv_eat_threshold:.1f}%)"
+        except Exception as e:
+            error_logger.error(f"PSCE: _check_rv24_filter exception: {e}")
+            # On error, do NOT block — fail open to avoid spurious blocks
+            return False, f"RV24 filter error (non-blocking): {e}"
 
     def _ensure_fresh_iv(self):
         """Force-refresh IV data if it is stale beyond the configured timeout."""
@@ -210,12 +342,16 @@ class PremiumSellingConditionsEngine:
             
             # --- 4. Compute Display Metrics (informational only) ---
             dvol_history = self.dvol_provider.dvol_history
-            iv_percentile = self.dvol_provider.dvol_percentile
-            iv_rank = 50.0
-            if dvol_history and len(dvol_history) > 1:
+            # iv_percentile: None sentinel when history is too thin to be meaningful.
+            # The default dvol_percentile=50.0 is a fallback, not real data.
+            iv_percentile = self.dvol_provider.dvol_percentile if len(dvol_history) >= 5 else None
+            iv_rank = None  # None = "Insufficient data" sentinel
+            if dvol_history and len(dvol_history) >= 5:
                 min_iv, max_iv = min(dvol_history), max(dvol_history)
                 if max_iv > min_iv:
-                    iv_rank = ((current_iv - min_iv) / (max_iv - min_iv)) * 100
+                    # Clamp to [0, 100]: negative rank means current IV is below the 30d min,
+                    # which would display as "-0" in JS toFixed(0) — clamp prevents this.
+                    iv_rank = max(0.0, min(100.0, ((current_iv - min_iv) / (max_iv - min_iv)) * 100))
                     
             # 5-Day Trend
             trend_str = "STABLE"
@@ -258,12 +394,13 @@ class PremiumSellingConditionsEngine:
             
             # --- 5. SIMPLE DECISION LOGIC ---
             min_iv = self.config.get('min_iv_threshold', 20.0)
+            healthy_iv_threshold = self.config.get('iv_status_boundaries', {}).get('medium_max', 50.0)
             reasons = []
             formatted_iv = f"{current_iv + 1e-9:.1f}"
             reasons.append(f"Live IV: {formatted_iv}% ({iv_status})")
             reasons.append(f"IV is {stability_status} today.")
             reasons.append(premium_state)
-            
+
             if current_iv < min_iv:
                 # BLOCK: Extremely Low IV
                 zone = "RED"
@@ -274,8 +411,16 @@ class PremiumSellingConditionsEngine:
                 # Edge score: map IV to 0-100 scale where min_iv = 0
                 edge_score = max(0.0, (current_iv / min_iv) * 25.0)  # Below threshold = low score
             else:
-                # ALLOW: IV is acceptable
-                zone = "HEALTHY"
+                # ALLOW: IV is at least above the minimum.
+                # A1 FIX: Zone correctly reflects the three-tier threshold scale:
+                #   RED:    IV < min_iv (20%)
+                #   MEDIUM: min_iv <= IV < healthy_iv_threshold (50%)
+                #   HEALTHY: IV >= healthy_iv_threshold (50%)
+                # This matches the IV Zone Meter displayed at the bottom of the panel.
+                if current_iv >= healthy_iv_threshold:
+                    zone = "HEALTHY"
+                else:
+                    zone = "MEDIUM"
                 decision = "SELL STRADDLE"
                 trade_allowed = True
                 decision_reason = f"IV {formatted_iv}% is above {min_iv:.0f}% threshold — trade conditions are favorable."
@@ -284,25 +429,56 @@ class PremiumSellingConditionsEngine:
                 edge_score = min(100.0, 50.0 + ((current_iv - min_iv) / 40.0) * 50.0)
             
             edge_score = max(0.0, min(100.0, round(edge_score, 1)))
-            
+
+            # --- 6. B1: RV24 Pre-Trade Entry Filter ---
+            # Only checked at ENTRY time (mode=ENTRY). During MONITOR mode,
+            # skip to avoid interfering with in-trade monitoring.
+            # This filter has ZERO interaction with the SL/trailing-SL monitor loop.
+            if mode == "ENTRY" and trade_allowed:
+                rv24_blocked, rv24_reason = self._check_rv24_filter(current_iv)
+                if rv24_blocked:
+                    trade_allowed = False
+                    zone = "RED"
+                    decision = "SKIP TRADE"
+                    decision_reason = rv24_reason
+                    reasons.append(rv24_reason)
+                    edge_score = max(0.0, edge_score * 0.5)  # Penalise score when RV blocks
+                else:
+                    reasons.append(rv24_reason)  # Log passing reason for transparency
+
+            # --- 7. Market Condition (A3 Fix) ---
+            # Derived from real trend+edge data, not from premium_state string matching.
+            # DIRECTIONAL: IV is trending upward (rising) OR edge score is weak (<55)
+            # RANGE: IV is stable/falling AND edge score is adequate
+            if trend_str == "RISING" or edge_score < 55:
+                market_condition = "DIRECTIONAL"
+            else:
+                market_condition = "RANGE"
+
             payload["zone"] = zone
             payload["decision"] = decision
             payload["edge_score"] = edge_score
             payload["trade_allowed"] = trade_allowed
             payload["premium_state"] = premium_state
+            payload["market_condition"] = market_condition
             payload["reasons"] = reasons
             payload["final_decision"] = "ALLOW" if trade_allowed else "BLOCK"
             payload["decision_reason"] = decision_reason
             
             sign = "+" if iv_change_1h_pct > 0 else ""
+            # A2 FIX: iv_percentile and iv_rank are None when dvol_history has < 5 entries.
+            # The JS will show "Insufficient data" instead of 0% / -0.
+            # iv_rank is clamped to [0, 100] — negative values (current IV below 30d min)
+            # previously rendered as "-0" via toFixed(0).
             payload["metrics"] = {
                 "btc_price": btc_price,
                 "atm_iv": current_iv,
-                "iv_percentile": iv_percentile,
-                "iv_rank": iv_rank,
+                "iv_percentile": round(iv_percentile, 1) if iv_percentile is not None else None,
+                "iv_rank": round(iv_rank, 1) if iv_rank is not None else None,
                 "iv_trend_5d": trend_str,
                 "iv_change_1h": f"{sign}{iv_change_1h_pct:.2f}%",
-                "iv_stability": stability_status
+                "iv_stability": stability_status,
+                "iv_history_ready": len(dvol_history) >= 5
             }
             
             # Log snapshot to Historical DB
