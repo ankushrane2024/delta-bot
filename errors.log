@@ -151,3 +151,31 @@
 2026-07-26 14:14:46 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
 2026-07-26 14:25:34 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
 2026-07-26 15:08:33 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-01 17:41:50 IST - ErrorLog - ERROR - API Request failed: POST /v2/orders/margin_mode - Expecting value: line 1 column 1 (char 0)
+2026-08-01 17:54:41 IST - ErrorLog - ERROR - API Request failed: POST /v2/orders/margin_mode - Expecting value: line 1 column 1 (char 0)
+2026-08-02 16:43:48 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 16:46:10 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 16:50:17 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:30:01 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:30:02 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:30:03 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:30:04 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:30:04 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:30:05 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:49:06 IST - ErrorLog - ERROR - Error checking time safeguard in monitor loop: cannot access local variable 'get_ist_now' where it is not associated with a value
+2026-08-02 17:49:13 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:49:30 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:49:31 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:49:32 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:49:34 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:49:34 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:49:35 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 17:49:37 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-02 18:10:31 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-05 21:28:30 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-05 21:28:39 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-05 21:28:40 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-05 21:28:41 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-05 21:28:43 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-05 21:28:44 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-08-05 21:28:44 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}

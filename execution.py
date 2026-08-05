@@ -51,14 +51,38 @@ class ExecutionHandler:
             "hedge_owner": self.hedge_owner
         }
 
+    def sync_live_positions(self):
+        """Fetches live positions from Delta Exchange API and populates active_positions."""
+        if self.mode != 'LIVE':
+            return
+            
+        res = self.api_client.get_positions()
+        if res and res.get('success'):
+            for pos in res.get('result', []):
+                size = float(pos.get('size', 0))
+                if size != 0:
+                    symbol = pos.get('product_symbol')
+                    if symbol == HEDGE_SYMBOL:
+                        self.hedge_position = size
+                    else:
+                        self.active_positions[symbol] = {
+                            'size': abs(size),
+                            'entry_price': float(pos.get('entry_price', 0)),
+                            'product_id': pos.get('product_id'),
+                            'leg_type': 'call' if 'C' in symbol.split('-')[-1] else 'put'
+                        }
+            app_logger.info(f"Execution [LIVE]: Synced live positions from exchange: {list(self.active_positions.keys())}")
+        else:
+            app_logger.error(f"Execution [LIVE]: Failed to sync positions: {res}")
+
     def save_state(self, dpl_state=None, chart_data=None):
         """Persists the current paper trading active positions to the cloud database.
         Optionally includes the DPL trailing state and chart data for crash recovery."""
         if self.mode != 'LIVE':
             data_to_save = dict(self.active_positions)
-            if dpl_state:
+            if dpl_state and data_to_save:
                 data_to_save['__dpl_state__'] = dpl_state
-            if chart_data is not None:
+            if chart_data is not None and data_to_save:
                 # Save the ENTIRE chart data so full trade history survives server restarts
                 data_to_save['__chart_data__'] = chart_data
             db_manager.save_active_positions(data_to_save)
