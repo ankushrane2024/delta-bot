@@ -473,7 +473,7 @@ def emergency_close():
 
 @app.route('/api/force_clean', methods=['POST'])
 def force_clean():
-    res = bot_engine.api_client.get_positions()
+    res = bot_engine.api_client.request("GET", "/v2/positions/margined")
     positions = res.get('result', [])
     closed = []
     for p in positions:
@@ -483,7 +483,7 @@ def force_clean():
             abs_size = abs(size)
             out = bot_engine.api_client.place_order(p.get('product_id'), side, abs_size)
             closed.append({'symbol': p.get('product', {}).get('symbol'), 'size': abs_size, 'out': out})
-    return jsonify({'status': 'success', 'closed': closed})
+    return jsonify({'status': 'success', 'closed': closed, 'res': res})
 
 @app.route('/api/toggle_regime', methods=['POST'])
 def toggle_regime():
