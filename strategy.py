@@ -1,4 +1,4 @@
-from config import MIN_OTM_STRIKES, PUT_SKEW_CAP, NET_DELTA_ENTRY_LIMIT
+from config import MIN_OTM_STRIKES, PUT_SKEW_CAP, NET_DELTA_ENTRY_LIMIT, MIN_ENTRY_PREMIUM
 from logger import app_logger
 
 class ShortStrangleStrategy:
@@ -195,12 +195,12 @@ class ShortStrangleStrategy:
         valid_pairs = []
         if check_premium:
             for c in eligible_calls:
-                if not force and c['premium_inr'] < 50:
+                if not force and c['premium_inr'] < MIN_ENTRY_PREMIUM:
                     continue
                 if not (premium_min <= c['premium_inr'] <= premium_max):
                     continue
                 for p in eligible_puts:
-                    if not force and p['premium_inr'] < 50:
+                    if not force and p['premium_inr'] < MIN_ENTRY_PREMIUM:
                         continue
                     if not (premium_min <= p['premium_inr'] <= premium_max):
                         continue

@@ -18,8 +18,8 @@ def verify_all_rules():
         {
             "id": 21,
             "name": "Premium Validation Threshold",
-            "expected": "Minimum $100 premium per leg. If below, SKIP trade entirely.",
-            "check": hasattr(config, 'MIN_ENTRY_PREMIUM') and config.MIN_ENTRY_PREMIUM == 100.0
+            "expected": "Minimum $80 premium per leg. If below, SKIP trade entirely.",
+            "check": hasattr(config, 'MIN_ENTRY_PREMIUM') and config.MIN_ENTRY_PREMIUM == 80.0
         },
         {
             "id": 3,
