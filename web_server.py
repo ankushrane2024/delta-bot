@@ -473,18 +473,17 @@ def emergency_close():
 
 @app.route('/api/force_clean', methods=['POST'])
 def force_clean():
-    import requests
-    res = requests.get('https://api.delta.exchange/v2/products').json()
-    product_id = None
-    for p in res.get('result', []):
-        if p.get('symbol') == 'C-BTC-65600-080826':
-            product_id = p.get('id')
-            break
-    
-    if product_id:
-        out = bot_engine.api_client.place_order(product_id, 'buy', 2)
-        return jsonify({'status': 'success', 'out': out})
-    return jsonify({'status': 'error', 'msg': 'not found'})
+    res = bot_engine.api_client.get_positions()
+    positions = res.get('result', [])
+    closed = []
+    for p in positions:
+        size = int(p.get('size', 0))
+        if size != 0:
+            side = 'buy' if size < 0 else 'sell'
+            abs_size = abs(size)
+            out = bot_engine.api_client.place_order(p.get('product_id'), side, abs_size)
+            closed.append({'symbol': p.get('product', {}).get('symbol'), 'size': abs_size, 'out': out})
+    return jsonify({'status': 'success', 'closed': closed})
 
 @app.route('/api/toggle_regime', methods=['POST'])
 def toggle_regime():
