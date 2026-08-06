@@ -1,0 +1,50 @@
+{
+    "C-BTC-65600-060826": {
+        "entry_price": 25.154830575888827,
+        "entry_price_raw": 25.35717503,
+        "size": 500,
+        "product_id": 145231,
+        "side": "SELL",
+        "leg_type": "call",
+        "strike": 65600.0,
+        "entry_time": "2026-08-05T08:30:01.963974+05:30",
+        "last_good_price": 25.35717503,
+        "last_known_delta": 0.07730279,
+        "last_known_gamma": 0.00020083,
+        "entry_size": 500
+    },
+    "P-BTC-63600-060826": {
+        "entry_price": 31.03173397087127,
+        "entry_price_raw": 31.25184543,
+        "size": 500,
+        "product_id": 145151,
+        "side": "SELL",
+        "leg_type": "put",
+        "strike": 63600.0,
+        "entry_time": "2026-08-05T08:30:01.963974+05:30",
+        "last_good_price": 31.25184543,
+        "last_known_delta": -0.09112553,
+        "last_known_gamma": 0.00022493,
+        "entry_size": 500
+    },
+    "__dpl_state__": {
+        "highest_profit_pct": 0.0,
+        "current_trailing_sl": null,
+        "trailing_confirmed": false,
+        "confirm_started": false
+    },
+    "__chart_data__": [
+        {
+            "t": "08:30",
+            "pnl": -0.2112,
+            "hedge": 0.0,
+            "total": -0.2112
+        },
+        {
+            "t": "08:30",
+            "pnl": -0.2112,
+            "hedge": 0.0,
+            "total": -0.2112
+        }
+    ]
+}

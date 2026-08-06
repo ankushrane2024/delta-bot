@@ -89,7 +89,18 @@ class ExecutionHandler:
                 # and inflated the entry premium, masking real losses.
                 entry_slippage = random.uniform(0.002, 0.008) * raw_mark if raw_mark > 0 else 0.5
                 simulated_entry_price = max(0.01, raw_mark - entry_slippage)  # Seller gets lower price
-                leg_type = 'call' if 'call' in opt.get('contract_type', '').lower() or 'C' in opt.get('symbol', '')[-3:] else 'put'
+                # Detect leg_type from contract_type API field or symbol format.
+                # Supports both prefix format (C-BTC-65600-060826) and suffix format (BTC-65600-C).
+                _sym = opt.get('symbol', '')
+                _ct  = opt.get('contract_type', '').lower()
+                leg_type = (
+                    'call' if ('call' in _ct or
+                               _sym.startswith('C-') or      # C-BTC-65600-060826 prefix
+                               _sym.endswith('-C') or         # BTC-65600-C suffix
+                               '-C-' in _sym or               # BTC-C-65600 middle
+                               'C' in _sym.split('-')[-1])    # BTC-65600-C last segment
+                    else 'put'
+                )
                 
                 app_logger.info(f"Execution [PAPER]: Simulating sell of {opt['symbol']} @ {simulated_entry_price:.4f} (slippage: -{entry_slippage:.2f} from mark {raw_mark:.4f})")
                 self.active_positions[opt['symbol']] = {

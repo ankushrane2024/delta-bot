@@ -399,11 +399,15 @@ def emergency_close():
         if collected_premium <= 0:
             collected_premium = sum(
                 data.get('entry_price', 0) * data.get('size', 0) * LOT_TO_BTC
-                for data in bot_engine.execution.active_positions.values()
+                for sym, data in bot_engine.execution.active_positions.items()
+                if not sym.startswith('__') and isinstance(data, dict) and 'size' in data
             )
             bot_engine.total_entry_premium = collected_premium
 
         for sym, data in bot_engine.execution.active_positions.items():
+            # Skip internal meta-keys (__dpl_state__, __chart_data__, etc.)
+            if sym.startswith('__') or not isinstance(data, dict) or 'size' not in data:
+                continue
             ws_data = bot_engine.api_client.get_realtime_ticker(sym)
             if ws_data and 'mark_price' in ws_data:
                 btc_qty = data['size'] * LOT_TO_BTC
@@ -413,7 +417,8 @@ def emergency_close():
         if current_total_value == 0:
             current_total_value = sum(
                 data['entry_price'] * data['size'] * LOT_TO_BTC
-                for data in bot_engine.execution.active_positions.values()
+                for sym, data in bot_engine.execution.active_positions.items()
+                if not sym.startswith('__') and isinstance(data, dict) and 'size' in data
             )
 
         profit = bot_engine.total_entry_premium - current_total_value

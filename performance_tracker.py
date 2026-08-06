@@ -48,9 +48,22 @@ class PerformanceTracker:
         self.max_equity, self.trades = self._load_local(self.paper_filepath)
         self.live_max_equity, self.live_trades = self._load_local(self.live_filepath)
         
+        # ── CRITICAL SAFETY GUARD ──────────────────────────────────────────────
+        # Only sync local→cloud if local trades look like REAL trades (have a
+        # 'date' field). Old stub/dummy files (e.g. {"id": 1, "profit": 50})
+        # must never overwrite real Cloud DB data.
+        # This prevents test scripts or restarts from wiping production history.
+        def _looks_like_real_trades(trade_list):
+            """Returns True only if trade_list has at least one trade with a 'date' field."""
+            return any(isinstance(t, dict) and 'date' in t for t in trade_list)
+
+        local_paper_real = _looks_like_real_trades(self.trades)
+        local_live_real  = _looks_like_real_trades(self.live_trades)
+
         # If we loaded from local but cloud is connected, sync up to cloud
-        # ONLY IF there was no network error loading from the cloud.
-        if db_manager.is_connected() and (len(self.trades) > 0 or len(self.live_trades) > 0) and not cloud_error:
+        # ONLY IF there was no network error loading from the cloud
+        # AND the local data is real (has 'date' field), not a legacy dummy stub.
+        if db_manager.is_connected() and (local_paper_real or local_live_real) and not cloud_error:
             app_logger.info("Tracker: Syncing local JSON up to Cloud DB...")
             db_manager.save_all_data({
                 "max_equity": self.max_equity, 
@@ -58,6 +71,11 @@ class PerformanceTracker:
                 "live_max_equity": self.live_max_equity,
                 "live_trades": self.live_trades
             })
+        elif db_manager.is_connected() and not cloud_error and not local_paper_real and not local_live_real:
+            app_logger.warning(
+                "Tracker: Local trade_history.json contains only stub/dummy data. "
+                "Skipping sync to Cloud DB to prevent overwriting real history."
+            )
             
         # SAFETY CHECK: If cloud load failed, disable cloud saving to prevent wiping data
         # BUT if db_manager bootstrapped a new JSONBlob, it IS safe.

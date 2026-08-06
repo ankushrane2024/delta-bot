@@ -487,6 +487,9 @@ class DeltaTradingEngine:
         if self.execution.active_positions:
             current_total_value = 0
             for sym, data in self.execution.active_positions.items():
+                # Skip internal meta-keys (__dpl_state__, __chart_data__, etc.)
+                if sym.startswith('__') or not isinstance(data, dict) or 'size' not in data:
+                    continue
                 price = None
                 ws_data = self.api_client.get_realtime_ticker(sym)
                 if ws_data and 'mark_price' in ws_data:
@@ -1537,19 +1540,33 @@ class DeltaTradingEngine:
         # - Active positions remain in a zombie state forever
         if not self.current_trade_info.get("calls") and self.execution.active_positions:
             app_logger.warning("_log_and_reset_trade: current_trade_info empty — rebuilding from active_positions (hot-recovery fallback).")
-            calls = [sym for sym in self.execution.active_positions
-                     if 'C' in sym.split('-')[-1] or sym.endswith('-C') or '-C-' in sym or 'call' in self.execution.active_positions[sym].get('leg_type', '').lower()]
-            puts  = [sym for sym in self.execution.active_positions
-                     if 'P' in sym.split('-')[-1] or sym.endswith('-P') or '-P-' in sym or 'put'  in self.execution.active_positions[sym].get('leg_type', '').lower()]
-            # Final fallback: split all symbols arbitrarily if leg_type tags are missing
-            if not calls and not puts:
-                all_syms = list(self.execution.active_positions.keys())
-                calls = all_syms[:len(all_syms)//2]
-                puts  = all_syms[len(all_syms)//2:]
+            # Filter out internal meta-keys (__dpl_state__, __chart_data__, etc.)
+            real_syms = {sym: data for sym, data in self.execution.active_positions.items()
+                         if not sym.startswith('__')}
+            calls = [sym for sym, data in real_syms.items()
+                     if (sym.startswith('C-') or                    # C-BTC-65600-060826 prefix format
+                         'C' in sym.split('-')[-1] or               # BTC-65600-C suffix format
+                         sym.endswith('-C') or
+                         '-C-' in sym or
+                         'call' in data.get('leg_type', '').lower())]
+            puts  = [sym for sym, data in real_syms.items()
+                     if (sym.startswith('P-') or                    # P-BTC-63600-060826 prefix format
+                         'P' in sym.split('-')[-1] or               # BTC-63600-P suffix format
+                         sym.endswith('-P') or
+                         '-P-' in sym or
+                         'put'  in data.get('leg_type', '').lower())]
+            # Deduplicate: a symbol matched by both patterns should go to calls only
+            puts = [s for s in puts if s not in calls]
+            # Final fallback: split all real symbols arbitrarily if leg_type tags are missing
+            if not calls and not puts and real_syms:
+                all_syms = list(real_syms.keys())
+                calls = all_syms[:max(1, len(all_syms)//2)]
+                puts  = all_syms[max(1, len(all_syms)//2):]
             self.current_trade_info["calls"] = calls
             self.current_trade_info["puts"]  = puts
             if not self.current_trade_info.get("entry_time"):
                 self.current_trade_info["entry_time"] = get_ist_now().isoformat()
+            app_logger.info(f"_log_and_reset_trade: Rebuilt trade_info → calls={calls}, puts={puts}")
 
         if self.current_trade_info.get("calls"):
             c_syms = ",".join(self.current_trade_info["calls"])
