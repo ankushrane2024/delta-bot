@@ -445,13 +445,22 @@ def emergency_close():
                 bot_engine.current_trade_info["entry_time"] = get_ist_now().isoformat()
             app_logger.info(f"Emergency Close: Force-populated current_trade_info → calls={calls}, puts={puts}")
         # ─────────────────────────────────────────────────────────────────
-
+        # ── CRITICAL FIX ──────────────────────────────────────────────────
+        # Close positions FIRST, before logging and resetting the trade.
+        # This is because _log_and_reset_trade will trigger the Auto-Deactivate
+        # safety switch, which flips the mode to PAPER. If mode is PAPER,
+        # close_all will just simulate the close and leave live positions orphaned!
+        bot_engine.execution.close_all(reason="Emergency Manual Square-Off")
+        bot_engine.smart_hedging.close_hedge()
+        
         bot_engine._log_and_reset_trade(profit, "Manual Square-Off")
         from notifier import notifier
         notifier.notify_full_exit("Manual Square-Off", profit)
+    else:
+        # If no active positions, just ensure everything is closed anyway
+        bot_engine.execution.close_all(reason="Emergency Manual Square-Off")
+        bot_engine.smart_hedging.close_hedge()
 
-    bot_engine.execution.close_all(reason="Emergency Manual Square-Off")
-    bot_engine.smart_hedging.close_hedge()
     bot_engine.reset_daily_state()
 
     bot_engine.today_trade_status = "Emergency Manual Closed"
