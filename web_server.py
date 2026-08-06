@@ -773,7 +773,8 @@ def toggle_live_mode():
                 }), 400
 
         # ── Safety Gate 2: No active positions when switching ─────────────────
-        if activate and bot_engine.execution.active_positions:
+        real_positions = [k for k in bot_engine.execution.active_positions.keys() if not k.startswith('__')]
+        if activate and real_positions:
             return jsonify({
                 'success': False,
                 'error': 'Cannot switch to LIVE mode while positions are open. Close all positions first.'
