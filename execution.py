@@ -3,6 +3,7 @@ from logger import app_logger, trade_logger
 import math
 import config
 import db_manager
+from utils import get_ist_now
 
 class ExecutionHandler:
     def __init__(self, api_client, mode='PAPER'):
@@ -173,7 +174,7 @@ class ExecutionHandler:
                         'side': 'SELL',
                         'leg_type': 'call' if opt == call_opt else 'put',
                         'strike': opt.get('strike_price', opt.get('strike', 0)),
-                        'entry_time': datetime.now(ZoneInfo('Asia/Kolkata')).isoformat(),
+                        'entry_time': get_ist_now().isoformat(),
                         'exchange_sl_order_id': None  # Will be set below
                     }
 
