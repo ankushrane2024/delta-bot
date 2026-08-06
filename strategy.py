@@ -141,7 +141,7 @@ class ShortStrangleStrategy:
         ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
         is_weekend = ist_now.weekday() >= 5  # 5=Sat, 6=Sun
         
-        base_min = 30 if force else (80 if is_weekend else 100)
+        base_min = 30 if force else MIN_ENTRY_PREMIUM
         
         if dvol_provider and check_premium and not force:
             premium_min, premium_max = dvol_provider.get_premium_range()

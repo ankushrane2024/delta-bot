@@ -378,7 +378,7 @@ class DeltaTradingEngine:
         import datetime
         ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
         is_weekend = ist_now.weekday() >= 5
-        req_min = 30 if force else (80 if is_weekend else 100)
+        req_min = 30 if force else config.MIN_ENTRY_PREMIUM
         
         if not force and (call_premium < req_min or put_premium < req_min):
             reason_text = f"ENTRY REJECTED\nReason:\nPremium below minimum threshold\nCall Premium:\n${call_premium:.2f}\nPut Premium:\n${put_premium:.2f}\nMinimum Required:\n${req_min}\nDecision:\nNO TRADE"
