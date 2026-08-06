@@ -101,23 +101,8 @@ class TradingFilters:
             app_logger.warning(f"Filters: Failed to fetch ForexFactory calendar: {e}")
 
     def check_news_filter(self):
-        """Skip major news days using cached calendar API and strict keyword matching."""
-        self._update_news_cache()
-        if not self.cached_news:
-            return True, "No news data"
-            
-        today_str = get_ist_now().strftime('%Y-%m-%d')
-        keywords = ['cpi', 'fomc', 'nfp', 'non-farm', 'fed', 'powell', 'etf']
-        
-        for event in self.cached_news:
-            if event.get('impact') in ['High', 'Medium'] and event.get('country') in ['USD', 'BTC']:
-                event_date = event.get('date', '')[:10]
-                if event_date == today_str:
-                    title = event.get('title', '').lower()
-                    if any(k in title for k in keywords):
-                        app_logger.warning(f"Filter: Skipping trade due to high-risk news: {event.get('title')}")
-                        return False, f"News: {event.get('title')}"
-        return True, "Safe News Environment"
+        """News skip filter explicitly disabled by user."""
+        return True, "News Filter Disabled by User"
 
     def all_passed(self):
         return (self.check_day_filter() and 
@@ -155,19 +140,9 @@ class TradingFilters:
             
             # 1. Weekend Check - Disabled (Trade 7 days a week)
             
-            # 2. News Check
+            # 2. News Check - Disabled by user request
             if not skip and news_events:
-                keywords = ['cpi', 'fomc', 'nfp', 'non-farm', 'fed', 'powell', 'etf']
-                for event in news_events:
-                    if event.get('impact') in ['High', 'Medium'] and event.get('country') in ['USD', 'BTC']:
-                        event_date = event.get('date', '')[:10]
-                        if event_date == target_date_str:
-                            title = event.get('title', '').lower()
-                            if any(k in title for k in keywords):
-                                skip = True
-                                reason = f"High Risk: {event.get('title')}"
-                                skip_type = 'severe'
-                                break
+                pass # News check removed
             
             schedule.append({
                 'date': target_date.strftime('%b %d'),
