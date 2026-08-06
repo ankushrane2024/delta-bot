@@ -1691,6 +1691,24 @@ class DeltaTradingEngine:
             self.hedging_triggered_today = False
             self._trade_start_ts = None
             
+            # Auto-disable live mode for safety after trade square off
+            if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
+                app_logger.warning("Engine: Trade finished. Auto-deactivating LIVE mode for safety.")
+                self.execution.mode = 'PAPER'
+                try:
+                    import json
+                    base_dir = os.path.dirname(os.path.abspath(__file__))
+                    lot_file = os.path.join(base_dir, 'lot_size.json')
+                    if os.path.exists(lot_file):
+                        with open(lot_file, 'r') as f:
+                            data = json.load(f)
+                        data['live_mode'] = False
+                        with open(lot_file, 'w') as f:
+                            json.dump(data, f, indent=4)
+                    notifier.send_message("🛡️ <b>SAFETY ACTIVATED</b>\nTrade successfully closed. Live Mode has been **AUTO-DEACTIVATED**.\nThe bot has reverted to PAPER mode to protect your funds for tomorrow.")
+                except Exception as e:
+                    app_logger.error(f"Engine: Failed to auto-deactivate live mode in JSON - {e}")
+            
             # Export audit log
             try:
                 audit_file = audit_system.export_session()
