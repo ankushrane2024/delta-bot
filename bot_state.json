@@ -1,5 +1,8 @@
 {
-    "trades": [
+    "max_equity": 50016.78,
+    "trade_history": [],
+    "live_max_equity": 0.0,
+    "live_trade_history": [
         {
             "date": "2026-08-07",
             "mode": "LIVE",
@@ -33,5 +36,7 @@
             "_note": "RECOVERED post-deploy. Entry from screenshot: Call C-BTC-65400-080826 @$84.12, Put P-BTC-63400-080826 @$102.81, BTC=$64,341 at 09:03 IST. P&L/exit prices UNKNOWN - update from Delta account."
         }
     ],
-    "max_equity": 0.0
+    "daily_reports": [],
+    "state": {},
+    "last_backup_time": "07 Aug, 21:20 IST"
 }

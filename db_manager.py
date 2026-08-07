@@ -490,8 +490,108 @@ def save_audit_log(events: list) -> bool:
                 return True
             return _update_jsonblob(blob_data)
 
+def save_trade_entry_receipt(entry_data: dict) -> bool:
+    """
+    DEPLOY-SAFE GUARD: Saves a 'trade open' receipt to cloud IMMEDIATELY when a trade is entered.
+    
+    This solves the problem where Render redeploys mid-trade wipe the in-memory trade entry
+    data before log_trade() is called on close. On restart, load_trade_entry_receipt() recovers
+    this record so the trade can be reconstructed in history.
+    
+    Called by: bot_engine.py immediately after execute_strangle() succeeds.
+    Cleared by: performance_tracker.py after log_trade() completes successfully.
+    
+    entry_data keys: date, mode, entry_time, call_symbol, put_symbol,
+                     call_entry_price, put_entry_price, premium_collected, btc_entry_price
+    """
+    with _sync_lock:
+        if not _connected: _connect()
+        receipt = dict(entry_data)
+        receipt["_receipt_type"] = "OPEN_TRADE"
+        receipt["_saved_at"] = get_ist_now().isoformat()
+        
+        # Save locally always
+        try:
+            with open("open_trade_receipt.json", 'w') as f:
+                json.dump(receipt, f, indent=4)
+        except Exception as e:
+            app_logger.error(f"DB: Failed to save open_trade_receipt locally: {e}")
+        
+        # Save to cloud
+        try:
+            if GITHUB_PAT:
+                if GITHUB_GIST_ID:
+                    return _update_gist({"open_trade_receipt.json": {"content": json.dumps(receipt, indent=4)}})
+            else:
+                blob_data = _fetch_jsonblob() or {}
+                blob_data["open_trade_receipt"] = receipt
+                if not JSONBLOB_ID:
+                    _create_jsonblob(blob_data)
+                    return True
+                return _update_jsonblob(blob_data)
+        except Exception as e:
+            app_logger.error(f"DB: Failed to save open_trade_receipt to cloud: {e}")
+        return False
+
+def load_trade_entry_receipt() -> dict:
+    """
+    Loads the open trade receipt saved by save_trade_entry_receipt().
+    Returns the receipt dict if a trade was open before restart, or {} if none.
+    Called on bot startup to detect and recover mid-trade restarts.
+    """
+    with _sync_lock:
+        if not _connected: _connect()
+        
+        # Try cloud first
+        try:
+            if GITHUB_PAT and GITHUB_GIST_ID:
+                data = _fetch_gist_file("open_trade_receipt.json")
+                if data:
+                    return json.loads(data) if isinstance(data, str) else data
+            elif JSONBLOB_ID:
+                blob_data = _fetch_jsonblob()
+                if blob_data and "open_trade_receipt" in blob_data:
+                    return blob_data["open_trade_receipt"]
+        except Exception as e:
+            app_logger.warning(f"DB: Cloud receipt load failed: {e}")
+        
+        # Fallback to local
+        if os.path.exists("open_trade_receipt.json"):
+            try:
+                with open("open_trade_receipt.json", 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                app_logger.warning(f"DB: Local receipt load failed: {e}")
+        return {}
+
+def clear_trade_entry_receipt() -> bool:
+    """
+    Clears the open trade receipt after log_trade() completes successfully.
+    Called by performance_tracker.py after a trade is fully recorded.
+    """
+    with _sync_lock:
+        # Clear local
+        try:
+            if os.path.exists("open_trade_receipt.json"):
+                os.remove("open_trade_receipt.json")
+        except Exception:
+            pass
+        
+        # Clear from cloud
+        try:
+            if GITHUB_PAT and GITHUB_GIST_ID:
+                _update_gist({"open_trade_receipt.json": {"content": "{}"}})
+            elif JSONBLOB_ID:
+                blob_data = _fetch_jsonblob() or {}
+                blob_data.pop("open_trade_receipt", None)
+                _update_jsonblob(blob_data)
+        except Exception as e:
+            app_logger.warning(f"DB: Failed to clear receipt from cloud: {e}")
+        return True
+
 def trigger_cloud_sync():
     app_logger.info("DB: Manual Cloud Sync Triggered")
 
 def is_connected() -> bool:
     return True # We now always have a connection (either Gist or JSONBlob fallback)
+

@@ -429,8 +429,37 @@ class DeltaTradingEngine:
         self.current_trade_info["max_pnl_time"] = ""
         self.current_trade_info["min_pnl_time"] = ""
 
+        # DEPLOY-SAFE GUARD: Save entry receipt to cloud immediately.
+        # If Render redeploys mid-trade, this record survives and lets us recover
+        # the trade from history even if log_trade() was never called on close.
+        try:
+            from utils import get_ist_date
+            receipt_data = {
+                "date":             get_ist_date(),
+                "mode":             config.BOT_MODE,
+                "entry_time":       self.current_trade_info["entry_time"],
+                "call_symbol":      call_opt['symbol'],
+                "put_symbol":       put_opt['symbol'],
+                "call_entry_price": float(call_opt.get('mark_price', 0)),
+                "put_entry_price":  float(put_opt.get('mark_price', 0)),
+                "premium_collected": round(
+                    (float(call_opt.get('mark_price', 0)) + float(put_opt.get('mark_price', 0))) / 2, 4
+                ),
+                "btc_entry_price":  self.current_trade_info["btc_entry_price"],
+                "lot_size":         per_entry_size,
+            }
+            db_manager.save_trade_entry_receipt(receipt_data)
+            app_logger.info(
+                f"Engine: Trade entry receipt saved to cloud — "
+                f"{receipt_data['call_symbol']} @${receipt_data['call_entry_price']:.2f} | "
+                f"{receipt_data['put_symbol']} @${receipt_data['put_entry_price']:.2f}"
+            )
+        except Exception as _receipt_err:
+            app_logger.warning(f"Engine: Could not save trade entry receipt: {_receipt_err}")
+
         # Sub to WebSocket for these new symbols if not already
         self.api_client.subscribe_ws([call_opt['symbol'], put_opt['symbol']])
+
 
         # Fetch the exact entry prices that were simulated in active_positions (includes slippage)
         call_entry = self.execution.active_positions.get(call_opt['symbol'], {}).get('entry_price', call_opt['mark_price'])

@@ -257,6 +257,13 @@ class PerformanceTracker:
         # Save to Cloud + Local Backup
         self._save()
 
+        # DEPLOY-SAFE GUARD: Clear the entry receipt now that trade is fully logged.
+        # This prevents it from causing a false recovery on future bot restarts.
+        try:
+            db_manager.clear_trade_entry_receipt()
+        except Exception as _ce:
+            app_logger.warning(f"Tracker: Could not clear trade entry receipt: {_ce}")
+
         app_logger.info(
             f"Tracker: Trade logged [{ 'Cloud DB + Local JSON' if db_manager.is_connected() else 'Local JSON only' }] -> "
             f"{exit_reason} | PnL: ${pnl:.2f}"
