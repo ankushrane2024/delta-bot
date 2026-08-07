@@ -1,6 +1,37 @@
 {
     "trades": [
         {
+            "date": "2026-08-02",
+            "mode": "LIVE",
+            "unprotected_loss": 0,
+            "hedge_gain": 0,
+            "protection_efficiency": 0,
+            "ares_decision": "NONE",
+            "ares_risk_score": 0,
+            "entry_time": "2026-08-01T11:00:00",
+            "exit_time": "2026-08-02T16:16:17.969926+05:30",
+            "call_symbol": "BTC-100000-C",
+            "put_symbol": "BTC-90000-P",
+            "call_entry_price": 0,
+            "put_entry_price": 0,
+            "call_exit_price": 0,
+            "put_exit_price": 0,
+            "premium_collected": 10,
+            "pnl": 5,
+            "hedge_pnl": 0,
+            "pct_profit_captured": 50,
+            "max_pnl_pct": 0,
+            "min_pnl_pct": 0,
+            "max_pnl_time": "",
+            "min_pnl_time": "",
+            "exit_reason": "Live Take Profit",
+            "equity_after": 1005,
+            "regime_filter_enabled": false,
+            "adx": 0,
+            "hedge_events": [],
+            "chart_data": []
+        },
+        {
             "date": "2026-08-07",
             "mode": "LIVE",
             "unprotected_loss": 0,
@@ -30,8 +61,8 @@
             "adx": 0,
             "hedge_events": [],
             "chart_data": [],
-            "_note": "RECOVERED post-deploy. Entry from screenshot: Call C-BTC-65400-080826 @$84.12, Put P-BTC-63400-080826 @$102.81, BTC=$64,341 at 09:03 IST. P&L/exit prices UNKNOWN - update from Delta account."
+            "_note": "RECOVERED. Entry: Call C-BTC-65400-080826 @$84.12, Put P-BTC-63400-080826 @$102.81, BTC=$64341 at 09:03 IST. Update P&L from Delta account."
         }
     ],
-    "max_equity": 0.0
+    "max_equity": 1005.0
 }
