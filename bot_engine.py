@@ -128,6 +128,28 @@ class DeltaTradingEngine:
         self.performance_tracker = PerformanceTracker()
         self.current_trade_info = {"calls": [], "puts": []}
         
+        # Check for open trade receipt (crash recovery)
+        try:
+            import db_manager
+            receipt = db_manager.load_trade_entry_receipt()
+            if receipt and receipt.get("mode") == BOT_MODE:
+                app_logger.info("Engine: Recovered open trade receipt from cloud after server crash/restart.")
+                self.current_trade_info = {
+                    "entry_time": receipt.get("entry_time"),
+                    "btc_entry_price": receipt.get("btc_entry_price", 0.0),
+                    "calls": [receipt.get("call_symbol")],
+                    "puts": [receipt.get("put_symbol")],
+                    "max_pnl_pct": 0.0,
+                    "min_pnl_pct": 0.0,
+                    "max_pnl_time": "",
+                    "min_pnl_time": "",
+                    "recovered_from_receipt": True
+                }
+                self.trade_active = True
+                self.today_trade_status = "Trade Recovered (Crash)"
+        except Exception as e:
+            app_logger.error(f"Engine: Failed to load trade entry receipt: {e}")
+        
         self.is_running = True
         self.re_entry_count = 0
         self.daily_loss_hits = 0
