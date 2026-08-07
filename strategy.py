@@ -155,8 +155,13 @@ class ShortStrangleStrategy:
             premium_min, premium_max = base_min, 250  # Legacy fallback / Force mode
             app_logger.info(f"Strategy: Using premium range ${premium_min}-${premium_max} (Force={force})")
 
-        # Separate and filter options (Section 1: Minimum MIN_OTM_STRIKES OTM from ATM)
-        min_otm = MIN_OTM_STRIKES  # 5 strikes OTM minimum
+        # --- PREMIUM-MATCHED STRIKE SELECTION ---
+        # Rule: Minimum MIN_OTM_STRIKES (5) OTM on EACH leg — hard floor, never violated.
+        # Among all valid pairs (call >= 5 OTM, put >= 5 OTM), pick the pair whose
+        # |call_premium - put_premium| is smallest → true premium matching.
+        # Call can go 6, 7, 8 OTM if needed to equalise with the higher-IV put side.
+        # Example: if 5-OTM put = $103, 6-OTM call = $100 → selected over 5-OTM call at $84.
+        min_otm = MIN_OTM_STRIKES  # 5 strikes OTM minimum (never go below this)
         eligible_calls = []
         eligible_puts = []
         for t in expiry_tickers:
@@ -166,11 +171,11 @@ class ShortStrangleStrategy:
             mark_price = float(t.get('mark_price', 0))
             strike = float(t.get('strike_price', 0))
             premium_inr = mark_price
-            
-            # Soft fallback/safety cap: absolute delta <= 0.45
+
+            # Soft safety cap: absolute delta <= 0.45 (deep ITM filter)
             if abs(delta) > 0.45:
                 continue
-                
+
             c_type = t.get('contract_type', '').lower()
             item = {
                 'symbol': symbol,
@@ -180,18 +185,20 @@ class ShortStrangleStrategy:
                 'product_id': t.get('product_id'),
                 'premium_inr': premium_inr
             }
-            
+
             if 'call' in c_type:
+                # >= min_otm strikes OTM from ATM (no upper limit — allow 6, 7, 8 OTM for matching)
                 if atm_idx + min_otm < len(all_strikes) and strike >= all_strikes[atm_idx + min_otm]:
                     eligible_calls.append(item)
             elif 'put' in c_type:
+                # >= min_otm strikes OTM from ATM (no upper limit — allow 6, 7, 8 OTM for matching)
                 if atm_idx - min_otm >= 0 and strike <= all_strikes[atm_idx - min_otm]:
                     eligible_puts.append(item)
-                
+
         best_call = None
         best_put = None
-        
-        # Filter calls and puts that meet premium boundaries (Section 1: IV-Based Premium Target)
+
+        # Build all (call, put) pairs within premium range and rank by premium similarity
         valid_pairs = []
         if check_premium:
             for c in eligible_calls:
@@ -204,23 +211,42 @@ class ShortStrangleStrategy:
                         continue
                     if not (premium_min <= p['premium_inr'] <= premium_max):
                         continue
-                    # Put premium must be <= PUT_SKEW_CAP * Call premium (Section 1)
+                    # ── JOINT SCORE: PREMIUM + DELTA MATCH ────────────────────────────
+                    # Score formula (lower = better):
+                    #   1.5 × |call_prem - put_prem|          ← premium equality (primary)
+                    #   50  × ||call_delta| - |put_delta||     ← delta symmetry (secondary)
+                    # The 50× weight on delta normalises its 0–1 scale vs dollar premiums.
+                    # This is what made last month's trades balanced: when both premiums
+                    # are close, deltas naturally match too. This forces it explicitly.
+                    prem_diff  = abs(c['premium_inr'] - p['premium_inr'])
+                    delta_diff = abs(abs(c['delta']) - abs(p['delta']))
+                    joint_score = 1.5 * prem_diff + 50.0 * delta_diff
                     if p['premium_inr'] > PUT_SKEW_CAP * c['premium_inr']:
-                        continue
-                    valid_pairs.append((c, p))
+                        app_logger.debug(
+                            f"Strategy: Skew note — Put {p['symbol']} ({p['premium_inr']:.2f}) "
+                            f"vs Call {c['symbol']} ({c['premium_inr']:.2f}) exceeds PUT_SKEW_CAP "
+                            f"({PUT_SKEW_CAP}x). Still included in joint-score pool."
+                        )
+                    valid_pairs.append((c, p, prem_diff, delta_diff, joint_score))
 
         if check_premium and valid_pairs:
             if force:
-                # User requested: when forced, prioritize premiums close to $100, fallback to whatever 5 OTM is available
-                best_pair = min(valid_pairs, key=lambda pair: abs(pair[0]['premium_inr'] - 100) + abs(pair[1]['premium_inr'] - 100))
+                # Forced mode: closest pair to $100 on both sides (ignore delta for force)
+                best_tuple = min(
+                    valid_pairs,
+                    key=lambda t5: abs(t5[0]['premium_inr'] - 100) + abs(t5[1]['premium_inr'] - 100)
+                )
             else:
-                # Select the pair with the most balanced premiums (minimum difference)
-                best_pair = min(valid_pairs, key=lambda pair: abs(pair[0]['premium_inr'] - pair[1]['premium_inr']))
-            best_call, best_put = best_pair
+                # JOINT SCORE MODE: minimum (1.5 × prem_diff + 50 × delta_diff)
+                # Matches both equal premium AND equal delta simultaneously
+                best_tuple = min(valid_pairs, key=lambda t5: t5[4])
+            best_call, best_put, _prem_diff, _delta_diff, _score = best_tuple
+            skew_ratio = best_put['premium_inr'] / best_call['premium_inr'] if best_call['premium_inr'] > 0 else 0
             app_logger.info(
-                f"Strategy: Selected balanced strikes (Call: {best_call['symbol']} Premium: {best_call['premium_inr']:.2f}, "
-                f"Put: {best_put['symbol']} Premium: {best_put['premium_inr']:.2f}, "
-                f"Diff: {abs(best_call['premium_inr'] - best_put['premium_inr']):.2f})"
+                f"Strategy: Joint-score strikes selected — "
+                f"Call: {best_call['symbol']} (Strike={best_call['strike']:.0f}, Prem=${best_call['premium_inr']:.2f}, Delta={best_call['delta']:.4f}), "
+                f"Put:  {best_put['symbol']} (Strike={best_put['strike']:.0f}, Prem=${best_put['premium_inr']:.2f}, Delta={best_put['delta']:.4f}), "
+                f"PremDiff=${_prem_diff:.2f}, |DeltaDiff|={_delta_diff:.4f}, JointScore={_score:.3f}, SkewRatio={skew_ratio:.3f}x"
             )
         else:
             # Soft fallback: closest to target delta (absolute cap of 0.45 individual delta)
