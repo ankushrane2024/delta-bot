@@ -809,7 +809,6 @@ class DeltaTradingEngine:
     def generate_actual_report(self, date_str=None):
         """Builds the report data, generates PDF/Excel, and saves metadata."""
         import report_generator
-        from utils import get_ist_now
         
         if date_str is None:
             date_str = get_ist_now().strftime('%Y-%m-%d')
@@ -1832,7 +1831,6 @@ class DeltaTradingEngine:
                     current_trade=current_trade_info
                 )
                 if chart_path and os.path.exists(chart_path):
-                    from utils import get_ist_now
                     ist_now = get_ist_now()
                     date_str = ist_now.strftime('%Y-%m-%d')
                     pnl_sign = '+' if profit >= 0 else ''
@@ -1874,7 +1872,6 @@ class DeltaTradingEngine:
 
     def _record_skip(self, reason, status="Trade Skipped"):
         """Records a skip event to the history list (max 10 entries)."""
-        from utils import get_ist_now
         entry = {
             "time": get_ist_now().strftime("%d %b %Y %I:%M %p IST"),
             "reason": reason,
