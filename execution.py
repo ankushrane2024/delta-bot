@@ -12,11 +12,48 @@ class ExecutionHandler:
         
         # In PAPER mode, try to recover active positions from cloud DB after a server reboot
         if self.mode != 'LIVE':
-            self.active_positions = db_manager.load_active_positions()
+            loaded = db_manager.load_active_positions()
             # Extract persisted DPL state if present (injected by save_state)
-            self._persisted_dpl_state = self.active_positions.pop('__dpl_state__', None)
+            self._persisted_dpl_state = loaded.pop('__dpl_state__', None)
             # Extract persisted chart data if present (injected by save_state)
-            self._persisted_chart_data = self.active_positions.pop('__chart_data__', None)
+            self._persisted_chart_data = loaded.pop('__chart_data__', None)
+            
+            # Filter out stale/expired positions (past contract expiry or older than 48h)
+            valid_positions = {}
+            today_ist = get_ist_now().date()
+            for sym, pos_data in loaded.items():
+                if sym.startswith('__'):
+                    continue
+                is_stale = False
+                try:
+                    parts = sym.split('-')
+                    if len(parts) >= 4:
+                        date_str = parts[3]
+                        if len(date_str) == 6 and date_str.isdigit():
+                            import datetime
+                            exp_date = datetime.datetime.strptime(date_str, "%d%m%y").date()
+                            if exp_date < today_ist:
+                                is_stale = True
+                                app_logger.warning(f"Execution: Discarding expired position {sym} (expired on {exp_date})")
+                except Exception:
+                    pass
+                
+                if not is_stale and 'entry_time' in pos_data:
+                    try:
+                        import datetime
+                        entry_dt = datetime.datetime.fromisoformat(pos_data['entry_time'])
+                        if (get_ist_now() - entry_dt).total_seconds() > 172800:
+                            is_stale = True
+                            app_logger.warning(f"Execution: Discarding stale position {sym} (entered {pos_data['entry_time']})")
+                    except Exception:
+                        pass
+                
+                if not is_stale:
+                    valid_positions[sym] = pos_data
+
+            self.active_positions = valid_positions
+            if len(valid_positions) != len(loaded):
+                self.save_state()
         else:
             self.active_positions = {} # symbol -> data
             self._persisted_dpl_state = None
@@ -117,10 +154,13 @@ class ExecutionHandler:
                 results.append({'success': True})
             
             self.save_state()
-            return results
+            return {'success': True, 'error': None, 'results': results}
 
         # ── LIVE ──
         results = []
+        failed_error = None
+        executed_legs = []
+
         for opt in [call_opt, put_opt]:
             # Set Portfolio Margin mode strictly before executing options
             if self.mode == 'LIVE':
@@ -128,12 +168,10 @@ class ExecutionHandler:
                 res = self.api_client.place_order(opt['product_id'], 'sell', size)
                 results.append(res)
                 if res.get('success'):
+                    executed_legs.append(opt)
                     app_logger.info(f"Execution: Successfully sold {opt['symbol']}")
                     
                     # ── CRITICAL FIX (2026-07-27): Use REAL fill price, NOT pre-trade mark_price ──
-                    # Delta Exchange returns the fill price in the order result under
-                    # 'average_fill_price' or 'limit_price'. Using the pre-trade mark_price
-                    # creates a false PnL baseline — all live PnL calculations will be wrong.
                     order_result = res.get('result', {})
                     real_fill_price = 0.0
                     
@@ -168,27 +206,22 @@ class ExecutionHandler:
                     
                     self.active_positions[opt['symbol']] = {
                         'entry_price': real_fill_price,
-                        'entry_price_raw': float(opt['mark_price']),  # Keep pre-trade snapshot for reference
+                        'entry_price_raw': float(opt['mark_price']),
                         'size': size,
                         'product_id': opt['product_id'],
                         'side': 'SELL',
                         'leg_type': 'call' if opt == call_opt else 'put',
                         'strike': opt.get('strike_price', opt.get('strike', 0)),
                         'entry_time': get_ist_now().isoformat(),
-                        'exchange_sl_order_id': None  # Will be set below
+                        'exchange_sl_order_id': None
                     }
 
                     # ── EXCHANGE-NATIVE CRASH-BACKUP STOP ORDER ──────────────────
-                    # Set at 2× entry premium (200% gain). This is WELL above the
-                    # bot's own SL at 100% (SL_PERCENT). It ONLY fires if the bot/
-                    # server is completely dead and cannot close the position itself.
-                    # Under normal operation the bot closes first at 100% and then
-                    # cancels this backup stop order automatically.
                     try:
                         backup_sl_price = round(real_fill_price * (1 + (config.SL_PERCENT * 2.0)), 4)
                         sl_res = self.api_client.place_stop_order(
                             product_id=opt['product_id'],
-                            side='buy',          # buy to close a short sell
+                            side='buy',
                             size=size,
                             stop_price=backup_sl_price
                         )
@@ -198,23 +231,46 @@ class ExecutionHandler:
                             app_logger.info(
                                 f"Execution [LIVE]: Exchange backup SL placed for {opt['symbol']} "
                                 f"at ${backup_sl_price:.4f} (2× entry ${real_fill_price:.4f}). "
-                                f"Order ID: {sl_order_id}. "
-                                f"NOTE: Bot's own SL fires at 1× entry first. "
-                                f"This stop only triggers if bot is offline."
+                                f"Order ID: {sl_order_id}."
                             )
                         else:
                             app_logger.warning(
-                                f"Execution [LIVE]: Could not place exchange backup SL for {opt['symbol']}: {sl_res}. "
-                                f"Bot's software SL remains the primary protection."
+                                f"Execution [LIVE]: Could not place exchange backup SL for {opt['symbol']}: {sl_res}."
                             )
                     except Exception as sl_err:
                         app_logger.error(f"Execution [LIVE]: Exception placing backup SL for {opt['symbol']}: {sl_err}")
-                    # ─────────────────────────────────────────────────────────────
-
                 else:
-                    app_logger.error(f"Execution: Failed to sell {opt['symbol']}: {res}")
+                    err = res.get('error', {})
+                    err_code = err.get('code') if isinstance(err, dict) else str(err)
+                    err_msg = err.get('message') if isinstance(err, dict) else str(err)
+                    
+                    if err_code == 'ip_not_whitelisted_for_api_key':
+                        client_ip = err.get('context', {}).get('client_ip', '') if isinstance(err, dict) else ''
+                        failed_error = f"IP {client_ip} is not whitelisted on your Delta Exchange API key. Please add this IP to your API key whitelist on Delta Exchange."
+                    elif err_code == 'insufficient_margin':
+                        failed_error = "Insufficient margin on Delta Exchange account for this position size."
+                    else:
+                        failed_error = f"Exchange rejected order for {opt.get('symbol', 'option')}: {err_msg or err_code or res}"
+                    
+                    app_logger.error(f"Execution: Failed to sell {opt['symbol']}: {res} — Reason: {failed_error}")
+                    break
         
-        return results
+        # If any leg failed in LIVE mode: rollback any executed leg to prevent naked position!
+        if failed_error:
+            if executed_legs:
+                app_logger.critical(f"Execution [LIVE]: Strangle entry partial failure! Rolling back {len(executed_legs)} executed leg(s) to avoid unhedged naked position!")
+                for executed_opt in executed_legs:
+                    sym = executed_opt.get('symbol')
+                    try:
+                        self.api_client.place_order(executed_opt['product_id'], 'buy', size)
+                        if sym in self.active_positions:
+                            del self.active_positions[sym]
+                        app_logger.info(f"Execution [LIVE]: Successfully rolled back / closed {sym}")
+                    except Exception as rollback_err:
+                        app_logger.critical(f"Execution [LIVE]: Rollback failed for {sym}: {rollback_err}")
+            return {'success': False, 'error': failed_error, 'results': results}
+
+        return {'success': True, 'error': None, 'results': results}
 
     def close_all(self, reason="Manual"):
         """Closes all active options positions and hedges."""
@@ -439,3 +495,52 @@ class ExecutionHandler:
             app_logger.info("Hedge: All hedge positions closed")
         else:
             app_logger.error("Hedge: Failed to close hedge positions")
+
+    def sync_live_positions(self):
+        """Syncs active options positions from Delta Exchange when in LIVE mode."""
+        if self.mode != 'LIVE':
+            return
+        try:
+            res = self.api_client.get_positions()
+            if res and res.get('success'):
+                positions = res.get('result', [])
+                synced = {}
+                for p in positions:
+                    size = int(p.get('size', 0))
+                    if size == 0:
+                        continue
+                    prod = p.get('product', {})
+                    symbol = p.get('product_symbol') or prod.get('symbol') or p.get('symbol', '')
+                    contract_type = prod.get('contract_type', '').lower()
+                    if 'option' in contract_type or symbol.startswith(('C-BTC', 'P-BTC', 'BTC-')):
+                        leg_type = 'call' if ('call' in contract_type or symbol.startswith('C-') or symbol.endswith('-C')) else 'put'
+                        strike_val = float(prod.get('strike_price', 0.0))
+                        if strike_val <= 0:
+                            try:
+                                parts = symbol.split('-')
+                                if len(parts) >= 3 and parts[2].replace('.', '', 1).isdigit():
+                                    strike_val = float(parts[2])
+                            except Exception:
+                                pass
+                        synced[symbol] = {
+                            'entry_price': float(p.get('entry_price') or p.get('avg_entry_price') or 0.0),
+                            'entry_price_raw': float(p.get('entry_price') or 0.0),
+                            'size': abs(size),
+                            'product_id': p.get('product_id'),
+                            'side': 'SELL' if size < 0 else 'BUY',
+                            'leg_type': leg_type,
+                            'strike': strike_val,
+                            'entry_time': get_ist_now().isoformat(),
+                            'exchange_sl_order_id': None
+                        }
+                if synced:
+                    self.active_positions = synced
+                    app_logger.info(f"Execution [LIVE]: Synced {len(synced)} active options positions from exchange: {list(synced.keys())}")
+                else:
+                    self.active_positions = {}
+                    app_logger.info("Execution [LIVE]: No open options positions found on exchange.")
+            else:
+                app_logger.warning(f"Execution [LIVE]: Could not fetch positions from exchange: {res}")
+        except Exception as e:
+            app_logger.error(f"Execution [LIVE]: Error in sync_live_positions: {e}")
+

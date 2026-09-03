@@ -1413,8 +1413,14 @@
                 const overallText = document.getElementById('pf-overall-text');
                 if (overallIcon) overallIcon.textContent = allOk ? '✅' : '❌';
                 if (overallText) {
-                    overallText.textContent = allOk ? 'Ready for LIVE' : 'Not ready';
-                    overallText.style.color = allOk ? '#10b981' : '#ef4444';
+                    if (allOk) {
+                        overallText.textContent = 'Ready for LIVE';
+                        overallText.style.color = '#10b981';
+                    } else {
+                        const reason = d.preflight.api_error_detail || 'Not ready';
+                        overallText.textContent = `Not ready: ${reason}`;
+                        overallText.style.color = '#ef4444';
+                    }
                 }
             }
         }

@@ -83,26 +83,97 @@ class TradingFilters:
         return True
 
     def _update_news_cache(self):
-        """Helper to fetch and cache news calendar from ForexFactory every 6 hours."""
+        """Helper to fetch and cache news calendar from ForexFactory every 6 hours with disk persistence."""
+        cache_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'news_calendar_cache.json')
         current_time = time.time()
+        
+        # 1. Load from disk cache if memory cache is empty
+        if not self.cached_news and os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    cache_data = json.load(f)
+                    if isinstance(cache_data, dict):
+                        self.cached_news = cache_data.get('events', [])
+                        self.last_news_fetch_time = float(cache_data.get('timestamp', 0.0))
+                    elif isinstance(cache_data, list):
+                        self.cached_news = cache_data
+                        self.last_news_fetch_time = os.path.getmtime(cache_file)
+            except Exception as e:
+                app_logger.warning(f"Filters: Error reading news cache from disk: {e}")
+
         # If cache is fresh (less than 6 hours old), do not fetch
         if self.cached_news and (current_time - self.last_news_fetch_time < 21600):
             return
             
         try:
             url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-            headers = {'User-Agent': 'Mozilla/5.0'}
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json'
+            }
             response = requests.get(url, headers=headers, timeout=10)
             if response.status_code == 200:
                 self.cached_news = response.json()
                 self.last_news_fetch_time = current_time
+                try:
+                    with open(cache_file, 'w', encoding='utf-8') as f:
+                        json.dump({'timestamp': current_time, 'events': self.cached_news}, f, indent=2)
+                except Exception as e:
+                    app_logger.warning(f"Filters: Failed to write news cache to disk: {e}")
                 app_logger.info("Filters: ForexFactory calendar cache updated.")
+            elif response.status_code == 429:
+                retry_after = response.headers.get('Retry-After', '300')
+                app_logger.warning(f"Filters: ForexFactory rate-limited (HTTP 429). Retrying after {retry_after}s. Using cached events.")
+                self.last_news_fetch_time = current_time - 21600 + (int(retry_after) if retry_after.isdigit() else 300)
+            else:
+                app_logger.warning(f"Filters: ForexFactory calendar fetch returned status {response.status_code}")
         except Exception as e:
             app_logger.warning(f"Filters: Failed to fetch ForexFactory calendar: {e}")
 
     def check_news_filter(self):
-        """News skip filter explicitly disabled by user."""
-        return True, "News Filter Disabled by User"
+        """Skip major economic news / calendar alert days using cached ForexFactory calendar."""
+        self._update_news_cache()
+        if not self.cached_news:
+            return True, "No news data"
+            
+        today_str = get_ist_now().strftime('%Y-%m-%d')
+        ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        keywords = ['cpi', 'fomc', 'nfp', 'non-farm', 'fed', 'powell', 'etf', 'ism', 'pmi', 'unemployment', 'gdp', 'pce', 'rate decision']
+        
+        for event in self.cached_news:
+            country = event.get('country', '')
+            impact = event.get('impact', '')
+            if country in ['USD', 'BTC']:
+                raw_date = event.get('date', '')
+                if not raw_date:
+                    continue
+                try:
+                    dt = datetime.datetime.fromisoformat(raw_date).astimezone(ist_tz)
+                    event_date = dt.strftime('%Y-%m-%d')
+                    event_time_str = dt.strftime('%H:%M')
+                except Exception:
+                    dt = None
+                    event_date = raw_date[:10]
+                    event_time_str = ""
+                
+                if event_date == today_str:
+                    title = event.get('title', '').strip()
+                    title_lower = title.lower()
+                    is_high_risk = (impact == 'High') or (impact == 'Medium' and any(k in title_lower for k in keywords))
+                    if is_high_risk:
+                        # If the event is at or after 17:00 IST (after bot exit), positions close before the event hits
+                        if dt and dt.time() >= datetime.time(17, 0):
+                            app_logger.info(
+                                f"Filter: Event '{title}' scheduled at {event_time_str} IST (after 17:00 IST exit). "
+                                f"Allowing daytime trade session as bot exits prior to event."
+                            )
+                            continue
+
+                        msg = f"Calendar Alert: {title} at {event_time_str} IST ({impact} Impact, {country})"
+                        app_logger.warning(f"Filter: Skipping automatic trade due to calendar alert: {msg}")
+                        return False, msg
+
+        return True, "Calendar Clean: No high-risk events during trade hours"
 
     def all_passed(self):
         return (self.check_day_filter() and 
@@ -125,6 +196,8 @@ class TradingFilters:
         """Calculates skip status for the next 'days' days using cached news."""
         schedule = []
         today = get_ist_now().date()
+        ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        keywords = ['cpi', 'fomc', 'nfp', 'non-farm', 'fed', 'powell', 'etf', 'ism', 'pmi', 'unemployment', 'gdp', 'pce', 'rate decision']
         
         self._update_news_cache()
         news_events = self.cached_news
@@ -138,11 +211,38 @@ class TradingFilters:
             reason = None
             skip_type = 'normal' # normal or severe (for styling)
             
-            # 1. Weekend Check - Disabled (Trade 7 days a week)
-            
-            # 2. News Check - Disabled by user request
-            if not skip and news_events:
-                pass # News check removed
+            # News Check for USD & BTC
+            if news_events:
+                for event in news_events:
+                    country = event.get('country', '')
+                    impact = event.get('impact', '')
+                    if country in ['USD', 'BTC']:
+                        raw_date = event.get('date', '')
+                        if not raw_date:
+                            continue
+                        try:
+                            dt = datetime.datetime.fromisoformat(raw_date).astimezone(ist_tz)
+                            event_date = dt.strftime('%Y-%m-%d')
+                            event_time_str = dt.strftime('%H:%M')
+                        except Exception:
+                            dt = None
+                            event_date = raw_date[:10]
+                            event_time_str = ""
+                        
+                        if event_date == target_date_str:
+                            title = event.get('title', '').strip()
+                            title_lower = title.lower()
+                            is_high_risk = (impact == 'High') or (impact == 'Medium' and any(k in title_lower for k in keywords))
+                            if is_high_risk:
+                                if dt and dt.time() >= datetime.time(17, 0):
+                                    reason = f"Evening Event (After 17:00 IST): {title}"
+                                    skip = False
+                                    skip_type = 'normal'
+                                else:
+                                    skip = True
+                                    reason = f"High Risk: {title} ({event_time_str} IST)"
+                                    skip_type = 'severe' if impact == 'High' else 'normal'
+                                    break
             
             schedule.append({
                 'date': target_date.strftime('%b %d'),

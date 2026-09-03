@@ -122,7 +122,22 @@ class DeltaTradingEngine:
         self.premium_engine = PremiumSellingConditionsEngine(self.api_client, self.dvol_provider)
         self.risk_manager = RiskManager(self.api_client)
         self.strategy = ShortStrangleStrategy(self.api_client)
-        self.execution = ExecutionHandler(self.api_client, mode=BOT_MODE)
+        
+        # Check lot_size.json for persisted live_mode
+        initial_mode = BOT_MODE
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            path = os.path.join(base_dir, 'lot_size.json')
+            if os.path.exists(path):
+                import json
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                if data.get('live_mode') is True:
+                    initial_mode = 'LIVE'
+        except Exception as e:
+            app_logger.warning(f"Engine: Error reading lot_size.json for initial mode: {e}")
+
+        self.execution = ExecutionHandler(self.api_client, mode=initial_mode)
         self.filters = TradingFilters(self.api_client, dvol_provider=self.dvol_provider)
         self.smart_hedging = SmartHedgingManager(self.execution, self.dvol_provider, self.risk_manager, self.api_client)
         self.performance_tracker = PerformanceTracker()
@@ -291,7 +306,9 @@ class DeltaTradingEngine:
         app_logger.info(f"Engine: Entry cycle triggered (force={force})")
         
         if self.execution.active_positions:
-            app_logger.warning("Engine: Trade already active. Cannot start a new entry cycle.")
+            open_symbols = [k for k in self.execution.active_positions.keys() if not k.startswith('__')]
+            app_logger.warning(f"Engine: Trade already active ({open_symbols}). Cannot start a new entry cycle.")
+            self.today_skip_reason = f"Trade already active ({', '.join(open_symbols)}). Close active positions or Square Off first."
             return
         if not force and self.manual_pause:
             app_logger.warning("Engine: Trading manually paused via Telegram. Skipping entry.")
@@ -380,6 +397,14 @@ class DeltaTradingEngine:
                     self.today_skip_reason = f"Market Trending (ADX {adx:.2f} > 25)"
                     self._record_skip(f"Market Regime = TRENDING (ADX {adx:.2f} > 25) — Sideways market required")
                     return
+        else:
+            # Manual Force Trade: Check calendar filter to log bypass
+            news_ok, news_reason = self.filters.check_news_filter()
+            if not news_ok:
+                app_logger.warning(
+                    f"Engine: MANUAL OVERRIDE — Calendar alert active ({news_reason}), "
+                    f"but force=True. Bypassing calendar restriction and executing trade as requested."
+                )
         # Find Strikes with DVOL Integration (MODIFIED)
         expiry = get_next_expiry_date()
         call_opt, put_opt = self.strategy.find_strikes(expiry_date=expiry, dvol_provider=self.dvol_provider, force=force)
@@ -429,13 +454,27 @@ class DeltaTradingEngine:
         per_entry_size = max(1, int(adjusted_lots / 2))
         
         # CRITICAL FIX (2026-07-27): Lock _trade_start_ts BEFORE execute_strangle() is called.
-        # The monitor_loop runs in a parallel thread. If _trade_start_ts is set after execution,
-        # the monitor loop can see active_positions exist but _trade_start_ts=None, yielding
-        # time_in_trade=0s on the first few ticks — bypassing the grace period suppression.
         self._trade_start_ts = time.time()
         
         # Execute
-        self.execution.execute_strangle(call_opt, put_opt, per_entry_size)
+        exec_res = self.execution.execute_strangle(call_opt, put_opt, per_entry_size)
+        
+        # Validate execution outcome
+        if isinstance(exec_res, dict) and not exec_res.get('success', False):
+            err_msg = exec_res.get('error') or "Order execution failed on exchange"
+            self.today_trade_status = "Trade Failed"
+            self.today_skip_reason = f"Execution Failed: {err_msg}"
+            self._record_skip(self.today_skip_reason, status="Trade Failed")
+            app_logger.error(f"Engine: Strangle execution failed: {err_msg}")
+            return
+        
+        if not self.execution.active_positions:
+            self.today_trade_status = "Trade Failed"
+            self.today_skip_reason = "Execution Failed: No positions opened on exchange"
+            self._record_skip(self.today_skip_reason, status="Trade Failed")
+            app_logger.error("Engine: Strangle execution resulted in 0 active positions.")
+            return
+
         self.today_trade_status = "Trade Taken"
         self.today_skip_reason = None
         self.trades_taken_today += 1
@@ -455,7 +494,8 @@ class DeltaTradingEngine:
         # If Render redeploys mid-trade, this record survives and lets us recover
         # the trade from history even if log_trade() was never called on close.
         try:
-            from utils import get_ist_date
+            import db_manager
+            from performance_tracker import get_ist_date
             receipt_data = {
                 "date":             get_ist_date(),
                 "mode":             config.BOT_MODE,

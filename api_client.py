@@ -81,6 +81,19 @@ class DeltaIndiaClient:
                     res_json = {"success": False, "error": {"message": response.text, "code": "http_error"}}
                     
             if not res_json.get('success') and 'error' in res_json:
+                # Auto re-sync time offset if signature expired using server_time context
+                err_dict = res_json.get('error', {})
+                if isinstance(err_dict, dict) and err_dict.get('code') == 'expired_signature':
+                    server_time = err_dict.get('context', {}).get('server_time')
+                    if server_time and not getattr(self, '_retrying_signature', False):
+                        self._retrying_signature = True
+                        try:
+                            self.time_offset = int(server_time - time.time())
+                            app_logger.info(f"API: Auto-resynced time offset from expired_signature context: {self.time_offset}s")
+                            return self.request(method, path, params=params, data=data)
+                        finally:
+                            self._retrying_signature = False
+
                 error_logger.warning(f"API Error Response: {method} {path} - {res_json['error']}")
             return res_json
         except Exception as e:
@@ -150,8 +163,13 @@ class DeltaIndiaClient:
         app_logger.info(f"API: Cancelling order {order_id} for product {product_id}")
         return self.request("DELETE", "/v2/orders", data=data)
 
-    def get_positions(self):
-        return self.request("GET", "/v2/positions")
+    def get_positions(self, product_id=None, underlying_asset_symbol="BTC"):
+        params = {}
+        if product_id:
+            params["product_id"] = product_id
+        elif underlying_asset_symbol:
+            params["underlying_asset_symbol"] = underlying_asset_symbol
+        return self.request("GET", "/v2/positions", params=params)
 
     def set_margin_mode(self, product_id, margin_mode="portfolio"):
         """Strictly sets Portfolio Margin mode before trading."""

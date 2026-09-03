@@ -561,6 +561,7 @@ def test_order():
         return jsonify({'success': False, 'error': str(e)}), 200
 
 @app.route('/api/manual_order', methods=['POST'])
+@app.route('/api/live/manual_order', methods=['POST'])
 def manual_order():
     try:
         if not bot_engine:
@@ -572,11 +573,14 @@ def manual_order():
         # Temporarily bypass the "1 trade per day limit" just for manual force execution
         bot_engine.trades_taken_today = 0
         
-        # Trigger the entry cycle asynchronously in a background thread with force=True
-        import threading
-        threading.Thread(target=bot_engine.run_entry_cycle, kwargs={'force': True}, daemon=True).start()
+        # Trigger the entry cycle synchronously to bubble up failures
+        bot_engine.run_entry_cycle(force=True)
         
-        return jsonify({'status': 'success', 'message': 'Manual strangle entry cycle triggered successfully!'}), 200
+        if bot_engine.execution.active_positions:
+            return jsonify({'status': 'success', 'message': 'Manual strangle entry cycle triggered and trade executed successfully!'}), 200
+        else:
+            msg = bot_engine.today_skip_reason or "Unknown error"
+            return jsonify({'status': 'error', 'message': f'Trade was not executed. Reason: {msg}'}), 200
 
     except Exception as e:
         import traceback
@@ -744,6 +748,24 @@ def get_live_mode():
         api_secret_ok = bool(DELTA_API_SECRET) and DELTA_API_SECRET not in ('testnet_secret', '', 'YOUR_SECRET_HERE')
         has_positions = bool(bot_engine and bot_engine.execution.active_positions) if bot_engine else False
 
+        api_error_detail = None
+        if api_key_ok and api_secret_ok and bot_engine:
+            try:
+                bal_res = bot_engine.api_client.get_balances()
+                if not bal_res.get('success'):
+                    err = bal_res.get('error', {})
+                    err_code = err.get('code') if isinstance(err, dict) else str(err)
+                    if err_code == 'ip_not_whitelisted_for_api_key':
+                        client_ip = err.get('context', {}).get('client_ip', '') if isinstance(err, dict) else ''
+                        api_key_ok = False
+                        api_error_detail = f"IP {client_ip} not whitelisted on Delta Exchange"
+                    else:
+                        api_key_ok = False
+                        api_error_detail = f"API Error: {err.get('message') or err_code}"
+            except Exception as test_err:
+                api_key_ok = False
+                api_error_detail = f"Connection error: {test_err}"
+
         current_mode = getattr(bot_engine.execution, 'mode', 'PAPER') if bot_engine else 'PAPER'
 
         return jsonify({
@@ -756,6 +778,7 @@ def get_live_mode():
                 'api_secret_valid': api_secret_ok,
                 'no_active_positions': not has_positions,
                 'portfolio_margin_enabled': True,  # User confirmed enabled
+                'api_error_detail': api_error_detail
             },
             'safe_to_activate': api_key_ok and api_secret_ok and not has_positions
         })

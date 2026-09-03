@@ -297,6 +297,18 @@ class PremiumSellingConditionsEngine:
                 if ticker:
                     btc_price = float(ticker.get('spot_price', ticker.get('mark_price', 0.0)))
             
+            # Fallback to REST ticker if WS price is not yet available
+            if btc_price <= 0:
+                try:
+                    res = self.api_client.get_tickers({'contract_types': 'perpetual_futures'})
+                    if res.get('success'):
+                        for t in res.get('result', []):
+                            if t.get('symbol') == 'BTCUSD':
+                                btc_price = float(t.get('spot_price') or t.get('mark_price') or 0.0)
+                                break
+                except Exception as btc_err:
+                    error_logger.warning(f"PSCE: REST BTC ticker fallback failed: {btc_err}")
+            
             if btc_price <= 0:
                 payload["reasons"].append("BTC Price feed is offline or invalid.")
                 payload["decision"] = "DATA UNAVAILABLE"
