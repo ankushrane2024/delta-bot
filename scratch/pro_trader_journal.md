@@ -304,3 +304,41 @@
 
 ---
 
+## Trade Diary - Date: 2026-09-03 (FLAT)
+- **Entry Time (IST)**: `2026-09-03T22:00:43.775659+05:30`
+- **Exit Time (IST)**: `2026-09-03T22:46:28.054380+05:30`
+- **Symbols**: Call: `C-BTC-84000-040926` | Put: `P-BTC-78800-040926`
+- **Size Multiplier**: `1.00x` | **Total Premium Collected**: `$0.00`
+- **Net P&L**: `$0.00` | **Exit Reason**: `EOD Square-off`
+- **Account Equity After**: `$49999.90`
+
+### Volatility & Market Environment
+- **DVOL Index**: `39.42%` (Percentile: `73.3%`)
+- **Current IV**: `54.5%`
+- **Market Regime**: `Ranging` (ADX: `0.0`)
+
+### Smart Hedging Telemetry
+- **Hedging Triggered**: `False` (Type: `None`)
+- **Futures Hedge Size**: `0.0 BTC` | **Tightened SL**: `False`
+
+---
+
+## Trade Diary - Date: 2026-09-03 (LOSS)
+- **Entry Time (IST)**: `2026-09-03T22:46:29.176789+05:30`
+- **Exit Time (IST)**: `2026-09-03T22:50:21.730885+05:30`
+- **Symbols**: Call: `C-BTC-84000-040926` | Put: `P-BTC-79400-040926`
+- **Size Multiplier**: `1.00x` | **Total Premium Collected**: `$0.24`
+- **Net P&L**: `$-3.36` | **Exit Reason**: `Manual Square-Off`
+- **Account Equity After**: `$49999.90`
+
+### Volatility & Market Environment
+- **DVOL Index**: `39.4%` (Percentile: `70.0%`)
+- **Current IV**: `54.4%`
+- **Market Regime**: `Ranging` (ADX: `0.0`)
+
+### Smart Hedging Telemetry
+- **Hedging Triggered**: `False` (Type: `None`)
+- **Futures Hedge Size**: `0.0 BTC` | **Tightened SL**: `False`
+
+---
+

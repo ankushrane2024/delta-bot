@@ -360,17 +360,17 @@ class DeltaTradingEngine:
         # Guard 3: Next day pause check - REMOVED PER USER REQUEST
         # Guard 4: Daily consecutive loss stop - REMOVED PER USER REQUEST
 
-        # Verify and Auto-Reconnect API in PAPER mode
-        if getattr(self.execution, 'mode', 'PAPER') == 'PAPER':
-            api_ok = self.verify_and_reconnect_api()
-            app_logger.info(f"Engine [PAPER]: API connection status before trade entry: {'Connected' if api_ok else 'Disconnected'}")
-            if not api_ok:
-                app_logger.error("Engine [PAPER]: API connection failed after 3 attempts. Skipping trade!")
-                notifier.notify_error("🚨 API connection failed - Trade skipped")
-                self.today_trade_status = "Trade Skipped"
-                self.today_skip_reason = "API connection failed - Trade skipped"
-                self._record_skip("API connection failed — check internet/API key")
-                return
+        # Verify and Auto-Reconnect API
+        mode_str = getattr(self.execution, 'mode', 'PAPER')
+        api_ok = self.verify_and_reconnect_api()
+        app_logger.info(f"Engine [{mode_str}]: API connection status before trade entry: {'Connected' if api_ok else 'Disconnected'}")
+        if not api_ok:
+            app_logger.error(f"Engine [{mode_str}]: API connection failed after 3 attempts. Skipping trade!")
+            notifier.notify_error(f"🚨 {mode_str} API connection failed - Trade skipped")
+            self.today_trade_status = "Trade Skipped"
+            self.today_skip_reason = f"API connection failed - Trade skipped ({mode_str})"
+            self._record_skip(f"API connection failed ({mode_str}) — check internet/API key")
+            return
         # 2. Daily Loss Limit Check (REMOVED PER USER REQUEST)
         self.risk_manager.update_equity()
         if not force and self.daily_start_equity > 0:
@@ -976,7 +976,8 @@ class DeltaTradingEngine:
                 if self.execution.active_positions:
                     # EOD Hard Exit Square-off Safeguard starting at 16:55 IST Same Day
                     # BUG FIX: Guard against infinite re-triggering at 16:55 IST.
-                    # Without this, run_exit_cycle() is called every 0.5s if close_all() fails.
+                    # Only applies to daytime trades entered BEFORE 16:55 IST (09:00 - 17:00 IST session),
+                    # and respects a 5-minute minimum grace period for manual force orders.
                     try:
                         now_ist = get_ist_now()
                         current_time_minutes = now_ist.hour * 60 + now_ist.minute
@@ -985,11 +986,25 @@ class DeltaTradingEngine:
                         if current_time_minutes < 60:  # Past midnight resets the daily guard
                             _eod_exit_triggered = False
                             
+                        # Check if the trade was entered during the daytime session (before 16:55)
+                        trade_entry_time_str = self.current_trade_info.get("entry_time")
+                        entered_today_before_eod = True
+                        if trade_entry_time_str:
+                            try:
+                                import datetime
+                                entry_dt = datetime.datetime.fromisoformat(trade_entry_time_str)
+                                entry_mins = entry_dt.hour * 60 + entry_dt.minute
+                                if entry_mins >= 1015:
+                                    entered_today_before_eod = False
+                            except Exception:
+                                pass
+
+                        trade_age_seconds = time.time() - self._trade_start_ts if getattr(self, '_trade_start_ts', None) else 999
+
                         # If we passed 17:00 (1020 minutes) and there are still active positions, FORCE CLOSE.
-                        # This catches missed scheduled jobs (e.g. if the bot rebooted at 17:01).
-                        if current_time_minutes >= 1015 and not _eod_exit_triggered:
+                        if current_time_minutes >= 1015 and entered_today_before_eod and trade_age_seconds >= 300 and not _eod_exit_triggered:
                             _eod_exit_triggered = True
-                            app_logger.info(f"Engine Monitor Safeguard: Time is {now_ist.strftime('%H:%M')} IST (>= 16:55 IST) with active positions. Triggering EOD Force Square-off.")
+                            app_logger.info(f"Engine Monitor Safeguard: Time is {now_ist.strftime('%H:%M')} IST (>= 16:55 IST) with active daytime positions. Triggering EOD Force Square-off.")
                             self.run_exit_cycle()
                             continue
                     except Exception as time_err:

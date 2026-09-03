@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request
 from logger import app_logger
+import config
 from config import LOT_TO_BTC
 import os
 import time
@@ -583,15 +584,26 @@ def manual_order():
         
         # Temporarily bypass the "1 trade per day limit" just for manual force execution
         bot_engine.trades_taken_today = 0
+        bot_engine.today_skip_reason = None
+        
+        initial_keys = set(k for k in bot_engine.execution.active_positions.keys() if not k.startswith('__'))
         
         # Trigger the entry cycle synchronously to bubble up failures
         bot_engine.run_entry_cycle(force=True)
         
-        if bot_engine.execution.active_positions:
-            return jsonify({'status': 'success', 'message': 'Manual strangle entry cycle triggered and trade executed successfully!'}), 200
+        current_keys = set(k for k in bot_engine.execution.active_positions.keys() if not k.startswith('__'))
+        
+        if bot_engine.today_trade_status == "Trade Taken" or (current_keys - initial_keys) or (len(current_keys) > 0 and len(initial_keys) == 0):
+            return jsonify({
+                'status': 'success',
+                'message': f'Manual strangle entry cycle triggered and trade executed successfully ({bot_engine.execution.mode} mode)!'
+            }), 200
         else:
-            msg = bot_engine.today_skip_reason or "Unknown error"
-            return jsonify({'status': 'error', 'message': f'Trade was not executed. Reason: {msg}'}), 200
+            msg = bot_engine.today_skip_reason or "Trade was not executed or strikes could not be found."
+            return jsonify({
+                'status': 'error',
+                'message': f'Trade was not executed. Reason: {msg}'
+            }), 200
 
     except Exception as e:
         import traceback
@@ -858,6 +870,7 @@ def toggle_live_mode():
         # ── Switch execution mode at runtime ──────────────────────────────────
         new_mode = 'LIVE' if activate else 'PAPER'
         bot_engine.execution.mode = new_mode
+        config.BOT_MODE = new_mode
 
         # ── Persist to lot_size.json ──────────────────────────────────────────
         data = {}

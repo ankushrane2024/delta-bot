@@ -1,0 +1,16 @@
+[
+    {
+        "Event ID": "c620609a-3bbe-4e62-b7a2-e86213ee6c34",
+        "Trade ID": "BTC_20260903_224629",
+        "Parent Event ID": null,
+        "Timestamp": 1788455789177,
+        "Date Time": "2026-09-03 22:46:29",
+        "Module Name": "bot_engine",
+        "Function Name": "run_entry_cycle",
+        "Event Type": "Trade Entry",
+        "Reason": "Trade officially started",
+        "Snapshot": {
+            "BTC Price": 0.0
+        }
+    }
+]

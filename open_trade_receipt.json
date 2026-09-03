@@ -1,0 +1,14 @@
+{
+    "date": "2026-09-03",
+    "mode": "LIVE",
+    "entry_time": "2026-09-03T22:51:57.368453+05:30",
+    "call_symbol": "C-BTC-84000-040926",
+    "put_symbol": "P-BTC-79400-040926",
+    "call_entry_price": 103.14418643,
+    "put_entry_price": 105.61359713,
+    "premium_collected": 104.3789,
+    "btc_entry_price": 0.0,
+    "lot_size": 1,
+    "_receipt_type": "OPEN_TRADE",
+    "_saved_at": "2026-09-03T22:51:58.543565+05:30"
+}

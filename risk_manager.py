@@ -15,7 +15,7 @@ class RiskManager:
         
     def update_equity(self):
         """Fetch current equity from exchange."""
-        if config.BOT_MODE == 'PAPER':
+        if getattr(config, 'BOT_MODE', 'PAPER') == 'PAPER':
             # Bypass API call in PAPER mode
             app_logger.info(f"Risk [PAPER]: Simulated equity is ${self.current_equity:.2f} (No live check)")
             return

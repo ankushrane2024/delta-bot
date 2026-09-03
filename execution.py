@@ -109,7 +109,6 @@ class ExecutionHandler:
         if self.mode != 'LIVE':
             import random
             import time
-            from utils import get_ist_now
             
             # Apply simulated execution delay of 200–500 milliseconds
             delay_ms = random.randint(200, 500)

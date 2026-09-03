@@ -30,7 +30,51 @@
             "adx": 0,
             "hedge_events": [],
             "chart_data": []
+        },
+        {
+            "date": "2026-09-03",
+            "mode": "LIVE",
+            "unprotected_loss": -3.3567513187100007,
+            "hedge_gain": 0.0,
+            "protection_efficiency": 0.0,
+            "ares_decision": "NONE",
+            "ares_risk_score": 0.0,
+            "entry_time": "2026-09-03T22:46:29.176789+05:30",
+            "exit_time": "2026-09-03T22:50:21.730885+05:30",
+            "call_symbol": "C-BTC-84000-040926",
+            "put_symbol": "P-BTC-79400-040926",
+            "call_entry_price": 0.0,
+            "put_entry_price": 0.0,
+            "call_exit_price": 0.0,
+            "put_exit_price": 0.0,
+            "premium_collected": 0.236,
+            "pnl": -3.3567513187100007,
+            "hedge_pnl": 0.0,
+            "pct_profit_captured": -1422.35,
+            "max_pnl_pct": 0.3686440677966102,
+            "min_pnl_pct": 0.0,
+            "max_pnl_time": "2026-09-03T22:50:20.896691+05:30",
+            "min_pnl_time": "",
+            "exit_reason": "Manual Square-Off",
+            "equity_after": 49999.90157774945,
+            "regime_filter_enabled": false,
+            "adx": 0.0,
+            "hedge_events": [],
+            "chart_data": [
+                {
+                    "t": "22:50",
+                    "pnl": 0.0,
+                    "hedge": 0.0,
+                    "total": 0.0
+                },
+                {
+                    "t": "22:50",
+                    "pnl": 0.0,
+                    "hedge": 0.0,
+                    "total": 0.0
+                }
+            ]
         }
     ],
-    "max_equity": 1005
+    "max_equity": 49999.90157774945
 }
