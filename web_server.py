@@ -129,7 +129,6 @@ def get_status():
 
     # Format active positions with rich real-time data
     if bot_engine and getattr(bot_engine.execution, 'mode', 'PAPER') == 'LIVE':
-        import time
         now_ts = time.time()
         if now_ts - getattr(bot_engine.execution, '_last_live_sync_ts', 0) > 4.0:
             bot_engine.execution._last_live_sync_ts = now_ts
