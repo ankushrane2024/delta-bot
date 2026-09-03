@@ -124,10 +124,10 @@ class DeltaIndiaClient:
             data["limit_price"] = str(limit_price)
         return self.request("POST", "/v2/orders", data=data)
 
-    def place_stop_order(self, product_id, side, size, stop_price):
-        """Places a stop-market order (exchange-native SL backup).
+    def place_stop_order(self, product_id, side, size, stop_price, limit_price=None):
+        """Places a stop-limit order (exchange-native SL backup).
         
-        This is set at 2x the entry premium and ONLY fires if the bot is dead.
+        Delta Exchange requires order_type='limit_order' with a limit_price for options SL orders.
         Under normal operation, the bot's own monitor_loop closes the position
         at 1x (SL_PERCENT=100%) and cancels this stop before it can trigger.
 
@@ -136,17 +136,25 @@ class DeltaIndiaClient:
             side: 'buy' (to close a short options sell)
             size: number of lots
             stop_price: the price at which the stop triggers (2x entry premium)
+            limit_price: execution price cap upon trigger (defaults to stop_price * 1.25 for buy)
         """
+        if limit_price is None:
+            if side == 'buy':
+                limit_price = round(stop_price * 1.25, 2)
+            else:
+                limit_price = round(stop_price * 0.75, 2)
+
         data = {
             "product_id": product_id,
             "side": side,
             "size": int(size),
-            "order_type": "market_order",       # When triggered, execute at market
+            "order_type": "limit_order",
+            "limit_price": str(limit_price),
             "stop_order_type": "stop_loss_order",
             "stop_price": str(round(stop_price, 4)),
             "isTrailingStopLoss": False
         }
-        app_logger.info(f"API: Placing exchange backup stop-SL | product={product_id} side={side} size={size} stop_price={stop_price}")
+        app_logger.info(f"API: Placing exchange backup stop-SL | product={product_id} side={side} size={size} stop_price={stop_price} limit_price={limit_price}")
         return self.request("POST", "/v2/orders", data=data)
 
     def cancel_order(self, product_id, order_id):

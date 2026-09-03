@@ -1,5 +1,5 @@
 {
-    "max_equity": 7.937086945517219,
+    "max_equity": 49999.90157774945,
     "trade_history": [
         {
             "date": "2026-08-05",
@@ -338,5 +338,5 @@
     ],
     "daily_reports": [],
     "state": {},
-    "last_backup_time": "03 Sep, 23:04 IST"
+    "last_backup_time": "03 Sep, 23:06 IST"
 }

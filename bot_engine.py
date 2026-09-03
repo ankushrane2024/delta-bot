@@ -1800,6 +1800,7 @@ class DeltaTradingEngine:
             if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
                 app_logger.warning("Engine: Trade finished. Auto-deactivating LIVE mode for safety.")
                 self.execution.mode = 'PAPER'
+                config.BOT_MODE = 'PAPER'
                 try:
                     import json
                     base_dir = os.path.dirname(os.path.abspath(__file__))

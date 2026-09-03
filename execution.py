@@ -217,19 +217,21 @@ class ExecutionHandler:
 
                     # ── EXCHANGE-NATIVE CRASH-BACKUP STOP ORDER ──────────────────
                     try:
-                        backup_sl_price = round(real_fill_price * (1 + (config.SL_PERCENT * 2.0)), 4)
+                        backup_sl_price = round(real_fill_price * (1 + config.SL_PERCENT), 2)
+                        backup_limit_price = round(backup_sl_price * 1.25, 2)
                         sl_res = self.api_client.place_stop_order(
                             product_id=opt['product_id'],
                             side='buy',
                             size=size,
-                            stop_price=backup_sl_price
+                            stop_price=backup_sl_price,
+                            limit_price=backup_limit_price
                         )
                         if sl_res and sl_res.get('success'):
                             sl_order_id = sl_res.get('result', {}).get('id')
                             self.active_positions[opt['symbol']]['exchange_sl_order_id'] = sl_order_id
                             app_logger.info(
                                 f"Execution [LIVE]: Exchange backup SL placed for {opt['symbol']} "
-                                f"at ${backup_sl_price:.4f} (2× entry ${real_fill_price:.4f}). "
+                                f"at ${backup_sl_price:.2f} (trigger) / ${backup_limit_price:.2f} (limit). "
                                 f"Order ID: {sl_order_id}."
                             )
                         else:
