@@ -4657,9 +4657,18 @@ td {
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(err => {
+          navigator.serviceWorker.register('/sw.js').then(reg => {
+            if (reg && reg.update) reg.update();
+          }).catch(err => {
             console.log('SW reg failed:', err);
           });
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          for (let name of names) {
+            if (name.includes('v1')) caches.delete(name);
+          }
         });
       }
     </script>

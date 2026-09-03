@@ -213,3 +213,10 @@
 2026-09-03 22:51:45 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
 2026-09-03 22:51:51 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
 2026-09-03 22:52:00 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-03 23:04:18 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-03 23:04:22 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-03 23:04:23 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-03 23:04:24 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-03 23:04:26 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-03 23:04:27 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-03 23:04:29 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}

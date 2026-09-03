@@ -1,3 +1,44 @@
 {
-    "reports": []
+    "reports": [],
+    "2026-09-03": {
+        "date": "2026-09-03",
+        "mode": "PAPER",
+        "summary": {
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "net_pnl_usd": 0.0,
+            "net_pnl_inr": 0.0,
+            "max_drawdown": 0.4,
+            "market_regime": "Unknown",
+            "regime_filter_enabled": false
+        },
+        "trades": [
+            {
+                "entry_time": "2026-09-03T22:00:43.775659+05:30",
+                "exit_time": "2026-09-03T22:46:28.054380+05:30",
+                "call_strike": "C-BTC-84000-040926",
+                "put_strike": "P-BTC-78800-040926",
+                "call_entry_price": 110.72144071221445,
+                "put_entry_price": 0.0,
+                "call_exit_price": 110.72144071221445,
+                "put_exit_price": 0.0,
+                "entry_premium": 0,
+                "exit_reason": "EOD Square-off",
+                "pnl_usd": 0.0,
+                "mode": "PAPER"
+            }
+        ],
+        "risk": {
+            "daily_loss_limit_hit": false,
+            "sl_hits": 0,
+            "hedging_activity": "None"
+        },
+        "market": {
+            "adx": 0.0,
+            "iv": 0.5425700124478694,
+            "news": "None"
+        },
+        "pdf_path": "/reports/Daily_Report_2026-09-03.pdf",
+        "xlsx_path": "/reports/Daily_Report_2026-09-03.xlsx"
+    }
 }

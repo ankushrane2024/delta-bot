@@ -1,24 +1,23 @@
-const CACHE_NAME = 'btc-bot-cache-v1';
-const urlsToCache = [
-  '/',
-  '/history',
-  '/manifest.json',
-  '/static/icon-192.png',
-  '/static/icon-512.png'
-];
+const CACHE_VERSION = 'btc-bot-cache-v2-nocache';
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-      .catch(err => console.error('Cache error:', err))
-  );
   self.skipWaiting();
 });
 
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => caches.delete(cacheName))
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
 self.addEventListener('fetch', event => {
-  // Pass-through for API and WebSocket requests so live data isn't cached
-  if (event.request.url.includes('/api/') || event.request.url.includes('socket')) {
+  // Always fetch live directly from network for all navigation and API requests
+  if (event.request.mode === 'navigate' || event.request.url.includes('/api/')) {
+    event.respondWith(fetch(event.request));
     return;
   }
   event.respondWith(

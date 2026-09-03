@@ -39703,3 +39703,119 @@ Rule 11: Exit Time - [PASS]
 2026-09-03 22:59:33 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=459.6s | TrailSL=43.4% | Peak=48.4%
 2026-09-03 22:59:33 IST - BotCore - INFO - Hedge: Running manage_hedge | interval=5s | unrealized_loss=0.00% | loss_usd=-0.09 | volatile=YES
 2026-09-03 22:59:33 IST - BotCore - INFO - Filter: Calculated 14-period 15m BTC ATR: $306.86
+2026-09-03 22:59:34 IST - BotCore - INFO - Hedge: Skipped - Smart Hedging is DISABLED.
+2026-09-03 22:59:35 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1093 | pnl_pct=45.88% | time_in_trade=461.6s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:35 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1093 | pnl_pct=45.88% | time_in_trade=462.1s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:36 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1093 | pnl_pct=45.88% | time_in_trade=462.6s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:36 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1093 | pnl_pct=45.88% | time_in_trade=463.1s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:37 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1093 | pnl_pct=45.88% | time_in_trade=463.9s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:37 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1093 | pnl_pct=45.88% | time_in_trade=464.4s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:38 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=464.9s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:38 IST - BotCore - INFO - Hedge: Running manage_hedge | interval=5s | unrealized_loss=0.00% | loss_usd=-0.09 | volatile=YES
+2026-09-03 22:59:38 IST - BotCore - INFO - Filter: Calculated 14-period 15m BTC ATR: $306.86
+2026-09-03 22:59:39 IST - BotCore - INFO - Hedge: Skipped - Smart Hedging is DISABLED.
+2026-09-03 22:59:40 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=466.9s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:40 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=467.4s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:41 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=467.9s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:41 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=468.4s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:42 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=469.0s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:42 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=469.5s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:43 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1069 | pnl_pct=47.08% | time_in_trade=470.0s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:43 IST - BotCore - INFO - Hedge: Running manage_hedge | interval=5s | unrealized_loss=0.00% | loss_usd=-0.10 | volatile=YES
+2026-09-03 22:59:43 IST - BotCore - INFO - Filter: Calculated 14-period 15m BTC ATR: $306.86
+2026-09-03 22:59:44 IST - BotCore - INFO - Hedge: Skipped - Smart Hedging is DISABLED.
+2026-09-03 22:59:44 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=471.4s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:45 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=471.9s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:45 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=472.4s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:46 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=472.9s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:46 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=473.5s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:47 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=474.0s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:47 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1071 | pnl_pct=46.97% | time_in_trade=474.5s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:48 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=475.0s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:50 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=476.7s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:50 IST - BotCore - INFO - Hedge: Running manage_hedge | interval=5s | unrealized_loss=0.00% | loss_usd=-0.10 | volatile=YES
+2026-09-03 22:59:50 IST - BotCore - INFO - Filter: Calculated 14-period 15m BTC ATR: $306.86
+2026-09-03 22:59:51 IST - BotCore - INFO - Hedge: Skipped - Smart Hedging is DISABLED.
+2026-09-03 22:59:51 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=478.1s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:52 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=478.6s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:52 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=479.1s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:53 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=479.6s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:53 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1054 | pnl_pct=47.83% | time_in_trade=480.1s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:54 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1054 | pnl_pct=47.83% | time_in_trade=480.6s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:54 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=481.2s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:55 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=481.7s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:55 IST - BotCore - INFO - Hedge: Running manage_hedge | interval=5s | unrealized_loss=0.00% | loss_usd=-0.10 | volatile=YES
+2026-09-03 22:59:55 IST - BotCore - INFO - Filter: Calculated 14-period 15m BTC ATR: $306.86
+2026-09-03 22:59:56 IST - BotCore - INFO - Hedge: Skipped - Smart Hedging is DISABLED.
+2026-09-03 22:59:56 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=483.1s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:57 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=483.6s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:57 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=484.1s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:58 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=484.6s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:58 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1054 | pnl_pct=47.84% | time_in_trade=485.1s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:59 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=485.7s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 22:59:59 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=486.2s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 23:00:00 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1065 | pnl_pct=47.26% | time_in_trade=486.7s | TrailSL=43.4% | Peak=48.4%
+2026-09-03 23:00:00 IST - BotCore - INFO - Hedge: Running manage_hedge | interval=5s | unrealized_loss=0.00% | loss_usd=-0.10 | volatile=YES
+2026-09-03 23:00:00 IST - BotCore - INFO - Filter: Calculated 14-period 15m BTC ATR: $296.71
+2026-09-03 23:00:01 IST - BotCore - INFO - Hedge: Skipped - Smart Hedging is DISABLED.
+2026-09-03 23:00:02 IST - BotCore - ERROR - Filter: Error calculating Regime: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+2026-09-03 23:00:03 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=489.8s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:03 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=490.3s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:04 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=490.8s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:04 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=491.3s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:05 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=491.8s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:05 IST - BotCore - INFO - Hedge: Running manage_hedge | interval=5s | unrealized_loss=0.00% | loss_usd=-0.10 | volatile=YES
+2026-09-03 23:00:05 IST - BotCore - INFO - Filter: Calculated 14-period 15m BTC ATR: $296.71
+2026-09-03 23:00:06 IST - BotCore - INFO - Hedge: Skipped - Smart Hedging is DISABLED.
+2026-09-03 23:00:06 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=493.2s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:07 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=493.7s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:07 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=494.3s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:08 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=494.8s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:08 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1035 | pnl_pct=48.78% | time_in_trade=495.3s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:09 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1035 | pnl_pct=48.78% | time_in_trade=495.8s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:09 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=496.3s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:10 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.1027 | pnl_pct=49.16% | time_in_trade=496.8s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:00:10 IST - BotCore - INFO - Hedge: Running manage_hedge | interval=5s | unrealized_loss=0.00% | loss_usd=-0.10 | volatile=YES
+2026-09-03 23:00:10 IST - BotCore - INFO - Filter: Calculated 14-period 15m BTC ATR: $296.71
+2026-09-03 23:00:10 IST - BotCore - INFO - Execution [LIVE]: No open options positions found on exchange.
+2026-09-03 23:00:11 IST - BotCore - INFO - Hedge: Skipped - Smart Hedging is DISABLED.
+2026-09-03 23:00:27 IST - BotCore - INFO - Execution [LIVE]: No open options positions found on exchange.
+2026-09-03 23:00:50 IST - BotCore - INFO - [KEEPALIVE] alive, engine=ON (Mode: LIVE)
+2026-09-03 23:01:04 IST - BotCore - ERROR - Filter: Error calculating Regime: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+2026-09-03 23:01:10 IST - BotCore - INFO - Execution [LIVE]: No open options positions found on exchange.
+2026-09-03 23:01:27 IST - BotCore - INFO - Execution [LIVE]: No open options positions found on exchange.
+2026-09-03 23:01:46 IST - BotCore - INFO - Engine Heartbeat: Monitor loop is active and running 24/7.
+2026-09-03 23:02:04 IST - BotCore - ERROR - Filter: Error calculating Regime: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+2026-09-03 23:02:10 IST - BotCore - INFO - Execution [LIVE]: No open options positions found on exchange.
+2026-09-03 23:02:27 IST - BotCore - INFO - Execution [LIVE]: No open options positions found on exchange.
+2026-09-03 23:03:05 IST - BotCore - ERROR - Filter: Error calculating Regime: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+2026-09-03 23:03:08 IST - BotCore - INFO - Execution [LIVE]: No open options positions found on exchange.
+2026-09-03 23:03:27 IST - BotCore - INFO - Execution [LIVE]: No open options positions found on exchange.
+2026-09-03 23:04:05 IST - BotCore - ERROR - Filter: Error calculating Regime: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+2026-09-03 23:04:10 IST - BotCore - INFO - WS: Subscribed to ['P-BTC-79500-040926', 'C-BTC-84000-040926']
+2026-09-03 23:04:10 IST - BotCore - INFO - Execution [LIVE]: Synced 2 active options positions from exchange: ['P-BTC-79500-040926', 'C-BTC-84000-040926']
+2026-09-03 23:04:11 IST - BotCore - INFO - Engine [DEBUG] Profit Check: entry_total=0.2020 | current_total=0.2025 | pnl_pct=-0.27% | time_in_trade=738.4s | TrailSL=44.16% | Peak=49.16%
+2026-09-03 23:04:14 IST - BotCore - INFO - Engine: Dynamic Trailing SL Hit! Locked at +44.16% | Peak was +49.16%
+2026-09-03 23:04:14 IST - BotCore - INFO - Risk: Equity updated from net_equity to $7.91
+2026-09-03 23:04:15 IST - BotCore - WARNING - DB: Cloud load failed. Falling back to local files.
+2026-09-03 23:04:18 IST - BotCore - INFO - Tracker: Trade logged [Cloud DB + Local JSON] -> Trailing SL Hit (+44.16%) | PnL: $-0.00
+2026-09-03 23:04:18 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-09-03 23:04:18 IST - BotCore - WARNING - Engine: Trade finished. Auto-deactivating LIVE mode for safety.
+2026-09-03 23:04:23 IST - BotCore - INFO - Engine: Generating Actual Report for 2026-09-03 (Mode: PAPER)...
+2026-09-03 23:04:23 IST - BotCore - INFO - Filter: Event 'Unemployment Claims' scheduled at 18:00 IST (after 17:00 IST exit). Allowing daytime trade session as bot exits prior to event.
+2026-09-03 23:04:23 IST - BotCore - INFO - Filter: Event 'ISM Services PMI' scheduled at 19:30 IST (after 17:00 IST exit). Allowing daytime trade session as bot exits prior to event.
+2026-09-03 23:04:23 IST - BotCore - INFO - DB: Manual Cloud Sync Triggered
+2026-09-03 23:04:24 IST - BotCore - INFO - Engine: Successfully generated automatic daily report post-trade close.
+2026-09-03 23:04:25 IST - BotCore - INFO - ChartGen: Saved trade close chart to C:\Users\AnkushR\Downloads\Delta_BTC_Options_Bot\Delta_BTC_Options_Bot\charts\trade_close_2026-09-03_2304.png
+2026-09-03 23:04:26 IST - BotCore - INFO - Engine: Trade close chart sent to Telegram: C:\Users\AnkushR\Downloads\Delta_BTC_Options_Bot\Delta_BTC_Options_Bot\charts\trade_close_2026-09-03_2304.png
+2026-09-03 23:04:27 IST - BotCore - INFO - Engine: trade_history.json backup sent to Telegram.
+2026-09-03 23:04:27 IST - BotCore - INFO - Execution: Closing all positions due to Trailing SL Hit (+44.16%)
+2026-09-03 23:04:27 IST - BotCore - INFO - Execution: Hedge lock released by ARES
+2026-09-03 23:04:27 IST - BotCore - INFO - Execution [PAPER]: Simulating close of P-BTC-79500-040926
+2026-09-03 23:04:27 IST - BotCore - INFO - Execution [PAPER]: Simulating close of C-BTC-84000-040926
+2026-09-03 23:04:28 IST - BotCore - INFO - Risk [DPL]: Trailing state reset for new trade.
+2026-09-03 23:04:29 IST - BotCore - INFO - Hedge: Running manage_hedge | interval=5s | unrealized_loss=0.27% | loss_usd=0.00 | volatile=YES
+2026-09-03 23:04:29 IST - BotCore - INFO - Filter: Calculated 14-period 15m BTC ATR: $296.71
+2026-09-03 23:04:30 IST - BotCore - INFO - Hedge: Skipped - Smart Hedging is DISABLED.
+2026-09-03 23:04:52 IST - BotCore - INFO - [KEEPALIVE] alive, engine=ON (Mode: PAPER)
+2026-09-03 23:05:07 IST - BotCore - ERROR - Filter: Error calculating Regime: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))

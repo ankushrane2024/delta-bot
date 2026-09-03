@@ -1,4 +1,5 @@
 {
+    "max_equity": 49999.90157774945,
     "trades": [
         {
             "date": "2026-08-02",
@@ -74,7 +75,98 @@
                     "total": 0.0
                 }
             ]
+        },
+        {
+            "date": "2026-09-03",
+            "mode": "LIVE",
+            "unprotected_loss": -0.0005491099500000152,
+            "hedge_gain": 0.0,
+            "protection_efficiency": 0.0,
+            "ares_decision": "NONE",
+            "ares_risk_score": 0.0,
+            "entry_time": "2026-09-03T22:51:57.368453+05:30",
+            "exit_time": "2026-09-03T23:04:14.299030+05:30",
+            "call_symbol": "C-BTC-84000-040926,C-BTC-84000-040926",
+            "put_symbol": "P-BTC-79400-040926,P-BTC-79400-040926",
+            "call_entry_price": 184.0,
+            "put_entry_price": 0.0,
+            "call_exit_price": 195.87270736,
+            "put_exit_price": 185.16930844,
+            "premium_collected": 0.202,
+            "pnl": -0.0005491099500000152,
+            "hedge_pnl": 0.0,
+            "pct_profit_captured": -0.27,
+            "max_pnl_pct": 0.4915604020792079,
+            "min_pnl_pct": -0.06429433564356431,
+            "max_pnl_time": "2026-09-03T23:00:03.226884+05:30",
+            "min_pnl_time": "2026-09-03T22:54:11.028115+05:30",
+            "exit_reason": "Trailing SL Hit (+44.16%)",
+            "equity_after": 7.905554745517219,
+            "regime_filter_enabled": false,
+            "adx": 0.0,
+            "hedge_events": [],
+            "chart_data": [
+                {
+                    "t": "22:51",
+                    "pnl": 0.0,
+                    "hedge": 0.0,
+                    "total": 0.0
+                },
+                {
+                    "t": "22:53",
+                    "pnl": -0.0044,
+                    "hedge": 0.0,
+                    "total": -0.0044
+                },
+                {
+                    "t": "22:54",
+                    "pnl": -0.0048,
+                    "hedge": 0.0,
+                    "total": -0.0048
+                },
+                {
+                    "t": "22:55",
+                    "pnl": -0.0017,
+                    "hedge": 0.0,
+                    "total": -0.0017
+                },
+                {
+                    "t": "22:56",
+                    "pnl": -0.0014,
+                    "hedge": 0.0,
+                    "total": -0.0014
+                },
+                {
+                    "t": "22:57",
+                    "pnl": 0.0013,
+                    "hedge": 0.0,
+                    "total": 0.0013
+                },
+                {
+                    "t": "22:58",
+                    "pnl": 0.0019,
+                    "hedge": 0.0,
+                    "total": 0.0019
+                },
+                {
+                    "t": "22:59",
+                    "pnl": 0.0931,
+                    "hedge": 0.0,
+                    "total": 0.0931
+                },
+                {
+                    "t": "23:00",
+                    "pnl": 0.0993,
+                    "hedge": 0.0,
+                    "total": 0.0993
+                },
+                {
+                    "t": "23:04",
+                    "pnl": -0.0005,
+                    "hedge": 0.0,
+                    "total": -0.0005
+                }
+            ]
         }
-    ],
-    "max_equity": 49999.90157774945
+    ]
 }

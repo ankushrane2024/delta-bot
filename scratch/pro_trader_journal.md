@@ -342,3 +342,22 @@
 
 ---
 
+## Trade Diary - Date: 2026-09-03 (LOSS)
+- **Entry Time (IST)**: `2026-09-03T22:51:57.368453+05:30`
+- **Exit Time (IST)**: `2026-09-03T23:04:14.299030+05:30`
+- **Symbols**: Call: `C-BTC-84000-040926,C-BTC-84000-040926` | Put: `P-BTC-79400-040926,P-BTC-79400-040926`
+- **Size Multiplier**: `1.00x` | **Total Premium Collected**: `$0.20`
+- **Net P&L**: `$-0.00` | **Exit Reason**: `Trailing SL Hit (+44.16%)`
+- **Account Equity After**: `$7.91`
+
+### Volatility & Market Environment
+- **DVOL Index**: `39.49%` (Percentile: `76.7%`)
+- **Current IV**: `54.2%`
+- **Market Regime**: `Ranging` (ADX: `0.0`)
+
+### Smart Hedging Telemetry
+- **Hedging Triggered**: `False` (Type: `None`)
+- **Futures Hedge Size**: `0.0 BTC` | **Tightened SL**: `False`
+
+---
+

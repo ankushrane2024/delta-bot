@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_from_directory
 from logger import app_logger
 import config
 from config import LOT_TO_BTC
@@ -43,6 +43,16 @@ def index():
 def ping():
     # Lightweight endpoint for Keep-Alive pinger and UptimeRobot
     return "OK", 200
+
+@app.route('/sw.js')
+def serve_sw():
+    response = send_from_directory('static', 'sw.js', mimetype='application/javascript')
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory('static', 'manifest.json', mimetype='application/json')
 
 @app.after_request
 def add_header(response):
