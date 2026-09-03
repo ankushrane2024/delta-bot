@@ -535,9 +535,15 @@ class ExecutionHandler:
                         }
                 if synced:
                     self.active_positions = synced
+                    try:
+                        self.api_client.subscribe_ws(list(synced.keys()))
+                    except Exception:
+                        pass
+                    self.save_state()
                     app_logger.info(f"Execution [LIVE]: Synced {len(synced)} active options positions from exchange: {list(synced.keys())}")
                 else:
                     self.active_positions = {}
+                    self.save_state()
                     app_logger.info("Execution [LIVE]: No open options positions found on exchange.")
             else:
                 app_logger.warning(f"Execution [LIVE]: Could not fetch positions from exchange: {res}")

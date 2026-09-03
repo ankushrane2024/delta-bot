@@ -128,6 +128,16 @@ def get_status():
         logs = ["Log file not found."]
 
     # Format active positions with rich real-time data
+    if bot_engine and getattr(bot_engine.execution, 'mode', 'PAPER') == 'LIVE':
+        import time
+        now_ts = time.time()
+        if now_ts - getattr(bot_engine.execution, '_last_live_sync_ts', 0) > 4.0:
+            bot_engine.execution._last_live_sync_ts = now_ts
+            try:
+                bot_engine.execution.sync_live_positions()
+            except Exception as _sync_err:
+                app_logger.debug(f"Web status: Failed to sync live positions: {_sync_err}")
+
     from datetime import datetime, timezone, timedelta
     positions = []
     
@@ -430,14 +440,16 @@ def emergency_close():
         # We force-populate it here from active_positions so it is ALWAYS saved.
         if not bot_engine.current_trade_info.get("calls"):
             from utils import get_ist_now
-            calls = [sym for sym, d in bot_engine.execution.active_positions.items() if isinstance(d, dict) and d.get('side') == 'sell' and ('-C' in sym or 'C-' in sym)]
-            puts  = [sym for sym, d in bot_engine.execution.active_positions.items() if isinstance(d, dict) and d.get('side') == 'sell' and ('-P' in sym or 'P-' in sym)]
+            calls = [sym for sym, d in bot_engine.execution.active_positions.items() 
+                     if isinstance(d, dict) and d.get('side', '').lower() == 'sell' and (sym.startswith('C-') or sym.endswith('-C') or d.get('leg_type') == 'call')]
+            puts  = [sym for sym, d in bot_engine.execution.active_positions.items() 
+                     if isinstance(d, dict) and d.get('side', '').lower() == 'sell' and (sym.startswith('P-') or sym.endswith('-P') or d.get('leg_type') == 'put')]
             # Fallback: split all symbols into calls/puts if side not tagged
             if not calls and not puts:
                 for sym in bot_engine.execution.active_positions:
-                    if '-C' in sym or 'C-' in sym:
+                    if sym.startswith('C-') or sym.endswith('-C'):
                         calls.append(sym)
-                    elif '-P' in sym or 'P-' in sym:
+                    elif sym.startswith('P-') or sym.endswith('-P'):
                         puts.append(sym)
             bot_engine.current_trade_info["calls"] = calls
             bot_engine.current_trade_info["puts"]  = puts
@@ -859,6 +871,12 @@ def toggle_live_mode():
 
         action_text = "ACTIVATED 🔴 LIVE" if activate else "DEACTIVATED → PAPER"
         app_logger.warning(f"Web [toggle_live_mode]: Live mode {action_text}. New execution mode: {new_mode}")
+
+        if activate:
+            try:
+                bot_engine.execution.sync_live_positions()
+            except Exception as _sync_err:
+                app_logger.warning(f"Web [toggle_live_mode]: Error syncing live positions: {_sync_err}")
 
         # Notify via Telegram if notifier available
         try:
