@@ -748,11 +748,26 @@ def get_live_mode():
         api_secret_ok = bool(DELTA_API_SECRET) and DELTA_API_SECRET not in ('testnet_secret', '', 'YOUR_SECRET_HERE')
         has_positions = bool(bot_engine and bot_engine.execution.active_positions) if bot_engine else False
 
+        wallet_balance_inr = 0.0
+        available_balance_inr = 0.0
+        net_equity_usd = 0.0
+
         api_error_detail = None
         if api_key_ok and api_secret_ok and bot_engine:
             try:
                 bal_res = bot_engine.api_client.get_balances()
-                if not bal_res.get('success'):
+                if bal_res.get('success'):
+                    meta = bal_res.get('meta', {})
+                    net_equity_usd = float(meta.get('net_equity', 0.0) or 0.0)
+                    for b in bal_res.get('result', []):
+                        if b.get('asset_symbol') in ('USD', 'INR', 'USDT'):
+                            b_inr = float(b.get('balance_inr') or 0.0)
+                            a_inr = float(b.get('available_balance_inr') or 0.0)
+                            if b_inr > wallet_balance_inr:
+                                wallet_balance_inr = b_inr
+                            if a_inr > available_balance_inr:
+                                available_balance_inr = a_inr
+                else:
                     err = bal_res.get('error', {})
                     err_code = err.get('code') if isinstance(err, dict) else str(err)
                     if err_code == 'ip_not_whitelisted_for_api_key':
@@ -773,6 +788,9 @@ def get_live_mode():
             'live_lots': live_lots,
             'paper_lots': paper_lots,
             'current_execution_mode': current_mode,
+            'wallet_balance_inr': round(wallet_balance_inr, 2),
+            'available_balance_inr': round(available_balance_inr, 2),
+            'net_equity_usd': round(net_equity_usd, 2),
             'preflight': {
                 'api_key_valid': api_key_ok,
                 'api_secret_valid': api_secret_ok,

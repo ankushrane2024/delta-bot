@@ -23,11 +23,19 @@ class RiskManager:
         try:
             res = self.api_client.get_balances()
             if res.get('success'):
+                meta = res.get('meta', {})
+                net_eq = float(meta.get('net_equity', 0.0))
+                if net_eq > 0:
+                    self.current_equity = net_eq
+                    app_logger.info(f"Risk: Equity updated from net_equity to ${self.current_equity:.2f}")
+                    return
                 for b in res.get('result', []):
-                    if b.get('asset_symbol') == 'USDT':
-                        self.current_equity = float(b.get('available_balance', 0))
-                        app_logger.info(f"Risk: Equity updated to ${self.current_equity:.2f}")
-                        return
+                    if b.get('asset_symbol') in ('USD', 'USDT', 'INR'):
+                        avail = float(b.get('available_balance', 0) or 0)
+                        if avail > 0:
+                            self.current_equity = avail
+                            app_logger.info(f"Risk: Equity updated to ${self.current_equity:.2f}")
+                            return
         except Exception as e:
             app_logger.error(f"Risk: Failed to update equity. Using fallback ${self.current_equity:.2f}. {e}")
 
