@@ -1,5 +1,4 @@
 {
-    "max_equity": 0.0,
     "trades": [
         {
             "date": "2026-08-05",
@@ -165,5 +164,6 @@
             "hedge_events": [],
             "chart_data": []
         }
-    ]
+    ],
+    "max_equity": 50000.0
 }

@@ -868,7 +868,7 @@ def toggle_live_mode():
     import json
     try:
         body = request.get_json(force=True) or {}
-        activate = bool(body.get('activate', False))
+        activate = bool(body.get('activate', body.get('live_mode', False)))
 
         # ── Safety Gate 1: Validate real API credentials ──────────────────────
         from config import DELTA_API_KEY, DELTA_API_SECRET

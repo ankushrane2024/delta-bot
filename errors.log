@@ -221,3 +221,9 @@
 2026-09-03 23:04:27 IST - ErrorLog - ERROR - Telegram document upload failed: {"ok":false,"error_code":404,"description":"Not Found"}
 2026-09-03 23:04:29 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
 2026-09-03 23:05:38 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-03 23:14:11 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-03 23:20:06 IST - ErrorLog - ERROR - WS Error: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-09-05 10:51:15 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-05 10:51:26 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-05 10:52:30 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
+2026-09-05 10:52:31 IST - ErrorLog - ERROR - Telegram failed: {"ok":false,"error_code":404,"description":"Not Found"}
