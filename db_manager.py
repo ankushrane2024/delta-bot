@@ -715,6 +715,38 @@ def load_all_api_credentials() -> dict:
             normalized["api_key"] = act_data.get("api_key", "")
             normalized["api_secret"] = act_data.get("api_secret", "")
 
+        # Fallback to environment variables if slots are empty
+        if not normalized["live"]["api_key"]:
+            env_live_k = (os.getenv("DELTA_API_KEY") or getattr(config, 'DELTA_API_KEY', '') or '').strip()
+            env_live_s = (os.getenv("DELTA_API_SECRET") or getattr(config, 'DELTA_API_SECRET', '') or '').strip()
+            if env_live_k and env_live_s and env_live_k not in ('testnet_key', 'YOUR_KEY_HERE', ''):
+                normalized["live"]["api_key"] = env_live_k
+                normalized["live"]["api_secret"] = env_live_s
+                normalized["live"]["environment"] = "india_live"
+                normalized["live"]["base_url"] = getattr(config, 'DELTA_INDIA_BASE_URL', "https://api.india.delta.exchange")
+
+        if not normalized["demo"]["api_key"]:
+            env_demo_k = (os.getenv("DELTA_DEMO_API_KEY") or '').strip()
+            env_demo_s = (os.getenv("DELTA_DEMO_API_SECRET") or '').strip()
+            if env_demo_k and env_demo_s:
+                normalized["demo"]["api_key"] = env_demo_k
+                normalized["demo"]["api_secret"] = env_demo_s
+                normalized["demo"]["environment"] = "demo"
+                normalized["demo"]["base_url"] = getattr(config, 'DELTA_GLOBAL_DEMO_BASE_URL', "https://testnet-api.delta.exchange")
+
+        act = normalized.get("active_slot", "live")
+        act_data = normalized.get(act, normalized["live"])
+        normalized["api_key"] = act_data.get("api_key", "")
+        normalized["api_secret"] = act_data.get("api_secret", "")
+
+        # If local cache file doesn't exist, write it so it persists locally
+        if not os.path.exists(API_CREDENTIALS_FILE) and (normalized["live"]["api_key"] or normalized["demo"]["api_key"]):
+            try:
+                with open(API_CREDENTIALS_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(normalized, f, indent=4)
+            except Exception:
+                pass
+
         return normalized
 
 

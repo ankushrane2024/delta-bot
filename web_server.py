@@ -1275,30 +1275,32 @@ def save_api_credentials():
                 except Exception:
                     pass
 
-        # If live slot, write to local .env
-        if target_slot == 'live':
-            try:
-                env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
-                if os.path.exists(env_path):
-                    with open(env_path, 'r', encoding='utf-8') as f:
-                        lines = f.readlines()
-                    new_lines = []
-                    k_found, s_found = False, False
-                    for l in lines:
-                        if l.startswith('DELTA_API_KEY='):
-                            new_lines.append(f'DELTA_API_KEY={new_key}\n')
-                            k_found = True
-                        elif l.startswith('DELTA_API_SECRET='):
-                            new_lines.append(f'DELTA_API_SECRET={new_secret}\n')
-                            s_found = True
-                        else:
-                            new_lines.append(l)
-                    if not k_found: new_lines.append(f'DELTA_API_KEY={new_key}\n')
-                    if not s_found: new_lines.append(f'DELTA_API_SECRET={new_secret}\n')
-                    with open(env_path, 'w', encoding='utf-8') as f:
-                        f.writelines(new_lines)
-            except Exception as _e:
-                app_logger.warning(f"Web [save_api_credentials]: .env write skipped – {_e}")
+        # Write to local .env for permanent local persistence
+        try:
+            env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+            key_var = 'DELTA_API_KEY' if target_slot == 'live' else 'DELTA_DEMO_API_KEY'
+            sec_var = 'DELTA_API_SECRET' if target_slot == 'live' else 'DELTA_DEMO_API_SECRET'
+            lines = []
+            if os.path.exists(env_path):
+                with open(env_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+            new_lines = []
+            k_found, s_found = False, False
+            for l in lines:
+                if l.startswith(f'{key_var}='):
+                    new_lines.append(f'{key_var}={new_key}\n')
+                    k_found = True
+                elif l.startswith(f'{sec_var}='):
+                    new_lines.append(f'{sec_var}={new_secret}\n')
+                    s_found = True
+                else:
+                    new_lines.append(l)
+            if not k_found: new_lines.append(f'{key_var}={new_key}\n')
+            if not s_found: new_lines.append(f'{sec_var}={new_secret}\n')
+            with open(env_path, 'w', encoding='utf-8') as f:
+                f.writelines(new_lines)
+        except Exception as _e:
+            app_logger.warning(f"Web [save_api_credentials]: .env write skipped – {_e}")
 
         masked = f"{new_key[:4]}...{new_key[-4:]}" if len(new_key) >= 8 else "***"
         app_logger.info(f"Web [save_api_credentials]: API Key verified on {matched_gw['name']} for {target_slot.upper()} slot (User ID: {profile_info['user_id']})")
