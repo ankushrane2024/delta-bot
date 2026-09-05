@@ -1438,6 +1438,22 @@ def disable_api_key():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/server_ip')
+def get_server_ip():
+    """Returns outbound IPv4 and IPv6 of the server (Render / Local)."""
+    import urllib.request
+    ipv4, ipv6 = "", ""
+    try:
+        ipv4 = urllib.request.urlopen('https://api.ipify.org', timeout=3).read().decode().strip()
+    except Exception:
+        pass
+    try:
+        ipv6 = urllib.request.urlopen('https://api64.ipify.org', timeout=3).read().decode().strip()
+    except Exception:
+        pass
+    return jsonify({'ipv4': ipv4, 'ipv6': ipv6})
+
+
 # ─── Tomorrow's Trade Probability ─────────────────────────────────────────────
 
 
