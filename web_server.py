@@ -4,6 +4,7 @@ import config
 from config import LOT_TO_BTC
 import os
 import time
+import db_manager
 
 app = Flask(__name__, template_folder='templates')
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -307,8 +308,12 @@ def get_status():
 
     # Compute for both engines separately
     current_mode = getattr(bot_engine.execution, 'mode', 'PAPER')
+    active_slot = db_manager.get_active_api_slot()
     paper_dict = getattr(bot_engine.execution, 'paper_active_positions', {})
-    live_dict = getattr(bot_engine.execution, 'live_active_positions', {})
+    if active_slot == 'demo':
+        live_dict = getattr(bot_engine.execution, 'demo_active_positions', {})
+    else:
+        live_dict = getattr(bot_engine.execution, 'live_active_positions', {})
 
     paper_positions, paper_entry_prem, paper_cap_used, paper_opt_pnl = _calculate_pos_metrics(paper_dict)
     live_positions, live_entry_prem, live_cap_used, live_opt_pnl = _calculate_pos_metrics(live_dict)
@@ -1769,7 +1774,11 @@ def get_pnl_chart():
     engine_mode = req_engine if req_engine in ('LIVE', 'PAPER') else current_mode
 
     if engine_mode == 'LIVE':
-        live_positions = getattr(bot_engine.execution, 'live_active_positions', {})
+        active_slot = db_manager.get_active_api_slot()
+        if active_slot == 'demo':
+            live_positions = getattr(bot_engine.execution, 'demo_active_positions', {})
+        else:
+            live_positions = getattr(bot_engine.execution, 'live_active_positions', {})
         real_positions = {k: v for k, v in live_positions.items() if not k.startswith('__')}
         has_trade = bool(real_positions)
 
@@ -1791,7 +1800,7 @@ def get_pnl_chart():
                 "active": False,
                 "engine": "LIVE",
                 "points": [],
-                "message": "Zero active live positions on Delta Exchange.",
+                "message": "Zero active demo positions on Delta Demo." if active_slot == 'demo' else "Zero active live positions on Delta Exchange.",
                 "trail_state": trail_state,
                 "total_entry_premium": 0.0
             })
