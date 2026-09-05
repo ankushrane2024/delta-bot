@@ -1146,12 +1146,15 @@ def validate_delta_credentials(api_key: str, api_secret: str, preferred_env: str
         try:
             client = DeltaIndiaClient(api_key=api_key, api_secret=api_secret, base_url=gw["base_url"])
             prof_res = client.get_profile()
-            if prof_res and prof_res.get('success'):
+            if prof_res and isinstance(prof_res, dict) and prof_res.get('success'):
                 res_p = prof_res.get('result', {})
                 return True, gw, res_p, None
             else:
-                err = prof_res.get('error', {}) if isinstance(prof_res, dict) else {}
-                msg = err.get('message') or prof_res.get('message') or str(err)
+                err = prof_res.get('error') if isinstance(prof_res, dict) else prof_res
+                if isinstance(err, dict):
+                    msg = err.get('message') or err.get('code') or str(err)
+                else:
+                    msg = str(err)
                 attempted_errs.append(f"{gw['name']}: {msg}")
         except Exception as e:
             attempted_errs.append(f"{gw['name']}: {e}")
