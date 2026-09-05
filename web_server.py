@@ -6,6 +6,7 @@ import os
 import time
 
 app = Flask(__name__, template_folder='templates')
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 try:
     import numpy as np
@@ -37,7 +38,14 @@ def init_web_server(engine):
 
 @app.route('/')
 def index():
-    return render_template('dashboard.html')
+    # Read directly from disk to bypass Jinja2 template bytecode cache.
+    # This ensures live edits to dashboard.html are reflected immediately.
+    import os
+    from flask import Response
+    tmpl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates', 'dashboard.html')
+    with open(tmpl_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    return Response(content, mimetype='text/html')
 
 @app.route('/ping')
 def ping():
@@ -313,6 +321,47 @@ def get_status():
     live_pnl_usd = round(live_opt_pnl + (hedge_pnl_usd if current_mode == 'LIVE' else 0.0), 2)
     live_pnl_inr = round(live_pnl_usd * 95.5, 2)
 
+    # Compute dedicated SL and TP targets for both engines
+    paper_trail = bot_engine.risk_manager.get_paper_trailing_state()
+    paper_pnl_pct_prem = (paper_pnl_usd / paper_entry_prem * 100) if paper_entry_prem > 0 else 0.0
+    paper_peak_pct = max(paper_trail.get('highest_profit_pct', 0.0), paper_pnl_pct_prem if paper_positions else 0.0)
+    paper_peak_usd = round(paper_entry_prem * (paper_peak_pct / 100.0), 2) if paper_entry_prem > 0 else 0.0
+
+    if paper_trail.get('trailing_confirmed') and paper_trail.get('current_trailing_sl') is not None:
+        paper_sl_pct = paper_trail['current_trailing_sl']
+        paper_sl_usd = round(paper_entry_prem * (paper_sl_pct / 100.0), 2)
+        paper_sl_type = 'LOCKED'
+        paper_sl_label = f"+{paper_sl_pct:.1f}% SL Locked"
+    else:
+        paper_sl_pct = -round(config.SL_PERCENT * 100, 1)
+        paper_sl_usd = -round(paper_entry_prem * config.SL_PERCENT, 2)
+        paper_sl_type = 'HARD'
+        paper_sl_label = f"{paper_sl_pct:.1f}% Hard SL"
+
+    paper_tp_pct = round(config.TRAILING_CONFIRM_TARGET * 100, 1)
+    paper_tp_usd = round(paper_entry_prem * config.TRAILING_CONFIRM_TARGET, 2)
+    paper_tp_status = "LOCKED" if paper_trail.get('trailing_confirmed') else "PENDING"
+
+    live_trail = bot_engine.risk_manager.get_live_trailing_state()
+    live_pnl_pct_prem = (live_pnl_usd / live_entry_prem * 100) if live_entry_prem > 0 else 0.0
+    live_peak_pct = max(live_trail.get('highest_profit_pct', 0.0), live_pnl_pct_prem if live_positions else 0.0)
+    live_peak_usd = round(live_entry_prem * (live_peak_pct / 100.0), 2) if live_entry_prem > 0 else 0.0
+
+    if live_trail.get('trailing_confirmed') and live_trail.get('current_trailing_sl') is not None:
+        live_sl_pct = live_trail['current_trailing_sl']
+        live_sl_usd = round(live_entry_prem * (live_sl_pct / 100.0), 2)
+        live_sl_type = 'LOCKED'
+        live_sl_label = f"+{live_sl_pct:.1f}% SL Locked"
+    else:
+        live_sl_pct = -round(config.SL_PERCENT * 100, 1)
+        live_sl_usd = -round(live_entry_prem * config.SL_PERCENT, 2)
+        live_sl_type = 'HARD'
+        live_sl_label = f"{live_sl_pct:.1f}% Delta Stop"
+
+    live_tp_pct = round(config.TRAILING_CONFIRM_TARGET * 100, 1)
+    live_tp_usd = round(live_entry_prem * config.TRAILING_CONFIRM_TARGET, 2)
+    live_tp_status = "LOCKED" if live_trail.get('trailing_confirmed') else "PENDING"
+
     # Active engine selected according to current execution mode
     if current_mode == 'LIVE':
         positions = live_positions
@@ -358,6 +407,16 @@ def get_status():
             'total_capital_used': paper_cap_used,
             'total_entry_premium': round(paper_entry_prem, 4),
             'positions_count': len(paper_positions),
+            'trail_state': paper_trail,
+            'peak_pct': round(paper_peak_pct, 2),
+            'peak_usd': paper_peak_usd,
+            'sl_pct': paper_sl_pct,
+            'sl_usd': paper_sl_usd,
+            'sl_type': paper_sl_type,
+            'sl_label': paper_sl_label,
+            'tp_pct': paper_tp_pct,
+            'tp_usd': paper_tp_usd,
+            'tp_status': paper_tp_status,
         },
         'live_pnl': {
             'total_pnl_usd': live_pnl_usd,
@@ -365,7 +424,20 @@ def get_status():
             'total_capital_used': live_cap_used,
             'total_entry_premium': round(live_entry_prem, 4),
             'positions_count': len(live_positions),
+            'trail_state': live_trail,
+            'peak_pct': round(live_peak_pct, 2),
+            'peak_usd': live_peak_usd,
+            'sl_pct': live_sl_pct,
+            'sl_usd': live_sl_usd,
+            'sl_type': live_sl_type,
+            'sl_label': live_sl_label,
+            'tp_pct': live_tp_pct,
+            'tp_usd': live_tp_usd,
+            'tp_status': live_tp_status,
         },
+        'paper_trail_state': paper_trail,
+        'live_trail_state': live_trail,
+        'trail_state': live_trail if current_mode == 'LIVE' else paper_trail,
         'total_entry_premium': round(total_entry_premium, 4),
         'total_capital_used': total_capital_used,
         'btc_price': round(btc_price, 2),
@@ -617,6 +689,13 @@ def manual_order():
             app_logger.error("Web [manual_order]: Engine not initialized")
             return jsonify({'success': False, 'error': 'Engine not initialized'}), 200
 
+        if bot_engine.execution.mode != 'LIVE':
+            app_logger.warning("Web [manual_order]: Rejected manual order - engine is in PAPER mode")
+            return jsonify({
+                'status': 'error',
+                'message': 'Manual orders can only be placed in LIVE mode. Toggle Live Mode ON first.'
+            }), 200
+
         app_logger.info("Web [manual_order]: Manual strangle entry cycle triggered via dashboard.")
         
         # Temporarily bypass the "1 trade per day limit" just for manual force execution
@@ -802,11 +881,22 @@ def get_live_mode():
         live_lots = int(data.get('live_lots', 1))
         paper_lots = int(data.get('total_lots', 1000))
 
-        # Pre-flight checklist
+        # Pre-flight checklist - Check LIVE positions only (paper simulation never blocks live trading)
         from config import DELTA_API_KEY, DELTA_API_SECRET
         api_key_ok = bool(DELTA_API_KEY) and DELTA_API_KEY not in ('testnet_key', '', 'YOUR_KEY_HERE')
         api_secret_ok = bool(DELTA_API_SECRET) and DELTA_API_SECRET not in ('testnet_secret', '', 'YOUR_SECRET_HERE')
-        has_positions = bool(bot_engine and bot_engine.execution.active_positions) if bot_engine else False
+        
+        has_live_positions = False
+        if bot_engine:
+            has_live_positions = bool(getattr(bot_engine.execution, 'live_active_positions', {}))
+            if not has_live_positions and api_key_ok and api_secret_ok:
+                try:
+                    pos_res = bot_engine.api_client.get_positions()
+                    if pos_res.get('success'):
+                        real_open = [p for p in pos_res.get('result', []) if abs(float(p.get('size', 0) or 0)) > 0]
+                        has_live_positions = len(real_open) > 0
+                except Exception:
+                    pass
 
         wallet_balance_inr = 0.0
         available_balance_inr = 0.0
@@ -846,7 +936,6 @@ def get_live_mode():
         return jsonify({
             'live_mode': live_mode,
             'live_lots': live_lots,
-            'paper_lots': paper_lots,
             'current_execution_mode': current_mode,
             'wallet_balance_inr': round(wallet_balance_inr, 2),
             'available_balance_inr': round(available_balance_inr, 2),
@@ -854,11 +943,11 @@ def get_live_mode():
             'preflight': {
                 'api_key_valid': api_key_ok,
                 'api_secret_valid': api_secret_ok,
-                'no_active_positions': not has_positions,
+                'no_active_positions': not has_live_positions,
                 'portfolio_margin_enabled': True,  # User confirmed enabled
                 'api_error_detail': api_error_detail
             },
-            'safe_to_activate': api_key_ok and api_secret_ok and not has_positions
+            'safe_to_activate': api_key_ok and api_secret_ok and not has_live_positions
         })
     except Exception as e:
         app_logger.error(f"Web [live_mode GET]: Error – {e}")
@@ -871,8 +960,8 @@ def toggle_live_mode():
     
     Safety guards:
     1. Refuses if API key is testnet placeholder
-    2. Refuses to activate LIVE if there are active positions (must close first)
-    3. On deactivate: switches back to PAPER, positions stay tracked (close manually or wait for EOD)
+    2. Refuses to activate LIVE if there are active LIVE positions on Delta Exchange
+    3. On deactivate: switches back to PAPER, positions stay tracked
     """
     if not bot_engine:
         return jsonify({'success': False, 'error': 'Engine not initialized'}), 500
@@ -896,12 +985,14 @@ def toggle_live_mode():
                     'error': 'Cannot activate LIVE mode: API Secret is a testnet placeholder. Set a real secret in .env and restart.'
                 }), 400
 
-        # ── Safety Gate 2: No active positions when switching ─────────────────
-        real_positions = [k for k in bot_engine.execution.active_positions.keys() if not k.startswith('__')]
-        if activate and real_positions:
+        # ── Safety Gate 2: No active LIVE positions on Delta Exchange when switching ─
+        real_live_positions = []
+        if bot_engine and hasattr(bot_engine.execution, 'live_active_positions'):
+            real_live_positions = [k for k in bot_engine.execution.live_active_positions.keys() if not k.startswith('__')]
+        if activate and real_live_positions:
             return jsonify({
                 'success': False,
-                'error': 'Cannot switch to LIVE mode while positions are open. Close all positions first.'
+                'error': 'Cannot switch to LIVE mode while live positions are open on Delta Exchange.'
             }), 400
 
         # ── Switch execution mode at runtime ──────────────────────────────────
@@ -1234,67 +1325,109 @@ def restore_history():
 
 @app.route('/api/pnl_chart')
 def get_pnl_chart():
-    """Returns live P&L chart data for the current active trade.
+    """Returns engine-isolated P&L chart data for the current active trade.
+    Query parameter: ?engine=live or ?engine=paper (defaults to current execution mode).
     Stores 1 point per minute so a full 9AM-5PM day = max ~480 pts.
-    All points are sent directly — no downsampling needed.
-    Old data is NEVER deleted, so full trade history is always visible.
     """
     if not bot_engine:
         return jsonify({"points": [], "active": False})
 
-    chart_data = list(getattr(bot_engine, 'pnl_chart_data', []))
-    has_trade = bool(bot_engine.execution.active_positions)
+    req_engine = request.args.get('engine', '').strip().upper()
+    current_mode = getattr(bot_engine.execution, 'mode', 'PAPER')
+    engine_mode = req_engine if req_engine in ('LIVE', 'PAPER') else current_mode
 
-    # Always report active=true if positions exist, even if chart data is still empty
-    # This prevents the graph card from hiding during the first 60 seconds of a trade
-    # or after a Render restart when chart data was wiped but the trade is still live.
-    if len(chart_data) == 0 and not has_trade:
-        return jsonify({"active": False, "points": [], "message": "Waiting for trade data..."})
+    if engine_mode == 'LIVE':
+        live_positions = getattr(bot_engine.execution, 'live_active_positions', {})
+        real_positions = {k: v for k, v in live_positions.items() if not k.startswith('__')}
+        has_trade = bool(real_positions)
 
-    total_entry_premium = getattr(bot_engine, 'total_entry_premium', 0)
+        chart_data = list(getattr(bot_engine, 'live_pnl_chart_data', []))
+        if current_mode == 'LIVE' and len(chart_data) == 0:
+            chart_data = list(getattr(bot_engine, 'pnl_chart_data', []))
+            
+        trail_state = bot_engine.risk_manager.get_live_trailing_state()
+        
+        # Calculate live entry premium
+        total_entry_premium = 0.0
+        for sym, d in real_positions.items():
+            lots = d.get('entry_size', d.get('size', 0))
+            ep = d.get('entry_price', 0)
+            total_entry_premium += ep * lots * LOT_TO_BTC
 
-    # Hot-restart empty chart fallback
-    if len(chart_data) == 0 and has_trade:
-        try:
-            from utils import get_ist_now
-            # Calculate current value
-            collected_premium = 0.0
-            current_option_value = 0.0
-            for sym, data in bot_engine.execution.active_positions.items():
-                lots = data.get('entry_size', data.get('size', 0))
-                ep = data.get('entry_price', 0)
-                cp = data.get('last_good_price', ep)
-                collected_premium += ep * lots * LOT_TO_BTC
-                current_option_value += cp * lots * LOT_TO_BTC
-                
-            opt_profit = collected_premium - current_option_value
-            hedge_pnl = 0.0
-            if getattr(bot_engine.execution, 'hedge_size_btc', 0) != 0:
-                ws_data = bot_engine.api_client.get_realtime_ticker("BTCUSDT")
-                live_p = float(ws_data['mark_price']) if ws_data and 'mark_price' in ws_data else bot_engine.execution.hedge_entry_price
-                hedge_pnl = (live_p - bot_engine.execution.hedge_entry_price) * bot_engine.execution.hedge_size_btc
-                
-            if total_entry_premium <= 0:
-                total_entry_premium = collected_premium
-                
-            chart_data.append({
-                "t": get_ist_now().strftime("%H:%M"),
-                "pnl": round(opt_profit, 4),
-                "hedge": round(hedge_pnl, 4),
-                "total": round(opt_profit + hedge_pnl, 4)
+        if not has_trade and len(chart_data) == 0:
+            return jsonify({
+                "active": False,
+                "engine": "LIVE",
+                "points": [],
+                "message": "Zero active live positions on Delta Exchange.",
+                "trail_state": trail_state,
+                "total_entry_premium": 0.0
             })
-        except Exception as e:
-            app_logger.error(f"Error creating synthetic chart point: {e}")
 
-    trail_state = bot_engine.risk_manager.get_trailing_state()
+        return jsonify({
+            "active": has_trade or len(chart_data) > 0,
+            "engine": "LIVE",
+            "points": chart_data,
+            "total_points": len(chart_data),
+            "trail_state": trail_state,
+            "total_entry_premium": round(total_entry_premium, 6)
+        })
 
-    return jsonify({
-        "active": has_trade or len(chart_data) > 0,
-        "points": chart_data,
-        "total_points": len(chart_data),
-        "trail_state": trail_state,
-        "total_entry_premium": round(total_entry_premium, 6)
-    })
+    else:
+        # PAPER engine
+        paper_positions = getattr(bot_engine.execution, 'paper_active_positions', {})
+        real_positions = {k: v for k, v in paper_positions.items() if not k.startswith('__')}
+        has_trade = bool(real_positions)
+
+        chart_data = list(getattr(bot_engine, 'paper_pnl_chart_data', []))
+        if len(chart_data) == 0 and current_mode == 'PAPER':
+            chart_data = list(getattr(bot_engine, 'pnl_chart_data', []))
+
+        total_entry_premium = getattr(bot_engine, 'total_entry_premium', 0)
+        trail_state = bot_engine.risk_manager.get_paper_trailing_state()
+
+        if len(chart_data) == 0 and not has_trade:
+            return jsonify({
+                "active": False,
+                "engine": "PAPER",
+                "points": [],
+                "message": "Waiting for paper trade data...",
+                "trail_state": trail_state,
+                "total_entry_premium": 0.0
+            })
+
+        # Fallback if chart_data empty but trade active
+        if len(chart_data) == 0 and has_trade:
+            try:
+                from utils import get_ist_now
+                collected_premium = 0.0
+                current_option_value = 0.0
+                for sym, data in real_positions.items():
+                    lots = data.get('entry_size', data.get('size', 0))
+                    ep = data.get('entry_price', 0)
+                    cp = data.get('last_good_price', ep)
+                    collected_premium += ep * lots * LOT_TO_BTC
+                    current_option_value += cp * lots * LOT_TO_BTC
+                opt_profit = collected_premium - current_option_value
+                if total_entry_premium <= 0:
+                    total_entry_premium = collected_premium
+                chart_data.append({
+                    "t": get_ist_now().strftime("%H:%M"),
+                    "pnl": round(opt_profit, 4),
+                    "hedge": 0.0,
+                    "total": round(opt_profit, 4)
+                })
+            except Exception as e:
+                app_logger.error(f"Error creating synthetic chart point: {e}")
+
+        return jsonify({
+            "active": has_trade or len(chart_data) > 0,
+            "engine": "PAPER",
+            "points": chart_data,
+            "total_points": len(chart_data),
+            "trail_state": trail_state,
+            "total_entry_premium": round(total_entry_premium, 6)
+        })
 
 @app.route('/api/runtime_state')
 def get_runtime_state():

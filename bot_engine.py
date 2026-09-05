@@ -194,7 +194,9 @@ class DeltaTradingEngine:
         self.today_trade_status = "Pending"
         self.today_skip_reason = None
         self.skip_history = []  # List of {time, reason, status} for last 10 skips
-        self.pnl_chart_data = []  # Live P&L chart snapshots: [{t, pnl, hedge_pnl}]
+        self.pnl_chart_data = []  # Active mode P&L chart snapshots
+        self.paper_pnl_chart_data = []
+        self.live_pnl_chart_data = []
         
         self.market_regime_filter_enabled = False
         self.smart_hedge_provider = getattr(config, 'SMART_HEDGE_PROVIDER', 'SMART')
@@ -315,6 +317,12 @@ class DeltaTradingEngine:
     def run_entry_cycle(self, force=False):
         app_logger.info(f"Engine: Entry cycle triggered (force={force})")
         
+        if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
+            try:
+                self.execution.sync_live_positions()
+            except Exception as e:
+                app_logger.warning(f"Engine: Error syncing live positions before entry: {e}")
+                
         if self.execution.active_positions:
             open_symbols = [k for k in self.execution.active_positions.keys() if not k.startswith('__')]
             app_logger.warning(f"Engine: Trade already active ({open_symbols}). Cannot start a new entry cycle.")
@@ -555,13 +563,19 @@ class DeltaTradingEngine:
         self.execution.save_state()
 
         # Capture the FIRST chart point immediately on trade entry (don't wait 60s)
-        self.pnl_chart_data = []  # Clear any stale data from previous trade
-        self.pnl_chart_data.append({
+        current_mode = getattr(self.execution, 'mode', 'PAPER')
+        first_pt = {
             "t": get_ist_now().strftime("%H:%M"),
             "pnl": 0.0,
             "hedge": 0.0,
             "total": 0.0
-        })
+        }
+        if current_mode == 'LIVE':
+            self.live_pnl_chart_data = [first_pt]
+            self.pnl_chart_data = self.live_pnl_chart_data
+        else:
+            self.paper_pnl_chart_data = [first_pt]
+            self.pnl_chart_data = self.paper_pnl_chart_data
         self._last_chart_snapshot_ts = time.time()
 
         # Claim Hedge Ownership Lock before taking action
@@ -1229,21 +1243,33 @@ class DeltaTradingEngine:
                         
                         # HOT-RECOVERY: Restore persisted chart data from cloud DB
                         persisted_chart = getattr(self.execution, '_persisted_chart_data', None)
+                        current_mode = getattr(self.execution, 'mode', 'PAPER')
                         if persisted_chart and isinstance(persisted_chart, list) and len(persisted_chart) > 0:
-                            self.pnl_chart_data = list(persisted_chart)
-                            app_logger.warning(f"Engine: Chart data RESTORED from cloud DB! {len(persisted_chart)} points recovered.")
+                            if current_mode == 'LIVE':
+                                self.live_pnl_chart_data = list(persisted_chart)
+                                self.pnl_chart_data = self.live_pnl_chart_data
+                            else:
+                                self.paper_pnl_chart_data = list(persisted_chart)
+                                self.pnl_chart_data = self.paper_pnl_chart_data
+                            app_logger.warning(f"Engine: Chart data RESTORED from cloud DB for {current_mode}! {len(persisted_chart)} points recovered.")
                             # CLEAR IT so we don't infinitely overwrite the live chart on every tick!
                             self.execution._persisted_chart_data = None
-                        elif len(self.pnl_chart_data) == 0:
+                        elif (current_mode == 'LIVE' and len(self.live_pnl_chart_data) == 0) or (current_mode == 'PAPER' and len(self.paper_pnl_chart_data) == 0):
                             # Fallback: seed a single point so the chart card is always visible
                             recovery_pnl = recovered_premium - current_total_value if recovered_premium > 0 else 0.0
-                            self.pnl_chart_data.append({
+                            recovery_pt = {
                                 "t": get_ist_now().strftime("%H:%M"),
                                 "pnl": round(recovery_pnl, 4),
                                 "hedge": 0.0,
                                 "total": round(recovery_pnl, 4)
-                            })
-                            app_logger.warning("Engine: Chart data seeded with current PnL snapshot after hot-recovery.")
+                            }
+                            if current_mode == 'LIVE':
+                                self.live_pnl_chart_data.append(recovery_pt)
+                                self.pnl_chart_data = self.live_pnl_chart_data
+                            else:
+                                self.paper_pnl_chart_data.append(recovery_pt)
+                                self.pnl_chart_data = self.paper_pnl_chart_data
+                            app_logger.warning(f"Engine: Chart data seeded with current PnL snapshot after hot-recovery ({current_mode}).")
 
                         # Validate the state to prevent any silent failures
                         self._validate_startup_state()
@@ -1314,20 +1340,27 @@ class DeltaTradingEngine:
                         # NEVER deletes old data so 9AM entry is always visible on chart.
                         _now_ts = time.time()
                         _last_chart_ts = getattr(self, '_last_chart_snapshot_ts', 0)
-                        if _now_ts - _last_chart_ts >= 60 or len(self.pnl_chart_data) == 0:
+                        current_mode = getattr(self.execution, 'mode', 'PAPER')
+                        target_chart = self.live_pnl_chart_data if current_mode == 'LIVE' else self.paper_pnl_chart_data
+                        if _now_ts - _last_chart_ts >= 60 or len(target_chart) == 0:
                             self._last_chart_snapshot_ts = _now_ts
                             hedge_pnl_now = self.smart_hedging.get_live_hedge_pnl() if self.smart_hedging.hedge_active else 0.0
                             # FIX: Use options_profit (not profit) because profit already includes hedge_pnl
-                            self.pnl_chart_data.append({
+                            target_chart.append({
                                 "t": get_ist_now().strftime("%H:%M"),
                                 "pnl": round(options_profit, 4),
                                 "hedge": round(hedge_pnl_now, 4),
                                 "total": round(options_profit + hedge_pnl_now, 4)
                             })
-                            
+                            if current_mode == 'LIVE':
+                                self.live_pnl_chart_data = target_chart
+                            else:
+                                self.paper_pnl_chart_data = target_chart
+                            self.pnl_chart_data = target_chart
+
                             # Persist DPL state + chart data to cloud every 60s so it survives server restarts
-                            dpl_state = self.risk_manager.get_trailing_state()
-                            self.execution.save_state(dpl_state=dpl_state, chart_data=self.pnl_chart_data)
+                            dpl_state = self.risk_manager.get_trailing_state(mode=current_mode)
+                            self.execution.save_state(dpl_state=dpl_state, chart_data=target_chart)
 
                         # ── UPDATE SINGLE SOURCE OF TRUTH ──
                         try:
@@ -1811,12 +1844,17 @@ class DeltaTradingEngine:
                 max_pnl_time=self.current_trade_info.get("max_pnl_time", ""),
                 min_pnl_time=self.current_trade_info.get("min_pnl_time", ""),
                 hedge_events=hedge_events,
-                chart_data=list(self.pnl_chart_data)  # Snapshot saved permanently with trade
+                chart_data=list(self.live_pnl_chart_data if getattr(self.execution, 'mode', 'PAPER') == 'LIVE' else self.paper_pnl_chart_data)  # Snapshot saved permanently with trade
             )
             self.current_trade_info = {"calls": [], "puts": []}
+            curr_mode = getattr(self.execution, 'mode', 'PAPER')
+            if curr_mode == 'LIVE':
+                self.live_pnl_chart_data = []
+            else:
+                self.paper_pnl_chart_data = []
             self.pnl_chart_data = []  # Clear chart for next trade
             self.total_entry_premium = 0
-            self.risk_manager.reset_trailing_state()
+            self.risk_manager.reset_trailing_state(mode=curr_mode)
             self.last_hedge_check_time = None
             self.hedging_triggered_today = False
             self._trade_start_ts = None

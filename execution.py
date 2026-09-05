@@ -211,6 +211,33 @@ class ExecutionHandler:
             app_logger.error(f"Execution [LIVE]: Error in prune_orphan_stop_orders: {e}")
             return []
 
+    def _assert_live_mode(self):
+        """Hard safety guard: Raises RuntimeError if mode is not LIVE to prevent real orders in PAPER mode."""
+        if self.mode != 'LIVE':
+            app_logger.critical("[SAFETY GUARD TRIGGERED] Attempted to place real orders while in PAPER mode!")
+            raise RuntimeError("LIVE guard tripped: Real orders blocked — execution mode is PAPER")
+
+    def _assert_single_position(self):
+        """Hard safety guard: Raises RuntimeError if any live position exists to enforce strictly one trade at a time."""
+        # 1. Check in-memory state
+        in_memory_live = [k for k in self.live_active_positions.keys() if not k.startswith('__')]
+        if in_memory_live:
+            app_logger.critical(f"[SAFETY GUARD TRIGGERED] Live positions exist in memory ({in_memory_live}). Blocked new trade.")
+            raise RuntimeError("Single-Position guard tripped: Active positions found in memory.")
+
+        # 2. Check actual exchange API state
+        if self.api_client:
+            try:
+                res = self.api_client.get_positions()
+                pos_list = res.get('result', []) if isinstance(res, dict) else (res if isinstance(res, list) else [])
+                live_pos = [p for p in pos_list if float(p.get('size', 0)) != 0]
+                if live_pos:
+                    app_logger.critical(f"[SAFETY GUARD TRIGGERED] Found {len(live_pos)} live positions directly on Delta Exchange. Blocked new trade.")
+                    raise RuntimeError(f"Single-Position guard tripped: Active positions found on exchange ({len(live_pos)} positions).")
+            except Exception as e:
+                app_logger.error(f"Execution: Failed to verify exchange positions for single-position guard: {e}")
+                raise RuntimeError(f"Single-Position guard tripped: API verification failed - {e}")
+
     def execute_strangle(self, call_opt, put_opt, size):
         """Places the short strangle orders."""
         app_logger.info(f"Execution: Placing {self.mode} Strangle. Size: {size}")
@@ -266,6 +293,9 @@ class ExecutionHandler:
             return {'success': True, 'error': None, 'results': results}
 
         # ── LIVE ──
+        self._assert_live_mode()
+        self._assert_single_position()
+        
         results = []
         failed_error = None
         executed_legs = []
@@ -475,6 +505,7 @@ class ExecutionHandler:
         app_logger.info(f"Execution: Hedging {action}. Required Delta Offset: {order_qty:.4f}. Executing {side} {size_to_execute} contracts.")
 
         if self.mode == 'LIVE':
+            self._assert_live_mode()
             # Resolve Product ID for Hedge Symbol
             res_ticker = self.api_client.get_tickers({'symbol': HEDGE_SYMBOL})
             if res_ticker.get('success') and res_ticker.get('result'):
@@ -541,6 +572,7 @@ class ExecutionHandler:
                 mark_price = float(res_ticker['result'][0].get('mark_price', 0))
                 
                 if self.mode == 'LIVE':
+                    self._assert_live_mode()
                     
                     if use_limit and mark_price > 0:
                         # Place limit order within 0.1% of mark price

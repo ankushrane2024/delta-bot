@@ -1,0 +1,14 @@
+{
+    "date": "2026-09-05",
+    "mode": "PAPER",
+    "entry_time": "2026-09-05T13:05:41.866419+05:30",
+    "call_symbol": "C-BTC-80800-060926",
+    "put_symbol": "P-BTC-78800-060926",
+    "call_entry_price": 68.89581527,
+    "put_entry_price": 71.18701181,
+    "premium_collected": 70.0414,
+    "btc_entry_price": 0.0,
+    "lot_size": 500,
+    "_receipt_type": "OPEN_TRADE",
+    "_saved_at": "2026-09-05T13:05:43.916772+05:30"
+}
