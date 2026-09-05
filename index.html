@@ -2904,61 +2904,112 @@ td {
                     </div>
                     <div>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <h2 style="margin: 0; font-size: 1.18rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em;">Delta Exchange API Management</h2>
-                            <span style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.04em;">LIVE RUNTIME</span>
+                            <h2 style="margin: 0; font-size: 1.18rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em;">Delta Exchange Multi-Account API Manager</h2>
+                            <span id="api-active-slot-pill" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-size: 0.72rem; font-weight: 700; padding: 2px 10px; border-radius: 6px; letter-spacing: 0.04em;">ACTIVE: LIVE ACCOUNT</span>
                         </div>
                         <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 3px; display: flex; align-items: center; gap: 6px;">
                             <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
-                            Delta India Gateway • <code style="font-size: 0.78rem; color: #cbd5e1; background: rgba(0,0,0,0.3); padding: 1px 6px; border-radius: 4px;">api.india.delta.exchange</code>
+                            Supports both <strong>Live Delta India</strong> and <strong>Demo Trading (demo.delta.exchange)</strong>
                         </div>
                     </div>
                 </div>
                 <div id="api-status-badge" style="background: rgba(16, 185, 129, 0.12); color: #34d399; padding: 7px 16px; border-radius: 24px; font-weight: 700; font-size: 0.82rem; border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 8px; box-shadow: 0 0 16px rgba(16, 185, 129, 0.12);">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block; box-shadow: 0 0 8px #10b981;"></span> Checking API...
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block; box-shadow: 0 0 8px #10b981;"></span> Checking API Gateways...
                 </div>
             </div>
 
-            <!-- Active Key HUD 3-Tile Row -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 22px; position: relative; z-index: 1;">
-                <!-- Tile 1: Active Key -->
-                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s;" onmouseover="this.style.borderColor='rgba(56,189,248,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Configured API Key</span>
-                        <span style="font-size: 0.72rem; color: #10b981; background: rgba(16,185,129,0.1); padding: 1px 6px; border-radius: 4px; font-weight: 600;">ACTIVE</span>
+            <!-- Dual-Account HUD: Live Account vs Demo Account Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 22px; position: relative; z-index: 1;">
+                <!-- Card 1: Live Account -->
+                <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 14px; padding: 16px 18px; position: relative; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.1rem;">🟢</span>
+                            <span style="font-size: 0.88rem; font-weight: 700; color: #f8fafc;">Live Account (Delta India)</span>
+                        </div>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <span id="api-live-badge" style="font-size: 0.7rem; color: #34d399; background: rgba(16,185,129,0.14); border: 1px solid rgba(16,185,129,0.3); padding: 2px 8px; border-radius: 6px; font-weight: 700;">CONNECTED</span>
+                            <button type="button" id="btn-activate-live" onclick="switchApiSlotAction('live')" style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">✔ ACTIVE</button>
+                        </div>
                     </div>
-                    <div id="api-masked-key-display" style="font-family: 'JetBrains Mono', monospace; font-size: 1.02rem; font-weight: 700; color: #38bdf8; margin-top: 4px; letter-spacing: 0.03em;">
-                        Loading...
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Configured Key</div>
+                            <div id="api-live-key" style="font-family: 'JetBrains Mono', monospace; font-size: 0.92rem; font-weight: 700; color: #38bdf8; margin-top: 2px;">Loading...</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Gateway</div>
+                            <div style="font-size: 0.8rem; color: #cbd5e1; margin-top: 2px; font-family: 'JetBrains Mono', monospace;">api.india.delta.exchange</div>
+                        </div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div id="api-live-user" style="font-size: 0.78rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">UID: Verifying...</div>
+                        <button type="button" onclick="disableApiKeyAction('live')" style="background: none; border: none; color: #f87171; font-size: 0.72rem; cursor: pointer; text-decoration: underline; padding: 0;">Disconnect</button>
                     </div>
                 </div>
 
-                <!-- Tile 2: User Account ID -->
-                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s;" onmouseover="this.style.borderColor='rgba(56,189,248,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Delta User Account</span>
-                        <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; font-weight: 600;">PROFILE</span>
+                <!-- Card 2: Demo / Testnet Account -->
+                <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 14px; padding: 16px 18px; position: relative; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.1rem;">🧪</span>
+                            <span style="font-size: 0.88rem; font-weight: 700; color: #f8fafc;">Demo Trading Account</span>
+                        </div>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <span id="api-demo-badge" style="font-size: 0.7rem; color: #a855f7; background: rgba(168,85,247,0.14); border: 1px solid rgba(168,85,247,0.3); padding: 2px 8px; border-radius: 6px; font-weight: 700;">NOT CONFIGURED</span>
+                            <button type="button" id="btn-activate-demo" onclick="switchApiSlotAction('demo')" style="background: rgba(168, 85, 247, 0.15); border: 1px solid #a855f7; color: #c084fc; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">Switch to Demo</button>
+                        </div>
                     </div>
-                    <div id="api-user-id" style="font-family: 'JetBrains Mono', monospace; font-size: 0.98rem; font-weight: 600; color: #f1f5f9; margin-top: 4px;">
-                        Verifying...
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Configured Key</div>
+                            <div id="api-demo-key" style="font-family: 'JetBrains Mono', monospace; font-size: 0.92rem; font-weight: 700; color: #c084fc; margin-top: 2px;">None (Add Below)</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Gateway</div>
+                            <div style="font-size: 0.8rem; color: #cbd5e1; margin-top: 2px; font-family: 'JetBrains Mono', monospace;">demo.delta.exchange</div>
+                        </div>
                     </div>
-                </div>
-
-                <!-- Tile 3: Margin Architecture -->
-                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s;" onmouseover="this.style.borderColor='rgba(56,189,248,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Margin Architecture</span>
-                        <span id="api-margin-badge" style="font-size: 0.72rem; color: #a855f7; background: rgba(168,85,247,0.12); padding: 1px 6px; border-radius: 4px; font-weight: 600;">AUTO</span>
-                    </div>
-                    <div id="api-margin-mode" style="font-family: 'JetBrains Mono', monospace; font-size: 0.98rem; font-weight: 700; color: #cbd5e1; margin-top: 4px;">
-                        PORTFOLIO / CROSS
+                    <div style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div id="api-demo-user" style="font-size: 0.78rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">UID: None configured</div>
+                        <button type="button" onclick="disableApiKeyAction('demo')" style="background: none; border: none; color: #f87171; font-size: 0.72rem; cursor: pointer; text-decoration: underline; padding: 0;">Disconnect</button>
                     </div>
                 </div>
             </div>
 
             <!-- Credentials Input Form Card -->
             <div style="background: rgba(11, 17, 32, 0.7); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; position: relative; z-index: 1;">
-                <div style="font-size: 0.85rem; font-weight: 700; color: #f8fafc; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
-                    <span>⚙️</span> Update API Key & Secret Live
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div style="font-size: 0.88rem; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+                        <span>⚙️</span> Connect or Update API Credentials
+                    </div>
+                    <!-- Slot Selector Buttons -->
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" id="btn-target-demo" onclick="selectTargetSlot('demo')" style="background: rgba(168, 85, 247, 0.2); border: 1px solid #a855f7; color: #c084fc; font-size: 0.78rem; font-weight: 700; padding: 5px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                            🧪 Target: Demo Account
+                        </button>
+                        <button type="button" id="btn-target-live" onclick="selectTargetSlot('live')" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); color: #94a3b8; font-size: 0.78rem; font-weight: 600; padding: 5px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                            🟢 Target: Live Account
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Environment / Gateway Selector -->
+                <div style="margin-bottom: 14px;">
+                    <label style="display: flex; justify-content: space-between; font-size: 0.76rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">
+                        <span>DELTA GATEWAY ENVIRONMENT</span>
+                        <span style="font-size: 0.7rem; color: #38bdf8;">Auto-detect probes all gateways automatically</span>
+                    </label>
+                    <select id="select-api-env" style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px; padding: 10px 14px; color: #f8fafc; font-size: 0.85rem; outline: none; transition: all 0.2s;">
+                        <option value="auto" selected>🔍 Auto-Detect Gateway (Recommended - checks Demo & Live automatically)</option>
+                        <option value="demo">🧪 Delta Demo Trading (demo.delta.exchange • https://testnet-api.delta.exchange)</option>
+                        <option value="india_live">🟢 Delta India Live Production (api.india.delta.exchange)</option>
+                        <option value="india_demo">🇮🇳 Delta India Demo (cdn-ind.testnet.deltaex.org)</option>
+                        <option value="global_live">🌐 Delta Global Live (api.delta.exchange)</option>
+                    </select>
+                </div>
+
+                <!-- API Key & Secret Inputs -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
                     <div>
                         <label style="display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">
@@ -2989,24 +3040,24 @@ td {
                 </div>
             </div>
 
-            <!-- Action Controls & Whitelist Notice Bar -->
+            <!-- Action Controls Bar -->
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; position: relative; z-index: 1;">
                 <div style="font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 1rem;">🛡️</span>
-                    <span>Direct connection test on Delta India. Updates bot memory instantly without restart.</span>
+                    <span>Direct connection test on Delta. Saved permanently to Cloud Master DB across Render reboots.</span>
                 </div>
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                    <button type="button" id="btn-disable-api" onclick="disableApiKeyAction()"
+                    <button type="button" id="btn-disable-api" onclick="disableApiKeyAction('active')"
                             style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(185, 28, 28, 0.2)); border: 1px solid rgba(239, 68, 68, 0.45); color: #f87171; border-radius: 10px; padding: 11px 20px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.25s; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.15);"
                             onmouseover="this.style.background='rgba(239, 68, 68, 0.28)'; this.style.transform='translateY(-1px)'" 
                             onmouseout="this.style.background='linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(185, 28, 28, 0.2))'; this.style.transform='translateY(0)'">
-                        <span>🛑</span> DISABLE / DISCONNECT API
+                        <span>🛑</span> DISABLE ACTIVE API
                     </button>
                     <button type="button" id="btn-save-api" onclick="saveApiCredentialsAction()"
                             style="background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%); border: 1px solid #38bdf8; color: #ffffff; border-radius: 10px; padding: 11px 26px; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45); transition: all 0.25s; letter-spacing: 0.02em;"
                             onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 26px rgba(2, 132, 199, 0.65)'" 
                             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(2, 132, 199, 0.45)'">
-                        <span>💾</span> CONNECT & UPDATE API KEY
+                        <span>💾</span> CONNECT & SAVE API KEY
                     </button>
                 </div>
             </div>
@@ -5608,7 +5659,42 @@ function updateSystemHealth() {
 setInterval(updateSystemHealth, 60000);
 setTimeout(updateSystemHealth, 1000);
 
-// --- API Credentials Management ---
+// --- Delta Multi-Account API Credentials Management ---
+let selectedTargetSlot = 'demo'; // default to demo for easy addition of demo API keys
+
+function selectTargetSlot(slot) {
+    selectedTargetSlot = slot;
+    const btnDemo = document.getElementById('btn-target-demo');
+    const btnLive = document.getElementById('btn-target-live');
+    const envSelect = document.getElementById('select-api-env');
+
+    if (slot === 'demo') {
+        if (btnDemo) {
+            btnDemo.style.background = 'rgba(168, 85, 247, 0.25)';
+            btnDemo.style.borderColor = '#a855f7';
+            btnDemo.style.color = '#c084fc';
+        }
+        if (btnLive) {
+            btnLive.style.background = 'rgba(15, 23, 42, 0.8)';
+            btnLive.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            btnLive.style.color = '#94a3b8';
+        }
+        if (envSelect) envSelect.value = 'demo';
+    } else {
+        if (btnLive) {
+            btnLive.style.background = 'rgba(16, 185, 129, 0.25)';
+            btnLive.style.borderColor = '#10b981';
+            btnLive.style.color = '#34d399';
+        }
+        if (btnDemo) {
+            btnDemo.style.background = 'rgba(15, 23, 42, 0.8)';
+            btnDemo.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            btnDemo.style.color = '#94a3b8';
+        }
+        if (envSelect) envSelect.value = 'india_live';
+    }
+}
+
 function toggleApiSecretVisibility() {
     const input = document.getElementById('input-api-secret');
     const btn = document.getElementById('btn-toggle-secret');
@@ -5626,53 +5712,123 @@ async function fetchApiCredentials() {
     try {
         const res = await fetch('/api/api_credentials');
         const data = await res.json();
-        const badge = document.getElementById('api-status-badge');
-        const keyDisplay = document.getElementById('api-masked-key-display');
-        const userDisplay = document.getElementById('api-user-id');
-        const marginDisplay = document.getElementById('api-margin-mode');
-        const marginBadge = document.getElementById('api-margin-badge');
+        if (!data || !data.success) return;
 
-        if (!badge || !keyDisplay) return;
+        const activeSlot = data.active_slot || 'live';
+        const activePill = document.getElementById('api-active-slot-pill');
+        if (activePill) {
+            if (activeSlot === 'demo') {
+                activePill.textContent = 'ACTIVE: DEMO ACCOUNT (demo.delta.exchange)';
+                activePill.style.background = 'rgba(168, 85, 247, 0.15)';
+                activePill.style.color = '#c084fc';
+                activePill.style.borderColor = 'rgba(168, 85, 247, 0.35)';
+            } else {
+                activePill.textContent = 'ACTIVE: LIVE ACCOUNT (Delta India)';
+                activePill.style.background = 'rgba(16, 185, 129, 0.15)';
+                activePill.style.color = '#34d399';
+                activePill.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+            }
+        }
 
-        if (!data.configured) {
-            badge.style.background = 'rgba(239, 68, 68, 0.14)';
-            badge.style.color = '#f87171';
-            badge.style.borderColor = 'rgba(239, 68, 68, 0.35)';
-            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;box-shadow:0 0 6px #ef4444;"></span> NOT CONFIGURED';
-            keyDisplay.textContent = 'None (API Keys Disabled)';
-            keyDisplay.style.color = '#64748b';
-            if (userDisplay) userDisplay.textContent = 'Trading Disabled';
-            if (marginDisplay) marginDisplay.textContent = 'INACTIVE';
-            if (marginBadge) { marginBadge.textContent = 'OFF'; marginBadge.style.color = '#94a3b8'; }
-        } else if (data.connected) {
-            badge.style.background = 'rgba(16, 185, 129, 0.12)';
-            badge.style.color = '#34d399';
-            badge.style.borderColor = 'rgba(16, 185, 129, 0.35)';
-            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 8px #10b981;"></span> CONNECTED (Delta India)';
-            keyDisplay.textContent = data.masked_key;
-            keyDisplay.style.color = '#38bdf8';
-            if (userDisplay) {
-                const p = data.profile || {};
-                userDisplay.textContent = p.user_id ? `ID: ${p.user_id}` : 'Verified Profile';
+        // --- Populate Live Account Card ---
+        const live = data.live || {};
+        const liveBadge = document.getElementById('api-live-badge');
+        const liveKey = document.getElementById('api-live-key');
+        const liveUser = document.getElementById('api-live-user');
+        const btnActLive = document.getElementById('btn-activate-live');
+
+        if (liveKey) {
+            liveKey.textContent = live.masked_key || 'None (Unconfigured)';
+            liveKey.style.color = live.configured ? '#38bdf8' : '#64748b';
+        }
+        if (liveUser) {
+            const p = live.profile || {};
+            liveUser.textContent = p.user_id ? `UID: ${p.user_id} (${p.email || 'Verified'})` : 'UID: Unconfigured';
+        }
+        if (liveBadge) {
+            if (live.configured) {
+                liveBadge.textContent = 'CONNECTED';
+                liveBadge.style.background = 'rgba(16, 185, 129, 0.14)';
+                liveBadge.style.color = '#34d399';
+                liveBadge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+            } else {
+                liveBadge.textContent = 'NOT CONFIGURED';
+                liveBadge.style.background = 'rgba(100, 116, 139, 0.14)';
+                liveBadge.style.color = '#94a3b8';
+                liveBadge.style.borderColor = 'rgba(100, 116, 139, 0.3)';
             }
-            if (marginDisplay) {
-                const p = data.profile || {};
-                const modeStr = (p.margin_mode || 'portfolio').toUpperCase();
-                marginDisplay.textContent = modeStr + ' MARGIN';
-                if (marginBadge) {
-                    marginBadge.textContent = 'VERIFIED';
-                    marginBadge.style.color = '#a855f7';
-                }
+        }
+        if (btnActLive) {
+            if (activeSlot === 'live') {
+                btnActLive.textContent = '✔ ACTIVE';
+                btnActLive.style.background = 'rgba(16, 185, 129, 0.2)';
+                btnActLive.style.borderColor = '#10b981';
+                btnActLive.style.color = '#34d399';
+            } else {
+                btnActLive.textContent = 'Switch to Live';
+                btnActLive.style.background = 'rgba(15, 23, 42, 0.8)';
+                btnActLive.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                btnActLive.style.color = '#94a3b8';
             }
-        } else {
-            badge.style.background = 'rgba(245, 158, 11, 0.14)';
-            badge.style.color = '#fbbf24';
-            badge.style.borderColor = 'rgba(245, 158, 11, 0.35)';
-            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;box-shadow:0 0 6px #f59e0b;"></span> DISCONNECTED / AUTH FAILED';
-            keyDisplay.textContent = data.masked_key;
-            keyDisplay.style.color = '#f59e0b';
-            if (userDisplay) userDisplay.textContent = 'Check API permissions / IP';
-            if (marginDisplay) marginDisplay.textContent = 'UNVERIFIED';
+        }
+
+        // --- Populate Demo Account Card ---
+        const demo = data.demo || {};
+        const demoBadge = document.getElementById('api-demo-badge');
+        const demoKey = document.getElementById('api-demo-key');
+        const demoUser = document.getElementById('api-demo-user');
+        const btnActDemo = document.getElementById('btn-activate-demo');
+
+        if (demoKey) {
+            demoKey.textContent = demo.masked_key || 'None (Add Below)';
+            demoKey.style.color = demo.configured ? '#c084fc' : '#64748b';
+        }
+        if (demoUser) {
+            const p = demo.profile || {};
+            demoUser.textContent = p.user_id ? `UID: ${p.user_id} (${p.email || p.username || 'Verified'})` : 'UID: None configured';
+        }
+        if (demoBadge) {
+            if (demo.configured) {
+                demoBadge.textContent = 'CONNECTED';
+                demoBadge.style.background = 'rgba(168, 85, 247, 0.15)';
+                demoBadge.style.color = '#c084fc';
+                demoBadge.style.borderColor = 'rgba(168, 85, 247, 0.35)';
+            } else {
+                demoBadge.textContent = 'NOT CONFIGURED';
+                demoBadge.style.background = 'rgba(245, 158, 11, 0.12)';
+                demoBadge.style.color = '#fbbf24';
+                demoBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+            }
+        }
+        if (btnActDemo) {
+            if (activeSlot === 'demo') {
+                btnActDemo.textContent = '✔ ACTIVE';
+                btnActDemo.style.background = 'rgba(168, 85, 247, 0.25)';
+                btnActDemo.style.borderColor = '#a855f7';
+                btnActDemo.style.color = '#c084fc';
+            } else {
+                btnActDemo.textContent = 'Switch to Demo';
+                btnActDemo.style.background = 'rgba(15, 23, 42, 0.8)';
+                btnActDemo.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                btnActDemo.style.color = '#94a3b8';
+            }
+        }
+
+        // Header status badge
+        const mainBadge = document.getElementById('api-status-badge');
+        if (mainBadge) {
+            const activeData = activeSlot === 'demo' ? demo : live;
+            if (activeData.configured) {
+                mainBadge.style.background = 'rgba(16, 185, 129, 0.12)';
+                mainBadge.style.color = '#34d399';
+                mainBadge.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+                mainBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 8px #10b981;"></span> READY (${activeData.gateway_name || 'Delta'})`;
+            } else {
+                mainBadge.style.background = 'rgba(245, 158, 11, 0.12)';
+                mainBadge.style.color = '#fbbf24';
+                mainBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                mainBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;box-shadow:0 0 8px #f59e0b;"></span> SETUP REQUIRED`;
+            }
         }
     } catch (e) {
         console.error("Failed to fetch API credentials:", e);
@@ -5682,6 +5838,7 @@ async function fetchApiCredentials() {
 async function saveApiCredentialsAction() {
     const key = document.getElementById('input-api-key').value.trim();
     const secret = document.getElementById('input-api-secret').value.trim();
+    const env = document.getElementById('select-api-env') ? document.getElementById('select-api-env').value : 'auto';
     const btn = document.getElementById('btn-save-api');
 
     if (!key || !secret) {
@@ -5691,27 +5848,32 @@ async function saveApiCredentialsAction() {
 
     const origHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span>⏳</span> VERIFYING WITH DELTA...';
-    const toast = showToast('Validating credentials with Delta Exchange India...', 'loading', 0);
+    btn.innerHTML = '<span>⏳</span> VERIFYING GATEWAYS...';
+    const toast = showToast('Testing connection across Delta gateways (Demo & Live)...', 'loading', 0);
 
     try {
         const res = await fetch('/api/save_api_credentials', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ api_key: key, api_secret: secret })
+            body: JSON.stringify({
+                api_key: key,
+                api_secret: secret,
+                environment: env,
+                slot: selectedTargetSlot
+            })
         });
         const data = await res.json();
         toast.remove();
 
         if (data.success) {
-            showToast('✅ ' + data.message, 'success', 6000);
+            showToast('✅ ' + data.message, 'success', 7000);
             document.getElementById('input-api-key').value = '';
             document.getElementById('input-api-secret').value = '';
             btn.innerHTML = '<span>✅</span> CONNECTED';
             setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
             fetchApiCredentials();
         } else {
-            showToast('❌ Failed: ' + (data.error || 'Connection failed'), 'error', 8000);
+            showToast('❌ Failed: ' + (data.error || 'Connection failed'), 'error', 9000);
             btn.innerHTML = '<span>❌</span> FAILED';
             setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
         }
@@ -5723,37 +5885,56 @@ async function saveApiCredentialsAction() {
     }
 }
 
-async function disableApiKeyAction() {
-    if (!confirm("Are you sure you want to DISABLE and DISCONNECT the Delta API key?\n\nThis will switch the bot to PAPER mode and stop any live trading on Delta Exchange.")) {
-        return;
-    }
-
-    const btn = document.getElementById('btn-disable-api');
-    const origHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span>⏳</span> DISABLING...';
-
+async function switchApiSlotAction(slot) {
+    const toast = showToast(`Switching active engine to ${slot.toUpperCase()} account...`, 'loading', 0);
     try {
-        const res = await fetch('/api/disable_api_key', { method: 'POST' });
+        const res = await fetch('/api/switch_api_slot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slot: slot })
+        });
         const data = await res.json();
+        toast.remove();
         if (data.success) {
-            showToast('🛑 API Key disabled. Bot is in safe PAPER mode.', 'success', 6000);
-            btn.innerHTML = '<span>🛑</span> DISABLED';
-            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
+            showToast(`✅ ${data.message}`, 'success', 5000);
             fetchApiCredentials();
         } else {
-            showToast('Error disabling API: ' + (data.error || 'Unknown error'), 'error', 6000);
-            btn.innerHTML = origHtml;
-            btn.disabled = false;
+            showToast(`❌ Switch failed: ${data.error}`, 'error', 6000);
         }
     } catch (err) {
+        toast.remove();
         showToast('Network error: ' + err.message, 'error', 5000);
-        btn.innerHTML = origHtml;
-        btn.disabled = false;
     }
 }
 
-setTimeout(fetchApiCredentials, 1500);
+async function disableApiKeyAction(slot) {
+    const label = slot === 'all' ? 'ALL API keys' : `${slot.toUpperCase()} account API key`;
+    if (!confirm(`Are you sure you want to DISCONNECT and DISABLE ${label}?\n\nThis will safely revert the bot to PAPER simulation mode.`)) {
+        return;
+    }
+
+    const toast = showToast(`Disabling ${label}...`, 'loading', 0);
+    try {
+        const res = await fetch('/api/disable_api_key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slot: slot })
+        });
+        const data = await res.json();
+        toast.remove();
+        if (data.success) {
+            showToast('🛑 ' + data.message, 'success', 5000);
+            fetchApiCredentials();
+        } else {
+            showToast('Error disabling API: ' + (data.error || 'Unknown error'), 'error', 6000);
+        }
+    } catch (err) {
+        toast.remove();
+        showToast('Network error: ' + err.message, 'error', 5000);
+    }
+}
+
+setTimeout(fetchApiCredentials, 1200);
 setInterval(fetchApiCredentials, 30000);
 
 </script>

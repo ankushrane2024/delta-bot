@@ -7,9 +7,11 @@ import websocket
 import threading
 from config import DELTA_API_KEY, DELTA_API_SECRET, DELTA_INDIA_BASE_URL, DELTA_INDIA_WS_URL
 from logger import app_logger, error_logger
+import config
 
 class DeltaIndiaClient:
-    def __init__(self, api_key=None, api_secret=None):
+    def __init__(self, api_key=None, api_secret=None, base_url=None):
+        self.base_url = (base_url or getattr(config, 'DELTA_BASE_URL', None) or DELTA_INDIA_BASE_URL).rstrip('/')
         self.api_key = api_key or DELTA_API_KEY
         self.api_secret = api_secret or DELTA_API_SECRET
         self.session = requests.Session()
@@ -26,17 +28,27 @@ class DeltaIndiaClient:
         if self.api_key and self.api_secret:
             self.sync_time()
 
+    def get_ws_url(self):
+        b = (self.base_url or "").lower()
+        if "testnet.deltaex.org" in b:
+            return "wss://socket-ind.testnet.deltaex.org"
+        elif "testnet-api.delta.exchange" in b or "demo.delta.exchange" in b:
+            return "wss://testnet-api.delta.exchange"
+        elif "api.delta.exchange" in b:
+            return "wss://socket.delta.exchange"
+        return DELTA_INDIA_WS_URL
+
     def sync_time(self):
         try:
-            r = requests.get(f"{DELTA_INDIA_BASE_URL}/v2/tickers", timeout=10)
+            r = requests.get(f"{self.base_url}/v2/tickers", timeout=10)
             server_date = r.headers.get('Date')
             if server_date:
                 import email.utils
                 server_ts = email.utils.mktime_tz(email.utils.parsedate_tz(server_date))
                 self.time_offset = int(server_ts - time.time())
-                app_logger.info(f"API: Time synced. Offset: {self.time_offset}s")
+                app_logger.info(f"API: Time synced ({self.base_url}). Offset: {self.time_offset}s")
         except Exception as e:
-            error_logger.error(f"API: Time sync failed: {e}")
+            error_logger.error(f"API: Time sync failed ({self.base_url}): {e}")
 
     def _generate_signature(self, method, path, body=""):
         timestamp = str(int(time.time() + self.time_offset))
@@ -49,7 +61,7 @@ class DeltaIndiaClient:
         return timestamp, signature
 
     def request(self, method, path, params=None, data=None):
-        url = DELTA_INDIA_BASE_URL + path
+        url = self.base_url + path
         query_string = ""
         if params:
             query_string = "?" + "&".join([f"{k}={v}" for k, v in sorted(params.items())])
@@ -272,8 +284,9 @@ class DeltaIndiaClient:
             if symbols:
                 self.subscribe_ws(symbols)
 
+        ws_url = self.get_ws_url()
         self.ws = websocket.WebSocketApp(
-            DELTA_INDIA_WS_URL,
+            ws_url,
             on_open=on_open,
             on_message=on_message,
             on_error=on_error,

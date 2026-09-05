@@ -645,10 +645,10 @@ def is_connected() -> bool:
     return True # We now always have a connection (either Gist or JSONBlob fallback)
 
 
-def load_api_credentials() -> tuple:
+def load_all_api_credentials() -> dict:
     """
-    Loads persistent Delta Exchange API credentials from Cloud or local fallback.
-    Returns (api_key, api_secret).
+    Loads full persistent Delta Exchange API credentials from Cloud or local fallback.
+    Supports dual-slots: 'live' and 'demo' accounts.
     Survives Render container reboots and redeploys.
     """
     with _sync_lock:
@@ -666,61 +666,189 @@ def load_api_credentials() -> tuple:
         except Exception as _e:
             app_logger.warning(f"DB: Cloud load for api_credentials failed: {_e}")
 
-        if creds and isinstance(creds, dict):
-            k = creds.get("api_key", "").strip()
-            s = creds.get("api_secret", "").strip()
-            if k and s:
-                return k, s
-
-        # Fallback to local file
-        if os.path.exists(API_CREDENTIALS_FILE):
+        # Fallback to local file if cloud load was empty
+        if not creds and os.path.exists(API_CREDENTIALS_FILE):
             try:
-                with open(API_CREDENTIALS_FILE, 'r') as f:
-                    local_c = json.load(f)
-                    k = local_c.get("api_key", "").strip()
-                    s = local_c.get("api_secret", "").strip()
-                    if k and s:
-                        return k, s
+                with open(API_CREDENTIALS_FILE, 'r', encoding='utf-8') as f:
+                    creds = json.load(f)
             except Exception:
                 pass
-        return "", ""
+
+        normalized = {
+            "live": {
+                "api_key": "",
+                "api_secret": "",
+                "environment": "india_live",
+                "base_url": "https://api.india.delta.exchange",
+                "profile": {}
+            },
+            "demo": {
+                "api_key": "",
+                "api_secret": "",
+                "environment": "demo",
+                "base_url": "https://testnet-api.delta.exchange",
+                "profile": {}
+            },
+            "active_slot": "live",
+            "api_key": "",
+            "api_secret": ""
+        }
+
+        if creds and isinstance(creds, dict):
+            # Check if old format {"api_key": "...", "api_secret": "..."}
+            if "live" in creds or "demo" in creds:
+                if isinstance(creds.get("live"), dict):
+                    normalized["live"].update(creds["live"])
+                if isinstance(creds.get("demo"), dict):
+                    normalized["demo"].update(creds["demo"])
+                normalized["active_slot"] = creds.get("active_slot", "live")
+            else:
+                # Old single-key format: migrate to live slot
+                old_k = creds.get("api_key", "").strip()
+                old_s = creds.get("api_secret", "").strip()
+                if old_k and old_s:
+                    normalized["live"]["api_key"] = old_k
+                    normalized["live"]["api_secret"] = old_s
+
+            act = normalized["active_slot"]
+            act_data = normalized.get(act, normalized["live"])
+            normalized["api_key"] = act_data.get("api_key", "")
+            normalized["api_secret"] = act_data.get("api_secret", "")
+
+        return normalized
 
 
-def save_api_credentials(api_key: str, api_secret: str) -> bool:
+def load_api_credentials() -> tuple:
     """
-    Permanently saves Delta Exchange API credentials to Cloud (survives Render redeploys)
-    and local fallback.
-    If api_key and api_secret are empty, clears them permanently.
+    Loads active Delta Exchange API credentials from Cloud or local fallback.
+    Returns (api_key, api_secret).
+    Survives Render container reboots and redeploys.
+    """
+    all_creds = load_all_api_credentials()
+    act = all_creds.get("active_slot", "live")
+    act_data = all_creds.get(act, all_creds.get("live", {}))
+    k = act_data.get("api_key", "").strip()
+    s = act_data.get("api_secret", "").strip()
+    if k and s:
+        return k, s
+    # Fallback to live slot if active is empty
+    live_data = all_creds.get("live", {})
+    return live_data.get("api_key", "").strip(), live_data.get("api_secret", "").strip()
+
+
+def get_active_api_slot() -> str:
+    all_creds = load_all_api_credentials()
+    return all_creds.get("active_slot", "live")
+
+
+def set_active_api_slot(slot: str) -> tuple:
+    """
+    Switches the active API slot ('live' or 'demo').
+    Returns (success, slot_dict).
+    """
+    with _sync_lock:
+        all_creds = load_all_api_credentials()
+        slot = slot.lower()
+        if slot not in ("live", "demo"):
+            return False, {}
+        all_creds["active_slot"] = slot
+        slot_data = all_creds.get(slot, {})
+        all_creds["api_key"] = slot_data.get("api_key", "")
+        all_creds["api_secret"] = slot_data.get("api_secret", "")
+        _persist_credentials_dict(all_creds)
+        app_logger.info(f"DB: Switched active API slot to {slot.upper()}")
+        return True, slot_data
+
+
+def save_api_credentials(api_key: str, api_secret: str, slot: str = "live",
+                         environment: str = None, base_url: str = None,
+                         profile: dict = None) -> bool:
+    """
+    Permanently saves Delta Exchange API credentials for a specific slot ('live' or 'demo')
+    to Cloud (survives Render redeploys) and local fallback.
     """
     with _sync_lock:
         if not _connected: _connect()
-        creds = {"api_key": api_key.strip(), "api_secret": api_secret.strip()}
-        content_str = json.dumps(creds, indent=4)
+        all_creds = load_all_api_credentials()
+        slot = slot.lower() if slot in ("live", "demo") else "live"
+        
+        slot_dict = all_creds.get(slot, {})
+        slot_dict["api_key"] = api_key.strip()
+        slot_dict["api_secret"] = api_secret.strip()
+        if environment: slot_dict["environment"] = environment
+        if base_url: slot_dict["base_url"] = base_url.rstrip('/')
+        if profile: slot_dict["profile"] = profile
+        all_creds[slot] = slot_dict
 
-        try:
-            with open(API_CREDENTIALS_FILE, 'w') as f:
-                f.write(content_str)
-        except Exception:
-            pass
+        # If this slot is active or active is currently empty, update active pointer
+        if all_creds.get("active_slot") == slot or not all_creds.get("api_key"):
+            all_creds["active_slot"] = slot
+            all_creds["api_key"] = api_key.strip()
+            all_creds["api_secret"] = api_secret.strip()
 
-        try:
-            if GITHUB_PAT:
-                if not GITHUB_GIST_ID:
-                    _create_gist("{}", content_str)
-                else:
-                    _update_gist({"api_credentials.json": {"content": content_str}})
-                app_logger.info("DB: API credentials saved permanently to GitHub Gist.")
-                return True
+        return _persist_credentials_dict(all_creds)
+
+
+def disable_api_slot(slot: str = "active") -> bool:
+    """
+    Disables API credentials for a given slot ('live', 'demo', 'active', or 'all').
+    """
+    with _sync_lock:
+        all_creds = load_all_api_credentials()
+        target = slot.lower()
+        if target == "all":
+            all_creds["live"]["api_key"] = ""
+            all_creds["live"]["api_secret"] = ""
+            all_creds["live"]["profile"] = {}
+            all_creds["demo"]["api_key"] = ""
+            all_creds["demo"]["api_secret"] = ""
+            all_creds["demo"]["profile"] = {}
+            all_creds["api_key"] = ""
+            all_creds["api_secret"] = ""
+        elif target in ("live", "demo"):
+            all_creds[target]["api_key"] = ""
+            all_creds[target]["api_secret"] = ""
+            all_creds[target]["profile"] = {}
+            if all_creds.get("active_slot") == target:
+                all_creds["api_key"] = ""
+                all_creds["api_secret"] = ""
+        else: # "active"
+            act = all_creds.get("active_slot", "live")
+            all_creds[act]["api_key"] = ""
+            all_creds[act]["api_secret"] = ""
+            all_creds[act]["profile"] = {}
+            all_creds["api_key"] = ""
+            all_creds["api_secret"] = ""
+
+        return _persist_credentials_dict(all_creds)
+
+
+def _persist_credentials_dict(all_creds: dict) -> bool:
+    content_str = json.dumps(all_creds, indent=4)
+    try:
+        with open(API_CREDENTIALS_FILE, 'w', encoding='utf-8') as f:
+            f.write(content_str)
+    except Exception:
+        pass
+
+    try:
+        if GITHUB_PAT:
+            if not GITHUB_GIST_ID:
+                _create_gist("{}", content_str)
             else:
-                blob_data = _fetch_jsonblob() or {}
-                blob_data["api_credentials"] = creds
-                if not JSONBLOB_ID:
-                    _create_jsonblob(blob_data)
-                else:
-                    _update_jsonblob(blob_data)
-                app_logger.info("DB: API credentials saved permanently to Cloud Master DB.")
-                return True
-        except Exception as e:
-            app_logger.error(f"DB: Failed to save api_credentials to Cloud: {e}")
-            return False
+                _update_gist({"api_credentials.json": {"content": content_str}})
+            app_logger.info("DB: API credentials saved permanently to GitHub Gist.")
+            return True
+        else:
+            blob_data = _fetch_jsonblob() or {}
+            blob_data["api_credentials"] = all_creds
+            if not JSONBLOB_ID:
+                _create_jsonblob(blob_data)
+            else:
+                _update_jsonblob(blob_data)
+            app_logger.info("DB: API credentials saved permanently to Cloud Master DB.")
+            return True
+    except Exception as e:
+        app_logger.error(f"DB: Failed to save api_credentials to Cloud: {e}")
+        return False
 

@@ -9,6 +9,13 @@ DELTA_API_KEY = os.getenv("DELTA_API_KEY", "")
 DELTA_API_SECRET = os.getenv("DELTA_API_SECRET", "")
 DELTA_INDIA_BASE_URL = "https://api.india.delta.exchange"
 DELTA_INDIA_WS_URL = "wss://socket.india.delta.exchange"
+DELTA_GLOBAL_LIVE_BASE_URL = "https://api.delta.exchange"
+DELTA_GLOBAL_LIVE_WS_URL = "wss://socket.delta.exchange"
+DELTA_GLOBAL_DEMO_BASE_URL = "https://testnet-api.delta.exchange"
+DELTA_GLOBAL_DEMO_WS_URL = "wss://testnet-api.delta.exchange"
+DELTA_INDIA_DEMO_BASE_URL = "https://cdn-ind.testnet.deltaex.org"
+DELTA_INDIA_DEMO_WS_URL = "wss://socket-ind.testnet.deltaex.org"
+DELTA_BASE_URL = os.getenv("DELTA_BASE_URL", DELTA_INDIA_BASE_URL)
 
 # --- Bot Mode ---
 # Set BOT_MODE to "PAPER" for simulation or "LIVE" for real trading.

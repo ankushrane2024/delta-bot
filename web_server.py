@@ -1092,123 +1092,223 @@ def save_live_lots():
 
 # ─── API Key Management (Add, Update & Disable) ───────────────────────────────
 
+DELTA_GATEWAYS = [
+    {
+        "id": "demo",
+        "name": "Delta Demo (demo.delta.exchange)",
+        "base_url": "https://testnet-api.delta.exchange",
+        "is_demo": True
+    },
+    {
+        "id": "india_live",
+        "name": "Delta India Live (api.india.delta.exchange)",
+        "base_url": "https://api.india.delta.exchange",
+        "is_demo": False
+    },
+    {
+        "id": "india_demo",
+        "name": "Delta India Demo (cdn-ind.testnet.deltaex.org)",
+        "base_url": "https://cdn-ind.testnet.deltaex.org",
+        "is_demo": True
+    },
+    {
+        "id": "global_live",
+        "name": "Delta Global Live (api.delta.exchange)",
+        "base_url": "https://api.delta.exchange",
+        "is_demo": False
+    }
+]
+
+def validate_delta_credentials(api_key: str, api_secret: str, preferred_env: str = None):
+    """
+    Probes Delta Exchange gateways to validate API credentials.
+    Supports Delta Demo (demo.delta.exchange), Delta India Live, India Demo, and Global Live.
+    Returns (success, matched_gateway, profile_data, error_message).
+    """
+    from api_client import DeltaIndiaClient
+
+    candidates = []
+    if preferred_env and preferred_env != 'auto':
+        for g in DELTA_GATEWAYS:
+            if g["id"] == preferred_env or g["base_url"] == preferred_env:
+                candidates.append(g)
+                break
+
+    for g in DELTA_GATEWAYS:
+        if g not in candidates:
+            candidates.append(g)
+
+    attempted_errs = []
+    for gw in candidates:
+        try:
+            client = DeltaIndiaClient(api_key=api_key, api_secret=api_secret, base_url=gw["base_url"])
+            prof_res = client.get_profile()
+            if prof_res and prof_res.get('success'):
+                res_p = prof_res.get('result', {})
+                return True, gw, res_p, None
+            else:
+                err = prof_res.get('error', {}) if isinstance(prof_res, dict) else {}
+                msg = err.get('message') or prof_res.get('message') or str(err)
+                attempted_errs.append(f"{gw['name']}: {msg}")
+        except Exception as e:
+            attempted_errs.append(f"{gw['name']}: {e}")
+
+    summary_err = " | ".join(attempted_errs)
+    return False, None, None, summary_err
+
 
 @app.route('/api/api_credentials', methods=['GET'])
 def get_api_credentials():
-    """Returns current API configuration status and masked key without exposing secret."""
-    key = getattr(config, 'DELTA_API_KEY', '') or os.environ.get('DELTA_API_KEY', '')
-    secret = getattr(config, 'DELTA_API_SECRET', '') or os.environ.get('DELTA_API_SECRET', '')
+    """Returns dual-slot (Live & Demo) API credentials status and active profile."""
+    import db_manager
+    all_creds = db_manager.load_all_api_credentials()
+    active_slot = all_creds.get('active_slot', 'live')
 
-    is_configured = bool(key and secret and key not in ('testnet_key', 'YOUR_KEY_HERE', '') and secret not in ('testnet_secret', 'YOUR_SECRET_HERE', ''))
+    def format_slot(slot_name, data):
+        key = (data.get('api_key') or '').strip()
+        secret = (data.get('api_secret') or '').strip()
+        is_conf = bool(key and secret and key not in ('testnet_key', 'YOUR_KEY_HERE', '') and secret not in ('testnet_secret', 'YOUR_SECRET_HERE', ''))
+        masked = f"{key[:4]}...{key[-4:]}" if len(key) >= 8 else ("***" if key else "")
+        prof = data.get('profile') or {}
+        connected = bool(is_conf and (prof.get('user_id') or prof.get('id') or prof.get('email')))
+        
+        default_base = "https://api.india.delta.exchange" if slot_name == "live" else "https://testnet-api.delta.exchange"
+        base_url = data.get('base_url') or default_base
+        env_name = "Delta India Live" if slot_name == "live" else "Delta Demo (demo.delta.exchange)"
+        if "testnet-api.delta.exchange" in base_url:
+            env_name = "Delta Demo (demo.delta.exchange)"
+        elif "cdn-ind.testnet.deltaex.org" in base_url:
+            env_name = "Delta India Demo"
+        elif "api.india.delta.exchange" in base_url:
+            env_name = "Delta India Live"
 
-    masked_key = ''
-    if key and len(key) >= 8:
-        masked_key = f"{key[:4]}...{key[-4:]}"
-    elif key:
-        masked_key = "***"
+        return {
+            'configured': is_conf,
+            'connected': connected,
+            'masked_key': masked,
+            'environment': data.get('environment', 'india_live' if slot_name == 'live' else 'demo'),
+            'gateway_name': env_name,
+            'base_url': base_url,
+            'profile': prof
+        }
 
-    connected = False
-    profile_info = {}
-    if is_configured and bot_engine and bot_engine.api_client and bot_engine.api_client.api_key:
-        try:
-            prof = bot_engine.api_client.get_profile()
-            if prof and prof.get('success'):
-                connected = True
-                res_p = prof.get('result', {})
-                profile_info = {
-                    'email': res_p.get('email', ''),
-                    'margin_mode': res_p.get('margin_mode', 'portfolio'),
-                    'user_id': str(res_p.get('id', ''))
-                }
-        except Exception as e:
-            app_logger.warning(f"Web [api_credentials]: Profile check failed – {e}")
+    live_info = format_slot('live', all_creds.get('live', {}))
+    demo_info = format_slot('demo', all_creds.get('demo', {}))
+    active_info = demo_info if active_slot == 'demo' else live_info
 
     return jsonify({
         'success': True,
-        'configured': is_configured,
-        'connected': connected,
-        'masked_key': masked_key,
-        'profile': profile_info,
+        'active_slot': active_slot,
+        'live': live_info,
+        'demo': demo_info,
+        'configured': active_info['configured'],
+        'connected': active_info['connected'],
+        'masked_key': active_info['masked_key'],
+        'profile': active_info['profile'],
         'live_mode': bool(bot_engine.execution.mode == 'LIVE') if bot_engine else False
     })
 
 
 @app.route('/api/save_api_credentials', methods=['POST'])
 def save_api_credentials():
-    """Validates and applies new Delta Exchange API credentials live at runtime."""
+    """Validates and applies Delta Exchange API credentials live with auto-gateway detection."""
     try:
         body = request.get_json(force=True) or {}
         new_key = body.get('api_key', '').strip()
         new_secret = body.get('api_secret', '').strip()
+        preferred_env = body.get('environment', 'auto')
+        target_slot = body.get('slot', 'auto')
 
         if not new_key or not new_secret:
             return jsonify({'success': False, 'error': 'Both API Key and API Secret are required.'}), 400
 
-        # Validate with Delta Exchange India API
-        from api_client import DeltaIndiaClient
-        test_client = DeltaIndiaClient(api_key=new_key, api_secret=new_secret)
-        prof_res = test_client.get_profile()
+        # Multi-Gateway verification
+        ok, matched_gw, prof_data, err_msg = validate_delta_credentials(new_key, new_secret, preferred_env)
+        if not ok:
+            return jsonify({
+                'success': False,
+                'error': f'Delta Exchange validation failed across gateways: {err_msg}. Check API Key, Secret, and IP Whitelist.'
+            }), 400
 
-        if not prof_res or not prof_res.get('success'):
-            err = prof_res.get('error', {}) if isinstance(prof_res, dict) else {}
-            err_msg = err.get('message') or prof_res.get('message') or 'Invalid API credentials or IP not authorized on Delta Exchange.'
-            return jsonify({'success': False, 'error': f'Delta Exchange validation failed: {err_msg}'}), 400
+        # Determine target slot
+        if target_slot not in ('live', 'demo'):
+            target_slot = 'demo' if matched_gw.get('is_demo') else 'live'
 
-        # Apply to live bot
-        config.DELTA_API_KEY = new_key
-        config.DELTA_API_SECRET = new_secret
-        os.environ['DELTA_API_KEY'] = new_key
-        os.environ['DELTA_API_SECRET'] = new_secret
+        profile_info = {
+            'user_id': str(prof_data.get('id', '')),
+            'email': prof_data.get('email', ''),
+            'username': prof_data.get('username', ''),
+            'margin_mode': prof_data.get('margin_mode', 'cross')
+        }
 
-        if bot_engine and bot_engine.api_client:
-            bot_engine.api_client.api_key = new_key
-            bot_engine.api_client.api_secret = new_secret
+        # Persist permanently to Cloud & local file
+        import db_manager
+        db_manager.save_api_credentials(
+            api_key=new_key,
+            api_secret=new_secret,
+            slot=target_slot,
+            environment=matched_gw['id'],
+            base_url=matched_gw['base_url'],
+            profile=profile_info
+        )
+
+        # Update bot runtime if this is the active slot or target slot matches current
+        current_active = db_manager.get_active_api_slot()
+        if target_slot == current_active or not config.DELTA_API_KEY:
+            db_manager.set_active_api_slot(target_slot)
+            config.DELTA_API_KEY = new_key
+            config.DELTA_API_SECRET = new_secret
+            config.DELTA_BASE_URL = matched_gw['base_url']
+            os.environ['DELTA_API_KEY'] = new_key
+            os.environ['DELTA_API_SECRET'] = new_secret
+            os.environ['DELTA_BASE_URL'] = matched_gw['base_url']
+
+            if bot_engine and bot_engine.api_client:
+                bot_engine.api_client.api_key = new_key
+                bot_engine.api_client.api_secret = new_secret
+                bot_engine.api_client.base_url = matched_gw['base_url']
+                try:
+                    bot_engine.risk_manager.update_equity()
+                except Exception:
+                    pass
+
+        # If live slot, write to local .env
+        if target_slot == 'live':
             try:
-                bot_engine.risk_manager.update_equity()
-            except Exception:
-                pass
+                env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+                if os.path.exists(env_path):
+                    with open(env_path, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                    new_lines = []
+                    k_found, s_found = False, False
+                    for l in lines:
+                        if l.startswith('DELTA_API_KEY='):
+                            new_lines.append(f'DELTA_API_KEY={new_key}\n')
+                            k_found = True
+                        elif l.startswith('DELTA_API_SECRET='):
+                            new_lines.append(f'DELTA_API_SECRET={new_secret}\n')
+                            s_found = True
+                        else:
+                            new_lines.append(l)
+                    if not k_found: new_lines.append(f'DELTA_API_KEY={new_key}\n')
+                    if not s_found: new_lines.append(f'DELTA_API_SECRET={new_secret}\n')
+                    with open(env_path, 'w', encoding='utf-8') as f:
+                        f.writelines(new_lines)
+            except Exception as _e:
+                app_logger.warning(f"Web [save_api_credentials]: .env write skipped – {_e}")
 
-        # Persist to local .env if writable
-        try:
-            env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
-            if os.path.exists(env_path):
-                with open(env_path, 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
-                new_lines = []
-                k_found = False
-                s_found = False
-                for l in lines:
-                    if l.startswith('DELTA_API_KEY='):
-                        new_lines.append(f'DELTA_API_KEY={new_key}\n')
-                        k_found = True
-                    elif l.startswith('DELTA_API_SECRET='):
-                        new_lines.append(f'DELTA_API_SECRET={new_secret}\n')
-                        s_found = True
-                    else:
-                        new_lines.append(l)
-                if not k_found: new_lines.append(f'DELTA_API_KEY={new_key}\n')
-                if not s_found: new_lines.append(f'DELTA_API_SECRET={new_secret}\n')
-                with open(env_path, 'w', encoding='utf-8') as f:
-                    f.writelines(new_lines)
-        except Exception as _e:
-            app_logger.warning(f"Web [save_api_credentials]: .env write skipped – {_e}")
-
-        # Persist permanently to Cloud & local file so it survives Render redeploys forever
-        try:
-            import db_manager
-            db_manager.save_api_credentials(new_key, new_secret)
-        except Exception as _db_err:
-            app_logger.warning(f"Web [save_api_credentials]: Cloud save warning – {_db_err}")
-
-        prof_data = prof_res.get('result', {})
         masked = f"{new_key[:4]}...{new_key[-4:]}" if len(new_key) >= 8 else "***"
-        app_logger.info(f"Web [save_api_credentials]: API Key updated live: {masked} (User ID: {prof_data.get('id')})")
+        app_logger.info(f"Web [save_api_credentials]: API Key verified on {matched_gw['name']} for {target_slot.upper()} slot (User ID: {profile_info['user_id']})")
 
         return jsonify({
             'success': True,
-            'message': 'API credentials connected, verified, and saved permanently!',
+            'message': f"Connected and verified on {matched_gw['name']}! (User ID: {profile_info['user_id']})",
+            'slot': target_slot,
+            'gateway_name': matched_gw['name'],
+            'environment': matched_gw['id'],
+            'base_url': matched_gw['base_url'],
             'masked_key': masked,
-            'margin_mode': prof_data.get('margin_mode', 'portfolio')
+            'profile': profile_info
         })
 
     except Exception as e:
@@ -1216,28 +1316,76 @@ def save_api_credentials():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/switch_api_slot', methods=['POST'])
+def switch_api_slot():
+    """Switches active API slot between 'live' and 'demo' at runtime."""
+    try:
+        body = request.get_json(force=True) or {}
+        target_slot = body.get('slot', 'live').lower()
+        if target_slot not in ('live', 'demo'):
+            return jsonify({'success': False, 'error': 'Invalid slot specified.'}), 400
+
+        import db_manager
+        ok, slot_dict = db_manager.set_active_api_slot(target_slot)
+        if not ok or not slot_dict.get('api_key'):
+            return jsonify({'success': False, 'error': f'No credentials configured for {target_slot.upper()} slot.'}), 400
+
+        k = slot_dict.get('api_key', '')
+        s = slot_dict.get('api_secret', '')
+        b = slot_dict.get('base_url', config.DELTA_INDIA_BASE_URL)
+
+        config.DELTA_API_KEY = k
+        config.DELTA_API_SECRET = s
+        config.DELTA_BASE_URL = b
+        os.environ['DELTA_API_KEY'] = k
+        os.environ['DELTA_API_SECRET'] = s
+        os.environ['DELTA_BASE_URL'] = b
+
+        if bot_engine and bot_engine.api_client:
+            bot_engine.api_client.api_key = k
+            bot_engine.api_client.api_secret = s
+            bot_engine.api_client.base_url = b
+            try:
+                bot_engine.risk_manager.update_equity()
+            except Exception:
+                pass
+
+        app_logger.info(f"Web [switch_api_slot]: Active slot switched to {target_slot.upper()} ({b})")
+        return jsonify({
+            'success': True,
+            'active_slot': target_slot,
+            'base_url': b,
+            'message': f"Active account switched to {target_slot.upper()} ({b})"
+        })
+
+    except Exception as e:
+        app_logger.error(f"Web [switch_api_slot]: Error – {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/disable_api_key', methods=['POST'])
 def disable_api_key():
-    """Disables active API credentials and puts bot into safe PAPER mode."""
+    """Disables API credentials for a specific slot ('live', 'demo', 'active', or 'all')."""
     try:
-        if bot_engine:
-            bot_engine.execution.mode = 'PAPER'
-            config.BOT_MODE = 'PAPER'
-            if bot_engine.api_client:
-                bot_engine.api_client.api_key = ""
-                bot_engine.api_client.api_secret = ""
+        body = request.get_json(silent=True) or {}
+        target_slot = body.get('slot', 'active')
 
-        config.DELTA_API_KEY = ""
-        config.DELTA_API_SECRET = ""
-        os.environ['DELTA_API_KEY'] = ""
-        os.environ['DELTA_API_SECRET'] = ""
+        import db_manager
+        db_manager.disable_api_slot(target_slot)
 
-        # Clear permanently from Cloud & local file
-        try:
-            import db_manager
-            db_manager.save_api_credentials("", "")
-        except Exception as _db_err:
-            app_logger.warning(f"Web [disable_api_key]: Cloud clear warning – {_db_err}")
+        current_active = db_manager.get_active_api_slot()
+        if target_slot in ('all', 'active') or target_slot == current_active:
+            if bot_engine:
+                bot_engine.execution.mode = 'PAPER'
+                config.BOT_MODE = 'PAPER'
+                if bot_engine.api_client:
+                    bot_engine.api_client.api_key = ""
+                    bot_engine.api_client.api_secret = ""
+
+            config.DELTA_API_KEY = ""
+            config.DELTA_API_SECRET = ""
+            os.environ['DELTA_API_KEY'] = ""
+            os.environ['DELTA_API_SECRET'] = ""
 
         if os.path.exists(LOT_SIZE_FILE):
             try:
@@ -1249,10 +1397,10 @@ def disable_api_key():
             except Exception:
                 pass
 
-        app_logger.warning("Web [disable_api_key]: Delta Exchange API key disabled and bot reverted to PAPER mode.")
+        app_logger.warning(f"Web [disable_api_key]: Delta Exchange API key disabled for slot '{target_slot}'.")
         return jsonify({
             'success': True,
-            'message': 'API Key disconnected and disabled. Bot is now safe in PAPER mode.'
+            'message': f"API Key disconnected and disabled for {target_slot.upper()} slot. Bot is safe."
         })
 
     except Exception as e:

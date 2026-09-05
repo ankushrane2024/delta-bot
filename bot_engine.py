@@ -122,14 +122,22 @@ class DeltaTradingEngine:
         try:
             import db_manager
             cloud_key, cloud_secret = db_manager.load_api_credentials()
+            all_creds = db_manager.load_all_api_credentials()
+            active_slot = all_creds.get('active_slot', 'live')
+            active_data = all_creds.get(active_slot, {})
+            base_url = active_data.get('base_url') or config.DELTA_INDIA_BASE_URL
+
             if cloud_key and cloud_secret:
                 self.api_client.api_key = cloud_key
                 self.api_client.api_secret = cloud_secret
+                self.api_client.base_url = base_url
                 config.DELTA_API_KEY = cloud_key
                 config.DELTA_API_SECRET = cloud_secret
+                config.DELTA_BASE_URL = base_url
                 os.environ['DELTA_API_KEY'] = cloud_key
                 os.environ['DELTA_API_SECRET'] = cloud_secret
-                app_logger.info(f"Engine: Restored persistent API credentials from Cloud ({cloud_key[:4]}...{cloud_key[-4:]})")
+                os.environ['DELTA_BASE_URL'] = base_url
+                app_logger.info(f"Engine: Restored persistent {active_slot.upper()} credentials from Cloud ({cloud_key[:4]}...{cloud_key[-4:]}) on {base_url}")
         except Exception as _cred_err:
             app_logger.warning(f"Engine: Cloud credentials restore notice – {_cred_err}")
 
