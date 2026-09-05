@@ -2891,66 +2891,121 @@ td {
     <!-- TAB 3: CONFIG -->
     <div class="tab-pane" id="tab-config">
         <!-- Delta Exchange API Management Panel -->
-        <div class="glass-panel" style="border: 1px solid rgba(56, 189, 248, 0.25); background: radial-gradient(circle at top left, rgba(14, 165, 233, 0.08), rgba(15, 23, 42, 0.7)); margin-bottom: 25px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.5rem;">🔑</span>
+        <div class="glass-panel" style="position: relative; overflow: hidden; border: 1px solid rgba(56, 189, 248, 0.25); background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 41, 59, 0.72) 100%); backdrop-filter: blur(16px); box-shadow: 0 14px 34px -8px rgba(0, 0, 0, 0.55), 0 0 24px rgba(56, 189, 248, 0.08); border-radius: 16px; margin-bottom: 25px; padding: 22px 24px;">
+            <!-- Ambient Glow Accents -->
+            <div style="position: absolute; top: -60px; right: -40px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(14, 165, 233, 0.18) 0%, transparent 70%); pointer-events: none;"></div>
+            <div style="position: absolute; bottom: -60px; left: -40px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%); pointer-events: none;"></div>
+
+            <!-- Header Row -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 14px; position: relative; z-index: 1;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(99, 102, 241, 0.25)); border: 1px solid rgba(56, 189, 248, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.35rem; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.2);">
+                        🔑
+                    </div>
                     <div>
-                        <h2 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #f8fafc;">Delta Exchange API Key Management</h2>
-                        <div style="font-size: 0.8rem; color: #94a3b8;">Manage, update or disable your Delta India API credentials live</div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <h2 style="margin: 0; font-size: 1.18rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em;">Delta Exchange API Management</h2>
+                            <span style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.04em;">LIVE RUNTIME</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 3px; display: flex; align-items: center; gap: 6px;">
+                            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+                            Delta India Gateway • <code style="font-size: 0.78rem; color: #cbd5e1; background: rgba(0,0,0,0.3); padding: 1px 6px; border-radius: 4px;">api.india.delta.exchange</code>
+                        </div>
                     </div>
                 </div>
-                <div id="api-status-badge" style="background: rgba(100, 116, 139, 0.15); color: #94a3b8; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.82rem; border: 1px solid rgba(148, 163, 184, 0.2); display: flex; align-items: center; gap: 6px;">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span> Checking API...
+                <div id="api-status-badge" style="background: rgba(16, 185, 129, 0.12); color: #34d399; padding: 7px 16px; border-radius: 24px; font-weight: 700; font-size: 0.82rem; border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 8px; box-shadow: 0 0 16px rgba(16, 185, 129, 0.12);">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block; box-shadow: 0 0 8px #10b981;"></span> Checking API...
                 </div>
             </div>
 
-            <!-- Current Key Info Bar -->
-            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <div>
-                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700;">Active API Key</div>
-                    <div id="api-masked-key-display" style="font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 600; color: #38bdf8; margin-top: 2px;">
+            <!-- Active Key HUD 3-Tile Row -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 22px; position: relative; z-index: 1;">
+                <!-- Tile 1: Active Key -->
+                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s;" onmouseover="this.style.borderColor='rgba(56,189,248,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Configured API Key</span>
+                        <span style="font-size: 0.72rem; color: #10b981; background: rgba(16,185,129,0.1); padding: 1px 6px; border-radius: 4px; font-weight: 600;">ACTIVE</span>
+                    </div>
+                    <div id="api-masked-key-display" style="font-family: 'JetBrains Mono', monospace; font-size: 1.02rem; font-weight: 700; color: #38bdf8; margin-top: 4px; letter-spacing: 0.03em;">
                         Loading...
                     </div>
                 </div>
-                <div id="api-profile-details" style="font-size: 0.85rem; color: #94a3b8; text-align: right;">
-                    <span id="api-user-id">-</span>
-                </div>
-            </div>
 
-            <!-- Credentials Input Grid -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
-                <div>
-                    <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">Delta API Key</label>
-                    <input type="text" id="input-api-key" placeholder="Enter Delta API Key (e.g. tOhM7...)" 
-                           style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 10px 14px; color: #f8fafc; font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; outline: none; transition: border-color 0.2s;"
-                           onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='rgba(255, 255, 255, 0.15)'">
-                </div>
-                <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Delta API Secret</label>
-                        <button type="button" onclick="toggleApiSecretVisibility()" style="background: none; border: none; color: #38bdf8; font-size: 0.75rem; cursor: pointer; padding: 0;">Show/Hide</button>
+                <!-- Tile 2: User Account ID -->
+                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s;" onmouseover="this.style.borderColor='rgba(56,189,248,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Delta User Account</span>
+                        <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; font-weight: 600;">PROFILE</span>
                     </div>
-                    <input type="password" id="input-api-secret" placeholder="Enter Delta API Secret" 
-                           style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 10px 14px; color: #f8fafc; font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; outline: none; transition: border-color 0.2s;"
-                           onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='rgba(255, 255, 255, 0.15)'">
+                    <div id="api-user-id" style="font-family: 'JetBrains Mono', monospace; font-size: 0.98rem; font-weight: 600; color: #f1f5f9; margin-top: 4px;">
+                        Verifying...
+                    </div>
+                </div>
+
+                <!-- Tile 3: Margin Architecture -->
+                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s;" onmouseover="this.style.borderColor='rgba(56,189,248,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Margin Architecture</span>
+                        <span id="api-margin-badge" style="font-size: 0.72rem; color: #a855f7; background: rgba(168,85,247,0.12); padding: 1px 6px; border-radius: 4px; font-weight: 600;">AUTO</span>
+                    </div>
+                    <div id="api-margin-mode" style="font-family: 'JetBrains Mono', monospace; font-size: 0.98rem; font-weight: 700; color: #cbd5e1; margin-top: 4px;">
+                        PORTFOLIO / CROSS
+                    </div>
                 </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <div style="font-size: 0.78rem; color: #64748b;">
-                    🛡️ Verified directly with Delta India API. Works immediately without restart.
+            <!-- Credentials Input Form Card -->
+            <div style="background: rgba(11, 17, 32, 0.7); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; position: relative; z-index: 1;">
+                <div style="font-size: 0.85rem; font-weight: 700; color: #f8fafc; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                    <span>⚙️</span> Update API Key & Secret Live
                 </div>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                    <div>
+                        <label style="display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">
+                            <span>DELTA API KEY</span>
+                            <span style="font-size: 0.7rem; color: #64748b;">Read/Write Orders</span>
+                        </label>
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <span style="position: absolute; left: 12px; font-size: 0.9rem; color: #38bdf8; pointer-events: none;">🔑</span>
+                            <input type="text" id="input-api-key" placeholder="Paste your Delta API Key here..." 
+                                   style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px; padding: 11px 14px 11px 36px; color: #f8fafc; font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; outline: none; transition: all 0.2s;"
+                                   onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 14px rgba(56, 189, 248, 0.25)'" 
+                                   onblur="this.style.borderColor='rgba(255, 255, 255, 0.14)'; this.style.boxShadow='none'">
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label style="font-size: 0.78rem; font-weight: 700; color: #94a3b8;">DELTA API SECRET</label>
+                            <button type="button" id="btn-toggle-secret" onclick="toggleApiSecretVisibility()" style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); color: #38bdf8; font-size: 0.72rem; font-weight: 600; cursor: pointer; padding: 2px 8px; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(56,189,248,0.2)'" onmouseout="this.style.background='rgba(56,189,248,0.1)'">👁️ Show</button>
+                        </div>
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <span style="position: absolute; left: 12px; font-size: 0.9rem; color: #a855f7; pointer-events: none;">🔒</span>
+                            <input type="password" id="input-api-secret" placeholder="Paste your Delta API Secret here..." 
+                                   style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px; padding: 11px 14px 11px 36px; color: #f8fafc; font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; outline: none; transition: all 0.2s;"
+                                   onfocus="this.style.borderColor='#a855f7'; this.style.boxShadow='0 0 14px rgba(168, 85, 247, 0.25)'" 
+                                   onblur="this.style.borderColor='rgba(255, 255, 255, 0.14)'; this.style.boxShadow='none'">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Controls & Whitelist Notice Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; position: relative; z-index: 1;">
+                <div style="font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1rem;">🛡️</span>
+                    <span>Direct connection test on Delta India. Updates bot memory instantly without restart.</span>
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                     <button type="button" id="btn-disable-api" onclick="disableApiKeyAction()"
-                            style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; border-radius: 8px; padding: 10px 18px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;"
-                            onmouseover="this.style.background='rgba(239, 68, 68, 0.25)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.15)'">
+                            style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(185, 28, 28, 0.2)); border: 1px solid rgba(239, 68, 68, 0.45); color: #f87171; border-radius: 10px; padding: 11px 20px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.25s; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.15);"
+                            onmouseover="this.style.background='rgba(239, 68, 68, 0.28)'; this.style.transform='translateY(-1px)'" 
+                            onmouseout="this.style.background='linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(185, 28, 28, 0.2))'; this.style.transform='translateY(0)'">
                         <span>🛑</span> DISABLE / DISCONNECT API
                     </button>
                     <button type="button" id="btn-save-api" onclick="saveApiCredentialsAction()"
-                            style="background: linear-gradient(135deg, #0284c7, #0369a1); border: 1px solid #38bdf8; color: #fff; border-radius: 8px; padding: 10px 22px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35); transition: all 0.2s;"
-                            onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                            style="background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%); border: 1px solid #38bdf8; color: #ffffff; border-radius: 10px; padding: 11px 26px; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45); transition: all 0.25s; letter-spacing: 0.02em;"
+                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 26px rgba(2, 132, 199, 0.65)'" 
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(2, 132, 199, 0.45)'">
                         <span>💾</span> CONNECT & UPDATE API KEY
                     </button>
                 </div>
@@ -5556,8 +5611,15 @@ setTimeout(updateSystemHealth, 1000);
 // --- API Credentials Management ---
 function toggleApiSecretVisibility() {
     const input = document.getElementById('input-api-secret');
+    const btn = document.getElementById('btn-toggle-secret');
     if (!input) return;
-    input.type = input.type === 'password' ? 'text' : 'password';
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (btn) btn.textContent = '🙈 Hide';
+    } else {
+        input.type = 'password';
+        if (btn) btn.textContent = '👁️ Show';
+    }
 }
 
 async function fetchApiCredentials() {
@@ -5567,36 +5629,50 @@ async function fetchApiCredentials() {
         const badge = document.getElementById('api-status-badge');
         const keyDisplay = document.getElementById('api-masked-key-display');
         const userDisplay = document.getElementById('api-user-id');
+        const marginDisplay = document.getElementById('api-margin-mode');
+        const marginBadge = document.getElementById('api-margin-badge');
 
         if (!badge || !keyDisplay) return;
 
         if (!data.configured) {
-            badge.style.background = 'rgba(239, 68, 68, 0.15)';
+            badge.style.background = 'rgba(239, 68, 68, 0.14)';
             badge.style.color = '#f87171';
-            badge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;"></span> NOT CONFIGURED';
+            badge.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;box-shadow:0 0 6px #ef4444;"></span> NOT CONFIGURED';
             keyDisplay.textContent = 'None (API Keys Disabled)';
-            keyDisplay.style.color = '#94a3b8';
+            keyDisplay.style.color = '#64748b';
             if (userDisplay) userDisplay.textContent = 'Trading Disabled';
+            if (marginDisplay) marginDisplay.textContent = 'INACTIVE';
+            if (marginBadge) { marginBadge.textContent = 'OFF'; marginBadge.style.color = '#94a3b8'; }
         } else if (data.connected) {
-            badge.style.background = 'rgba(16, 185, 129, 0.15)';
+            badge.style.background = 'rgba(16, 185, 129, 0.12)';
             badge.style.color = '#34d399';
-            badge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span> CONNECTED (Delta India)';
+            badge.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 8px #10b981;"></span> CONNECTED (Delta India)';
             keyDisplay.textContent = data.masked_key;
             keyDisplay.style.color = '#38bdf8';
             if (userDisplay) {
                 const p = data.profile || {};
-                userDisplay.textContent = `User ID: ${p.user_id || 'N/A'} | Margin: ${(p.margin_mode || 'portfolio').toUpperCase()}`;
+                userDisplay.textContent = p.user_id ? `ID: ${p.user_id}` : 'Verified Profile';
+            }
+            if (marginDisplay) {
+                const p = data.profile || {};
+                const modeStr = (p.margin_mode || 'portfolio').toUpperCase();
+                marginDisplay.textContent = modeStr + ' MARGIN';
+                if (marginBadge) {
+                    marginBadge.textContent = 'VERIFIED';
+                    marginBadge.style.color = '#a855f7';
+                }
             }
         } else {
-            badge.style.background = 'rgba(245, 158, 11, 0.15)';
+            badge.style.background = 'rgba(245, 158, 11, 0.14)';
             badge.style.color = '#fbbf24';
-            badge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;"></span> DISCONNECTED / AUTH FAILED';
+            badge.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;box-shadow:0 0 6px #f59e0b;"></span> DISCONNECTED / AUTH FAILED';
             keyDisplay.textContent = data.masked_key;
             keyDisplay.style.color = '#f59e0b';
-            if (userDisplay) userDisplay.textContent = 'Check API permissions / IP whitelist';
+            if (userDisplay) userDisplay.textContent = 'Check API permissions / IP';
+            if (marginDisplay) marginDisplay.textContent = 'UNVERIFIED';
         }
     } catch (e) {
         console.error("Failed to fetch API credentials:", e);
