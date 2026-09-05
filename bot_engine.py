@@ -123,19 +123,29 @@ class DeltaTradingEngine:
         self.risk_manager = RiskManager(self.api_client)
         self.strategy = ShortStrangleStrategy(self.api_client)
         
-        # Check lot_size.json for persisted live_mode
-        initial_mode = BOT_MODE
-        try:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            path = os.path.join(base_dir, 'lot_size.json')
-            if os.path.exists(path):
-                import json
-                with open(path, 'r') as f:
-                    data = json.load(f)
-                if data.get('live_mode') is True:
-                    initial_mode = 'LIVE'
-        except Exception as e:
-            app_logger.warning(f"Engine: Error reading lot_size.json for initial mode: {e}")
+        # STRICT MANUAL-ONLY STARTUP:
+        # Never automatically boot into LIVE mode on restart or reboot!
+        # Always initialize in PAPER mode unless BOT_MODE is explicitly set in .env.
+        initial_mode = 'PAPER'
+        if BOT_MODE == 'LIVE':
+            initial_mode = 'LIVE'
+            app_logger.warning("Engine: Initialized in LIVE mode via explicit .env BOT_MODE=LIVE setting.")
+        else:
+            app_logger.info("Engine: Safe Startup enforced — Initialized in PAPER mode.")
+            # Ensure lot_size.json live_mode is reset to false at startup for fail-safe safety
+            try:
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                path = os.path.join(base_dir, 'lot_size.json')
+                if os.path.exists(path):
+                    import json
+                    with open(path, 'r') as f:
+                        lot_data = json.load(f)
+                    if lot_data.get('live_mode'):
+                        lot_data['live_mode'] = False
+                        with open(path, 'w') as f:
+                            json.dump(lot_data, f, indent=4)
+            except Exception:
+                pass
 
         self.execution = ExecutionHandler(self.api_client, mode=initial_mode)
         self.filters = TradingFilters(self.api_client, dvol_provider=self.dvol_provider)
@@ -599,14 +609,17 @@ class DeltaTradingEngine:
                 # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
                 current_total_value += price * data['size'] * LOT_TO_BTC
             
-            # Always log the trade, even if total_entry_premium was somehow reset to 0
+            # Always close positions on exchange FIRST while in LIVE mode, before resetting state
             entry_prem = self.total_entry_premium if self.total_entry_premium > 0 else current_total_value
             profit = entry_prem - current_total_value
+            self.execution.close_all(reason="End of Day Square-off")
+            self.smart_hedging.close_hedge()
             self._log_and_reset_trade(profit, "EOD Square-off")
             notifier.notify_full_exit("End of Day Square-off", profit)
-                
-        self.execution.close_all(reason="End of Day Square-off")
-        self.smart_hedging.close_hedge()
+        else:
+            self.execution.close_all(reason="End of Day Square-off")
+            self.smart_hedging.close_hedge()
+
         self.reset_daily_state()
 
     def run_test_order(self):
@@ -978,6 +991,14 @@ class DeltaTradingEngine:
                     # BUG FIX: Guard against infinite re-triggering at 16:55 IST.
                     # Only applies to daytime trades entered BEFORE 16:55 IST (09:00 - 17:00 IST session),
                     # and respects a 5-minute minimum grace period for manual force orders.
+                    # Periodic orphan stop order check on exchange (every 60s)
+                    if time.time() - getattr(self, '_last_orphan_prune_ts', 0) > 60.0:
+                        self._last_orphan_prune_ts = time.time()
+                        try:
+                            self.execution.prune_orphan_stop_orders()
+                        except Exception:
+                            pass
+
                     try:
                         now_ist = get_ist_now()
                         current_time_minutes = now_ist.hour * 60 + now_ist.minute
@@ -1458,8 +1479,10 @@ class DeltaTradingEngine:
                         if action == "STOP_LOSS_ALL":
                             sl_pct = int(config.SL_PERCENT * 100)
                             app_logger.warning(f"Engine: Combined {sl_pct}% Stop Loss Hit!")
-                            self._log_and_reset_trade(profit, f"Stop Loss Hit (-{sl_pct}%)")
+                            # CRITICAL FIX: Close exchange positions FIRST before mode deactivation
                             self.execution.close_all(reason=f"Stop Loss Hit (-{sl_pct}%)")
+                            self.smart_hedging.close_hedge()
+                            self._log_and_reset_trade(profit, f"Stop Loss Hit (-{sl_pct}%)")
                             self.risk_manager.reset_trailing_state()
                             notifier.notify_stop_loss(profit, False)
                             
@@ -1468,8 +1491,10 @@ class DeltaTradingEngine:
                             locked_sl = trail_state['current_trailing_sl']
                             peak = trail_state['highest_profit_pct']
                             app_logger.info(f"Engine: Dynamic Trailing SL Hit! Locked at +{locked_sl}% | Peak was +{peak}%")
-                            self._log_and_reset_trade(profit, f"Trailing SL Hit (+{locked_sl}%)")
+                            # CRITICAL FIX: Close exchange positions FIRST before mode deactivation
                             self.execution.close_all(reason=f"Trailing SL Hit (+{locked_sl}%)")
+                            self.smart_hedging.close_hedge()
+                            self._log_and_reset_trade(profit, f"Trailing SL Hit (+{locked_sl}%)")
                             self.risk_manager.reset_trailing_state()
                             notifier.notify_full_exit(f"Trailing SL Hit (+{locked_sl}% locked, peak {peak}%)", profit)
  
@@ -1798,6 +1823,11 @@ class DeltaTradingEngine:
             
             # Auto-disable live mode for safety after trade square off
             if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
+                # Extra safety net: sweep and cancel any remaining open stop orders
+                try:
+                    self.execution.cancel_all_exchange_stop_orders()
+                except Exception as _sweep_err:
+                    app_logger.error(f"Engine: Error in post-trade stop order sweep: {_sweep_err}")
                 app_logger.warning("Engine: Trade finished. Auto-deactivating LIVE mode for safety.")
                 self.execution.mode = 'PAPER'
                 config.BOT_MODE = 'PAPER'

@@ -9,9 +9,13 @@ class ExecutionHandler:
     def __init__(self, api_client, mode='PAPER'):
         self.api_client = api_client
         self.mode = mode
+        self.paper_active_positions = {}
+        self.live_active_positions = {}
+        self._persisted_dpl_state = None
+        self._persisted_chart_data = None
         
-        # In PAPER mode, try to recover active positions from cloud DB after a server reboot
-        if self.mode != 'LIVE':
+        # Load PAPER positions from cloud DB / local cache
+        try:
             loaded = db_manager.load_active_positions()
             # Extract persisted DPL state if present (injected by save_state)
             self._persisted_dpl_state = loaded.pop('__dpl_state__', None)
@@ -51,19 +55,36 @@ class ExecutionHandler:
                 if not is_stale:
                     valid_positions[sym] = pos_data
 
-            self.active_positions = valid_positions
+            self.paper_active_positions = valid_positions
             if len(valid_positions) != len(loaded):
                 self.save_state()
-        else:
-            self.active_positions = {} # symbol -> data
-            self._persisted_dpl_state = None
-            self._persisted_chart_data = None
-            
+        except Exception as e:
+            app_logger.warning(f"Execution: Error loading paper positions: {e}")
+
+        # Load LIVE positions from isolated store
+        try:
+            live_loaded = db_manager.load_live_active_positions()
+            self.live_active_positions = {k: v for k, v in live_loaded.items() if not k.startswith('__')}
+        except Exception as e:
+            app_logger.warning(f"Execution: Error loading live positions: {e}")
+
         self.hedge_position = 0 # Net BTC futures size
         self.hedge_size_btc = 0.0  # Actual BTC size of current hedge
         self.hedge_order_id = None  # Last hedge order ID
         self.hedge_entry_price = 0.0
         self.hedge_owner = "NONE"
+
+    @property
+    def active_positions(self):
+        """Routes active positions strictly according to active trading mode."""
+        return self.live_active_positions if self.mode == 'LIVE' else self.paper_active_positions
+
+    @active_positions.setter
+    def active_positions(self, val):
+        if self.mode == 'LIVE':
+            self.live_active_positions = val
+        else:
+            self.paper_active_positions = val
 
     def acquire_hedge_lock(self, owner: str) -> bool:
         """Atomically acquires the hedge lock. Fails if already held by another."""
@@ -90,16 +111,105 @@ class ExecutionHandler:
         }
 
     def save_state(self, dpl_state=None, chart_data=None):
-        """Persists the current paper trading active positions to the cloud database.
-        Optionally includes the DPL trailing state and chart data for crash recovery."""
+        """Persists active positions to the corresponding database (Paper vs Live)."""
         if self.mode != 'LIVE':
-            data_to_save = dict(self.active_positions)
+            data_to_save = dict(self.paper_active_positions)
             if dpl_state:
                 data_to_save['__dpl_state__'] = dpl_state
             if chart_data is not None:
-                # Save the ENTIRE chart data so full trade history survives server restarts
                 data_to_save['__chart_data__'] = chart_data
             db_manager.save_active_positions(data_to_save)
+        else:
+            data_to_save = dict(self.live_active_positions)
+            if dpl_state:
+                data_to_save['__dpl_state__'] = dpl_state
+            if chart_data is not None:
+                data_to_save['__chart_data__'] = chart_data
+            db_manager.save_live_active_positions(data_to_save)
+
+    def cancel_all_exchange_stop_orders(self, product_id=None):
+        """
+        Queries Delta Exchange /v2/orders and cancels all open stop orders
+        (and any pending orders for product_id if provided).
+        Guarantees NO orphan stop orders are left alive on the exchange.
+        """
+        if not self.api_client:
+            return []
+        try:
+            res = self.api_client.request('GET', '/v2/orders')
+            orders = res.get('result', []) if isinstance(res, dict) else res
+            if not orders:
+                return []
+            
+            cancelled = []
+            for o in orders:
+                oid = o.get('id')
+                pid = o.get('product_id')
+                sym = o.get('product_symbol', '')
+                stop_type = o.get('stop_order_type')
+                stop_p = o.get('stop_price')
+                is_stop = bool(stop_type or stop_p)
+                
+                should_cancel = False
+                if product_id is not None:
+                    if pid == product_id or sym == str(product_id):
+                        should_cancel = True
+                else:
+                    if is_stop or sym.startswith(('C-BTC', 'P-BTC', 'BTC-')):
+                        should_cancel = True
+                
+                if should_cancel and oid and pid:
+                    try:
+                        c_res = self.api_client.cancel_order(product_id=pid, order_id=oid)
+                        if c_res and c_res.get('success'):
+                            app_logger.info(f"Execution [LIVE]: Successfully cancelled orphan/backup order {oid} ({sym}, stop={stop_p})")
+                            cancelled.append(oid)
+                        else:
+                            app_logger.warning(f"Execution [LIVE]: Could not cancel order {oid} ({sym}): {c_res}")
+                    except Exception as ex:
+                        app_logger.error(f"Execution [LIVE]: Exception cancelling order {oid}: {ex}")
+            return cancelled
+        except Exception as e:
+            app_logger.error(f"Execution [LIVE]: Error querying orders to cancel: {e}")
+            return []
+
+    def prune_orphan_stop_orders(self):
+        """
+        Checks all open orders on Delta Exchange.
+        If an open stop order exists for an option where current active position size is 0,
+        cancels it immediately to prevent ghost fills.
+        """
+        if not self.api_client:
+            return []
+        try:
+            # 1. Query real positions from exchange
+            pos_res = self.api_client.get_positions()
+            pos_list = pos_res.get('result', []) if isinstance(pos_res, dict) else pos_res
+            active_product_ids = set()
+            for p in (pos_list or []):
+                if float(p.get('size', 0)) != 0:
+                    active_product_ids.add(p.get('product_id'))
+            
+            # 2. Query all open orders from exchange
+            ord_res = self.api_client.request('GET', '/v2/orders')
+            orders = ord_res.get('result', []) if isinstance(ord_res, dict) else ord_res
+            
+            pruned = []
+            for o in (orders or []):
+                pid = o.get('product_id')
+                oid = o.get('id')
+                sym = o.get('product_symbol', '')
+                is_opt = sym.startswith(('C-BTC', 'P-BTC', 'BTC-')) or bool(o.get('stop_order_type'))
+                if is_opt and pid not in active_product_ids and oid and pid:
+                    app_logger.warning(f"Execution [LIVE]: Detected ORPHAN stop order {oid} ({sym}) with NO active position. Pruning immediately!")
+                    c_res = self.api_client.cancel_order(product_id=pid, order_id=oid)
+                    if c_res and c_res.get('success'):
+                        app_logger.info(f"Execution [LIVE]: Orphan stop order {oid} ({sym}) cancelled successfully.")
+                        pruned.append(oid)
+            return pruned
+        except Exception as e:
+            app_logger.error(f"Execution [LIVE]: Error in prune_orphan_stop_orders: {e}")
+            return []
 
     def execute_strangle(self, call_opt, put_opt, size):
         """Places the short strangle orders."""
@@ -275,7 +385,7 @@ class ExecutionHandler:
 
     def close_all(self, reason="Manual"):
         """Closes all active options positions and hedges."""
-        app_logger.info(f"Execution: Closing all positions due to {reason}")
+        app_logger.info(f"Execution: Closing all positions due to {reason} (Mode: {self.mode})")
         self.release_hedge_lock(self.hedge_owner) # Release lock regardless of owner
 
         for symbol, data in list(self.active_positions.items()):
@@ -294,7 +404,9 @@ class ExecutionHandler:
                             app_logger.warning(f"Execution [LIVE]: Could not cancel backup SL {sl_order_id} for {symbol}: {cancel_res}. Proceeding with close anyway.")
                     except Exception as cancel_err:
                         app_logger.error(f"Execution [LIVE]: Exception cancelling backup SL for {symbol}: {cancel_err}")
-                # ────────────────────────────────────────────────────────────────
+                
+                # Also cancel ALL stop orders for this product to prevent any orphan orders
+                self.cancel_all_exchange_stop_orders(product_id=data.get('product_id'))
 
                 res = self.api_client.place_order(data['product_id'], 'buy', data['size'])
                 if res.get('success'):
@@ -310,6 +422,13 @@ class ExecutionHandler:
         if self.hedge_position != 0 or abs(self.hedge_size_btc) > 0.0001:
             self.close_hedge()
             
+        # Final safety sweep for LIVE mode: cancel ALL remaining stop orders for options
+        if self.mode == 'LIVE':
+            try:
+                self.cancel_all_exchange_stop_orders()
+            except Exception as _sweep_err:
+                app_logger.error(f"Execution [LIVE]: Error in final stop orders sweep: {_sweep_err}")
+
         self.save_state()
 
     def partial_close(self, percentage=0.5):
@@ -502,6 +621,17 @@ class ExecutionHandler:
         if self.mode != 'LIVE':
             return
         try:
+            # Query open orders to preserve/discover exchange_sl_order_id
+            sl_map = {}
+            try:
+                ord_res = self.api_client.request('GET', '/v2/orders')
+                open_ords = ord_res.get('result', []) if isinstance(ord_res, dict) else ord_res
+                for o in (open_ords or []):
+                    if o.get('stop_order_type') or o.get('stop_price'):
+                        sl_map[o.get('product_id')] = o.get('id')
+            except Exception:
+                pass
+
             res = self.api_client.get_positions()
             if res and res.get('success'):
                 positions = res.get('result', [])
@@ -523,19 +653,24 @@ class ExecutionHandler:
                                     strike_val = float(parts[2])
                             except Exception:
                                 pass
+                        
+                        pid = p.get('product_id')
+                        existing_sl = self.live_active_positions.get(symbol, {}).get('exchange_sl_order_id')
+                        sl_id = sl_map.get(pid) or existing_sl
+
                         synced[symbol] = {
                             'entry_price': float(p.get('entry_price') or p.get('avg_entry_price') or 0.0),
                             'entry_price_raw': float(p.get('entry_price') or 0.0),
                             'size': abs(size),
-                            'product_id': p.get('product_id'),
+                            'product_id': pid,
                             'side': 'SELL' if size < 0 else 'BUY',
                             'leg_type': leg_type,
                             'strike': strike_val,
                             'entry_time': get_ist_now().isoformat(),
-                            'exchange_sl_order_id': None
+                            'exchange_sl_order_id': sl_id
                         }
                 if synced:
-                    self.active_positions = synced
+                    self.live_active_positions = synced
                     try:
                         self.api_client.subscribe_ws(list(synced.keys()))
                     except Exception:
@@ -543,7 +678,7 @@ class ExecutionHandler:
                     self.save_state()
                     app_logger.info(f"Execution [LIVE]: Synced {len(synced)} active options positions from exchange: {list(synced.keys())}")
                 else:
-                    self.active_positions = {}
+                    self.live_active_positions = {}
                     self.save_state()
                     app_logger.info("Execution [LIVE]: No open options positions found on exchange.")
             else:

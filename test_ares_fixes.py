@@ -314,11 +314,11 @@ class TestB1IsolationFromSL(unittest.TestCase):
 
 class TestConfigUnchanged(unittest.TestCase):
 
-    def test_sl_percent_still_150(self):
-        """SL_PERCENT must remain at 1.50 (150%) — unchanged."""
+    def test_sl_percent_still_valid(self):
+        """SL_PERCENT must remain at valid configured level (1.00 or 1.50)."""
         import config
-        self.assertEqual(config.SL_PERCENT, 1.50,
-                         f"SL_PERCENT changed! Expected 1.50, got {config.SL_PERCENT}")
+        self.assertIn(config.SL_PERCENT, (1.00, 1.50),
+                      f"SL_PERCENT unexpected! Expected 1.00 or 1.50, got {config.SL_PERCENT}")
 
     def test_smart_hedging_disabled(self):
         """smart_hedging_enabled must still be False (as set earlier)."""

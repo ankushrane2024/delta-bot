@@ -2848,9 +2848,18 @@ td {
                     badge.className = 'status-badge offline';
                 }
 
-                // Update Stats
-                if(document.getElementById('equity-val')) document.getElementById('equity-val').textContent = `$${data.equity.toLocaleString()}`;
-                if(document.getElementById('mode-val')) document.getElementById('mode-val').textContent = data.mode;
+                // Update Stats & Separate Paper vs Live Equity
+                const isLive = data.mode === 'LIVE';
+                const eqEl = document.getElementById('equity-val');
+                if (eqEl) {
+                    const dispEq = isLive ? (data.live_equity !== undefined && data.live_equity > 0 ? data.live_equity : data.equity) : (data.paper_equity !== undefined ? data.paper_equity : data.equity);
+                    eqEl.textContent = `$${Number(dispEq).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                }
+                const modeEl = document.getElementById('mode-val');
+                if (modeEl) {
+                    modeEl.textContent = isLive ? '🔴 LIVE (Real Delta)' : '📝 PAPER (Simulated)';
+                    modeEl.style.color = isLive ? '#ef4444' : '#38bdf8';
+                }
 
 
 

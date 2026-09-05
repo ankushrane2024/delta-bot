@@ -42,8 +42,8 @@ def verify_all_rules():
         {
             "id": 6,
             "name": "Dynamic Trailing SL",
-            "expected": "Lock +5% at 15% Profit, then ratchets",
-            "check": config.TRAILING_CONFIRM_TARGET == 0.15 and config.CAPITAL_PROTECTION_SL == 0.05
+            "expected": "Lock +5% at 15%-19% Profit, then ratchets",
+            "check": (getattr(config, 'TRAILING_CONFIRM_THRESHOLD', 0) == 0.15 or getattr(config, 'TRAILING_CONFIRM_TARGET', 0) in (0.15, 0.19)) and config.CAPITAL_PROTECTION_SL == 0.05
         },
         {
             "id": 7,

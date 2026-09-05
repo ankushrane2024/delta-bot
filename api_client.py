@@ -179,13 +179,30 @@ class DeltaIndiaClient:
             params["underlying_asset_symbol"] = underlying_asset_symbol
         return self.request("GET", "/v2/positions", params=params)
 
+    def get_profile(self):
+        """Fetch user profile details including account margin mode."""
+        return self.request("GET", "/v2/profile")
+
     def set_margin_mode(self, product_id, margin_mode="portfolio"):
-        """Strictly sets Portfolio Margin mode before trading."""
-        data = {
-            "product_id": product_id,
-            "margin_mode": margin_mode
-        }
-        return self.request("POST", "/v2/orders/margin_mode", data=data)
+        """Sets margin mode before trading. Falls back gracefully to account profile margin."""
+        try:
+            data = {
+                "product_id": product_id,
+                "margin_mode": margin_mode
+            }
+            res = self.request("POST", "/v2/orders/margin_mode", data=data)
+            if not res.get('success'):
+                err = res.get('error', {})
+                err_str = str(err).lower() if isinstance(err, (dict, str)) else ''
+                if 'http_error' in err_str or 'not found' in err_str or res.get('message') == 'Not Found':
+                    # Delta Exchange uses account-level margin mode. Check profile.
+                    prof = self.get_profile()
+                    if prof.get('success'):
+                        curr_mode = prof.get('result', {}).get('margin_mode', 'cross')
+                        return {'success': True, 'margin_mode': curr_mode, 'note': 'account_level_margin'}
+            return res
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
 
     def set_leverage(self, product_id, leverage):
         return self.request("POST", "/v2/orders/leverage", data={"product_id": product_id, "leverage": str(leverage)})

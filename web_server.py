@@ -335,12 +335,25 @@ def get_status():
     
     dvol_status = bot_engine.dvol_provider.get_status() if getattr(bot_engine, 'dvol_provider', None) else {}
     
+    current_mode = getattr(bot_engine.execution, 'mode', 'PAPER')
+    paper_eq = float(getattr(bot_engine.risk_manager, 'paper_equity', 50000.0))
+    live_eq = float(getattr(bot_engine.risk_manager, 'live_equity', 0.0))
+    active_eq = live_eq if (current_mode == 'LIVE' and live_eq > 0) else paper_eq
+
+    paper_perf = bot_engine.performance_tracker.get_metrics(paper_eq, mode='PAPER')
+    live_perf = bot_engine.performance_tracker.get_metrics(live_eq, mode='LIVE')
+    active_perf = live_perf if current_mode == 'LIVE' else paper_perf
+
     return jsonify({
         'is_running': bot_engine.is_running,
-        'mode': getattr(bot_engine.execution, 'mode', 'UNKNOWN'),
-        'equity': round(bot_engine.risk_manager.current_equity, 2),
+        'mode': current_mode,
+        'equity': round(active_eq, 2),
+        'paper_equity': round(paper_eq, 2),
+        'live_equity': round(live_eq, 2),
         'daily_loss_hits': bot_engine.daily_loss_hits,
         'positions': positions,
+        'paper_positions': [p for p in positions] if current_mode == 'PAPER' else [],
+        'live_positions': [p for p in positions] if current_mode == 'LIVE' else [],
         'total_entry_premium': round(total_entry_premium, 4),
         'total_capital_used': total_capital_used,
         'btc_price': round(btc_price, 2),
@@ -351,7 +364,9 @@ def get_status():
         'total_pnl_pct_capital': round(total_pnl_pct_capital, 2),
         'total_pnl_pct': round(total_pnl_pct_capital, 2),
         'logs': logs,
-        'performance': bot_engine.performance_tracker.get_metrics(bot_engine.risk_manager.current_equity),
+        'performance': active_perf,
+        'paper_performance': paper_perf,
+        'live_performance': live_perf,
         'rule_report': bot_engine.latest_rule_report,
         'schedule_info': bot_engine.get_schedule_info(),
         'regime_filter_enabled': bot_engine.market_regime_filter_enabled,
@@ -896,9 +911,17 @@ def toggle_live_mode():
 
         if activate:
             try:
+                bot_engine.risk_manager.update_equity()
+                bot_engine.execution.prune_orphan_stop_orders()
                 bot_engine.execution.sync_live_positions()
             except Exception as _sync_err:
-                app_logger.warning(f"Web [toggle_live_mode]: Error syncing live positions: {_sync_err}")
+                app_logger.warning(f"Web [toggle_live_mode]: Error preparing live mode: {_sync_err}")
+        else:
+            try:
+                # Sweep and cancel all exchange stop orders upon deactivating live mode
+                bot_engine.execution.cancel_all_exchange_stop_orders()
+            except Exception as _clean_err:
+                app_logger.warning(f"Web [toggle_live_mode]: Error cleaning exchange stop orders: {_clean_err}")
 
         # Notify via Telegram if notifier available
         try:
@@ -1105,6 +1128,13 @@ def history_page():
 @app.route('/api/history')
 def get_trade_history():
     mode = request.args.get('mode', 'PAPER').upper()
+    if bot_engine and getattr(bot_engine, 'performance_tracker', None):
+        pt = bot_engine.performance_tracker
+        if mode == 'LIVE':
+            return jsonify({"trades": pt.live_trades, "max_equity": pt.live_max_equity})
+        else:
+            return jsonify({"trades": pt.trades, "max_equity": pt.max_equity})
+
     import db_manager
     if db_manager.is_connected():
         data = db_manager.load_all_data()

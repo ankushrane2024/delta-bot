@@ -4,7 +4,8 @@ from logger import app_logger
 class RiskManager:
     def __init__(self, api_client):
         self.api_client = api_client
-        self.current_equity = config.STARTING_CAPITAL
+        self.paper_equity = float(config.STARTING_CAPITAL)
+        self.live_equity = 0.0
         self.sl_multiplier = config.SL_PERCENT  # Default 1.30 (130% of premium)
         
         # --- ARES Dynamic Profit Lock State ---
@@ -12,12 +13,27 @@ class RiskManager:
         self.current_trailing_sl = None     # None = not activated yet
         self.trailing_confirmed = False     # True once 19% is reached
         self.confirm_started = False        # True once 15% is first touched
+
+    @property
+    def current_equity(self):
+        """Returns the equity corresponding to the active trading mode."""
+        if getattr(config, 'BOT_MODE', 'PAPER') == 'LIVE':
+            return self.live_equity if self.live_equity > 0 else self.paper_equity
+        return self.paper_equity
+
+    @current_equity.setter
+    def current_equity(self, val):
+        val = float(val)
+        if getattr(config, 'BOT_MODE', 'PAPER') == 'LIVE':
+            self.live_equity = val
+        else:
+            self.paper_equity = val
         
     def update_equity(self):
         """Fetch current equity from exchange."""
         if getattr(config, 'BOT_MODE', 'PAPER') == 'PAPER':
-            # Bypass API call in PAPER mode
-            app_logger.info(f"Risk [PAPER]: Simulated equity is ${self.current_equity:.2f} (No live check)")
+            # Bypass API call in PAPER mode, keep live_equity separate
+            app_logger.info(f"Risk [PAPER]: Simulated equity is ${self.paper_equity:.2f} (No live check)")
             return
         
         try:
@@ -26,18 +42,18 @@ class RiskManager:
                 meta = res.get('meta', {})
                 net_eq = float(meta.get('net_equity', 0.0))
                 if net_eq > 0:
-                    self.current_equity = net_eq
-                    app_logger.info(f"Risk: Equity updated from net_equity to ${self.current_equity:.2f}")
+                    self.live_equity = net_eq
+                    app_logger.info(f"Risk [LIVE]: Real Delta equity updated from net_equity to ${self.live_equity:.2f}")
                     return
                 for b in res.get('result', []):
                     if b.get('asset_symbol') in ('USD', 'USDT', 'INR'):
                         avail = float(b.get('available_balance', 0) or 0)
                         if avail > 0:
-                            self.current_equity = avail
-                            app_logger.info(f"Risk: Equity updated to ${self.current_equity:.2f}")
+                            self.live_equity = avail
+                            app_logger.info(f"Risk [LIVE]: Real Delta equity updated to ${self.live_equity:.2f}")
                             return
         except Exception as e:
-            app_logger.error(f"Risk: Failed to update equity. Using fallback ${self.current_equity:.2f}. {e}")
+            app_logger.error(f"Risk [LIVE]: Failed to update live equity: {e}")
 
     def tighten_stop_loss(self, level):
         """Tighten option SL during emergency hedging (e.g. 1.05 for 105%)."""

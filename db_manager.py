@@ -22,6 +22,7 @@ JSONBLOB_ID = None
 # Local files for fallback and caching
 BOT_STATE_FILE = "bot_state.json"
 ACTIVE_POS_FILE = "active_positions.json"
+LIVE_ACTIVE_POS_FILE = "live_active_positions.json"
 CONFIG_FILE = "cloud_db_config.json"
 _LAST_BACKUP_TIME_FILE = ".last_backup_time"
 
@@ -432,6 +433,53 @@ def save_active_positions(positions: dict):
         else:
             blob_data = _fetch_jsonblob() or {}
             blob_data["active_positions"] = positions
+            if not JSONBLOB_ID:
+                _create_jsonblob(blob_data)
+            else:
+               return _update_jsonblob(blob_data)
+
+def load_live_active_positions() -> dict:
+    """Loads live active options positions from Cloud or local fallback."""
+    with _sync_lock:
+        if not _connected: _connect()
+        data = None
+        if GITHUB_PAT and GITHUB_GIST_ID:
+            data = _fetch_gist_file("live_active_positions.json")
+        elif JSONBLOB_ID:
+            blob_data = _fetch_jsonblob()
+            if blob_data:
+                data = blob_data.get("live_active_positions", {})
+                
+        if data is not None:
+            return data
+            
+        if os.path.exists(LIVE_ACTIVE_POS_FILE):
+            try:
+                with open(LIVE_ACTIVE_POS_FILE, 'r') as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
+
+def save_live_active_positions(positions: dict):
+    """Saves live active positions to Cloud and local fallback."""
+    with _sync_lock:
+        if not _connected: _connect()
+        content_str = json.dumps(positions, indent=4)
+        
+        try:
+            with open(LIVE_ACTIVE_POS_FILE, 'w') as f: f.write(content_str)
+        except:
+            pass
+            
+        if GITHUB_PAT:
+            if not GITHUB_GIST_ID:
+                _create_gist("{}", content_str)
+            else:
+                _update_gist({"live_active_positions.json": {"content": content_str}})
+        else:
+            blob_data = _fetch_jsonblob() or {}
+            blob_data["live_active_positions"] = positions
             if not JSONBLOB_ID:
                 _create_jsonblob(blob_data)
             else:
