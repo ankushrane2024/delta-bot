@@ -2890,6 +2890,73 @@ td {
 
     <!-- TAB 3: CONFIG -->
     <div class="tab-pane" id="tab-config">
+        <!-- Delta Exchange API Management Panel -->
+        <div class="glass-panel" style="border: 1px solid rgba(56, 189, 248, 0.25); background: radial-gradient(circle at top left, rgba(14, 165, 233, 0.08), rgba(15, 23, 42, 0.7)); margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.5rem;">🔑</span>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #f8fafc;">Delta Exchange API Key Management</h2>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">Manage, update or disable your Delta India API credentials live</div>
+                    </div>
+                </div>
+                <div id="api-status-badge" style="background: rgba(100, 116, 139, 0.15); color: #94a3b8; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.82rem; border: 1px solid rgba(148, 163, 184, 0.2); display: flex; align-items: center; gap: 6px;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span> Checking API...
+                </div>
+            </div>
+
+            <!-- Current Key Info Bar -->
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700;">Active API Key</div>
+                    <div id="api-masked-key-display" style="font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 600; color: #38bdf8; margin-top: 2px;">
+                        Loading...
+                    </div>
+                </div>
+                <div id="api-profile-details" style="font-size: 0.85rem; color: #94a3b8; text-align: right;">
+                    <span id="api-user-id">-</span>
+                </div>
+            </div>
+
+            <!-- Credentials Input Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">Delta API Key</label>
+                    <input type="text" id="input-api-key" placeholder="Enter Delta API Key (e.g. tOhM7...)" 
+                           style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 10px 14px; color: #f8fafc; font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; outline: none; transition: border-color 0.2s;"
+                           onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='rgba(255, 255, 255, 0.15)'">
+                </div>
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Delta API Secret</label>
+                        <button type="button" onclick="toggleApiSecretVisibility()" style="background: none; border: none; color: #38bdf8; font-size: 0.75rem; cursor: pointer; padding: 0;">Show/Hide</button>
+                    </div>
+                    <input type="password" id="input-api-secret" placeholder="Enter Delta API Secret" 
+                           style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 10px 14px; color: #f8fafc; font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; outline: none; transition: border-color 0.2s;"
+                           onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='rgba(255, 255, 255, 0.15)'">
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="font-size: 0.78rem; color: #64748b;">
+                    🛡️ Verified directly with Delta India API. Works immediately without restart.
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" id="btn-disable-api" onclick="disableApiKeyAction()"
+                            style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; border-radius: 8px; padding: 10px 18px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;"
+                            onmouseover="this.style.background='rgba(239, 68, 68, 0.25)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.15)'">
+                        <span>🛑</span> DISABLE / DISCONNECT API
+                    </button>
+                    <button type="button" id="btn-save-api" onclick="saveApiCredentialsAction()"
+                            style="background: linear-gradient(135deg, #0284c7, #0369a1); border: 1px solid #38bdf8; color: #fff; border-radius: 8px; padding: 10px 22px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35); transition: all 0.2s;"
+                            onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <span>💾</span> CONNECT & UPDATE API KEY
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Rule Compliance Panel -->
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -5485,6 +5552,133 @@ function updateSystemHealth() {
 }
 setInterval(updateSystemHealth, 60000);
 setTimeout(updateSystemHealth, 1000);
+
+// --- API Credentials Management ---
+function toggleApiSecretVisibility() {
+    const input = document.getElementById('input-api-secret');
+    if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+async function fetchApiCredentials() {
+    try {
+        const res = await fetch('/api/api_credentials');
+        const data = await res.json();
+        const badge = document.getElementById('api-status-badge');
+        const keyDisplay = document.getElementById('api-masked-key-display');
+        const userDisplay = document.getElementById('api-user-id');
+
+        if (!badge || !keyDisplay) return;
+
+        if (!data.configured) {
+            badge.style.background = 'rgba(239, 68, 68, 0.15)';
+            badge.style.color = '#f87171';
+            badge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;"></span> NOT CONFIGURED';
+            keyDisplay.textContent = 'None (API Keys Disabled)';
+            keyDisplay.style.color = '#94a3b8';
+            if (userDisplay) userDisplay.textContent = 'Trading Disabled';
+        } else if (data.connected) {
+            badge.style.background = 'rgba(16, 185, 129, 0.15)';
+            badge.style.color = '#34d399';
+            badge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span> CONNECTED (Delta India)';
+            keyDisplay.textContent = data.masked_key;
+            keyDisplay.style.color = '#38bdf8';
+            if (userDisplay) {
+                const p = data.profile || {};
+                userDisplay.textContent = `User ID: ${p.user_id || 'N/A'} | Margin: ${(p.margin_mode || 'portfolio').toUpperCase()}`;
+            }
+        } else {
+            badge.style.background = 'rgba(245, 158, 11, 0.15)';
+            badge.style.color = '#fbbf24';
+            badge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;"></span> DISCONNECTED / AUTH FAILED';
+            keyDisplay.textContent = data.masked_key;
+            keyDisplay.style.color = '#f59e0b';
+            if (userDisplay) userDisplay.textContent = 'Check API permissions / IP whitelist';
+        }
+    } catch (e) {
+        console.error("Failed to fetch API credentials:", e);
+    }
+}
+
+async function saveApiCredentialsAction() {
+    const key = document.getElementById('input-api-key').value.trim();
+    const secret = document.getElementById('input-api-secret').value.trim();
+    const btn = document.getElementById('btn-save-api');
+
+    if (!key || !secret) {
+        showToast('Please enter both Delta API Key and API Secret.', 'error', 5000);
+        return;
+    }
+
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> VERIFYING WITH DELTA...';
+    const toast = showToast('Validating credentials with Delta Exchange India...', 'loading', 0);
+
+    try {
+        const res = await fetch('/api/save_api_credentials', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: key, api_secret: secret })
+        });
+        const data = await res.json();
+        toast.remove();
+
+        if (data.success) {
+            showToast('✅ ' + data.message, 'success', 6000);
+            document.getElementById('input-api-key').value = '';
+            document.getElementById('input-api-secret').value = '';
+            btn.innerHTML = '<span>✅</span> CONNECTED';
+            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
+            fetchApiCredentials();
+        } else {
+            showToast('❌ Failed: ' + (data.error || 'Connection failed'), 'error', 8000);
+            btn.innerHTML = '<span>❌</span> FAILED';
+            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
+        }
+    } catch (err) {
+        toast.remove();
+        showToast('Network error: ' + err.message, 'error', 5000);
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
+    }
+}
+
+async function disableApiKeyAction() {
+    if (!confirm("Are you sure you want to DISABLE and DISCONNECT the Delta API key?\n\nThis will switch the bot to PAPER mode and stop any live trading on Delta Exchange.")) {
+        return;
+    }
+
+    const btn = document.getElementById('btn-disable-api');
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> DISABLING...';
+
+    try {
+        const res = await fetch('/api/disable_api_key', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast('🛑 API Key disabled. Bot is in safe PAPER mode.', 'success', 6000);
+            btn.innerHTML = '<span>🛑</span> DISABLED';
+            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
+            fetchApiCredentials();
+        } else {
+            showToast('Error disabling API: ' + (data.error || 'Unknown error'), 'error', 6000);
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+        }
+    } catch (err) {
+        showToast('Network error: ' + err.message, 'error', 5000);
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
+    }
+}
+
+setTimeout(fetchApiCredentials, 1500);
+setInterval(fetchApiCredentials, 30000);
 
 </script>
 </body>

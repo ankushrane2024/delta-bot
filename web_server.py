@@ -1090,6 +1090,162 @@ def save_live_lots():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ─── API Key Management (Add, Update & Disable) ───────────────────────────────
+
+
+@app.route('/api/api_credentials', methods=['GET'])
+def get_api_credentials():
+    """Returns current API configuration status and masked key without exposing secret."""
+    key = getattr(config, 'DELTA_API_KEY', '') or os.environ.get('DELTA_API_KEY', '')
+    secret = getattr(config, 'DELTA_API_SECRET', '') or os.environ.get('DELTA_API_SECRET', '')
+
+    is_configured = bool(key and secret and key not in ('testnet_key', 'YOUR_KEY_HERE', '') and secret not in ('testnet_secret', 'YOUR_SECRET_HERE', ''))
+
+    masked_key = ''
+    if key and len(key) >= 8:
+        masked_key = f"{key[:4]}...{key[-4:]}"
+    elif key:
+        masked_key = "***"
+
+    connected = False
+    profile_info = {}
+    if is_configured and bot_engine and bot_engine.api_client and bot_engine.api_client.api_key:
+        try:
+            prof = bot_engine.api_client.get_profile()
+            if prof and prof.get('success'):
+                connected = True
+                res_p = prof.get('result', {})
+                profile_info = {
+                    'email': res_p.get('email', ''),
+                    'margin_mode': res_p.get('margin_mode', 'portfolio'),
+                    'user_id': str(res_p.get('id', ''))
+                }
+        except Exception as e:
+            app_logger.warning(f"Web [api_credentials]: Profile check failed – {e}")
+
+    return jsonify({
+        'success': True,
+        'configured': is_configured,
+        'connected': connected,
+        'masked_key': masked_key,
+        'profile': profile_info,
+        'live_mode': bool(bot_engine.execution.mode == 'LIVE') if bot_engine else False
+    })
+
+
+@app.route('/api/save_api_credentials', methods=['POST'])
+def save_api_credentials():
+    """Validates and applies new Delta Exchange API credentials live at runtime."""
+    try:
+        body = request.get_json(force=True) or {}
+        new_key = body.get('api_key', '').strip()
+        new_secret = body.get('api_secret', '').strip()
+
+        if not new_key or not new_secret:
+            return jsonify({'success': False, 'error': 'Both API Key and API Secret are required.'}), 400
+
+        # Validate with Delta Exchange India API
+        from api_client import DeltaIndiaClient
+        test_client = DeltaIndiaClient(api_key=new_key, api_secret=new_secret)
+        prof_res = test_client.get_profile()
+
+        if not prof_res or not prof_res.get('success'):
+            err = prof_res.get('error', {}) if isinstance(prof_res, dict) else {}
+            err_msg = err.get('message') or prof_res.get('message') or 'Invalid API credentials or IP not authorized on Delta Exchange.'
+            return jsonify({'success': False, 'error': f'Delta Exchange validation failed: {err_msg}'}), 400
+
+        # Apply to live bot
+        config.DELTA_API_KEY = new_key
+        config.DELTA_API_SECRET = new_secret
+        os.environ['DELTA_API_KEY'] = new_key
+        os.environ['DELTA_API_SECRET'] = new_secret
+
+        if bot_engine and bot_engine.api_client:
+            bot_engine.api_client.api_key = new_key
+            bot_engine.api_client.api_secret = new_secret
+            try:
+                bot_engine.risk_manager.update_equity()
+            except Exception:
+                pass
+
+        # Persist to local .env if writable
+        try:
+            env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+            if os.path.exists(env_path):
+                with open(env_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                new_lines = []
+                k_found = False
+                s_found = False
+                for l in lines:
+                    if l.startswith('DELTA_API_KEY='):
+                        new_lines.append(f'DELTA_API_KEY={new_key}\n')
+                        k_found = True
+                    elif l.startswith('DELTA_API_SECRET='):
+                        new_lines.append(f'DELTA_API_SECRET={new_secret}\n')
+                        s_found = True
+                    else:
+                        new_lines.append(l)
+                if not k_found: new_lines.append(f'DELTA_API_KEY={new_key}\n')
+                if not s_found: new_lines.append(f'DELTA_API_SECRET={new_secret}\n')
+                with open(env_path, 'w', encoding='utf-8') as f:
+                    f.writelines(new_lines)
+        except Exception as _e:
+            app_logger.warning(f"Web [save_api_credentials]: .env write skipped – {_e}")
+
+        prof_data = prof_res.get('result', {})
+        masked = f"{new_key[:4]}...{new_key[-4:]}" if len(new_key) >= 8 else "***"
+        app_logger.info(f"Web [save_api_credentials]: API Key updated live: {masked} (User ID: {prof_data.get('id')})")
+
+        return jsonify({
+            'success': True,
+            'message': 'API credentials connected and verified successfully!',
+            'masked_key': masked,
+            'margin_mode': prof_data.get('margin_mode', 'portfolio')
+        })
+
+    except Exception as e:
+        app_logger.error(f"Web [save_api_credentials]: Error – {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/disable_api_key', methods=['POST'])
+def disable_api_key():
+    """Disables active API credentials and puts bot into safe PAPER mode."""
+    try:
+        if bot_engine:
+            bot_engine.execution.mode = 'PAPER'
+            config.BOT_MODE = 'PAPER'
+            if bot_engine.api_client:
+                bot_engine.api_client.api_key = ""
+                bot_engine.api_client.api_secret = ""
+
+        config.DELTA_API_KEY = ""
+        config.DELTA_API_SECRET = ""
+        os.environ['DELTA_API_KEY'] = ""
+        os.environ['DELTA_API_SECRET'] = ""
+
+        if os.path.exists(LOT_SIZE_FILE):
+            try:
+                with open(LOT_SIZE_FILE, 'r') as f:
+                    data = json.load(f)
+                data['live_mode'] = False
+                with open(LOT_SIZE_FILE, 'w') as f:
+                    json.dump(data, f, indent=4)
+            except Exception:
+                pass
+
+        app_logger.warning("Web [disable_api_key]: Delta Exchange API key disabled and bot reverted to PAPER mode.")
+        return jsonify({
+            'success': True,
+            'message': 'API Key disconnected and disabled. Bot is now safe in PAPER mode.'
+        })
+
+    except Exception as e:
+        app_logger.error(f"Web [disable_api_key]: Error – {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ─── Tomorrow's Trade Probability ─────────────────────────────────────────────
 
 
