@@ -122,6 +122,7 @@ def get_status():
     if not bot_engine:
         return jsonify({'error': 'Engine not initialized'}), 500
         
+    import db_manager
     # Read last 50 lines of the trading_bot.log and ares.log
     logs = []
     try:
@@ -460,6 +461,9 @@ def get_status():
         'adx_history': getattr(bot_engine, 'adx_history', []),
         'paper_lot_multiplier': getattr(bot_engine, 'paper_lot_multiplier', 1.0),
         'api_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False,
+        'active_api_slot': getattr(db_manager, 'get_active_api_slot', lambda: 'live')() if 'db_manager' in locals() else 'live',
+        'active_api_label': ('Delta Demo' if (getattr(db_manager, 'get_active_api_slot', lambda: 'live')() if 'db_manager' in locals() else 'live') == 'demo' else 'Delta Live'),
+        'active_api_badge': ('🧪 Delta Demo' if (getattr(db_manager, 'get_active_api_slot', lambda: 'live')() if 'db_manager' in locals() else 'live') == 'demo' else '⚡ Delta Live'),
         'current_iv': getattr(bot_engine, 'current_iv', 0.0),
         'avg_7d_iv': getattr(bot_engine, 'avg_7d_iv', 0.0),
         'iv_status': getattr(bot_engine, 'iv_status', 'Normal'),

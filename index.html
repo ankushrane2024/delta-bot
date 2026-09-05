@@ -1519,7 +1519,7 @@ td {
                 <!-- API Status -->
                 <div class="hero-item" style="border-left: 1px solid rgba(255,255,255,0.08); padding-left: 18px;">
                     <span class="hero-label">Delta API</span>
-                    <span class="hero-val" id="api-status-badge" style="font-size:1rem; padding: 4px 10px; background: rgba(255,255,255,0.08); border-radius: 8px;">Unknown</span>
+                    <span class="hero-val" id="api-status-badge" style="font-size: 0.92rem; font-weight: 700; padding: 4px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 6px;">⚡ Delta Live</span>
                 </div>
             </div>
 
@@ -2923,7 +2923,7 @@ td {
                         </div>
                     </div>
                 </div>
-                <div id="api-status-badge" style="background: rgba(16, 185, 129, 0.12); color: #34d399; padding: 7px 16px; border-radius: 24px; font-weight: 700; font-size: 0.82rem; border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 8px; box-shadow: 0 0 16px rgba(16, 185, 129, 0.12);">
+                <div id="api-panel-status-badge" style="background: rgba(16, 185, 129, 0.12); color: #34d399; padding: 7px 16px; border-radius: 24px; font-weight: 700; font-size: 0.82rem; border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 8px; box-shadow: 0 0 16px rgba(16, 185, 129, 0.12);">
                     <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block; box-shadow: 0 0 8px #10b981;"></span> Checking API Gateways...
                 </div>
             </div>
@@ -3899,12 +3899,26 @@ td {
                 }
                 const apiStatusBadge = document.getElementById('api-status-badge');
                 if (apiStatusBadge) {
+                    const isDemo = (data.active_api_slot === 'demo');
                     if (data.api_connected) {
-                        apiStatusBadge.textContent = '🟢 Connected';
-                        apiStatusBadge.style.color = 'var(--success)';
+                        if (isDemo) {
+                            apiStatusBadge.textContent = '🧪 Delta Demo';
+                            apiStatusBadge.style.color = '#c084fc';
+                            apiStatusBadge.style.background = 'rgba(168, 85, 247, 0.16)';
+                            apiStatusBadge.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+                            apiStatusBadge.title = 'Active API: Delta Demo (demo.delta.exchange) - Virtual Funds';
+                        } else {
+                            apiStatusBadge.textContent = '⚡ Delta Live';
+                            apiStatusBadge.style.color = '#34d399';
+                            apiStatusBadge.style.background = 'rgba(16, 185, 129, 0.16)';
+                            apiStatusBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                            apiStatusBadge.title = 'Active API: Delta India Live';
+                        }
                     } else {
                         apiStatusBadge.textContent = '🔴 Disconnected';
-                        apiStatusBadge.style.color = 'var(--danger)';
+                        apiStatusBadge.style.color = '#f87171';
+                        apiStatusBadge.style.background = 'rgba(239, 68, 68, 0.12)';
+                        apiStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
                     }
                 }
 
@@ -5835,17 +5849,35 @@ async function fetchApiCredentials() {
         // Header status badge
         const mainBadge = document.getElementById('api-status-badge');
         if (mainBadge) {
+            if (activeSlot === 'demo') {
+                mainBadge.textContent = '🧪 Delta Demo';
+                mainBadge.style.color = '#c084fc';
+                mainBadge.style.background = 'rgba(168, 85, 247, 0.16)';
+                mainBadge.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+                mainBadge.title = 'Active API: Delta Demo (demo.delta.exchange) - Virtual Funds';
+            } else {
+                mainBadge.textContent = '⚡ Delta Live';
+                mainBadge.style.color = '#34d399';
+                mainBadge.style.background = 'rgba(16, 185, 129, 0.16)';
+                mainBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                mainBadge.title = 'Active API: Delta India Live';
+            }
+        }
+
+        const panelBadge = document.getElementById('api-panel-status-badge');
+        if (panelBadge) {
             const activeData = activeSlot === 'demo' ? demo : live;
             if (activeData.configured) {
-                mainBadge.style.background = 'rgba(16, 185, 129, 0.12)';
-                mainBadge.style.color = '#34d399';
-                mainBadge.style.borderColor = 'rgba(16, 185, 129, 0.35)';
-                mainBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 8px #10b981;"></span> READY (${activeData.gateway_name || 'Delta'})`;
+                panelBadge.style.background = activeSlot === 'demo' ? 'rgba(168, 85, 247, 0.12)' : 'rgba(16, 185, 129, 0.12)';
+                panelBadge.style.color = activeSlot === 'demo' ? '#c084fc' : '#34d399';
+                panelBadge.style.borderColor = activeSlot === 'demo' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(16, 185, 129, 0.35)';
+                const dotCol = activeSlot === 'demo' ? '#a855f7' : '#10b981';
+                panelBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${dotCol};display:inline-block;box-shadow:0 0 8px ${dotCol};"></span> ACTIVE (${activeSlot === 'demo' ? 'Delta Demo' : 'Delta India Live'})`;
             } else {
-                mainBadge.style.background = 'rgba(245, 158, 11, 0.12)';
-                mainBadge.style.color = '#fbbf24';
-                mainBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-                mainBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;box-shadow:0 0 8px #f59e0b;"></span> SETUP REQUIRED`;
+                panelBadge.style.background = 'rgba(245, 158, 11, 0.12)';
+                panelBadge.style.color = '#fbbf24';
+                panelBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                panelBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;box-shadow:0 0 8px #f59e0b;"></span> SETUP REQUIRED`;
             }
         }
     } catch (e) {
