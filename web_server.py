@@ -1149,13 +1149,28 @@ def validate_delta_credentials(api_key: str, api_secret: str, preferred_env: str
             if prof_res and isinstance(prof_res, dict) and prof_res.get('success'):
                 res_p = prof_res.get('result', {})
                 return True, gw, res_p, None
+
+            # Fallback to wallet balances if profile endpoint is restricted by API key permissions
+            bal_res = client.get_balances()
+            if bal_res and isinstance(bal_res, dict) and bal_res.get('success'):
+                res_items = bal_res.get('result') or []
+                uid = ""
+                if isinstance(res_items, list) and len(res_items) > 0:
+                    uid = str(res_items[0].get('user_id', ''))
+                res_p = {
+                    'id': uid,
+                    'user_id': uid,
+                    'email': '',
+                    'margin_mode': 'cross'
+                }
+                return True, gw, res_p, None
+
+            err = prof_res.get('error') if isinstance(prof_res, dict) else prof_res
+            if isinstance(err, dict):
+                msg = err.get('message') or err.get('code') or str(err)
             else:
-                err = prof_res.get('error') if isinstance(prof_res, dict) else prof_res
-                if isinstance(err, dict):
-                    msg = err.get('message') or err.get('code') or str(err)
-                else:
-                    msg = str(err)
-                attempted_errs.append(f"{gw['name']}: {msg}")
+                msg = str(err)
+            attempted_errs.append(f"{gw['name']}: {msg}")
         except Exception as e:
             attempted_errs.append(f"{gw['name']}: {e}")
 
