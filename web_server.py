@@ -1163,53 +1163,75 @@ def validate_delta_credentials(api_key: str, api_secret: str, preferred_env: str
 @app.route('/api/api_credentials', methods=['GET'])
 def get_api_credentials():
     """Returns dual-slot (Live & Demo) API credentials status and active profile."""
-    import db_manager
-    all_creds = db_manager.load_all_api_credentials()
-    active_slot = all_creds.get('active_slot', 'live')
+    try:
+        import db_manager
+        all_creds = db_manager.load_all_api_credentials()
+        active_slot = all_creds.get('active_slot', 'live')
 
-    def format_slot(slot_name, data):
-        key = (data.get('api_key') or '').strip()
-        secret = (data.get('api_secret') or '').strip()
-        is_conf = bool(key and secret and key not in ('testnet_key', 'YOUR_KEY_HERE', '') and secret not in ('testnet_secret', 'YOUR_SECRET_HERE', ''))
-        masked = f"{key[:4]}...{key[-4:]}" if len(key) >= 8 else ("***" if key else "")
-        prof = data.get('profile') or {}
-        connected = bool(is_conf and (prof.get('user_id') or prof.get('id') or prof.get('email')))
-        
-        default_base = "https://api.india.delta.exchange" if slot_name == "live" else "https://testnet-api.delta.exchange"
-        base_url = data.get('base_url') or default_base
-        env_name = "Delta India Live" if slot_name == "live" else "Delta Demo (demo.delta.exchange)"
-        if "testnet-api.delta.exchange" in base_url:
-            env_name = "Delta Demo (demo.delta.exchange)"
-        elif "cdn-ind.testnet.deltaex.org" in base_url:
-            env_name = "Delta India Demo"
-        elif "api.india.delta.exchange" in base_url:
-            env_name = "Delta India Live"
+        def format_slot(slot_name, data):
+            if not isinstance(data, dict):
+                data = {}
+            key = (data.get('api_key') or '').strip()
+            secret = (data.get('api_secret') or '').strip()
+            is_conf = bool(key and secret and key not in ('testnet_key', 'YOUR_KEY_HERE', '') and secret not in ('testnet_secret', 'YOUR_SECRET_HERE', ''))
+            masked = f"{key[:4]}...{key[-4:]}" if len(key) >= 8 else ("***" if key else "")
+            prof = data.get('profile') or {}
+            connected = bool(is_conf and (prof.get('user_id') or prof.get('id') or prof.get('email')))
+            
+            default_base = "https://api.india.delta.exchange" if slot_name == "live" else "https://testnet-api.delta.exchange"
+            base_url = data.get('base_url') or default_base
+            env_name = "Delta India Live" if slot_name == "live" else "Delta Demo (demo.delta.exchange)"
+            if "testnet-api.delta.exchange" in base_url:
+                env_name = "Delta Demo (demo.delta.exchange)"
+            elif "cdn-ind.testnet.deltaex.org" in base_url:
+                env_name = "Delta India Demo"
+            elif "api.india.delta.exchange" in base_url:
+                env_name = "Delta India Live"
 
-        return {
-            'configured': is_conf,
-            'connected': connected,
-            'masked_key': masked,
-            'environment': data.get('environment', 'india_live' if slot_name == 'live' else 'demo'),
-            'gateway_name': env_name,
-            'base_url': base_url,
-            'profile': prof
-        }
+            return {
+                'configured': is_conf,
+                'connected': connected,
+                'masked_key': masked,
+                'environment': data.get('environment', 'india_live' if slot_name == 'live' else 'demo'),
+                'gateway_name': env_name,
+                'base_url': base_url,
+                'profile': prof
+            }
 
-    live_info = format_slot('live', all_creds.get('live', {}))
-    demo_info = format_slot('demo', all_creds.get('demo', {}))
-    active_info = demo_info if active_slot == 'demo' else live_info
+        live_info = format_slot('live', all_creds.get('live', {}))
+        demo_info = format_slot('demo', all_creds.get('demo', {}))
+        active_info = demo_info if active_slot == 'demo' else live_info
 
-    return jsonify({
-        'success': True,
-        'active_slot': active_slot,
-        'live': live_info,
-        'demo': demo_info,
-        'configured': active_info['configured'],
-        'connected': active_info['connected'],
-        'masked_key': active_info['masked_key'],
-        'profile': active_info['profile'],
-        'live_mode': bool(bot_engine.execution.mode == 'LIVE') if bot_engine else False
-    })
+        live_m = False
+        try:
+            if bot_engine and hasattr(bot_engine, 'execution') and bot_engine.execution:
+                live_m = bool(getattr(bot_engine.execution, 'mode', 'PAPER') == 'LIVE')
+        except Exception:
+            live_m = False
+
+        return jsonify({
+            'success': True,
+            'active_slot': active_slot,
+            'live': live_info,
+            'demo': demo_info,
+            'configured': active_info['configured'],
+            'connected': active_info['connected'],
+            'masked_key': active_info['masked_key'],
+            'profile': active_info['profile'],
+            'live_mode': live_m
+        })
+    except Exception as e:
+        app_logger.error(f"Web [get_api_credentials]: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'active_slot': 'live',
+            'configured': False,
+            'connected': False,
+            'live': {},
+            'demo': {},
+            'live_mode': False
+        }), 200
 
 
 @app.route('/api/save_api_credentials', methods=['POST'])
