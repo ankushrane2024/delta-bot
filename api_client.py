@@ -61,6 +61,31 @@ class DeltaIndiaClient:
         return timestamp, signature
 
     def request(self, method, path, params=None, data=None):
+        # ── AIRTIGHT ACCOUNT ISOLATION GUARD ──────────────────────────────────────
+        # When DEMO slot is active, requests to LIVE production gateways are strictly blocked.
+        try:
+            import db_manager
+            active_slot = db_manager.get_active_api_slot()
+            if active_slot == 'demo':
+                # LIVE gateway detection: api.india.delta.exchange or api.delta.exchange
+                b_url = (self.base_url or '').lower()
+                is_live_gateway = ('api.india.delta.exchange' in b_url) or (
+                    'api.delta.exchange' in b_url and 'testnet' not in b_url
+                )
+                if is_live_gateway:
+                    error_logger.critical(
+                        f"[SECURITY GUARD BLOCKED] Attempted {method} {path} to LIVE production gateway ({self.base_url}) while DEMO account is active! Request aborted."
+                    )
+                    return {
+                        'success': False,
+                        'error': {
+                            'code': 'account_isolation_guard_tripped',
+                            'message': f'CRITICAL: Request to live gateway ({self.base_url}) strictly blocked while in DEMO mode.'
+                        }
+                    }
+        except Exception:
+            pass
+
         url = self.base_url + path
         query_string = ""
         if params:

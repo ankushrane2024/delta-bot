@@ -154,6 +154,9 @@ class DeltaTradingEngine:
         if BOT_MODE == 'LIVE':
             initial_mode = 'LIVE'
             app_logger.warning("Engine: Initialized in LIVE mode via explicit .env BOT_MODE=LIVE setting.")
+        elif active_slot == 'demo':
+            initial_mode = 'DEMO'
+            app_logger.info("Engine: DEMO slot active — Initialized in DEMO execution mode (virtual testnet).")
         else:
             app_logger.info("Engine: Safe Startup enforced — Initialized in PAPER mode.")
             # Ensure lot_size.json live_mode is reset to false at startup for fail-safe safety
@@ -346,6 +349,11 @@ class DeltaTradingEngine:
                 self.execution.sync_live_positions()
             except Exception as e:
                 app_logger.warning(f"Engine: Error syncing live positions before entry: {e}")
+        elif getattr(self.execution, 'mode', 'PAPER') == 'DEMO':
+            try:
+                self.execution.sync_demo_positions()
+            except Exception as e:
+                app_logger.warning(f"Engine: Error syncing demo positions before entry: {e}")
                 
         if self.execution.active_positions:
             open_symbols = [k for k in self.execution.active_positions.keys() if not k.startswith('__')]

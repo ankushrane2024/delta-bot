@@ -693,14 +693,21 @@ def manual_order():
             app_logger.error("Web [manual_order]: Engine not initialized")
             return jsonify({'success': False, 'error': 'Engine not initialized'}), 200
 
-        if bot_engine.execution.mode != 'LIVE':
+        import db_manager
+        active_slot = db_manager.get_active_api_slot()
+
+        if active_slot == 'demo' or bot_engine.execution.mode == 'DEMO':
+            bot_engine.execution.mode = 'DEMO'
+            config.BOT_MODE = 'DEMO'
+        elif bot_engine.execution.mode != 'LIVE':
             app_logger.warning("Web [manual_order]: Rejected manual order - engine is in PAPER mode")
             return jsonify({
                 'status': 'error',
-                'message': 'Manual orders can only be placed in LIVE mode. Toggle Live Mode ON first.'
+                'message': 'Manual orders can only be placed in LIVE or DEMO mode. Toggle Live Mode ON or switch to Demo.'
             }), 200
 
-        app_logger.info("Web [manual_order]: Manual strangle entry cycle triggered via dashboard.")
+        target_desc = "Demo Account (Virtual Funds - Zero Real Risk)" if bot_engine.execution.mode == 'DEMO' else "Live Account (Delta India)"
+        app_logger.info(f"Web [manual_order]: Manual strangle entry cycle triggered via dashboard for {target_desc}.")
         
         # Temporarily bypass the "1 trade per day limit" just for manual force execution
         bot_engine.trades_taken_today = 0
@@ -716,7 +723,7 @@ def manual_order():
         if bot_engine.today_trade_status == "Trade Taken" or (current_keys - initial_keys) or (len(current_keys) > 0 and len(initial_keys) == 0):
             return jsonify({
                 'status': 'success',
-                'message': f'Manual strangle entry cycle triggered and trade executed successfully ({bot_engine.execution.mode} mode)!'
+                'message': f'Manual strangle entry cycle triggered and trade executed successfully on {target_desc}!'
             }), 200
         else:
             msg = bot_engine.today_skip_reason or "Trade was not executed or strikes could not be found."
@@ -977,6 +984,15 @@ def toggle_live_mode():
     try:
         body = request.get_json(force=True) or {}
         activate = bool(body.get('activate', body.get('live_mode', False)))
+
+        # ── Safety Gate 0: DEMO slot isolation guard ─────────────────────────
+        import db_manager
+        active_slot = db_manager.get_active_api_slot()
+        if activate and active_slot == 'demo':
+            return jsonify({
+                'success': False,
+                'error': 'Cannot activate LIVE mode while DEMO API slot is active. Real-money live execution is locked. Switch to Live Account first.'
+            }), 400
 
         # ── Safety Gate 1: Validate real API credentials ──────────────────────
         from config import DELTA_API_KEY, DELTA_API_SECRET
@@ -1400,7 +1416,25 @@ def switch_api_slot():
                 pass
 
         if target_slot == 'demo':
-            # Safely disarm real-money LIVE execution when in demo slot
+            # Set execution mode strictly to DEMO (virtual testnet orders, 0% real money risk)
+            if bot_engine and hasattr(bot_engine, 'execution') and bot_engine.execution:
+                bot_engine.execution.mode = 'DEMO'
+                try:
+                    bot_engine.execution.sync_demo_positions()
+                except Exception as _sync_err:
+                    app_logger.warning(f"Web [switch_api_slot]: Error syncing demo positions: {_sync_err}")
+            config.BOT_MODE = 'DEMO'
+            try:
+                if os.path.exists(LOT_SIZE_FILE):
+                    with open(LOT_SIZE_FILE, 'r') as f:
+                        ls_data = json.load(f)
+                    ls_data['live_mode'] = False
+                    with open(LOT_SIZE_FILE, 'w') as f:
+                        json.dump(ls_data, f, indent=4)
+            except Exception:
+                pass
+        else:
+            # Switched to LIVE: Default to safe PAPER mode until user arms the Live Toggle switch
             if bot_engine and hasattr(bot_engine, 'execution') and bot_engine.execution:
                 bot_engine.execution.mode = 'PAPER'
             config.BOT_MODE = 'PAPER'
@@ -1414,7 +1448,7 @@ def switch_api_slot():
             except Exception:
                 pass
 
-        app_logger.info(f"Web [switch_api_slot]: Active slot switched to {target_slot.upper()} ({b})")
+        app_logger.info(f"Web [switch_api_slot]: Active slot switched to {target_slot.upper()} ({b}) - Mode: {bot_engine.execution.mode if bot_engine else 'N/A'}")
         return jsonify({
             'success': True,
             'active_slot': target_slot,
