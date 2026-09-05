@@ -23,6 +23,7 @@ JSONBLOB_ID = None
 BOT_STATE_FILE = "bot_state.json"
 ACTIVE_POS_FILE = "active_positions.json"
 LIVE_ACTIVE_POS_FILE = "live_active_positions.json"
+API_CREDENTIALS_FILE = "api_credentials.json"
 CONFIG_FILE = "cloud_db_config.json"
 _LAST_BACKUP_TIME_FILE = ".last_backup_time"
 
@@ -642,4 +643,84 @@ def trigger_cloud_sync():
 
 def is_connected() -> bool:
     return True # We now always have a connection (either Gist or JSONBlob fallback)
+
+
+def load_api_credentials() -> tuple:
+    """
+    Loads persistent Delta Exchange API credentials from Cloud or local fallback.
+    Returns (api_key, api_secret).
+    Survives Render container reboots and redeploys.
+    """
+    with _sync_lock:
+        if not _connected: _connect()
+        creds = None
+        try:
+            if GITHUB_PAT and GITHUB_GIST_ID:
+                content = _fetch_gist_file("api_credentials.json")
+                if content:
+                    creds = json.loads(content)
+            elif JSONBLOB_ID:
+                blob_data = _fetch_jsonblob()
+                if blob_data:
+                    creds = blob_data.get("api_credentials", None)
+        except Exception as _e:
+            app_logger.warning(f"DB: Cloud load for api_credentials failed: {_e}")
+
+        if creds and isinstance(creds, dict):
+            k = creds.get("api_key", "").strip()
+            s = creds.get("api_secret", "").strip()
+            if k and s:
+                return k, s
+
+        # Fallback to local file
+        if os.path.exists(API_CREDENTIALS_FILE):
+            try:
+                with open(API_CREDENTIALS_FILE, 'r') as f:
+                    local_c = json.load(f)
+                    k = local_c.get("api_key", "").strip()
+                    s = local_c.get("api_secret", "").strip()
+                    if k and s:
+                        return k, s
+            except Exception:
+                pass
+        return "", ""
+
+
+def save_api_credentials(api_key: str, api_secret: str) -> bool:
+    """
+    Permanently saves Delta Exchange API credentials to Cloud (survives Render redeploys)
+    and local fallback.
+    If api_key and api_secret are empty, clears them permanently.
+    """
+    with _sync_lock:
+        if not _connected: _connect()
+        creds = {"api_key": api_key.strip(), "api_secret": api_secret.strip()}
+        content_str = json.dumps(creds, indent=4)
+
+        try:
+            with open(API_CREDENTIALS_FILE, 'w') as f:
+                f.write(content_str)
+        except Exception:
+            pass
+
+        try:
+            if GITHUB_PAT:
+                if not GITHUB_GIST_ID:
+                    _create_gist("{}", content_str)
+                else:
+                    _update_gist({"api_credentials.json": {"content": content_str}})
+                app_logger.info("DB: API credentials saved permanently to GitHub Gist.")
+                return True
+            else:
+                blob_data = _fetch_jsonblob() or {}
+                blob_data["api_credentials"] = creds
+                if not JSONBLOB_ID:
+                    _create_jsonblob(blob_data)
+                else:
+                    _update_jsonblob(blob_data)
+                app_logger.info("DB: API credentials saved permanently to Cloud Master DB.")
+                return True
+        except Exception as e:
+            app_logger.error(f"DB: Failed to save api_credentials to Cloud: {e}")
+            return False
 

@@ -1193,13 +1193,20 @@ def save_api_credentials():
         except Exception as _e:
             app_logger.warning(f"Web [save_api_credentials]: .env write skipped – {_e}")
 
+        # Persist permanently to Cloud & local file so it survives Render redeploys forever
+        try:
+            import db_manager
+            db_manager.save_api_credentials(new_key, new_secret)
+        except Exception as _db_err:
+            app_logger.warning(f"Web [save_api_credentials]: Cloud save warning – {_db_err}")
+
         prof_data = prof_res.get('result', {})
         masked = f"{new_key[:4]}...{new_key[-4:]}" if len(new_key) >= 8 else "***"
         app_logger.info(f"Web [save_api_credentials]: API Key updated live: {masked} (User ID: {prof_data.get('id')})")
 
         return jsonify({
             'success': True,
-            'message': 'API credentials connected and verified successfully!',
+            'message': 'API credentials connected, verified, and saved permanently!',
             'masked_key': masked,
             'margin_mode': prof_data.get('margin_mode', 'portfolio')
         })
@@ -1224,6 +1231,13 @@ def disable_api_key():
         config.DELTA_API_SECRET = ""
         os.environ['DELTA_API_KEY'] = ""
         os.environ['DELTA_API_SECRET'] = ""
+
+        # Clear permanently from Cloud & local file
+        try:
+            import db_manager
+            db_manager.save_api_credentials("", "")
+        except Exception as _db_err:
+            app_logger.warning(f"Web [disable_api_key]: Cloud clear warning – {_db_err}")
 
         if os.path.exists(LOT_SIZE_FILE):
             try:
