@@ -1,8 +1,10 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file (resolved relative to this file)
+_env_path = Path(__file__).resolve().parent / '.env'
+load_dotenv(dotenv_path=_env_path)
 
 # --- API Settings ---
 DELTA_API_KEY = os.getenv("DELTA_API_KEY", "")
@@ -19,11 +21,12 @@ DELTA_BASE_URL = os.getenv("DELTA_BASE_URL", DELTA_INDIA_BASE_URL)
 
 # --- Bot Mode ---
 # Set BOT_MODE to "PAPER" for simulation or "LIVE" for real trading.
-# Remote Render bot is forced to "PAPER" mode for safety and simulation, local uses .env.
-if os.getenv("RENDER") == "true":
-    BOT_MODE = "PAPER"
+# FAIL-SAFE GUARD: If BOT_MODE is missing, blank, or invalid in .env, strictly default to "PAPER".
+_raw_mode = (os.getenv("BOT_MODE") or "").strip().upper()
+if _raw_mode in ["PAPER", "LIVE"]:
+    BOT_MODE = _raw_mode
 else:
-    BOT_MODE = os.getenv("BOT_MODE", "PAPER").upper()
+    BOT_MODE = "PAPER"
 
 # --- Capital & Risk ---
 # STARTING_CAPITAL is used only for paper-mode equity simulation and reporting.
@@ -55,9 +58,11 @@ EXIT_TIME_HARD = "17:00"      # Hard square off at 17:00 IST
 EXIT_TIME_START = "17:00"     # Kept for backward compatibility
 EXIT_TIME_END = "17:20"       # Kept for backward compatibility
 
-# --- Telegram Settings ---
+# --- Telegram & Monitoring Settings ---
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+ENABLE_TELEGRAM_HEARTBEAT = os.getenv("ENABLE_TELEGRAM_HEARTBEAT", "true").lower() in ("true", "1", "yes")
+HEARTBEAT_INTERVAL_MINS = int(os.getenv("HEARTBEAT_INTERVAL_MINS", "60"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # --- Strategy Parameters ---
