@@ -327,17 +327,17 @@ class DeltaTradingEngine:
             if os.path.exists(path):
                 with open(path, 'r') as f:
                     data = json.load(f)
-                # LIVE mode uses its own separate lot size (default 1 for safety)
-                if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
+                # LIVE and DEMO modes both use their own separate lot size (live_lots, default 1 for safety)
+                if getattr(self.execution, 'mode', 'PAPER') in ('LIVE', 'DEMO'):
                     live_lots = int(data.get('live_lots', 1))
-                    app_logger.info(f"Engine [LIVE]: Using live lot size: {live_lots} lot(s)")
+                    app_logger.info(f"Engine [{self.execution.mode}]: Using live lot size: {live_lots} lot(s)")
                     return live_lots
                 return int(data.get('total_lots', MANUAL_TOTAL_LOTS))
         except Exception as e:
             app_logger.error(f"Engine: Failed to read lot_size.json – {e}")
-        # In LIVE mode fallback, always use 1 lot for safety
-        if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
-            app_logger.warning("Engine [LIVE]: lot_size.json unavailable, defaulting to 1 lot for safety")
+        # In LIVE/DEMO mode fallback, always use 1 lot for safety
+        if getattr(self.execution, 'mode', 'PAPER') in ('LIVE', 'DEMO'):
+            app_logger.warning(f"Engine [{getattr(self.execution, 'mode', 'PAPER')}]: lot_size.json unavailable, defaulting to 1 lot for safety")
             return 1
         return int(MANUAL_TOTAL_LOTS)
 
