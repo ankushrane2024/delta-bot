@@ -1399,6 +1399,21 @@ def switch_api_slot():
             except Exception:
                 pass
 
+        if target_slot == 'demo':
+            # Safely disarm real-money LIVE execution when in demo slot
+            if bot_engine and hasattr(bot_engine, 'execution') and bot_engine.execution:
+                bot_engine.execution.mode = 'PAPER'
+            config.BOT_MODE = 'PAPER'
+            try:
+                if os.path.exists(LOT_SIZE_FILE):
+                    with open(LOT_SIZE_FILE, 'r') as f:
+                        ls_data = json.load(f)
+                    ls_data['live_mode'] = False
+                    with open(LOT_SIZE_FILE, 'w') as f:
+                        json.dump(ls_data, f, indent=4)
+            except Exception:
+                pass
+
         app_logger.info(f"Web [switch_api_slot]: Active slot switched to {target_slot.upper()} ({b})")
         return jsonify({
             'success': True,
