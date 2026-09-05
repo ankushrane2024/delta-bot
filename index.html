@@ -1683,7 +1683,7 @@ td {
                     </div>
                     <div>
                         <div style="font-weight:800; font-size:1.05rem; color:#f8fafc;">Live Trading Mode</div>
-                        <div style="font-size:0.82rem; color:#94a3b8; margin-top:2px;">Toggle to execute real orders on Delta Exchange (Portfolio Margin)</div>
+                        <div id="live-mode-desc" style="font-size:0.82rem; color:#94a3b8; margin-top:2px;">Toggle to execute real money orders on Delta Exchange. (Not required for Demo Trading).</div>
                     </div>
                     <!-- Toggle -->
                     <label class="live-toggle-switch" title="Toggle Live Trading">
@@ -1778,22 +1778,32 @@ td {
         function updateLivePanelUI(d) {
             const toggle = document.getElementById('live-mode-toggle');
             const badge  = document.getElementById('live-mode-status-badge');
+            const desc   = document.getElementById('live-mode-desc');
             if (!toggle || !badge) return;
 
             toggle.checked = d.live_mode || false;
 
-            if (d.live_mode) {
+            if (d.active_slot === 'demo' && !d.live_mode) {
+                badge.textContent = '🧪 DEMO ACTIVE (SAFE)';
+                badge.className = '';
+                badge.style.cssText = 'font-size:0.7rem; font-weight:800; letter-spacing:1.5px; padding:6px 14px; border-radius:20px; background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.4); color:#c084fc; text-transform:uppercase; white-space:nowrap;';
+                document.getElementById('live-trading-panel').style.borderColor = 'rgba(168,85,247,0.35)';
+                document.getElementById('live-trading-panel').style.boxShadow = '0 0 20px rgba(168,85,247,0.06)';
+                if (desc) desc.textContent = 'Delta Demo Trading is ACTIVE on demo.delta.exchange (Virtual funds). Real-money Live toggle remains OFF (zero real risk).';
+            } else if (d.live_mode) {
                 badge.textContent = '🔴 LIVE ARMED';
                 badge.className = 'live-mode-active-badge';
                 badge.style.cssText = 'font-size:0.7rem; font-weight:800; letter-spacing:1.5px; padding:6px 14px; border-radius:20px; background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#ef4444; text-transform:uppercase; white-space:nowrap;';
                 document.getElementById('live-trading-panel').style.borderColor = 'rgba(239,68,68,0.4)';
                 document.getElementById('live-trading-panel').style.boxShadow = '0 0 30px rgba(239,68,68,0.08)';
+                if (desc) desc.textContent = 'REAL MONEY live execution active on Delta Exchange (Portfolio Margin).';
             } else {
                 badge.textContent = '🔴 LIVE OFF';
                 badge.className = '';
                 badge.style.cssText = 'font-size:0.7rem; font-weight:800; letter-spacing:1.5px; padding:6px 14px; border-radius:20px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); color:#fca5a5; text-transform:uppercase; white-space:nowrap;';
                 document.getElementById('live-trading-panel').style.borderColor = 'rgba(239,68,68,0.15)';
                 document.getElementById('live-trading-panel').style.boxShadow = '';
+                if (desc) desc.textContent = 'Toggle to execute real money orders on Delta Exchange. (Not required for Demo Trading).';
             }
 
             // Always display live INR metrics
@@ -5806,11 +5816,19 @@ async function fetchApiCredentials() {
                 btnActDemo.style.background = 'rgba(168, 85, 247, 0.25)';
                 btnActDemo.style.borderColor = '#a855f7';
                 btnActDemo.style.color = '#c084fc';
-            } else {
+                btnActDemo.onclick = () => switchApiSlotAction('demo');
+            } else if (demo.configured) {
                 btnActDemo.textContent = 'Switch to Demo';
-                btnActDemo.style.background = 'rgba(15, 23, 42, 0.8)';
-                btnActDemo.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                btnActDemo.style.color = '#94a3b8';
+                btnActDemo.style.background = 'rgba(168, 85, 247, 0.15)';
+                btnActDemo.style.borderColor = '#a855f7';
+                btnActDemo.style.color = '#c084fc';
+                btnActDemo.onclick = () => switchApiSlotAction('demo');
+            } else {
+                btnActDemo.textContent = '➕ Configure Demo Key';
+                btnActDemo.style.background = 'rgba(168, 85, 247, 0.15)';
+                btnActDemo.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+                btnActDemo.style.color = '#c084fc';
+                btnActDemo.onclick = () => focusAddCredentials('demo');
             }
         }
 
@@ -5885,7 +5903,31 @@ async function saveApiCredentialsAction() {
     }
 }
 
+function focusAddCredentials(slot) {
+    selectTargetSlot(slot);
+    const form = document.getElementById('input-api-key');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => form.focus(), 300);
+        showToast(`Please enter your Delta ${slot.toUpperCase()} API Key & Secret below, then click CONNECT & SAVE.`, 'info', 6000);
+    }
+}
+
 async function switchApiSlotAction(slot) {
+    if (slot === 'demo') {
+        const demoKey = document.getElementById('api-demo-key');
+        if (demoKey && (demoKey.textContent.includes('None') || demoKey.textContent.includes('Unconfigured') || demoKey.textContent.includes('Add Below'))) {
+            focusAddCredentials('demo');
+            return;
+        }
+    } else if (slot === 'live') {
+        const liveKey = document.getElementById('api-live-key');
+        if (liveKey && (liveKey.textContent.includes('None') || liveKey.textContent.includes('Unconfigured'))) {
+            focusAddCredentials('live');
+            return;
+        }
+    }
+
     const toast = showToast(`Switching active engine to ${slot.toUpperCase()} account...`, 'loading', 0);
     try {
         const res = await fetch('/api/switch_api_slot', {

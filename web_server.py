@@ -932,9 +932,12 @@ def get_live_mode():
                 api_error_detail = f"Connection error: {test_err}"
 
         current_mode = getattr(bot_engine.execution, 'mode', 'PAPER') if bot_engine else 'PAPER'
+        import db_manager
+        active_slot = db_manager.get_active_api_slot()
 
         return jsonify({
             'live_mode': live_mode,
+            'active_slot': active_slot,
             'live_lots': live_lots,
             'current_execution_mode': current_mode,
             'wallet_balance_inr': round(wallet_balance_inr, 2),

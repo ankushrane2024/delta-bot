@@ -751,8 +751,11 @@ def set_active_api_slot(slot: str) -> tuple:
         slot = slot.lower()
         if slot not in ("live", "demo"):
             return False, {}
-        all_creds["active_slot"] = slot
         slot_data = all_creds.get(slot, {})
+        if not slot_data.get("api_key"):
+            app_logger.warning(f"DB: Cannot switch to {slot.upper()} - slot has no configured API key.")
+            return False, slot_data
+        all_creds["active_slot"] = slot
         all_creds["api_key"] = slot_data.get("api_key", "")
         all_creds["api_secret"] = slot_data.get("api_secret", "")
         _persist_credentials_dict(all_creds)
