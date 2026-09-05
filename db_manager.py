@@ -716,6 +716,10 @@ def load_all_api_credentials() -> dict:
             normalized["api_secret"] = act_data.get("api_secret", "")
 
         # Fallback to environment variables if slots are empty
+        try:
+            import config
+        except Exception:
+            config = None
         if not normalized["live"]["api_key"]:
             env_live_k = (os.getenv("DELTA_API_KEY") or getattr(config, 'DELTA_API_KEY', '') or '').strip()
             env_live_s = (os.getenv("DELTA_API_SECRET") or getattr(config, 'DELTA_API_SECRET', '') or '').strip()
