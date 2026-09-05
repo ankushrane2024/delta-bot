@@ -213,129 +213,127 @@ def get_status():
     if not btc_price or btc_price <= 0:
         btc_price = 70000.0
 
-    for sym, data in bot_engine.execution.active_positions.items():
-        entry_price = data.get('entry_price', 0)
-        # Use entry_size if available to prevent inflated PnL calculations on re-entries, just like bot_engine.py
-        size = data.get('entry_size', data.get('size', 0))
-        leg_type = data.get('leg_type', 'unknown')
-        if leg_type == 'unknown':
-            if sym.startswith('C-BTC'):
-                leg_type = 'call'
-            elif sym.startswith('P-BTC'):
-                leg_type = 'put'
-        entry_time_str = data.get('entry_time', '')
-        strike = data.get('strike', 0)
-        
-        # Live price from WebSocket / HTTP cache
-        current_price = entry_price  # fallback to entry_price if no live data
-        delta_val = 0.0
-        gamma_val = 0.0
-        try:
-            ws_data = bot_engine.api_client.get_realtime_ticker(sym)
-            if ws_data and 'mark_price' in ws_data:
-                candidate_price = float(ws_data['mark_price'])
-                
-                # ── Price Sanity Guard ──────────────────────────────────────────
-                # Reject garbage data (e.g. $0.01 after WS reconnect) but ALLOW
-                # legitimate violent moves. Options CAN double/triple during a
-                # flash crash (200-300% premium spike is real). Using 10x (1000%)
-                # threshold so the dashboard never hides real market damage.
-                price_is_valid = (
-                    candidate_price > 0.01 and               # must be positive
-                    entry_price > 0 and                       # need entry to compare
-                    abs(candidate_price - entry_price) / entry_price < 10.0  # max 1000% move
-                )
-                
-                if price_is_valid:
-                    current_price = candidate_price
-                    # Update last-known-good price in the position store
-                    data['last_good_price'] = candidate_price
-                    greeks = ws_data.get('greeks') or {}
-                    delta_val = float(greeks.get('delta', 0))
-                    gamma_val = float(greeks.get('gamma', 0))
-                else:
-                    # Use last known-good price if available, otherwise entry price
-                    lgp = data.get('last_good_price')
-                    if lgp and lgp > 0.01:
-                        current_price = lgp
-                        app_logger.debug(
-                            f"Status: Rejected bad live price {candidate_price:.4f} for {sym} "
-                            f"(entry={entry_price:.4f}). Using last_good_price={lgp:.4f}"
-                        )
+    def _calculate_pos_metrics(pos_dict):
+        pos_list = []
+        for sym, data in pos_dict.items():
+            entry_price = data.get('entry_price', 0)
+            size = data.get('entry_size', data.get('size', 0))
+            leg_type = data.get('leg_type', 'unknown')
+            if leg_type == 'unknown':
+                if sym.startswith('C-BTC'):
+                    leg_type = 'call'
+                elif sym.startswith('P-BTC'):
+                    leg_type = 'put'
+            entry_time_str = data.get('entry_time', '')
+            strike = data.get('strike', 0)
+            
+            current_price = entry_price
+            delta_val = 0.0
+            gamma_val = 0.0
+            try:
+                ws_data = bot_engine.api_client.get_realtime_ticker(sym)
+                if ws_data and 'mark_price' in ws_data:
+                    candidate_price = float(ws_data['mark_price'])
+                    price_is_valid = (
+                        candidate_price > 0.01 and
+                        entry_price > 0 and
+                        abs(candidate_price - entry_price) / entry_price < 10.0
+                    )
+                    if price_is_valid:
+                        current_price = candidate_price
+                        data['last_good_price'] = candidate_price
+                        greeks = ws_data.get('greeks') or {}
+                        delta_val = float(greeks.get('delta', 0))
+                        gamma_val = float(greeks.get('gamma', 0))
                     else:
-                        current_price = entry_price  # absolute fallback
-                        app_logger.debug(
-                            f"Status: Rejected bad live price {candidate_price:.4f} for {sym}. "
-                            f"Falling back to entry_price={entry_price:.4f}"
-                        )
-                
-        except Exception as ex:
-            app_logger.debug(f"Status: Price fetch error for {sym}: {ex}")
+                        lgp = data.get('last_good_price')
+                        if lgp and lgp > 0.01:
+                            current_price = lgp
+                        else:
+                            current_price = entry_price
+            except Exception as ex:
+                app_logger.debug(f"Status: Price fetch error for {sym}: {ex}")
+            
+            btc_quantity = size * LOT_TO_BTC
+            leg_pnl_usd = (entry_price - current_price) * btc_quantity
+            leg_pnl_inr = leg_pnl_usd * 95.5
+            leg_entry_premium_total = entry_price * btc_quantity
+            leg_pnl_pct_premium = (leg_pnl_usd / leg_entry_premium_total * 100) if leg_entry_premium_total > 0 else 0.0
+            leg_capital_used = size * LOT_TO_BTC * btc_price
+            leg_pnl_pct_capital = (leg_pnl_usd / leg_capital_used * 100) if leg_capital_used > 0 else 0.0
+            
+            if trail_state['trailing_confirmed'] and trail_state['current_trailing_sl'] is not None:
+                trade_status = f"Locked +{trail_state['current_trailing_sl']}% SL"
+            elif len(pos_dict) > 0:
+                trade_status = "Running"
+            else:
+                trade_status = "Unknown"
+            
+            pos_list.append({
+                'symbol': sym,
+                'leg_type': leg_type,
+                'strike': strike,
+                'side': data.get('side', 'SELL'),
+                'size': size,
+                'entry_price': round(entry_price, 4),
+                'current_price': round(current_price, 4),
+                'leg_pnl_usd': round(leg_pnl_usd, 2),
+                'leg_pnl_inr': round(leg_pnl_inr, 2),
+                'leg_pnl_pct_premium': round(leg_pnl_pct_premium, 2),
+                'leg_pnl_pct_capital': round(leg_pnl_pct_capital, 2),
+                'leg_entry_premium_total': round(leg_entry_premium_total, 4),
+                'leg_capital_used': round(leg_capital_used, 2),
+                'delta': round(delta_val, 4),
+                'gamma': round(gamma_val, 5),
+                'entry_time': entry_time_str,
+                'mins_to_squareoff': mins_remaining,
+                'current_iv_pct': current_iv_pct,
+                'trade_status': trade_status,
+            })
         
-        # P&L for this leg (short position: profit = entry - current)
-        # Formula: PnL = (Entry_Premium - Current_Premium) * BTC_Quantity
-        # where BTC_Quantity = Number_of_Lots * LOT_TO_BTC (0.001 BTC per lot)
-        btc_quantity = size * LOT_TO_BTC
-        leg_pnl_usd = (entry_price - current_price) * btc_quantity
-        leg_pnl_inr = leg_pnl_usd * 95.5  # Updated July 2026 INR rate
-        
-        # P&L Percentage (1 lot = 0.001 BTC)
-        leg_entry_premium_total = entry_price * btc_quantity
-        leg_pnl_pct_premium = (leg_pnl_usd / leg_entry_premium_total * 100) if leg_entry_premium_total > 0 else 0.0
-        
-        leg_capital_used = size * LOT_TO_BTC * btc_price
-        leg_pnl_pct_capital = (leg_pnl_usd / leg_capital_used * 100) if leg_capital_used > 0 else 0.0
-        
-        # Trade status label
-        if trail_state['trailing_confirmed'] and trail_state['current_trailing_sl'] is not None:
-            trade_status = f"Locked +{trail_state['current_trailing_sl']}% SL"
-        elif len(bot_engine.execution.active_positions) > 0:
-            trade_status = "Running"
-        else:
-            trade_status = "Unknown"
-        
-        positions.append({
-            'symbol': sym,
-            'leg_type': leg_type,
-            'strike': strike,
-            'side': data.get('side', 'SELL'),
-            'size': size,
-            'entry_price': round(entry_price, 4),
+        total_entry_prem = sum(p.get('leg_entry_premium_total', 0) for p in pos_list)
+        total_cap_used = round(sum(p['leg_capital_used'] for p in pos_list), 2)
+        opt_pnl_usd = sum(p['leg_pnl_usd'] for p in pos_list)
+        return pos_list, total_entry_prem, total_cap_used, opt_pnl_usd
 
-            'current_price': round(current_price, 4),
-            'leg_pnl_usd': round(leg_pnl_usd, 2),
-            'leg_pnl_inr': round(leg_pnl_inr, 2),
-            'leg_pnl_pct_premium': round(leg_pnl_pct_premium, 2),
-            'leg_pnl_pct_capital': round(leg_pnl_pct_capital, 2),
-            'leg_entry_premium_total': round(leg_entry_premium_total, 4),
-            'leg_capital_used': round(leg_capital_used, 2),
-            'delta': round(delta_val, 4),
-            'gamma': round(gamma_val, 5),
-            'entry_time': entry_time_str,
-            'mins_to_squareoff': mins_remaining,
-            'current_iv_pct': current_iv_pct,
-            'trade_status': trade_status,
-        })
-    
+    # Compute for both engines separately
+    current_mode = getattr(bot_engine.execution, 'mode', 'PAPER')
+    paper_dict = getattr(bot_engine.execution, 'paper_active_positions', {})
+    live_dict = getattr(bot_engine.execution, 'live_active_positions', {})
+
+    paper_positions, paper_entry_prem, paper_cap_used, paper_opt_pnl = _calculate_pos_metrics(paper_dict)
+    live_positions, live_entry_prem, live_cap_used, live_opt_pnl = _calculate_pos_metrics(live_dict)
+
     # Hedge Status (Smart Hedging Fallback)
     hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
     hedge_pnl_usd = hedge_status.get('hedge_pnl_usd', 0.0)
 
-    # Total P&L and Capital Used across all legs + Hedge
-    options_pnl_usd = sum(pos['leg_pnl_usd'] for pos in positions) if positions else 0.0
-    total_pnl_usd = round(options_pnl_usd + hedge_pnl_usd, 2)
-    total_pnl_inr = round(total_pnl_usd * 95.5, 2)
-    
-    if total_entry_premium <= 0 and positions:
-        total_entry_premium = sum(pos.get('leg_entry_premium_total', 0) for pos in positions)
+    paper_pnl_usd = round(paper_opt_pnl + (hedge_pnl_usd if current_mode == 'PAPER' else 0.0), 2)
+    paper_pnl_inr = round(paper_pnl_usd * 95.5, 2)
+    live_pnl_usd = round(live_opt_pnl + (hedge_pnl_usd if current_mode == 'LIVE' else 0.0), 2)
+    live_pnl_inr = round(live_pnl_usd * 95.5, 2)
+
+    # Active engine selected according to current execution mode
+    if current_mode == 'LIVE':
+        positions = live_positions
+        total_entry_premium = live_entry_prem
+        total_capital_used = live_cap_used
+        options_pnl_usd = live_opt_pnl
+        total_pnl_usd = live_pnl_usd
+        total_pnl_inr = live_pnl_inr
+    else:
+        positions = paper_positions
+        total_entry_premium = paper_entry_prem
+        total_capital_used = paper_cap_used
+        options_pnl_usd = paper_opt_pnl
+        total_pnl_usd = paper_pnl_usd
+        total_pnl_inr = paper_pnl_inr
 
     total_pnl_pct_premium = (total_pnl_usd / total_entry_premium * 100) if total_entry_premium > 0 else 0.0
-    total_capital_used = round(sum(pos['leg_capital_used'] for pos in positions), 2) if positions else 0.0
     total_pnl_pct_capital = (total_pnl_usd / total_capital_used * 100) if total_capital_used > 0 else 0.0
     
     dvol_status = bot_engine.dvol_provider.get_status() if getattr(bot_engine, 'dvol_provider', None) else {}
     
-    current_mode = getattr(bot_engine.execution, 'mode', 'PAPER')
     paper_eq = float(getattr(bot_engine.risk_manager, 'paper_equity', 50000.0))
     live_eq = float(getattr(bot_engine.risk_manager, 'live_equity', 0.0))
     active_eq = live_eq if (current_mode == 'LIVE' and live_eq > 0) else paper_eq
@@ -352,8 +350,22 @@ def get_status():
         'live_equity': round(live_eq, 2),
         'daily_loss_hits': bot_engine.daily_loss_hits,
         'positions': positions,
-        'paper_positions': [p for p in positions] if current_mode == 'PAPER' else [],
-        'live_positions': [p for p in positions] if current_mode == 'LIVE' else [],
+        'paper_positions': paper_positions,
+        'live_positions': live_positions,
+        'paper_pnl': {
+            'total_pnl_usd': paper_pnl_usd,
+            'total_pnl_inr': paper_pnl_inr,
+            'total_capital_used': paper_cap_used,
+            'total_entry_premium': round(paper_entry_prem, 4),
+            'positions_count': len(paper_positions),
+        },
+        'live_pnl': {
+            'total_pnl_usd': live_pnl_usd,
+            'total_pnl_inr': live_pnl_inr,
+            'total_capital_used': live_cap_used,
+            'total_entry_premium': round(live_entry_prem, 4),
+            'positions_count': len(live_positions),
+        },
         'total_entry_premium': round(total_entry_premium, 4),
         'total_capital_used': total_capital_used,
         'btc_price': round(btc_price, 2),

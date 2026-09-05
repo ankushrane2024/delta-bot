@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'btc-bot-cache-v2-nocache';
+const CACHE_VERSION = 'btc-bot-cache-v4-dual-engine';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
