@@ -6270,11 +6270,15 @@ async function saveApiCredentialsAction() {
     const origHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<span>⏳</span> VERIFYING GATEWAYS...';
-    const toast = showToast('Testing connection across Delta gateways (Demo & Live)...', 'loading', 0);
+    const toast = showToast('Testing connection across Delta gateways (Demo & Live)...', 'loading', 15000);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
         const res = await fetch('/api/save_api_credentials', {
             method: 'POST',
+            signal: controller.signal,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 api_key: key,
@@ -6283,8 +6287,9 @@ async function saveApiCredentialsAction() {
                 slot: selectedTargetSlot
             })
         });
+        clearTimeout(timeoutId);
         const data = await res.json();
-        toast.remove();
+        if (toast && typeof toast.remove === 'function') toast.remove();
 
         if (data.success) {
             showToast('✅ ' + data.message, 'success', 7000);
@@ -6299,8 +6304,10 @@ async function saveApiCredentialsAction() {
             setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
         }
     } catch (err) {
-        toast.remove();
-        showToast('Network error: ' + err.message, 'error', 5000);
+        clearTimeout(timeoutId);
+        if (toast && typeof toast.remove === 'function') toast.remove();
+        const msg = err.name === 'AbortError' ? 'Verification timed out after 15s. Check network or API Key details.' : err.message;
+        showToast('Network error: ' + msg, 'error', 5000);
         btn.innerHTML = origHtml;
         btn.disabled = false;
     }

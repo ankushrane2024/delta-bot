@@ -10,10 +10,11 @@ from logger import app_logger, error_logger
 import config
 
 class DeltaIndiaClient:
-    def __init__(self, api_key=None, api_secret=None, base_url=None):
+    def __init__(self, api_key=None, api_secret=None, base_url=None, skip_isolation_guard=False):
         self.base_url = (base_url or getattr(config, 'DELTA_BASE_URL', None) or DELTA_INDIA_BASE_URL).rstrip('/')
         self.api_key = api_key or DELTA_API_KEY
         self.api_secret = api_secret or DELTA_API_SECRET
+        self.skip_isolation_guard = skip_isolation_guard
         self.session = requests.Session()
         self.time_offset = 0
         self.ws = None
@@ -51,7 +52,7 @@ class DeltaIndiaClient:
             error_logger.error(f"API: Time sync failed ({self.base_url}): {e}")
 
     def _generate_signature(self, method, path, body=""):
-        timestamp = str(int(time.time() + self.time_offset))
+        timestamp = str(int(time.time()) + self.time_offset)
         payload = method + timestamp + path + body
         signature = hmac.new(
             self.api_secret.encode('utf-8'),
@@ -63,26 +64,28 @@ class DeltaIndiaClient:
     def request(self, method, path, params=None, data=None):
         # ── AIRTIGHT ACCOUNT ISOLATION GUARD ──────────────────────────────────────
         # When DEMO slot is active, requests to LIVE production gateways are strictly blocked.
+        # Credential probes specify skip_isolation_guard=True to safely test connectivity.
         try:
-            import db_manager
-            active_slot = db_manager.get_active_api_slot()
-            if active_slot == 'demo':
-                # LIVE gateway detection: api.india.delta.exchange or api.delta.exchange
-                b_url = (self.base_url or '').lower()
-                is_live_gateway = ('api.india.delta.exchange' in b_url) or (
-                    'api.delta.exchange' in b_url and 'testnet' not in b_url
-                )
-                if is_live_gateway:
-                    error_logger.critical(
-                        f"[SECURITY GUARD BLOCKED] Attempted {method} {path} to LIVE production gateway ({self.base_url}) while DEMO account is active! Request aborted."
+            if not getattr(self, 'skip_isolation_guard', False):
+                import db_manager
+                active_slot = db_manager.get_active_api_slot()
+                if active_slot == 'demo':
+                    # LIVE gateway detection: api.india.delta.exchange or api.delta.exchange
+                    b_url = (self.base_url or '').lower()
+                    is_live_gateway = ('api.india.delta.exchange' in b_url) or (
+                        'api.delta.exchange' in b_url and 'testnet' not in b_url
                     )
-                    return {
-                        'success': False,
-                        'error': {
-                            'code': 'account_isolation_guard_tripped',
-                            'message': f'CRITICAL: Request to live gateway ({self.base_url}) strictly blocked while in DEMO mode.'
+                    if is_live_gateway:
+                        error_logger.critical(
+                            f"[SECURITY GUARD BLOCKED] Attempted {method} {path} to LIVE production gateway ({self.base_url}) while DEMO account is active! Request aborted."
+                        )
+                        return {
+                            'success': False,
+                            'error': {
+                                'code': 'account_isolation_guard_tripped',
+                                'message': f'CRITICAL: Request to live gateway ({self.base_url}) strictly blocked while in DEMO mode.'
+                            }
                         }
-                    }
         except Exception:
             pass
 

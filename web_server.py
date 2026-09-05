@@ -1147,7 +1147,7 @@ DELTA_GATEWAYS = [
     }
 ]
 
-def validate_delta_credentials(api_key: str, api_secret: str, preferred_env: str = None):
+def validate_delta_credentials(api_key: str, api_secret: str, preferred_env: str = None, target_slot: str = None):
     """
     Probes Delta Exchange gateways to validate API credentials.
     Supports Delta Demo (demo.delta.exchange), Delta India Live, India Demo, and Global Live.
@@ -1162,6 +1162,25 @@ def validate_delta_credentials(api_key: str, api_secret: str, preferred_env: str
                 candidates.append(g)
                 break
 
+    # Prioritize gateways matching the user's selected target slot
+    if target_slot == 'demo':
+        # Prioritize Indian Demo first (primary testnet in India), then global testnet
+        for g in DELTA_GATEWAYS:
+            if g.get("is_demo") and g["id"] == "india_demo" and g not in candidates:
+                candidates.append(g)
+        for g in DELTA_GATEWAYS:
+            if g.get("is_demo") and g not in candidates:
+                candidates.append(g)
+    elif target_slot == 'live':
+        # Prioritize Delta India Live first, then global live
+        for g in DELTA_GATEWAYS:
+            if not g.get("is_demo") and g["id"] == "india_live" and g not in candidates:
+                candidates.append(g)
+        for g in DELTA_GATEWAYS:
+            if not g.get("is_demo") and g not in candidates:
+                candidates.append(g)
+
+    # Append remaining gateways as fallback
     for g in DELTA_GATEWAYS:
         if g not in candidates:
             candidates.append(g)
@@ -1169,7 +1188,12 @@ def validate_delta_credentials(api_key: str, api_secret: str, preferred_env: str
     attempted_errs = []
     for gw in candidates:
         try:
-            client = DeltaIndiaClient(api_key=api_key, api_secret=api_secret, base_url=gw["base_url"])
+            client = DeltaIndiaClient(
+                api_key=api_key,
+                api_secret=api_secret,
+                base_url=gw["base_url"],
+                skip_isolation_guard=True
+            )
             prof_res = client.get_profile()
             if prof_res and isinstance(prof_res, dict) and prof_res.get('success'):
                 res_p = prof_res.get('result', {})
@@ -1291,7 +1315,7 @@ def save_api_credentials():
             return jsonify({'success': False, 'error': 'Both API Key and API Secret are required.'}), 400
 
         # Multi-Gateway verification
-        ok, matched_gw, prof_data, err_msg = validate_delta_credentials(new_key, new_secret, preferred_env)
+        ok, matched_gw, prof_data, err_msg = validate_delta_credentials(new_key, new_secret, preferred_env, target_slot=target_slot)
         if not ok:
             return jsonify({
                 'success': False,
