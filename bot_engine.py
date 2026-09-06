@@ -147,32 +147,28 @@ class DeltaTradingEngine:
         self.risk_manager = RiskManager(self.api_client)
         self.strategy = ShortStrangleStrategy(self.api_client)
         
-        # STRICT MANUAL-ONLY STARTUP:
-        # Never automatically boot into LIVE mode on restart or reboot!
-        # Always initialize in PAPER mode unless BOT_MODE is explicitly set in .env.
+        # Mode initialization: Check .env BOT_MODE and lot_size.json
+        saved_live_mode = False
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            path = os.path.join(base_dir, 'lot_size.json')
+            if os.path.exists(path):
+                import json
+                with open(path, 'r') as f:
+                    lot_data = json.load(f)
+                saved_live_mode = bool(lot_data.get('live_mode', False))
+        except Exception:
+            saved_live_mode = False
+
         initial_mode = 'PAPER'
-        if BOT_MODE == 'LIVE':
+        if saved_live_mode is True:
             initial_mode = 'LIVE'
-            app_logger.warning("Engine: Initialized in LIVE mode via explicit .env BOT_MODE=LIVE setting.")
-        elif active_slot == 'demo':
-            initial_mode = 'DEMO'
-            app_logger.info("Engine: DEMO slot active — Initialized in DEMO execution mode (virtual testnet).")
+            config.BOT_MODE = 'LIVE'
+            app_logger.warning("Engine: Initialized in LIVE mode via persistent toggle in lot_size.json.")
         else:
-            app_logger.info("Engine: Safe Startup enforced — Initialized in PAPER mode.")
-            # Ensure lot_size.json live_mode is reset to false at startup for fail-safe safety
-            try:
-                base_dir = os.path.dirname(os.path.abspath(__file__))
-                path = os.path.join(base_dir, 'lot_size.json')
-                if os.path.exists(path):
-                    import json
-                    with open(path, 'r') as f:
-                        lot_data = json.load(f)
-                    if lot_data.get('live_mode'):
-                        lot_data['live_mode'] = False
-                        with open(path, 'w') as f:
-                            json.dump(lot_data, f, indent=4)
-            except Exception:
-                pass
+            initial_mode = 'PAPER'
+            config.BOT_MODE = 'PAPER'
+            app_logger.info("Engine: Safe Startup enforced — Live Mode toggle is OFF. Initialized in 100% safe PAPER mode.")
 
         self.execution = ExecutionHandler(self.api_client, mode=initial_mode)
         self.filters = TradingFilters(self.api_client, dvol_provider=self.dvol_provider)
@@ -327,16 +323,16 @@ class DeltaTradingEngine:
             if os.path.exists(path):
                 with open(path, 'r') as f:
                     data = json.load(f)
-                # LIVE and DEMO modes both use their own separate lot size (live_lots, default 1 for safety)
-                if getattr(self.execution, 'mode', 'PAPER') in ('LIVE', 'DEMO'):
+                # LIVE mode uses live_lots from lot_size.json (default 1 for safety)
+                if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
                     live_lots = int(data.get('live_lots', 1))
                     app_logger.info(f"Engine [{self.execution.mode}]: Using live lot size: {live_lots} lot(s)")
                     return live_lots
                 return int(data.get('total_lots', MANUAL_TOTAL_LOTS))
         except Exception as e:
             app_logger.error(f"Engine: Failed to read lot_size.json – {e}")
-        # In LIVE/DEMO mode fallback, always use 1 lot for safety
-        if getattr(self.execution, 'mode', 'PAPER') in ('LIVE', 'DEMO'):
+        # In LIVE mode fallback, always use 1 lot for safety
+        if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
             app_logger.warning(f"Engine [{getattr(self.execution, 'mode', 'PAPER')}]: lot_size.json unavailable, defaulting to 1 lot for safety")
             return 1
         return int(MANUAL_TOTAL_LOTS)
@@ -344,16 +340,31 @@ class DeltaTradingEngine:
     def run_entry_cycle(self, force=False):
         app_logger.info(f"Engine: Entry cycle triggered (force={force})")
         
+        # ── PROTECTION SHIELD GATE: Synchronize execution mode strictly with lot_size.json ──
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            p = os.path.join(base_dir, 'lot_size.json')
+            if os.path.exists(p):
+                import json
+                with open(p, 'r') as f:
+                    _ld = json.load(f)
+                _is_live = bool(_ld.get('live_mode', False))
+                if not _is_live and getattr(self.execution, 'mode', 'PAPER') != 'PAPER':
+                    app_logger.info("Engine: [PROTECTION SHIELD] Ensuring mode is PAPER because Live Toggle is OFF.")
+                    self.execution.mode = 'PAPER'
+                    config.BOT_MODE = 'PAPER'
+                elif _is_live and getattr(self.execution, 'mode', 'PAPER') != 'LIVE':
+                    app_logger.info("Engine: Synchronizing mode to LIVE because Live Toggle is ON.")
+                    self.execution.mode = 'LIVE'
+                    config.BOT_MODE = 'LIVE'
+        except Exception as _sync_err:
+            app_logger.error(f"Engine: Error checking lot_size.json before entry: {_sync_err}")
+
         if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
             try:
                 self.execution.sync_live_positions()
             except Exception as e:
                 app_logger.warning(f"Engine: Error syncing live positions before entry: {e}")
-        elif getattr(self.execution, 'mode', 'PAPER') == 'DEMO':
-            try:
-                self.execution.sync_demo_positions()
-            except Exception as e:
-                app_logger.warning(f"Engine: Error syncing demo positions before entry: {e}")
                 
         if self.execution.active_positions:
             open_symbols = [k for k in self.execution.active_positions.keys() if not k.startswith('__')]
@@ -475,10 +486,10 @@ class DeltaTradingEngine:
         import datetime
         ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
         is_weekend = ist_now.weekday() >= 5
-        req_min = 30 if force else config.MIN_ENTRY_PREMIUM
+        req_min = config.MIN_ENTRY_PREMIUM
         
-        if not force and (call_premium < req_min or put_premium < req_min):
-            reason_text = f"ENTRY REJECTED\nReason:\nPremium below minimum threshold\nCall Premium:\n${call_premium:.2f}\nPut Premium:\n${put_premium:.2f}\nMinimum Required:\n${req_min}\nDecision:\nNO TRADE"
+        if call_premium < req_min or put_premium < req_min:
+            reason_text = f"ENTRY REJECTED\nReason:\nPremium below minimum ${req_min:.0f} threshold\nCall Premium:\n${call_premium:.2f}\nPut Premium:\n${put_premium:.2f}\nMinimum Required:\n${req_min:.0f}\nDecision:\nNO TRADE"
             
             app_logger.warning(reason_text.replace('\n', ' | '))
             self.today_trade_status = "Waiting for Valid Premium"
@@ -620,7 +631,7 @@ class DeltaTradingEngine:
         notifier.notify_entry(call_opt['symbol'], put_opt['symbol'], per_entry_size, total_premium_for_this_entry)
 
         # Smart Hedging Pipeline — Step 1
-        if self.smart_hedging_enabled:
+        if False: # self.smart_hedging_enabled:
             # Cache entry premiums immediately for premium-direction fallback
             self.smart_hedging.set_entry_premiums(self.execution.active_positions)
             threading.Thread(target=self.smart_hedging.run_post_entry_hedge,
@@ -1077,7 +1088,7 @@ class DeltaTradingEngine:
                     except Exception as time_err:
                         error_logger.error(f"Error checking time safeguard in monitor loop: {time_err}")
  
-                    # 30-Second Critical Data Failure Safeguard (Only in LIVE mode to prevent paper simulation skips)
+                    # 30-Second Critical Data Failure Safeguard (In LIVE mode)
                     if self.execution.mode == 'LIVE' and time.time() - self.api_client.last_price_update_time > 30:
                         app_logger.critical("Engine: TOTAL DATA FAILURE > 30s. Triggering Emergency Auto Square-Off.")
                         notifier.notify_error("🚨 CRITICAL SAFEGUARD TRIGGERED 🚨\nTotal Data Failure (WS & HTTP) > 30s. Emergency Auto Square-Off executed to protect capital.")
@@ -1286,7 +1297,7 @@ class DeltaTradingEngine:
                             app_logger.warning(f"Engine: Chart data RESTORED from cloud DB for {current_mode}! {len(persisted_chart)} points recovered.")
                             # CLEAR IT so we don't infinitely overwrite the live chart on every tick!
                             self.execution._persisted_chart_data = None
-                        elif (current_mode == 'LIVE' and len(self.live_pnl_chart_data) == 0) or (current_mode == 'PAPER' and len(self.paper_pnl_chart_data) == 0):
+                        elif (current_mode == 'LIVE' and len(self.live_pnl_chart_data) == 0) or (current_mode != 'LIVE' and len(self.paper_pnl_chart_data) == 0):
                             # Fallback: seed a single point so the chart card is always visible
                             recovery_pnl = recovered_premium - current_total_value if recovered_premium > 0 else 0.0
                             recovery_pt = {
@@ -1386,6 +1397,23 @@ class DeltaTradingEngine:
                             })
                             if current_mode == 'LIVE':
                                 self.live_pnl_chart_data = target_chart
+                                # Dual-Engine: also track simulated paper PnL curve in parallel
+                                if getattr(self.execution, 'paper_active_positions', None):
+                                    p_real = {k: v for k, v in self.execution.paper_active_positions.items() if not k.startswith('__')}
+                                    if p_real:
+                                        p_entry_prem = sum(d.get('entry_price', 0) * d.get('size', 0) * LOT_TO_BTC for d in p_real.values())
+                                        p_cur_val = 0.0
+                                        for p_sym, p_d in p_real.items():
+                                            p_ws = self.api_client.get_realtime_ticker(p_sym)
+                                            p_mp = float(p_ws.get('mark_price', 0)) if p_ws and 'mark_price' in p_ws else p_d.get('entry_price', 0)
+                                            p_cur_val += p_mp * p_d.get('size', 0) * LOT_TO_BTC
+                                        p_pnl = p_entry_prem - p_cur_val
+                                        self.paper_pnl_chart_data.append({
+                                            "t": get_ist_now().strftime("%H:%M"),
+                                            "pnl": round(p_pnl, 4),
+                                            "hedge": 0.0,
+                                            "total": round(p_pnl, 4)
+                                        })
                             else:
                                 self.paper_pnl_chart_data = target_chart
                             self.pnl_chart_data = target_chart
@@ -1592,7 +1620,7 @@ class DeltaTradingEngine:
                             supertrend_dir = _st_data['trend'] if _st_data else 'NEUTRAL'
                         except Exception:
                             supertrend_dir = 'NEUTRAL'
-                        if self.smart_hedging_enabled:
+                        if False: # self.smart_hedging_enabled:
                             try:
                                 self.smart_hedging.manage_hedge(
                                     self.execution.active_positions, unrealized_loss_pct, profit,
@@ -1644,7 +1672,6 @@ class DeltaTradingEngine:
                         self.reset_daily_state()
                         self.today_trade_status = "Emergency Auto Closed"
                         self.today_skip_reason = f"Stuck Trade ({_consecutive_crash_count} crashes)"
-                        self.daily_loss_hits += 2  # Block further trades today
                         _consecutive_crash_count = 0
                     except Exception as emergency_err:
                         error_logger.critical(f"EMERGENCY CLOSE ALSO FAILED: {emergency_err}")
@@ -1721,7 +1748,6 @@ class DeltaTradingEngine:
             notifier.notify_error(f"🚨 CRITICAL RECOVERY FAILURE 🚨\n{err_msg}\nTrading paused.")
             self.today_trade_status = "Emergency Auto Closed"
             self.today_skip_reason = "Corrupted State on Recovery"
-            self.daily_loss_hits += 2 # Disable trading
             raise Exception(f"Startup Validation Failed: {err_msg}")
         else:
             app_logger.info("Startup Validation: All critical state variables successfully restored.")
@@ -1826,7 +1852,6 @@ class DeltaTradingEngine:
             # Advanced Money Management state updates
             if profit <= 0:
                 self.consecutive_loss_count += 1
-                self.daily_loss_hits += 1
                 if self.consecutive_loss_count >= CONSECUTIVE_LOSS_THRESHOLD:
                     self.reduced_size_trades_remaining = CONSECUTIVE_LOSS_COOLDOWN_TRADES
                     app_logger.info(f"Engine: {self.consecutive_loss_count} consecutive losses. Cooldown of {self.reduced_size_trades_remaining} trades activated.")
@@ -1878,12 +1903,47 @@ class DeltaTradingEngine:
                 hedge_events=hedge_events,
                 chart_data=list(self.live_pnl_chart_data if getattr(self.execution, 'mode', 'PAPER') == 'LIVE' else self.paper_pnl_chart_data)  # Snapshot saved permanently with trade
             )
+
+            # If parallel paper simulation was running alongside LIVE, log the paper trade as well
+            if getattr(self.execution, 'mode', 'PAPER') == 'LIVE' and getattr(self, 'paper_pnl_chart_data', None):
+                paper_final_pnl = self.paper_pnl_chart_data[-1].get('total', 0.0) if self.paper_pnl_chart_data else 0.0
+                paper_eq = getattr(self.risk_manager, 'paper_equity', 50000.0) + paper_final_pnl
+                try:
+                    self.performance_tracker.log_trade(
+                        entry_time=self.current_trade_info.get("entry_time", ""),
+                        call_symbol=c_syms,
+                        put_symbol=p_syms,
+                        premium_collected=self.total_entry_premium,
+                        pnl=paper_final_pnl,
+                        exit_reason=reason,
+                        current_equity=paper_eq,
+                        regime_filter_enabled=self.market_regime_filter_enabled,
+                        current_iv=getattr(self, 'current_iv', 0.0),
+                        dvol_status=dvol_status,
+                        size_multiplier=getattr(self, 'size_multiplier', 1.0),
+                        hedge_status=hedge_status,
+                        adx=getattr(self, 'current_adx_value', 0.0),
+                        mode='PAPER',
+                        call_entry_price=call_entry_price,
+                        put_entry_price=put_entry_price,
+                        call_exit_price=call_exit_price,
+                        put_exit_price=put_exit_price,
+                        hedge_pnl=0.0,
+                        max_pnl_pct=self.current_trade_info.get("max_pnl_pct", 0.0),
+                        min_pnl_pct=self.current_trade_info.get("min_pnl_pct", 0.0),
+                        max_pnl_time=self.current_trade_info.get("max_pnl_time", ""),
+                        min_pnl_time=self.current_trade_info.get("min_pnl_time", ""),
+                        hedge_events=[],
+                        chart_data=list(self.paper_pnl_chart_data)
+                    )
+                    app_logger.info("Engine [DUAL-ENGINE]: Parallel PAPER trade logged to history alongside LIVE trade.")
+                except Exception as _p_log_err:
+                    app_logger.warning(f"Engine [DUAL-ENGINE]: Error logging parallel paper trade: {_p_log_err}")
+
             self.current_trade_info = {"calls": [], "puts": []}
             curr_mode = getattr(self.execution, 'mode', 'PAPER')
-            if curr_mode == 'LIVE':
-                self.live_pnl_chart_data = []
-            else:
-                self.paper_pnl_chart_data = []
+            self.live_pnl_chart_data = []
+            self.paper_pnl_chart_data = []
             self.pnl_chart_data = []  # Clear chart for next trade
             self.total_entry_premium = 0
             self.risk_manager.reset_trailing_state(mode=curr_mode)
@@ -1891,29 +1951,13 @@ class DeltaTradingEngine:
             self.hedging_triggered_today = False
             self._trade_start_ts = None
             
-            # Auto-disable live mode for safety after trade square off
+            # Sweep and cancel any remaining open stop orders on exchange
             if getattr(self.execution, 'mode', 'PAPER') == 'LIVE':
-                # Extra safety net: sweep and cancel any remaining open stop orders
                 try:
                     self.execution.cancel_all_exchange_stop_orders()
                 except Exception as _sweep_err:
                     app_logger.error(f"Engine: Error in post-trade stop order sweep: {_sweep_err}")
-                app_logger.warning("Engine: Trade finished. Auto-deactivating LIVE mode for safety.")
-                self.execution.mode = 'PAPER'
-                config.BOT_MODE = 'PAPER'
-                try:
-                    import json
-                    base_dir = os.path.dirname(os.path.abspath(__file__))
-                    lot_file = os.path.join(base_dir, 'lot_size.json')
-                    if os.path.exists(lot_file):
-                        with open(lot_file, 'r') as f:
-                            data = json.load(f)
-                        data['live_mode'] = False
-                        with open(lot_file, 'w') as f:
-                            json.dump(data, f, indent=4)
-                    notifier.send_message("🛡️ <b>SAFETY ACTIVATED</b>\nTrade successfully closed. Live Mode has been **AUTO-DEACTIVATED**.\nThe bot has reverted to PAPER mode to protect your funds for tomorrow.")
-                except Exception as e:
-                    app_logger.error(f"Engine: Failed to auto-deactivate live mode in JSON - {e}")
+                app_logger.info("Engine: Trade finished. Delta Exchange stop orders cleared cleanly. LIVE mode remains armed for scheduled morning trading.")
             
             # Export audit log
             try:

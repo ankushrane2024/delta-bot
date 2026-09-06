@@ -257,6 +257,10 @@ class TradingFilters:
     def get_market_regime(self):
         """Calculates ADX, Bollinger Bands, and RSI on 15m BTC perp candles.
         Returns (regime, adx_value, adx_history)."""
+        now_ts = time.time()
+        if now_ts - getattr(self, 'last_regime_fetch_time', 0.0) < 60.0 and getattr(self, 'cached_regime', None) and self.cached_regime[0] != "Unknown":
+            return self.cached_regime
+
         import pandas as pd
         import numpy as np
         import pytz
@@ -266,7 +270,7 @@ class TradingFilters:
             # Fetch 720 candles (15m) from Kraken (Binance/Bybit block Render cloud IPs with 403/451)
             import requests
             headers = {'User-Agent': 'Mozilla/5.0'}
-            res = requests.get('https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=15', headers=headers, timeout=10)
+            res = requests.get('https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=15', headers=headers, timeout=5)
             
             if res.status_code != 200:
                 app_logger.warning(f"Filter: Failed to fetch candles for Market Regime from Kraken. Status code: {res.status_code}")
@@ -387,10 +391,15 @@ class TradingFilters:
             self.last_detailed_signal = detailed_signal
             app_logger.info(f"Filter: Market is {detailed_signal} / {regime} (ADX: {adx_val:.2f}, RSI: {latest['RSI']:.1f})")
             
-            return regime, round(adx_val, 2), [round(float(x), 2) for x in adx_history]
+            result = (regime, round(adx_val, 2), [round(float(x), 2) for x in adx_history])
+            self.cached_regime = result
+            self.last_regime_fetch_time = time.time()
+            return result
             
         except Exception as e:
             app_logger.error(f"Filter: Error calculating Regime: {e}")
+            if getattr(self, 'cached_regime', None) and self.cached_regime[0] != "Unknown":
+                return self.cached_regime
             return "Unknown", 0.0, []
 
     def get_price_rejection_signal(self):

@@ -5,6 +5,13 @@ import time
 import requests
 import websocket
 import threading
+import socket
+try:
+    import urllib3.util.connection as urllib3_conn
+    # Delta Exchange IP whitelist strictly uses IPv4; force IPv4 to avoid IPv6 mismatch
+    urllib3_conn.allowed_gai_family = lambda: socket.AF_INET
+except Exception:
+    pass
 from config import DELTA_API_KEY, DELTA_API_SECRET, DELTA_INDIA_BASE_URL, DELTA_INDIA_WS_URL
 from logger import app_logger, error_logger
 import config
@@ -153,7 +160,39 @@ class DeltaIndiaClient:
         if end: params["end"] = end
         return self.request("GET", "/v2/history/candles", params=params)
 
-    def place_order(self, product_id, side, size, order_type="market_order", limit_price=None):
+    @staticmethod
+    def _is_live_toggle_shield_active():
+        """CRITICAL PROTECTION SHIELD:
+        Reads lot_size.json directly from disk on every order attempt.
+        Returns True ONLY if the user has manually turned the Live Mode Toggle ON.
+        If toggle is OFF, real orders are NEVER placed on Delta Exchange."""
+        try:
+            import json, os
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            p = os.path.join(base_dir, "lot_size.json")
+            if os.path.exists(p):
+                with open(p, "r") as f:
+                    d = json.load(f)
+                return bool(d.get("live_mode", False))
+        except Exception:
+            pass
+        return False
+
+    def place_order(self, product_id, side, size, order_type="market_order", limit_price=None, reduce_only=False):
+        # ── PROTECTION SHIELD ─────────────────────────────────────────────────
+        # Allow reduce_only=True orders so existing open positions can be safely closed/squared off.
+        # But STRICTLY FORBID OPENING ANY NEW POSITION unless the user manually enabled the Live Toggle!
+        if not reduce_only:
+            if not self._is_live_toggle_shield_active():
+                app_logger.critical(
+                    f"[PROTECTION SHIELD BLOCKED REAL ORDER] Blocked {side.upper()} order (pid={product_id}, size={size}) on Delta Exchange! "
+                    f"Reason: Live Mode Toggle is OFF. Real positions are strictly forbidden until manually enabled by you."
+                )
+                return {
+                    "success": False,
+                    "error": "PROTECTION SHIELD: Live Mode Toggle is OFF. Real exchange order hard-blocked to protect your funds."
+                }
+
         data = {
             "product_id": product_id,
             "side": side,
@@ -162,22 +201,22 @@ class DeltaIndiaClient:
         }
         if limit_price:
             data["limit_price"] = str(limit_price)
+        if reduce_only:
+            data["reduce_only"] = True
         return self.request("POST", "/v2/orders", data=data)
 
     def place_stop_order(self, product_id, side, size, stop_price, limit_price=None):
-        """Places a stop-limit order (exchange-native SL backup).
-        
-        Delta Exchange requires order_type='limit_order' with a limit_price for options SL orders.
-        Under normal operation, the bot's own monitor_loop closes the position
-        at 1x (SL_PERCENT=100%) and cancels this stop before it can trigger.
+        """Places a stop-limit order (exchange-native SL backup)."""
+        # ── PROTECTION SHIELD ──
+        if not self._is_live_toggle_shield_active():
+            app_logger.critical(
+                f"[PROTECTION SHIELD BLOCKED STOP ORDER] Blocked stop order on Delta Exchange! Live Mode Toggle is OFF."
+            )
+            return {
+                "success": False,
+                "error": "PROTECTION SHIELD: Live Mode Toggle is OFF. Stop order blocked."
+            }
 
-        Args:
-            product_id: Delta Exchange product ID
-            side: 'buy' (to close a short options sell)
-            size: number of lots
-            stop_price: the price at which the stop triggers (2x entry premium)
-            limit_price: execution price cap upon trigger (defaults to stop_price * 1.25 for buy)
-        """
         if limit_price is None:
             if side == 'buy':
                 limit_price = round(stop_price * 1.25, 2)

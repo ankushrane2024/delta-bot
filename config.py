@@ -1,10 +1,8 @@
 import os
-from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env file (resolved relative to this file)
-_env_path = Path(__file__).resolve().parent / '.env'
-load_dotenv(dotenv_path=_env_path)
+# Load environment variables from .env file
+load_dotenv()
 
 # --- API Settings ---
 DELTA_API_KEY = os.getenv("DELTA_API_KEY", "")
@@ -21,12 +19,11 @@ DELTA_BASE_URL = os.getenv("DELTA_BASE_URL", DELTA_INDIA_BASE_URL)
 
 # --- Bot Mode ---
 # Set BOT_MODE to "PAPER" for simulation or "LIVE" for real trading.
-# FAIL-SAFE GUARD: If BOT_MODE is missing, blank, or invalid in .env, strictly default to "PAPER".
-_raw_mode = (os.getenv("BOT_MODE") or "").strip().upper()
-if _raw_mode in ["PAPER", "LIVE"]:
-    BOT_MODE = _raw_mode
-else:
+# Remote Render bot is forced to "PAPER" mode for safety and simulation, local uses .env.
+if os.getenv("RENDER") == "true":
     BOT_MODE = "PAPER"
+else:
+    BOT_MODE = os.getenv("BOT_MODE", "PAPER").upper()
 
 # --- Capital & Risk ---
 # STARTING_CAPITAL is used only for paper-mode equity simulation and reporting.
@@ -34,8 +31,8 @@ else:
 STARTING_CAPITAL = float(os.getenv("STARTING_CAPITAL", 50000))
 
 # Maximum allowed daily loss as a percentage of starting equity.
-# Bot stops trading for the day if floating loss >= 3%.
-MAX_DAILY_LOSS_PCT = 0.03
+# Bot stops trading for the day if floating loss >= 3% (DISABLED PER USER REQUEST).
+MAX_DAILY_LOSS_PCT = 1.00
 
 # --- Manual Lot Sizing ---
 # MANUAL_TOTAL_LOTS is the total number of lots for a strangle trade.
@@ -58,11 +55,9 @@ EXIT_TIME_HARD = "17:00"      # Hard square off at 17:00 IST
 EXIT_TIME_START = "17:00"     # Kept for backward compatibility
 EXIT_TIME_END = "17:20"       # Kept for backward compatibility
 
-# --- Telegram & Monitoring Settings ---
+# --- Telegram Settings ---
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
-ENABLE_TELEGRAM_HEARTBEAT = os.getenv("ENABLE_TELEGRAM_HEARTBEAT", "true").lower() in ("true", "1", "yes")
-HEARTBEAT_INTERVAL_MINS = int(os.getenv("HEARTBEAT_INTERVAL_MINS", "60"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # --- Strategy Parameters ---
@@ -82,7 +77,7 @@ DVOL_PREMIUM_RANGES = {
 }
 
 # --- Stop Loss & Dynamic Profit Lock (Section 6) ---
-SL_PERCENT = 1.00              # 100% of collected premium → triggers full exit
+SL_PERCENT = 1.20              # 120% of collected premium → triggers full exit
 MIN_ENTRY_PREMIUM = 80.0       # Minimum required premium for entry
 MIN_HOLD_SECONDS = 30          # Minimum seconds to hold before any exit is allowed
 

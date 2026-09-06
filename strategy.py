@@ -141,7 +141,7 @@ class ShortStrangleStrategy:
         ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
         is_weekend = ist_now.weekday() >= 5  # 5=Sat, 6=Sun
         
-        base_min = 30 if force else MIN_ENTRY_PREMIUM
+        base_min = MIN_ENTRY_PREMIUM
         
         if dvol_provider and check_premium and not force:
             premium_min, premium_max = dvol_provider.get_premium_range()
@@ -198,16 +198,16 @@ class ShortStrangleStrategy:
         best_call = None
         best_put = None
 
-        # Build all (call, put) pairs within premium range and rank by premium similarity
+        # Build all (call, put) pairs within premium range (minimum $80 floor)
         valid_pairs = []
         if check_premium:
             for c in eligible_calls:
-                if not force and c['premium_inr'] < MIN_ENTRY_PREMIUM:
+                if c['premium_inr'] < MIN_ENTRY_PREMIUM:
                     continue
                 if not (premium_min <= c['premium_inr'] <= premium_max):
                     continue
                 for p in eligible_puts:
-                    if not force and p['premium_inr'] < MIN_ENTRY_PREMIUM:
+                    if p['premium_inr'] < MIN_ENTRY_PREMIUM:
                         continue
                     if not (premium_min <= p['premium_inr'] <= premium_max):
                         continue
@@ -215,9 +215,6 @@ class ShortStrangleStrategy:
                     # Score formula (lower = better):
                     #   1.5 × |call_prem - put_prem|          ← premium equality (primary)
                     #   50  × ||call_delta| - |put_delta||     ← delta symmetry (secondary)
-                    # The 50× weight on delta normalises its 0–1 scale vs dollar premiums.
-                    # This is what made last month's trades balanced: when both premiums
-                    # are close, deltas naturally match too. This forces it explicitly.
                     prem_diff  = abs(c['premium_inr'] - p['premium_inr'])
                     delta_diff = abs(abs(c['delta']) - abs(p['delta']))
                     joint_score = 1.5 * prem_diff + 50.0 * delta_diff
@@ -230,20 +227,32 @@ class ShortStrangleStrategy:
                     valid_pairs.append((c, p, prem_diff, delta_diff, joint_score))
 
         if check_premium and valid_pairs:
-            if force:
-                # Forced mode: closest pair to $100 on both sides (ignore delta for force)
-                best_tuple = min(
-                    valid_pairs,
-                    key=lambda t5: abs(t5[0]['premium_inr'] - 100) + abs(t5[1]['premium_inr'] - 100)
+            # ── 2-TIER SELECTION: $100+ PRIORITY, FALLBACK MIN $80 ────────────
+            # Rule: If 5+ OTM strikes with premium >= $100 on both legs are available,
+            # prioritize $100+ tier. Only if $100+ is unavailable on both legs,
+            # fall back to allowing minimum $80 per leg.
+            pairs_100 = [t for t in valid_pairs if t[0]['premium_inr'] >= 100.0 and t[1]['premium_inr'] >= 100.0]
+
+            if pairs_100:
+                app_logger.info(
+                    f"Strategy: [TIER 1] Found {len(pairs_100)} pairs with $100+ premium on both legs (>= {min_otm} OTM). "
+                    f"Restricting selection to $100+ tier."
                 )
+                candidate_pool = pairs_100
             else:
-                # JOINT SCORE MODE: minimum (1.5 × prem_diff + 50 × delta_diff)
-                # Matches both equal premium AND equal delta simultaneously
-                best_tuple = min(valid_pairs, key=lambda t5: t5[4])
+                app_logger.info(
+                    f"Strategy: [TIER 2] No pair has $100+ on both legs at >= {min_otm} OTM. "
+                    f"Falling back to minimum ${MIN_ENTRY_PREMIUM:.0f}+ tier ({len(valid_pairs)} pairs)."
+                )
+                candidate_pool = valid_pairs
+
+            # Best pair chosen by joint score (balancing premium equality and delta symmetry)
+            best_tuple = min(candidate_pool, key=lambda t5: t5[4])
             best_call, best_put, _prem_diff, _delta_diff, _score = best_tuple
             skew_ratio = best_put['premium_inr'] / best_call['premium_inr'] if best_call['premium_inr'] > 0 else 0
+            tier_label = "$100+ TIER" if pairs_100 else f"MIN ${MIN_ENTRY_PREMIUM:.0f}+ TIER"
             app_logger.info(
-                f"Strategy: Joint-score strikes selected — "
+                f"Strategy: [{tier_label}] Strikes selected — "
                 f"Call: {best_call['symbol']} (Strike={best_call['strike']:.0f}, Prem=${best_call['premium_inr']:.2f}, Delta={best_call['delta']:.4f}), "
                 f"Put:  {best_put['symbol']} (Strike={best_put['strike']:.0f}, Prem=${best_put['premium_inr']:.2f}, Delta={best_put['delta']:.4f}), "
                 f"PremDiff=${_prem_diff:.2f}, |DeltaDiff|={_delta_diff:.4f}, JointScore={_score:.3f}, SkewRatio={skew_ratio:.3f}x"

@@ -30,8 +30,8 @@ class LocalHPEShadowRunner:
         import urllib.request
         while self.running:
             try:
-                # 1. Fetch live bot state (defaults to localhost)
-                api_url = os.environ.get("BOT_API_URL", "http://127.0.0.1:5000/api/status")
+                # 1. Fetch live bot state from the MAIN Render Bot
+                api_url = "https://delta-btc-options-bot.onrender.com/api/status"
                 try:
                     req = urllib.request.Request(api_url)
                     with urllib.request.urlopen(req, timeout=5) as response:

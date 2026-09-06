@@ -1,104 +1,71 @@
 import sys
 import os
-from pathlib import Path
-from datetime import datetime
 import threading
 import time
 import requests
-import pytz
-from dotenv import load_dotenv
-
-# Ensure .env is loaded before reading any environment variables
-_env_path = Path(__file__).resolve().parent / '.env'
-load_dotenv(dotenv_path=_env_path)
-
-from config import BOT_MODE, ENABLE_TELEGRAM_HEARTBEAT, HEARTBEAT_INTERVAL_MINS
 from bot_engine import DeltaTradingEngine
 from web_server import app, init_web_server
 from logger import app_logger
-from notifier import notifier
 
 def run_bot_engine(engine):
     try:
         engine.start()
     except Exception as e:
         app_logger.critical(f"Critical error in engine thread: {e}")
-        try:
-            notifier.send_message(f"🚨 <b>Critical Error in Engine Thread:</b>\n<code>{e}</code>")
-        except Exception:
-            pass
 
 def keep_alive_pinger(engine):
     """
-    Local Loopback Health Pinger.
-    Pings the local /ping endpoint every 4 minutes to verify server responsiveness
-    and log an ongoing health heartbeat to journalctl.
+    Smart Background Keep-Alive Pinger
+    Maintains active cloud execution during the trading session (08:30 AM to 05:30 PM IST)
+    AND anytime an active position is open (day or night).
+    
+    Outside the trading window (17:30 to 08:30 IST) when there are 0 open positions,
+    the pinger sleeps, allowing Render to automatically hibernate and consume 0 bandwidth.
     """
-    time.sleep(15)
-    port = os.environ.get('PORT', '5000')
-    url = os.environ.get('APP_URL', f'http://127.0.0.1:{port}').rstrip('/')
-    app_logger.info(f"Health pinger started. Target URL: {url}/ping")
+    time.sleep(60)
+    url = os.environ.get('RENDER_EXTERNAL_URL')
+    if (not url or url == 'http://localhost:5000') and os.environ.get('RENDER') == 'true':
+        url = 'https://delta-btc-options-bot.onrender.com'
+    if not url:
+        url = 'http://localhost:5000'
+    app_logger.info(f"Smart Keep-alive pinger started. Target URL: {url}")
+    
+    last_log_dormant_ts = 0.0
     while True:
         try:
-            res = requests.get(f"{url}/ping", timeout=10)
-            mode = getattr(engine, 'mode', BOT_MODE)
-            engine_running = getattr(engine, 'is_running', True)
-            app_logger.info(f"[HEALTH PING] HTTP {res.status_code}, engine={'ON' if engine_running else 'OFF'} (Mode: {mode})")
+            # 1. Check if any positions are active in paper or live mode
+            exec_module = getattr(engine, 'execution', None)
+            has_active_pos = False
+            if exec_module:
+                has_active_pos = bool(
+                    getattr(exec_module, 'active_positions', None) or
+                    getattr(exec_module, 'live_positions', None) or
+                    getattr(exec_module, 'paper_positions', None)
+                )
+
+            # 2. Check current time in IST (08:30 to 17:30 IST is active daytime window)
+            from utils import get_ist_now
+            now_ist = get_ist_now()
+            current_mins = now_ist.hour * 60 + now_ist.minute
+            # 08:30 IST is 510 minutes. 17:30 IST is 1050 minutes.
+            is_active_window = 510 <= current_mins <= 1050
+
+            # 3. Decision: Ping if within trading hours OR if ANY position is open
+            if is_active_window or has_active_pos:
+                requests.get(f"{url}/ping", timeout=15)
+                mode = getattr(getattr(engine, 'execution', None), 'mode', 'PAPER')
+                reason = "ACTIVE_WINDOW" if is_active_window else "OPEN_POSITIONS_OVERRIDE"
+                app_logger.info(f"[KEEPALIVE] Ping sent ({reason}). Engine={'ON' if getattr(engine, 'is_running', True) else 'OFF'} (Mode: {mode}, Pos: {has_active_pos})")
+                time.sleep(240)  # Ping every 4 minutes while active
+            else:
+                # Outside window & 0 open positions -> Sleep and allow Render to hibernate
+                if time.time() - last_log_dormant_ts > 1800:
+                    last_log_dormant_ts = time.time()
+                    app_logger.info(f"[KEEPALIVE] Standby period ({now_ist.strftime('%H:%M')} IST). No open trades. Pinger dormant to allow Render hibernation.")
+                time.sleep(120)  # Check every 2 minutes for new trade entries
         except Exception as e:
-            app_logger.warning(f"[HEALTH PING] Local health ping failed: {e}")
-        time.sleep(240)  # Ping every 4 minutes
-
-def telegram_heartbeat_worker(engine):
-    """
-    Periodic Telegram Heartbeat Monitor.
-    Sends a concise status summary to Telegram at configured intervals
-    so the operator knows the VM and bot are alive and healthy.
-    """
-    if not ENABLE_TELEGRAM_HEARTBEAT:
-        app_logger.info("Telegram heartbeat is disabled in config.")
-        return
-
-    interval_seconds = max(300, HEARTBEAT_INTERVAL_MINS * 60)
-    app_logger.info(f"Telegram heartbeat worker started (Interval: {HEARTBEAT_INTERVAL_MINS}m).")
-
-    # Initial settling delay
-    time.sleep(120)
-    start_time = time.time()
-
-    while True:
-        try:
-            now_ist = datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%H:%M IST')
-            uptime_hours = (time.time() - start_time) / 3600.0
-
-            # Virtual memory usage
-            mem_pct = 0.0
-            try:
-                import psutil
-                mem_pct = psutil.virtual_memory().percent
-            except Exception:
-                pass
-
-            mode = getattr(getattr(engine, 'execution', None), 'mode', BOT_MODE)
-            equity = getattr(getattr(engine, 'risk_manager', None), 'current_equity', 0.0)
-            is_running = getattr(engine, 'is_running', False)
-            today_status = getattr(engine, 'today_trade_status', 'Idle')
-            active_positions = getattr(getattr(engine, 'execution', None), 'active_positions', {})
-            open_pos_count = len(active_positions)
-
-            status_icon = "🟢" if is_running else "🟡"
-            msg = (
-                f"💓 <b>Delta Bot Heartbeat</b> [{now_ist}]\n"
-                f"Status: {status_icon} {'Running' if is_running else 'Idle/Paused'}\n"
-                f"Mode: <b>{mode}</b> | Today: {today_status}\n"
-                f"Open Positions: {open_pos_count}\n"
-                f"Sim Equity: ${equity:,.2f}\n"
-                f"VM RAM: {mem_pct:.1f}% | Uptime: {uptime_hours:.1f}h"
-            )
-            notifier.send_message(msg)
-        except Exception as e:
-            app_logger.error(f"Telegram heartbeat error: {e}")
-
-        time.sleep(interval_seconds)
+            app_logger.warning(f"[KEEPALIVE] Keep-alive ping check error: {e}")
+            time.sleep(60)
 
 def main():
     try:
@@ -119,28 +86,22 @@ def main():
         except Exception as tg_err:
             app_logger.error(f"Failed to start telegram listener: {tg_err}")
         
-        # 4. Start local health pinger in a background thread
+        # 4. Start keep-alive pinger in a background thread
         pinger_thread = threading.Thread(target=keep_alive_pinger, args=(engine,), daemon=True)
         pinger_thread.start()
-
-        # 5. Start periodic Telegram heartbeat monitor in a background thread
-        heartbeat_thread = threading.Thread(target=telegram_heartbeat_worker, args=(engine,), daemon=True)
-        heartbeat_thread.start()
         
-        # 6. Start Flask server on the main thread
+
+        
+        # 7. Start Flask server on the main thread
         port = int(os.environ.get('PORT', 5000))
         app_logger.info(f"Starting Web Dashboard on port {port}")
-        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
         
     except KeyboardInterrupt:
-        app_logger.info("Bot stopped by user (graceful exit).")
+        app_logger.info("Bot stopped by user.")
         sys.exit(0)
     except Exception as e:
-        app_logger.critical(f"Critical error in main process: {e}")
-        try:
-            notifier.send_message(f"🚨 <b>CRITICAL: Delta Bot Terminated with Exception!</b>\n<code>{e}</code>\n<i>systemd will auto-restart in 5s.</i>")
-        except Exception:
-            pass
+        app_logger.critical(f"Critical error: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

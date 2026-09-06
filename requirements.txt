@@ -11,3 +11,4 @@ reportlab
 openpyxl
 matplotlib
 psutil
+flask-compress

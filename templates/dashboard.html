@@ -329,6 +329,47 @@
             box-shadow: 0 0 15px rgba(244, 63, 94, 0.1);
         }
 
+        .schedule-badge {
+            padding: 7px 16px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+        .schedule-badge:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.15);
+        }
+        .schedule-badge.active {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+        }
+        .schedule-badge.standby {
+            background: rgba(168, 85, 247, 0.16);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.45);
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.25);
+            animation: pulse-purple 2.5s infinite;
+        }
+        .schedule-badge.trade-override {
+            background: rgba(245, 158, 11, 0.16);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+        }
+        @keyframes pulse-purple {
+            0%, 100% { box-shadow: 0 0 10px rgba(168, 85, 247, 0.2); }
+            50% { box-shadow: 0 0 22px rgba(168, 85, 247, 0.5); }
+        }
+
         /* TABLES */
         table {
             width: 100%;
@@ -1113,7 +1154,6 @@ h3 {
 
 /* Monospace Tabular Numerics for All Financial Values */
 .hero-val, .stat-value, .pos-metric-value, #live-delta-balance, #live-capital-used, #live-inr-pnl,
-#demo-delta-balance, #demo-capital-used, #demo-inr-pnl, #demo-avail-margin,
 #pos-total-pnl-inr, #pos-total-pnl-usd, #pos-total-entry, #pos-total-capital, #pos-btc-price,
 #pnl-chart-peak, #pnl-chart-trough, #pnl-chart-count, #ares-atm-iv, #ares-iv-pct, #ares-iv-rank,
 #hpe-loss-val, #hpe-qty-val, #hpe-entry-price-val, #hpe-current-price-val, #hpe-pnl-usd-val, #hpe-pnl-val,
@@ -1373,8 +1413,7 @@ td {
     border-radius: 12px !important;
     padding: 16px 20px !important;
 }
-#live-delta-balance, #live-capital-used, #live-inr-pnl,
-#demo-delta-balance, #demo-capital-used, #demo-inr-pnl, #demo-avail-margin {
+#live-delta-balance, #live-capital-used, #live-inr-pnl {
     font-size: 1.15rem !important; /* 18.4px */
     font-weight: 700 !important;
 }
@@ -1451,6 +1490,35 @@ td {
         });
     </script>
 
+    <!-- SMART BANDWIDTH & OVERNIGHT STANDBY BANNER (08:30 AM – 05:30 PM IST) -->
+    <div id="standby-banner" style="display: none; background: linear-gradient(135deg, rgba(30, 41, 59, 0.94) 0%, rgba(15, 23, 42, 0.98) 100%); border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 14px; padding: 12px 20px; margin-bottom: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.5), 0 0 15px rgba(168, 85, 247, 0.15); align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; backdrop-filter: blur(12px); animation: fadeIn 0.3s ease;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                🌙
+            </div>
+            <div>
+                <div style="font-weight: 600; font-size: 0.95rem; color: #f8fafc; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    Overnight Standby Mode Active
+                    <span style="font-size: 0.72rem; background: rgba(168, 85, 247, 0.2); color: #c084fc; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(168, 85, 247, 0.3); font-weight: 500;">
+                        Render Bandwidth Saver
+                    </span>
+                    <span id="standby-time-badge" style="font-size: 0.75rem; color: #94a3b8;"></span>
+                </div>
+                <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 3px;">
+                    Active Session: <b style="color: #38bdf8;">08:30 AM – 05:30 PM IST</b>. Automatic polling paused. All backend SL/TP safeguards remain 100% active on cloud servers.
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button id="btn-manual-refresh" onclick="triggerManualRefresh()" style="background: rgba(255,255,255,0.08); color: #f1f5f9; border: 1px solid rgba(255,255,255,0.2); padding: 7px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                🔄 Refresh Now
+            </button>
+            <button id="btn-wake-session" onclick="wakeManualSession(3600)" style="background: linear-gradient(135deg, #9333ea, #7c3aed); color: #fff; border: none; padding: 7px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 12px rgba(147, 51, 234, 0.4); transition: all 0.2s;">
+                ⚡ Wake Active Mode (1h)
+            </button>
+        </div>
+    </div>
+
     <header>
         <div>
             <h1 style="display: flex; align-items: center; gap: 15px;">
@@ -1467,7 +1535,12 @@ td {
                 </div>
             </div>
         </div>
-        <div id="status-badge" class="status-badge">🟢 CONNECTING...</div>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div id="schedule-status-badge" class="schedule-badge standby" onclick="handleScheduleBadgeClick()" title="Click to wake active mode or refresh">
+                🌙 STANDBY
+            </div>
+            <div id="status-badge" class="status-badge">🟢 CONNECTING...</div>
+        </div>
     </header>
 
     <!-- Tab Navigation -->
@@ -1501,11 +1574,11 @@ td {
                     <span class="hero-val" id="paper-equity-val" style="color: #38bdf8; font-weight: 800; font-family: 'JetBrains Mono', monospace;">$50,000.00</span>
                     <span style="font-size: 0.72rem; color: #64748b;">Virtual $50k Sandbox</span>
                 </div>
-                <!-- Live / Demo Delta Equity -->
+                <!-- Live Delta Equity -->
                 <div class="hero-item" style="border-left: 1px solid rgba(255,255,255,0.08); padding-left: 18px;">
-                    <span class="hero-label" id="hero-equity-label" style="display: flex; align-items: center; gap: 6px;">
-                        <span id="hero-equity-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444; display: inline-block; box-shadow: 0 0 8px rgba(239,68,68,0.6);"></span>
-                        <span id="hero-equity-title">Live Delta Balance</span>
+                    <span class="hero-label" style="display: flex; align-items: center; gap: 6px;">
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444; display: inline-block; box-shadow: 0 0 8px rgba(239,68,68,0.6);"></span>
+                        Live Delta Balance
                     </span>
                     <span class="hero-val" id="live-equity-val" style="color: #ef4444; font-weight: 800; font-family: 'JetBrains Mono', monospace;">$0.00</span>
                     <span id="live-equity-inr-val" style="font-size: 0.72rem; color: #94a3b8;">₹0.00 INR (Delta PM)</span>
@@ -1521,7 +1594,7 @@ td {
                 <!-- API Status -->
                 <div class="hero-item" style="border-left: 1px solid rgba(255,255,255,0.08); padding-left: 18px;">
                     <span class="hero-label">Delta API</span>
-                    <span class="hero-val" id="api-status-badge" style="font-size: 0.92rem; font-weight: 700; padding: 4px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 6px;">⚡ Delta Live</span>
+                    <span class="hero-val" id="api-status-badge" style="font-size:1rem; padding: 4px 10px; background: rgba(255,255,255,0.08); border-radius: 8px;">Unknown</span>
                 </div>
             </div>
 
@@ -1674,212 +1747,96 @@ td {
             </div>
         </div>
 
-        <!-- Live Trading & Demo Trading Control Panel -->
-        <div class="glass-panel" id="live-trading-panel" style="border: 1px solid rgba(239,68,68,0.15); margin-bottom:4px; transition: all 0.3s ease;">
-            
-            <!-- ═══════════════ VIEW A: LIVE TRADING MODE (WITH ARMED TOGGLE) ═══════════════ -->
-            <div id="panel-live-view">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-                    <!-- Left: Toggle + Title -->
-                    <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-                        <!-- Mode Badge -->
-                        <div id="live-mode-status-badge" style="font-size:0.7rem; font-weight:800; letter-spacing:1.5px; padding:6px 14px; border-radius:20px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); color:#fca5a5; text-transform:uppercase; white-space:nowrap;">
-                            🔴 LIVE OFF
-                        </div>
-                        <div>
-                            <div style="font-weight:800; font-size:1.05rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
-                                Live Trading Mode
-                                <span style="font-size:0.68rem; font-weight:800; padding:2px 8px; border-radius:4px; background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); letter-spacing:0.5px;">REAL CAPITAL</span>
-                            </div>
-                            <div id="live-mode-desc" style="font-size:0.82rem; color:#94a3b8; margin-top:2px;">Toggle switch to execute real money orders on Delta Exchange. (Armed only when switch is ON).</div>
-                        </div>
-                        <!-- Toggle Switch -->
-                        <label class="live-toggle-switch" title="Toggle Live Trading">
-                            <input type="checkbox" id="live-mode-toggle" onchange="handleLiveModeToggle(this)" />
-                            <span class="live-toggle-slider"></span>
-                        </label>
-                        <!-- Middle: Live Metrics (INR) -->
-                        <div id="live-inr-metrics" style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; margin-left: 10px; border-left: 1px solid rgba(255,255,255,0.08); padding-left: 20px;">
-                            <!-- Delta Wallet Balance (Total Capital) -->
-                            <div style="display:flex; flex-direction:column; gap:6px;">
-                                <div style="font-size:0.72rem; color:#38bdf8; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Delta Balance</div>
-                                <div id="live-delta-balance" style="font-size:1.1rem; font-weight:800; color:#38bdf8;">₹0.00</div>
-                            </div>
-                            <!-- Capital Used in Active Trades -->
-                            <div style="display:flex; flex-direction:column; gap:6px;">
-                                <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;" title="Margin currently locked in open strangle legs">Margin In Trade</div>
-                                <div id="live-capital-used" style="font-size:1.1rem; font-weight:800; color:#cbd5e1;">₹0.00</div>
-                            </div>
-                            <!-- Live PnL -->
-                            <div style="display:flex; flex-direction:column; gap:6px;">
-                                <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Live PnL (INR)</div>
-                                <div id="live-inr-pnl" style="font-size:1.1rem; font-weight:800; color:#10b981;">₹0.00</div>
-                            </div>
-                        </div>
+        <!-- Live Trading Control Panel -->
+        <div class="glass-panel" id="live-trading-panel" style="border: 1px solid rgba(239,68,68,0.15); margin-bottom:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+                <!-- Left: Toggle + Title -->
+                <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+                    <!-- Mode Badge -->
+                    <div id="live-mode-status-badge" style="font-size:0.7rem; font-weight:800; letter-spacing:1.5px; padding:6px 14px; border-radius:20px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); color:#fca5a5; text-transform:uppercase; white-space:nowrap;">
+                        🔴 LIVE OFF
                     </div>
-
-                    <!-- Right: Live Lot Size Control -->
-                    <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
-                        <!-- Live Lots (editable) -->
+                    <div>
+                        <div style="font-weight:800; font-size:1.05rem; color:#f8fafc;">Live Trading Mode</div>
+                        <div style="font-size:0.82rem; color:#94a3b8; margin-top:2px;">Toggle to execute real orders on Delta Exchange (Portfolio Margin)</div>
+                    </div>
+                    <!-- Toggle -->
+                    <label class="live-toggle-switch" title="Toggle Live Trading">
+                        <input type="checkbox" id="live-mode-toggle" onchange="handleLiveModeToggle(this)" />
+                        <span class="live-toggle-slider"></span>
+                    </label>
+                    <!-- Middle: Live Metrics (INR) -->
+                    <div id="live-inr-metrics" style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; margin-left: 10px; border-left: 1px solid rgba(255,255,255,0.08); padding-left: 20px;">
+                        <!-- Delta Wallet Balance (Total Capital) -->
                         <div style="display:flex; flex-direction:column; gap:6px;">
-                            <div style="font-size:0.72rem; color:#ef4444; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Live Lots</div>
-                            <div style="display:flex; gap:8px; align-items:center;">
-                                <input id="live-lots-input" type="number" min="1" max="500" value="2" placeholder="2"
-                                       style="width:70px; padding:8px 10px; text-align:center; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:8px; color:#f1f5f9; font-size:1rem; font-weight:800; outline:none;" />
-                                <button onclick="saveLiveLots()"
-                                        style="padding:8px 14px; border:none; border-radius:8px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; font-weight:700; cursor:pointer; font-size:0.85rem; transition:all 0.2s;"
-                                        onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">
-                                    Save
-                                </button>
-                            </div>
-                            <div id="live-lots-feedback" style="font-size:0.72rem; min-height:14px; color:#10b981;"></div>
+                            <div style="font-size:0.72rem; color:#38bdf8; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Delta Balance</div>
+                            <div id="live-delta-balance" style="font-size:1.1rem; font-weight:800; color:#38bdf8;">₹0.00</div>
                         </div>
-                        <!-- Live Available Margin -->
-                        <div style="display:flex; flex-direction:column; gap:6px; border-left:1px solid rgba(255,255,255,0.06); padding-left:20px;">
-                            <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Available Margin</div>
-                            <div id="live-avail-margin" style="font-size:1.1rem; font-weight:800; color:#10b981;">₹0.00</div>
-                            <div style="font-size:0.72rem; color:#64748b;">Real-time Delta PM</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Pre-flight Checklist (Live Mode) -->
-                <div style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                    <div>
-                        <div style="font-size:0.75rem; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-bottom:10px;">Pre-flight Checklist</div>
-                        <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                            <div class="preflight-item" id="pf-api-key">
-                                <span id="pf-api-key-icon">⚪</span> API Key
-                            </div>
-                            <div class="preflight-item" id="pf-api-secret">
-                                <span id="pf-api-secret-icon">⚪</span> API Secret
-                            </div>
-                            <div class="preflight-item" id="pf-portfolio-margin">
-                                <span>✅</span> <span class="preflight-ok">Portfolio Margin</span>
-                            </div>
-                            <div class="preflight-item" id="pf-no-positions">
-                                <span id="pf-positions-icon">⚪</span> <span id="pf-positions-text">No Open Live Positions</span>
-                            </div>
-                            <div class="preflight-item" id="pf-overall">
-                                <span id="pf-overall-icon">⚪</span> <span id="pf-overall-text">Checking...</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <button type="button" onclick="switchApiSlotAction('demo')"
-                                style="background:rgba(168,85,247,0.12); border:1px solid rgba(168,85,247,0.35); color:#d8b4fe; font-size:0.75rem; font-weight:700; padding:6px 14px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s;"
-                                onmouseover="this.style.background='rgba(168,85,247,0.22)'; this.style.borderColor='#c084fc';"
-                                onmouseout="this.style.background='rgba(168,85,247,0.12)'; this.style.borderColor='rgba(168,85,247,0.35)';">
-                            <span>🧪 Switch to Demo Mode</span>
-                        </button>
-                    </div>
-                    <div id="live-panel-error" style="display:none; width:100%; margin-top:10px; padding:10px 14px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:0.85rem; color:#ef4444; font-weight:600;"></div>
-                </div>
-            </div>
-
-            <!-- ═══════════════ VIEW B: DELTA DEMO TRADING COCKPIT (NO TOGGLE NEEDED) ═══════════════ -->
-            <div id="panel-demo-view" style="display:none;">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-                    <!-- Left: Demo Badge + Title (NO TOGGLE SWITCH) -->
-                    <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-                        <!-- Demo Status Badge -->
-                        <div id="demo-mode-status-badge" style="font-size:0.72rem; font-weight:800; letter-spacing:1.5px; padding:7px 15px; border-radius:20px; background:rgba(168,85,247,0.18); border:1px solid rgba(168,85,247,0.45); color:#d8b4fe; text-transform:uppercase; white-space:nowrap; box-shadow:0 0 16px rgba(168,85,247,0.22); display:flex; align-items:center; gap:6px;">
-                            <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#c084fc; box-shadow:0 0 8px #c084fc;"></span>
-                            🧪 DELTA DEMO ACTIVE
-                        </div>
-                        <div>
-                            <div style="font-weight:800; font-size:1.08rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
-                                Delta Demo Trading Cockpit
-                                <span style="font-size:0.68rem; font-weight:800; padding:2px 8px; border-radius:4px; background:rgba(168,85,247,0.2); color:#c084fc; border:1px solid rgba(168,85,247,0.35); letter-spacing:0.5px;">100% VIRTUAL FUNDS</span>
-                                <span style="font-size:0.68rem; font-weight:800; padding:2px 8px; border-radius:4px; background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3); letter-spacing:0.5px;">ZERO REAL RISK</span>
-                            </div>
-                            <div id="demo-mode-desc" style="font-size:0.82rem; color:#cbd5e1; margin-top:2px;">
-                                Operating strictly on Delta Demo (<span style="color:#c084fc; font-weight:600;">demo.delta.exchange</span>). Trades execute <strong style="color:#4ade80;">ONLY in Demo</strong> — Real-Money Live Account is 100% Isolated &amp; Disconnected.
-                            </div>
-                        </div>
-
-                        <!-- Middle: Demo Metrics (Virtual INR) -->
-                        <div id="demo-inr-metrics" style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; margin-left: 10px; border-left: 1px solid rgba(255,255,255,0.08); padding-left: 20px;">
-                            <!-- Virtual Delta Wallet Balance -->
-                            <div style="display:flex; flex-direction:column; gap:6px;">
-                                <div style="font-size:0.72rem; color:#c084fc; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Demo Balance</div>
-                                <div id="demo-delta-balance" style="font-size:1.1rem; font-weight:800; color:#c084fc;">₹0.00</div>
-                            </div>
-                            <!-- Virtual Margin in Trade -->
-                            <div style="display:flex; flex-direction:column; gap:6px;">
-                                <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;" title="Virtual margin locked in demo positions">Margin In Trade</div>
-                                <div id="demo-capital-used" style="font-size:1.1rem; font-weight:800; color:#cbd5e1;">₹0.00</div>
-                            </div>
-                            <!-- Demo PnL -->
-                            <div style="display:flex; flex-direction:column; gap:6px;">
-                                <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Demo PnL (INR)</div>
-                                <div id="demo-inr-pnl" style="font-size:1.1rem; font-weight:800; color:#10b981;">+₹0.00</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Right: Demo Lots + Virtual Available Margin -->
-                    <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
-                        <!-- Demo Lots Input -->
+                        <!-- Capital Used in Active Trades -->
                         <div style="display:flex; flex-direction:column; gap:6px;">
-                            <div style="font-size:0.72rem; color:#c084fc; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Demo Lots</div>
-                            <div style="display:flex; gap:8px; align-items:center;">
-                                <input id="demo-lots-input" type="number" min="1" max="500" value="2" placeholder="2"
-                                       style="width:70px; padding:8px 10px; text-align:center; background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.3); border-radius:8px; color:#f1f5f9; font-size:1rem; font-weight:800; outline:none;" />
-                                <button onclick="saveDemoLots()"
-                                        style="padding:8px 14px; border:none; border-radius:8px; background:rgba(168,85,247,0.18); border:1px solid rgba(168,85,247,0.35); color:#d8b4fe; font-weight:700; cursor:pointer; font-size:0.85rem; transition:all 0.2s;"
-                                        onmouseover="this.style.background='rgba(168,85,247,0.3)'" onmouseout="this.style.background='rgba(168,85,247,0.18)'">
-                                    Save
-                                </button>
-                            </div>
-                            <div id="demo-lots-feedback" style="font-size:0.72rem; min-height:14px; color:#10b981;"></div>
+                            <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;" title="Margin currently locked in open strangle legs">Margin In Trade</div>
+                            <div id="live-capital-used" style="font-size:1.1rem; font-weight:800; color:#cbd5e1;">₹0.00</div>
                         </div>
-                        <!-- Virtual Available Margin -->
-                        <div style="display:flex; flex-direction:column; gap:6px; border-left:1px solid rgba(255,255,255,0.06); padding-left:20px;">
-                            <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Available Margin</div>
-                            <div id="demo-avail-margin" style="font-size:1.1rem; font-weight:800; color:#c084fc;">₹0.00</div>
-                            <div style="font-size:0.72rem; color:#64748b;">Real-time Virtual PM</div>
+                        <!-- Live PnL -->
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Live PnL (INR)</div>
+                            <div id="live-inr-pnl" style="font-size:1.1rem; font-weight:800; color:#10b981;">₹0.00</div>
                         </div>
                     </div>
+
                 </div>
 
-                <!-- Demo Environment Status Bar -->
-                <div style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                    <div>
-                        <div style="font-size:0.75rem; color:#a855f7; text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-bottom:10px;">Demo Environment Status</div>
-                        <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                            <div class="preflight-item preflight-ok" style="border-color:rgba(16,185,129,0.4); background:rgba(16,185,129,0.12); color:#34d399; font-weight:750;">
-                                <span>🔒</span> Live Account 100% Isolated &amp; Protected (Real Funds Safe)
-                            </div>
-                            <div class="preflight-item preflight-ok" style="border-color:rgba(168,85,247,0.3); background:rgba(168,85,247,0.08); color:#d8b4fe;">
-                                <span>✅</span> Demo API Gateway Connected
-                            </div>
-                            <div class="preflight-item preflight-ok" style="border-color:rgba(56,189,248,0.3); background:rgba(56,189,248,0.08); color:#38bdf8;">
-                                <span>🛡️</span> 100% Risk-Free Sandbox
-                            </div>
-                            <div class="preflight-item preflight-ok" style="border-color:rgba(34,197,94,0.3); background:rgba(34,197,94,0.08); color:#4ade80;">
-                                <span>⚡</span> Virtual Portfolio Margin
-                            </div>
-                            <div class="preflight-item preflight-ok" style="border-color:rgba(245,158,11,0.3); background:rgba(245,158,11,0.08); color:#fbbf24;">
-                                <span>🤖</span> Automated Execution Active
-                            </div>
+                <!-- Right: Live Lot Size Control Only -->
+                <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
+                    <!-- Live Lots (editable) -->
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <div style="font-size:0.72rem; color:#ef4444; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Live Lots</div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input id="live-lots-input" type="number" min="1" max="500" value="2" placeholder="2"
+                                   style="width:70px; padding:8px 10px; text-align:center; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:8px; color:#f1f5f9; font-size:1rem; font-weight:800; outline:none;" />
+                            <button onclick="saveLiveLots()"
+                                    style="padding:8px 14px; border:none; border-radius:8px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; font-weight:700; cursor:pointer; font-size:0.85rem; transition:all 0.2s;"
+                                    onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">
+                                Save
+                            </button>
                         </div>
+                        <div id="live-lots-feedback" style="font-size:0.72rem; min-height:14px; color:#10b981;"></div>
                     </div>
-                    <div>
-                        <button type="button" onclick="switchApiSlotAction('live')"
-                                style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#fca5a5; font-size:0.75rem; font-weight:700; padding:6px 14px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s;"
-                                onmouseover="this.style.background='rgba(239,68,68,0.22)'; this.style.borderColor='#f87171';"
-                                onmouseout="this.style.background='rgba(239,68,68,0.12)'; this.style.borderColor='rgba(239,68,68,0.35)';">
-                            <span>⚡ Switch to Live Account</span>
-                        </button>
+                    <!-- Live Available Margin -->
+                    <div style="display:flex; flex-direction:column; gap:6px; border-left:1px solid rgba(255,255,255,0.06); padding-left:20px;">
+                        <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Available Margin</div>
+                        <div id="live-avail-margin" style="font-size:1.1rem; font-weight:800; color:#10b981;">₹0.00</div>
+                        <div style="font-size:0.72rem; color:#64748b;">Real-time Delta PM</div>
                     </div>
                 </div>
             </div>
 
+            <!-- Pre-flight Checklist (expands on hover or always visible) -->
+            <div style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px;">
+                <div style="font-size:0.75rem; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-bottom:10px;">Pre-flight Checklist</div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                    <div class="preflight-item" id="pf-api-key">
+                        <span id="pf-api-key-icon">⚪</span> API Key
+                    </div>
+                    <div class="preflight-item" id="pf-api-secret">
+                        <span id="pf-api-secret-icon">⚪</span> API Secret
+                    </div>
+                    <div class="preflight-item" id="pf-portfolio-margin">
+                        <span>✅</span> <span class="preflight-ok">Portfolio Margin</span>
+                    </div>
+                    <div class="preflight-item" id="pf-no-positions">
+                        <span id="pf-positions-icon">⚪</span> <span id="pf-positions-text">No Open Live Positions</span>
+                    </div>
+                    <div class="preflight-item" id="pf-overall">
+                        <span id="pf-overall-icon">⚪</span> <span id="pf-overall-text">Checking...</span>
+                    </div>
+                </div>
+                <div id="live-panel-error" style="display:none; margin-top:10px; padding:10px 14px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:0.85rem; color:#ef4444; font-weight:600;"></div>
+            </div>
         </div>
 
         <script>
-        // ── Live Mode & Demo Mode Panel JS ───────────────────────────────────────
+        // ── Live Mode Panel JS ──────────────────────────────────────────────────
         let _liveModeActive = false;
 
         async function loadLiveModeState() {
@@ -1894,126 +1851,71 @@ td {
         }
 
         function updateLivePanelUI(d) {
-            const isDemo = (d.active_slot === 'demo');
-            const panel = document.getElementById('live-trading-panel');
-            const liveView = document.getElementById('panel-live-view');
-            const demoView = document.getElementById('panel-demo-view');
+            const toggle = document.getElementById('live-mode-toggle');
+            const badge  = document.getElementById('live-mode-status-badge');
+            if (!toggle || !badge) return;
 
-            if (isDemo) {
-                // ── DEMO MODE: Switch completely to Demo Cockpit, hide Live View ────
-                if (liveView) liveView.style.display = 'none';
-                if (demoView) demoView.style.display = 'block';
-                if (panel) {
-                    panel.style.borderColor = 'rgba(168, 85, 247, 0.45)';
-                    panel.style.boxShadow = '0 0 25px rgba(168, 85, 247, 0.1)';
-                    panel.style.background = 'linear-gradient(135deg, rgba(28, 16, 40, 0.6) 0%, rgba(15, 23, 42, 0.75) 100%)';
-                }
+            toggle.checked = d.live_mode || false;
 
-                // ── Tab label: Demo Trade ─────────────────────────────────────────
-                const tabBtnLive = document.getElementById('tab-btn-live');
-                if (tabBtnLive) {
-                    tabBtnLive.innerHTML = '<span class="tab-live-dot" style="background:#c084fc;box-shadow:0 0 6px #c084fc;"></span>Demo Trade';
-                    tabBtnLive.title = 'Delta Demo Account — Virtual Funds';
-                }
-
-                // Populate Demo Metrics
-                const demoBal = document.getElementById('demo-delta-balance');
-                if (demoBal && d.wallet_balance_inr !== undefined) {
-                    demoBal.textContent = '₹' + Number(d.wallet_balance_inr).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    demoBal.title = `Virtual Available: ₹${d.available_balance_inr || 0} ($${d.net_equity_usd || 0} USD)`;
-                }
-                const demoAvail = document.getElementById('demo-avail-margin');
-                if (demoAvail && d.available_balance_inr !== undefined) {
-                    const avail = Number(d.available_balance_inr);
-                    demoAvail.textContent = '₹' + avail.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    demoAvail.style.color = avail > 0 ? '#c084fc' : '#ef4444';
-                }
-                const demoLotsInput = document.getElementById('demo-lots-input');
-                if (demoLotsInput && d.live_lots !== undefined) {
-                    demoLotsInput.value = d.live_lots;
-                }
+            if (d.live_mode) {
+                badge.textContent = '🔴 LIVE ARMED';
+                badge.className = 'live-mode-active-badge';
+                badge.style.cssText = 'font-size:0.7rem; font-weight:800; letter-spacing:1.5px; padding:6px 14px; border-radius:20px; background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#ef4444; text-transform:uppercase; white-space:nowrap;';
+                document.getElementById('live-trading-panel').style.borderColor = 'rgba(239,68,68,0.4)';
+                document.getElementById('live-trading-panel').style.boxShadow = '0 0 30px rgba(239,68,68,0.08)';
             } else {
-                // ── LIVE MODE: Keep Live card with proper toggle switch ──────────────
-                if (demoView) demoView.style.display = 'none';
-                if (liveView) liveView.style.display = 'block';
+                badge.textContent = '🔴 LIVE OFF';
+                badge.className = '';
+                badge.style.cssText = 'font-size:0.7rem; font-weight:800; letter-spacing:1.5px; padding:6px 14px; border-radius:20px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); color:#fca5a5; text-transform:uppercase; white-space:nowrap;';
+                document.getElementById('live-trading-panel').style.borderColor = 'rgba(239,68,68,0.15)';
+                document.getElementById('live-trading-panel').style.boxShadow = '';
+            }
 
-                // ── Tab label: Live Trade ─────────────────────────────────────────
-                const tabBtnLiveR = document.getElementById('tab-btn-live');
-                if (tabBtnLiveR) {
-                    tabBtnLiveR.innerHTML = '<span class="tab-live-dot"></span>Live Trade';
-                    tabBtnLiveR.title = '';
+            // Always display live INR metrics
+            if (document.getElementById('live-inr-metrics')) {
+                document.getElementById('live-inr-metrics').style.display = 'flex';
+            }
+
+            // Live lots input
+            const llInput = document.getElementById('live-lots-input');
+            if (llInput && d.live_lots !== undefined) llInput.value = d.live_lots;
+
+            // Delta Wallet Balance
+            const balEl = document.getElementById('live-delta-balance');
+            if (balEl && d.wallet_balance_inr !== undefined) {
+                balEl.textContent = '₹' + Number(d.wallet_balance_inr).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                balEl.title = `Available Margin: ₹${d.available_balance_inr || 0} ($${d.net_equity_usd || 0} USD)`;
+            }
+
+            // Available Margin display
+            const availEl = document.getElementById('live-avail-margin');
+            if (availEl && d.available_balance_inr !== undefined) {
+                const avail = Number(d.available_balance_inr);
+                availEl.textContent = '₹' + avail.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                availEl.style.color = avail > 0 ? '#10b981' : '#ef4444';
+            }
+
+            // Preflight
+            if (d.preflight) {
+                setPreflight('pf-api-key-icon', d.preflight.api_key_valid);
+                setPreflight('pf-api-secret-icon', d.preflight.api_secret_valid);
+                setPreflight('pf-positions-icon', d.preflight.no_active_positions);
+                const posItem = document.getElementById('pf-no-positions');
+                if (posItem) {
+                    posItem.className = d.preflight.no_active_positions ? 'preflight-item preflight-ok' : 'preflight-item preflight-fail';
                 }
-
-                if (panel) {
-                    panel.style.background = '';
-                    if (d.live_mode) {
-                        panel.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-                        panel.style.boxShadow = '0 0 30px rgba(239, 68, 68, 0.08)';
+                const allOk = d.safe_to_activate;
+                const overallIcon = document.getElementById('pf-overall-icon');
+                const overallText = document.getElementById('pf-overall-text');
+                if (overallIcon) overallIcon.textContent = allOk ? '✅' : '❌';
+                if (overallText) {
+                    if (allOk) {
+                        overallText.textContent = 'Ready for LIVE';
+                        overallText.style.color = '#10b981';
                     } else {
-                        panel.style.borderColor = 'rgba(239, 68, 68, 0.15)';
-                        panel.style.boxShadow = '';
-                    }
-                }
-
-                const toggle = document.getElementById('live-mode-toggle');
-                const badge  = document.getElementById('live-mode-status-badge');
-                const desc   = document.getElementById('live-mode-desc');
-                if (toggle) toggle.checked = d.live_mode || false;
-                if (badge) {
-                    if (d.live_mode) {
-                        badge.textContent = '🔴 LIVE ARMED';
-                        badge.className = 'live-mode-active-badge';
-                        badge.style.cssText = 'font-size:0.7rem; font-weight:800; letter-spacing:1.5px; padding:6px 14px; border-radius:20px; background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.5); color:#ef4444; text-transform:uppercase; white-space:nowrap;';
-                        if (desc) desc.textContent = 'REAL MONEY live execution active on Delta Exchange (Portfolio Margin).';
-                    } else {
-                        badge.textContent = '🔴 LIVE OFF';
-                        badge.className = '';
-                        badge.style.cssText = 'font-size:0.7rem; font-weight:800; letter-spacing:1.5px; padding:6px 14px; border-radius:20px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); color:#fca5a5; text-transform:uppercase; white-space:nowrap;';
-                        if (desc) desc.textContent = 'Toggle switch ON to execute real money orders on Delta Exchange. (Armed only when switch is ON).';
-                    }
-                }
-
-                // Live lots input
-                const llInput = document.getElementById('live-lots-input');
-                if (llInput && d.live_lots !== undefined) llInput.value = d.live_lots;
-
-                // Delta Wallet Balance
-                const balEl = document.getElementById('live-delta-balance');
-                if (balEl && d.wallet_balance_inr !== undefined) {
-                    balEl.textContent = '₹' + Number(d.wallet_balance_inr).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    balEl.title = `Available Margin: ₹${d.available_balance_inr || 0} ($${d.net_equity_usd || 0} USD)`;
-                }
-
-                // Available Margin display
-                const availEl = document.getElementById('live-avail-margin');
-                if (availEl && d.available_balance_inr !== undefined) {
-                    const avail = Number(d.available_balance_inr);
-                    availEl.textContent = '₹' + avail.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    availEl.style.color = avail > 0 ? '#10b981' : '#ef4444';
-                }
-
-                // Preflight
-                if (d.preflight) {
-                    setPreflight('pf-api-key-icon', d.preflight.api_key_valid);
-                    setPreflight('pf-api-secret-icon', d.preflight.api_secret_valid);
-                    setPreflight('pf-positions-icon', d.preflight.no_active_positions);
-                    const posItem = document.getElementById('pf-no-positions');
-                    if (posItem) {
-                        posItem.className = d.preflight.no_active_positions ? 'preflight-item preflight-ok' : 'preflight-item preflight-fail';
-                    }
-                    const allOk = d.safe_to_activate;
-                    const overallIcon = document.getElementById('pf-overall-icon');
-                    const overallText = document.getElementById('pf-overall-text');
-                    if (overallIcon) overallIcon.textContent = allOk ? '✅' : '❌';
-                    if (overallText) {
-                        if (allOk) {
-                            overallText.textContent = 'Ready for LIVE';
-                            overallText.style.color = '#10b981';
-                        } else {
-                            const reason = d.preflight.api_error_detail || (d.preflight.no_active_positions ? 'Not ready' : 'Live positions already open');
-                            overallText.textContent = `Not ready: ${reason}`;
-                            overallText.style.color = '#ef4444';
-                        }
+                        const reason = d.preflight.api_error_detail || (d.preflight.no_active_positions ? 'Not ready' : 'Live positions already open');
+                        overallText.textContent = `Not ready: ${reason}`;
+                        overallText.style.color = '#ef4444';
                     }
                 }
             }
@@ -2117,8 +2019,6 @@ td {
                 if (data.success) {
                     feedback.textContent = `✅ Saved! ${lots} lot(s)`;
                     feedback.style.color = '#10b981';
-                    const demoInput = document.getElementById('demo-lots-input');
-                    if (demoInput) demoInput.value = lots;
                     setTimeout(() => { feedback.textContent = ''; }, 3000);
                 } else {
                     feedback.textContent = '❌ ' + data.error;
@@ -2130,35 +2030,7 @@ td {
             }
         }
 
-        async function saveDemoLots() {
-            const input    = document.getElementById('demo-lots-input');
-            const feedback = document.getElementById('demo-lots-feedback');
-            const lots     = parseInt(input.value);
-            if (!lots || lots < 1) { feedback.textContent = '❌ Must be ≥ 1'; feedback.style.color='#ef4444'; return; }
-            try {
-                const res  = await fetch('/api/save_live_lots', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ live_lots: lots })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    feedback.textContent = `✅ Saved! ${lots} demo lot(s)`;
-                    feedback.style.color = '#10b981';
-                    const liveInput = document.getElementById('live-lots-input');
-                    if (liveInput) liveInput.value = lots;
-                    setTimeout(() => { feedback.textContent = ''; }, 3000);
-                } else {
-                    feedback.textContent = '❌ ' + data.error;
-                    feedback.style.color = '#ef4444';
-                }
-            } catch(e) {
-                feedback.textContent = '❌ Network error';
-                feedback.style.color = '#ef4444';
-            }
-        }
-
-        // Load live/demo mode state on page load
+        // Load live mode state on page load
         document.addEventListener('DOMContentLoaded', loadLiveModeState);
         // Refresh preflight every 10 seconds
         setInterval(loadLiveModeState, 10000);
@@ -2288,13 +2160,6 @@ td {
                 border-color: rgba(239,68,68,0.4);
                 color: #fff;
                 box-shadow: 0 0 14px rgba(239,68,68,0.15);
-            }
-            /* Demo active state */
-            .engine-tab-btn.demo-active {
-                background: rgba(168,85,247,0.18);
-                border-color: rgba(168,85,247,0.45);
-                color: #fff;
-                box-shadow: 0 0 14px rgba(168,85,247,0.25);
             }
             /* Paper active state */
             .engine-tab-btn.paper-active {
@@ -2484,7 +2349,7 @@ td {
              ══════════════════════════════════════════════════════════════════ -->
         <div class="glass-panel" id="dual-engines-metrics-panel" style="margin-top: 24px; border: 1px solid rgba(255,255,255,0.08);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:10px;">
-                <h2 id="dual-engines-header-title" style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
+                <h2 style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
                     ⚡ Two Isolated Engines: Live Delta vs Paper Simulation Performance
                 </h2>
                 <span style="font-size:0.75rem; padding:4px 10px; border-radius:12px; background:rgba(255,255,255,0.05); color:#94a3b8; border:1px solid rgba(255,255,255,0.1);">
@@ -2492,23 +2357,23 @@ td {
                 </span>
             </div>
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
-                <!-- Card 1: Exchange Engine (Live or Demo) -->
-                <div id="dual-card-exchange-container" style="background:linear-gradient(135deg, rgba(239,68,68,0.08), rgba(0,0,0,0.4)); border:1px solid rgba(239,68,68,0.3); border-radius:14px; padding:20px;">
+                <!-- Card 1: Live Delta Engine -->
+                <div style="background:linear-gradient(135deg, rgba(239,68,68,0.08), rgba(0,0,0,0.4)); border:1px solid rgba(239,68,68,0.3); border-radius:14px; padding:20px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                        <span id="dual-card-exchange-title" style="font-size:0.85rem; font-weight:800; color:#ef4444; letter-spacing:1px; text-transform:uppercase; display:flex; align-items:center; gap:6px;">
-                            <span id="dual-card-exchange-dot" style="width:8px; height:8px; border-radius:50%; background:#ef4444; box-shadow:0 0 8px #ef4444;"></span>
-                            <span id="dual-card-exchange-title-text">🔴 Live Delta Real Account</span>
+                        <span style="font-size:0.85rem; font-weight:800; color:#ef4444; letter-spacing:1px; text-transform:uppercase; display:flex; align-items:center; gap:6px;">
+                            <span style="width:8px; height:8px; border-radius:50%; background:#ef4444; box-shadow:0 0 8px #ef4444;"></span>
+                            🔴 Live Delta Real Account
                         </span>
                         <span id="dual-live-status-tag" style="font-size:0.7rem; font-weight:800; padding:3px 8px; border-radius:6px; background:rgba(239,68,68,0.15); color:#fca5a5;">STANDBY</span>
                     </div>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
                         <div>
-                            <div id="dual-card-exchange-bal-label" style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Live Delta Balance</div>
+                            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Live Delta Balance</div>
                             <div id="dual-live-equity" style="font-size:1.25rem; font-weight:800; color:#fff; font-family:'JetBrains Mono', monospace;">$0.00</div>
                             <div id="dual-live-equity-inr" style="font-size:0.75rem; color:#94a3b8;">₹0.00 INR</div>
                         </div>
                         <div>
-                            <div id="dual-card-exchange-pnl-label" style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Realized Live PnL</div>
+                            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Realized Live PnL</div>
                             <div id="dual-live-realized-pnl" style="font-size:1.25rem; font-weight:800; color:#10b981; font-family:'JetBrains Mono', monospace;">$0.00</div>
                             <div id="dual-live-realized-inr" style="font-size:0.75rem; color:#94a3b8;">₹0.00 INR</div>
                         </div>
@@ -2527,7 +2392,7 @@ td {
                             <div id="dual-live-pf" style="font-size:1rem; font-weight:800; color:#fff;">--</div>
                         </div>
                     </div>
-                    <a id="dual-card-exchange-ledger-btn" href="/history?mode=LIVE" style="display:block; text-align:center; padding:10px; border-radius:8px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.35); color:#fca5a5; font-size:0.82rem; font-weight:700; text-decoration:none; transition:all 0.2s;">
+                    <a href="/history?mode=LIVE" style="display:block; text-align:center; padding:10px; border-radius:8px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.35); color:#fca5a5; font-size:0.82rem; font-weight:700; text-decoration:none; transition:all 0.2s;">
                         📓 Open Live Delta Trade Ledger →
                     </a>
                 </div>
@@ -3114,112 +2979,61 @@ td {
                     </div>
                     <div>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <h2 style="margin: 0; font-size: 1.18rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em;">Delta Exchange Multi-Account API Manager</h2>
-                            <span id="api-active-slot-pill" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-size: 0.72rem; font-weight: 700; padding: 2px 10px; border-radius: 6px; letter-spacing: 0.04em;">ACTIVE: LIVE ACCOUNT</span>
+                            <h2 style="margin: 0; font-size: 1.18rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em;">Delta Exchange API Management</h2>
+                            <span style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.04em;">LIVE RUNTIME</span>
                         </div>
                         <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 3px; display: flex; align-items: center; gap: 6px;">
                             <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
-                            Supports both <strong>Live Delta India</strong> and <strong>Demo Trading (demo.delta.exchange)</strong>
+                            Delta India Gateway • <code style="font-size: 0.78rem; color: #cbd5e1; background: rgba(0,0,0,0.3); padding: 1px 6px; border-radius: 4px;">api.india.delta.exchange</code>
                         </div>
                     </div>
                 </div>
-                <div id="api-panel-status-badge" style="background: rgba(16, 185, 129, 0.12); color: #34d399; padding: 7px 16px; border-radius: 24px; font-weight: 700; font-size: 0.82rem; border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 8px; box-shadow: 0 0 16px rgba(16, 185, 129, 0.12);">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block; box-shadow: 0 0 8px #10b981;"></span> Checking API Gateways...
+                <div id="api-status-badge" style="background: rgba(16, 185, 129, 0.12); color: #34d399; padding: 7px 16px; border-radius: 24px; font-weight: 700; font-size: 0.82rem; border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 8px; box-shadow: 0 0 16px rgba(16, 185, 129, 0.12);">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block; box-shadow: 0 0 8px #10b981;"></span> Checking API...
                 </div>
             </div>
 
-            <!-- Dual-Account HUD: Live Account vs Demo Account Cards -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 22px; position: relative; z-index: 1;">
-                <!-- Card 1: Live Account -->
-                <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 14px; padding: 16px 18px; position: relative; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">🟢</span>
-                            <span style="font-size: 0.88rem; font-weight: 700; color: #f8fafc;">Live Account (Delta India)</span>
-                        </div>
-                        <div style="display: flex; gap: 6px; align-items: center;">
-                            <span id="api-live-badge" style="font-size: 0.7rem; color: #34d399; background: rgba(16,185,129,0.14); border: 1px solid rgba(16,185,129,0.3); padding: 2px 8px; border-radius: 6px; font-weight: 700;">CONNECTED</span>
-                            <button type="button" id="btn-activate-live" onclick="switchApiSlotAction('live')" style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">✔ ACTIVE</button>
-                        </div>
+            <!-- Active Key HUD 3-Tile Row -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 22px; position: relative; z-index: 1;">
+                <!-- Tile 1: Active Key -->
+                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s;" onmouseover="this.style.borderColor='rgba(56,189,248,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Configured API Key</span>
+                        <span style="font-size: 0.72rem; color: #10b981; background: rgba(16,185,129,0.1); padding: 1px 6px; border-radius: 4px; font-weight: 600;">ACTIVE</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-                        <div>
-                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Configured Key</div>
-                            <div id="api-live-key" style="font-family: 'JetBrains Mono', monospace; font-size: 0.92rem; font-weight: 700; color: #38bdf8; margin-top: 2px;">Loading...</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Gateway</div>
-                            <div style="font-size: 0.8rem; color: #cbd5e1; margin-top: 2px; font-family: 'JetBrains Mono', monospace;">api.india.delta.exchange</div>
-                        </div>
-                    </div>
-                    <div style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
-                        <div id="api-live-user" style="font-size: 0.78rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">UID: Verifying...</div>
-                        <button type="button" onclick="disableApiKeyAction('live')" style="background: none; border: none; color: #f87171; font-size: 0.72rem; cursor: pointer; text-decoration: underline; padding: 0;">Disconnect</button>
+                    <div id="api-masked-key-display" style="font-family: 'JetBrains Mono', monospace; font-size: 1.02rem; font-weight: 700; color: #38bdf8; margin-top: 4px; letter-spacing: 0.03em;">
+                        Loading...
                     </div>
                 </div>
 
-                <!-- Card 2: Demo / Testnet Account -->
-                <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 14px; padding: 16px 18px; position: relative; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">🧪</span>
-                            <span style="font-size: 0.88rem; font-weight: 700; color: #f8fafc;">Demo Trading Account</span>
-                        </div>
-                        <div style="display: flex; gap: 6px; align-items: center;">
-                            <span id="api-demo-badge" style="font-size: 0.7rem; color: #a855f7; background: rgba(168,85,247,0.14); border: 1px solid rgba(168,85,247,0.3); padding: 2px 8px; border-radius: 6px; font-weight: 700;">NOT CONFIGURED</span>
-                            <button type="button" id="btn-activate-demo" onclick="switchApiSlotAction('demo')" style="background: rgba(168, 85, 247, 0.15); border: 1px solid #a855f7; color: #c084fc; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">Switch to Demo</button>
-                        </div>
+                <!-- Tile 2: User Account ID -->
+                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s;" onmouseover="this.style.borderColor='rgba(56,189,248,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Delta User Account</span>
+                        <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; font-weight: 600;">PROFILE</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-                        <div>
-                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Configured Key</div>
-                            <div id="api-demo-key" style="font-family: 'JetBrains Mono', monospace; font-size: 0.92rem; font-weight: 700; color: #c084fc; margin-top: 2px;">None (Add Below)</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Gateway</div>
-                            <div style="font-size: 0.8rem; color: #cbd5e1; margin-top: 2px; font-family: 'JetBrains Mono', monospace;">demo.delta.exchange</div>
-                        </div>
+                    <div id="api-user-id" style="font-family: 'JetBrains Mono', monospace; font-size: 0.98rem; font-weight: 600; color: #f1f5f9; margin-top: 4px;">
+                        Verifying...
                     </div>
-                    <div style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
-                        <div id="api-demo-user" style="font-size: 0.78rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">UID: None configured</div>
-                        <button type="button" onclick="disableApiKeyAction('demo')" style="background: none; border: none; color: #f87171; font-size: 0.72rem; cursor: pointer; text-decoration: underline; padding: 0;">Disconnect</button>
+                </div>
+
+                <!-- Tile 3: Margin Architecture -->
+                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s;" onmouseover="this.style.borderColor='rgba(56,189,248,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Margin Architecture</span>
+                        <span id="api-margin-badge" style="font-size: 0.72rem; color: #a855f7; background: rgba(168,85,247,0.12); padding: 1px 6px; border-radius: 4px; font-weight: 600;">AUTO</span>
+                    </div>
+                    <div id="api-margin-mode" style="font-family: 'JetBrains Mono', monospace; font-size: 0.98rem; font-weight: 700; color: #cbd5e1; margin-top: 4px;">
+                        PORTFOLIO / CROSS
                     </div>
                 </div>
             </div>
 
             <!-- Credentials Input Form Card -->
             <div style="background: rgba(11, 17, 32, 0.7); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; position: relative; z-index: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
-                        <span>⚙️</span> Connect or Update API Credentials
-                    </div>
-                    <!-- Slot Selector Buttons -->
-                    <div style="display: flex; gap: 8px;">
-                        <button type="button" id="btn-target-demo" onclick="selectTargetSlot('demo')" style="background: rgba(168, 85, 247, 0.2); border: 1px solid #a855f7; color: #c084fc; font-size: 0.78rem; font-weight: 700; padding: 5px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
-                            🧪 Target: Demo Account
-                        </button>
-                        <button type="button" id="btn-target-live" onclick="selectTargetSlot('live')" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); color: #94a3b8; font-size: 0.78rem; font-weight: 600; padding: 5px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
-                            🟢 Target: Live Account
-                        </button>
-                    </div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: #f8fafc; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                    <span>⚙️</span> Update API Key & Secret Live
                 </div>
-
-                <!-- Environment / Gateway Selector -->
-                <div style="margin-bottom: 14px;">
-                    <label style="display: flex; justify-content: space-between; font-size: 0.76rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">
-                        <span>DELTA GATEWAY ENVIRONMENT</span>
-                        <span style="font-size: 0.7rem; color: #38bdf8;">Auto-detect probes all gateways automatically</span>
-                    </label>
-                    <select id="select-api-env" style="width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px; padding: 10px 14px; color: #f8fafc; font-size: 0.85rem; outline: none; transition: all 0.2s;">
-                        <option value="auto" selected>🔍 Auto-Detect Gateway (Recommended - checks Demo & Live automatically)</option>
-                        <option value="demo">🧪 Delta Demo Trading (demo.delta.exchange • https://testnet-api.delta.exchange)</option>
-                        <option value="india_live">🟢 Delta India Live Production (api.india.delta.exchange)</option>
-                        <option value="india_demo">🇮🇳 Delta India Demo (cdn-ind.testnet.deltaex.org)</option>
-                        <option value="global_live">🌐 Delta Global Live (api.delta.exchange)</option>
-                    </select>
-                </div>
-
-                <!-- API Key & Secret Inputs -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
                     <div>
                         <label style="display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">
@@ -3250,24 +3064,24 @@ td {
                 </div>
             </div>
 
-            <!-- Action Controls Bar -->
+            <!-- Action Controls & Whitelist Notice Bar -->
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; position: relative; z-index: 1;">
                 <div style="font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 1rem;">🛡️</span>
-                    <span>Direct connection test on Delta. Saved permanently to Cloud Master DB across Render reboots.</span>
+                    <span>Direct connection test on Delta India. Updates bot memory instantly without restart.</span>
                 </div>
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                    <button type="button" id="btn-disable-api" onclick="disableApiKeyAction('active')"
+                    <button type="button" id="btn-disable-api" onclick="disableApiKeyAction()"
                             style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(185, 28, 28, 0.2)); border: 1px solid rgba(239, 68, 68, 0.45); color: #f87171; border-radius: 10px; padding: 11px 20px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.25s; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.15);"
                             onmouseover="this.style.background='rgba(239, 68, 68, 0.28)'; this.style.transform='translateY(-1px)'" 
                             onmouseout="this.style.background='linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(185, 28, 28, 0.2))'; this.style.transform='translateY(0)'">
-                        <span>🛑</span> DISABLE ACTIVE API
+                        <span>🛑</span> DISABLE / DISCONNECT API
                     </button>
                     <button type="button" id="btn-save-api" onclick="saveApiCredentialsAction()"
                             style="background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%); border: 1px solid #38bdf8; color: #ffffff; border-radius: 10px; padding: 11px 26px; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45); transition: all 0.25s; letter-spacing: 0.02em;"
                             onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 26px rgba(2, 132, 199, 0.65)'" 
                             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(2, 132, 199, 0.45)'">
-                        <span>💾</span> CONNECT & SAVE API KEY
+                        <span>💾</span> CONNECT & UPDATE API KEY
                     </button>
                 </div>
             </div>
@@ -3492,65 +3306,42 @@ td {
             const activeInspectMode = (_inspectEngineMode && _inspectEngineMode !== 'AUTO')
                 ? _inspectEngineMode
                 : currentBotMode;
-            const isDemo = (data.active_api_slot === 'demo');
 
             // 1. Update Inspector Buttons
             const btnLive = document.getElementById('btn-engine-view-live');
             const btnPaper = document.getElementById('btn-engine-view-paper');
+            const badgeLiveCount = document.getElementById('badge-live-pos-count');
             const badgePaperCount = document.getElementById('badge-paper-pos-count');
 
             const livePositions = data.live_positions || [];
             const paperPositions = data.paper_positions || [];
 
-            if (btnLive) {
-                if (isDemo) {
-                    btnLive.innerHTML = `
-                        <span class="dot" style="background:#c084fc; box-shadow:0 0 8px #c084fc;"></span>
-                        Delta Demo Exchange
-                        <span id="badge-live-pos-count" class="badge" style="background:rgba(168,85,247,0.25); color:#d8b4fe;">${livePositions.length}</span>
-                    `;
-                } else {
-                    btnLive.innerHTML = `
-                        <span class="dot" style="background:#ef4444; box-shadow:0 0 8px #ef4444;"></span>
-                        Live Delta Exchange
-                        <span id="badge-live-pos-count" class="badge" style="background:rgba(239,68,68,0.25); color:#fca5a5;">${livePositions.length}</span>
-                    `;
-                }
+            if (badgeLiveCount) badgeLiveCount.textContent = livePositions.length;
+            if (badgePaperCount) badgePaperCount.textContent = paperPositions.length;
 
+            if (btnLive && btnPaper) {
                 if (activeInspectMode === 'LIVE') {
-                    btnLive.className = isDemo ? 'engine-tab-btn demo-active' : 'engine-tab-btn live-active';
+                    btnLive.className = 'engine-tab-btn live-active';
                     btnPaper.className = 'engine-tab-btn inactive';
                 } else {
                     btnPaper.className = 'engine-tab-btn paper-active';
                     btnLive.className = 'engine-tab-btn inactive';
                 }
             }
-            if (badgePaperCount) badgePaperCount.textContent = paperPositions.length;
 
-            // Update PnL chart badge & title
+            // Update PnL chart badge
             const chartBadge = document.getElementById('pnl-chart-engine-badge');
-            const chartTitle = document.getElementById('pnl-chart-title');
             if (chartBadge) {
                 if (activeInspectMode === 'LIVE') {
-                    if (isDemo) {
-                        chartBadge.textContent = 'DELTA DEMO';
-                        chartBadge.style.background = 'rgba(168,85,247,0.15)';
-                        chartBadge.style.borderColor = 'rgba(168,85,247,0.35)';
-                        chartBadge.style.color = '#c084fc';
-                        if (chartTitle) chartTitle.innerHTML = '📊 🧪 Delta Demo P&L Trajectory';
-                    } else {
-                        chartBadge.textContent = 'LIVE DELTA';
-                        chartBadge.style.background = 'rgba(239,68,68,0.12)';
-                        chartBadge.style.borderColor = 'rgba(239,68,68,0.3)';
-                        chartBadge.style.color = '#fca5a5';
-                        if (chartTitle) chartTitle.innerHTML = '📊 🔴 Live Delta P&L Trajectory';
-                    }
+                    chartBadge.textContent = 'LIVE DELTA';
+                    chartBadge.style.background = 'rgba(239,68,68,0.12)';
+                    chartBadge.style.borderColor = 'rgba(239,68,68,0.3)';
+                    chartBadge.style.color = '#fca5a5';
                 } else {
                     chartBadge.textContent = 'PAPER SIMULATION';
                     chartBadge.style.background = 'rgba(56,189,248,0.12)';
                     chartBadge.style.borderColor = 'rgba(56,189,248,0.3)';
                     chartBadge.style.color = '#38bdf8';
-                    if (chartTitle) chartTitle.innerHTML = '📊 📄 Paper P&L Trajectory';
                 }
             }
 
@@ -3564,45 +3355,22 @@ td {
 
             if (activeInspectMode === 'LIVE') {
                 if (overviewPanel) {
-                    if (isDemo) {
-                        overviewPanel.style.borderColor = 'rgba(168, 85, 247, 0.35)';
-                        overviewPanel.style.background = 'radial-gradient(circle at top left, rgba(168,85,247,0.08) 0%, transparent 50%), rgba(0,0,0,0.4)';
-                    } else {
-                        overviewPanel.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                        overviewPanel.style.background = 'radial-gradient(circle at top left, rgba(239,68,68,0.06) 0%, transparent 50%), rgba(0,0,0,0.4)';
-                    }
+                    overviewPanel.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                    overviewPanel.style.background = 'radial-gradient(circle at top left, rgba(239,68,68,0.06) 0%, transparent 50%), rgba(0,0,0,0.4)';
                 }
-                if (overviewTitle) {
-                    overviewTitle.innerHTML = isDemo ? '📊 🧪 Delta Demo Trade Overview' : '📊 🔴 Live Delta Trade Overview';
-                }
+                if (overviewTitle) overviewTitle.innerHTML = '📊 🔴 Live Delta Trade Overview';
                 if (overviewTag) {
-                    if (isDemo) {
-                        overviewTag.textContent = '🧪 DELTA DEMO EXCHANGE';
-                        overviewTag.style.background = 'rgba(168, 85, 247, 0.18)';
-                        overviewTag.style.borderColor = 'rgba(168, 85, 247, 0.45)';
-                        overviewTag.style.color = '#d8b4fe';
-                    } else {
-                        overviewTag.textContent = '🔴 REAL DELTA EXCHANGE';
-                        overviewTag.style.background = 'rgba(239, 68, 68, 0.15)';
-                        overviewTag.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-                        overviewTag.style.color = '#fca5a5';
-                    }
+                    overviewTag.textContent = '🔴 REAL DELTA EXCHANGE';
+                    overviewTag.style.background = 'rgba(239, 68, 68, 0.15)';
+                    overviewTag.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                    overviewTag.style.color = '#fca5a5';
                 }
-                if (posHeading) {
-                    posHeading.innerHTML = isDemo ? '📈 🧪 Delta Demo Active Positions' : '📈 🔴 Live Delta Active Positions';
-                }
+                if (posHeading) posHeading.innerHTML = '📈 🔴 Live Delta Active Positions';
                 if (posEngineText) {
-                    if (isDemo) {
-                        posEngineText.textContent = '🧪 Delta Demo Exchange (Virtual Funds)';
-                        posEngineText.style.color = '#c084fc';
-                    } else {
-                        posEngineText.textContent = '🔴 Live Delta Exchange (Real Capital)';
-                        posEngineText.style.color = '#ef4444';
-                    }
+                    posEngineText.textContent = '🔴 Live Delta Exchange (Real Capital)';
+                    posEngineText.style.color = '#ef4444';
                 }
-                if (capUsedLabel) {
-                    capUsedLabel.textContent = isDemo ? 'Demo Margin in Trade' : 'Margin in Trade';
-                }
+                if (capUsedLabel) capUsedLabel.textContent = 'Margin in Trade';
             } else {
                 if (overviewPanel) {
                     overviewPanel.style.borderColor = 'rgba(56, 189, 248, 0.3)';
@@ -3765,9 +3533,7 @@ td {
                         ? '<span class="pos-call-label">📈 CALL</span>'
                         : '<span class="pos-put-label">📉 PUT</span>';
                     const engineTag = activeInspectMode === 'LIVE'
-                        ? (isDemo
-                            ? '<span style="font-size:0.68rem; font-weight:800; padding:2px 8px; border-radius:4px; background:rgba(168,85,247,0.2); color:#d8b4fe; border:1px solid rgba(168,85,247,0.4);">🧪 DELTA DEMO</span>'
-                            : '<span style="font-size:0.68rem; font-weight:800; padding:2px 8px; border-radius:4px; background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.4);">🔴 REAL DELTA</span>')
+                        ? '<span style="font-size:0.68rem; font-weight:800; padding:2px 8px; border-radius:4px; background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.4);">🔴 REAL DELTA</span>'
                         : '<span style="font-size:0.68rem; font-weight:800; padding:2px 8px; border-radius:4px; background:rgba(56,189,248,0.2); color:#7dd3fc; border:1px solid rgba(56,189,248,0.4);">📄 PAPER SIM</span>';
                     
                     const pnlClass  = pos.leg_pnl_usd >= 0 ? 'pnl-pos' : 'pnl-neg';
@@ -3804,7 +3570,7 @@ td {
                     const legPnlPctCapitalStr = (legPnlPctCapital >= 0 ? '+' : '') + legPnlPctCapital.toFixed(2);
 
                     return `
-                    <div class="pos-card" style="border: 1px solid ${activeInspectMode === 'LIVE' ? (isDemo ? 'rgba(168,85,247,0.35)' : 'rgba(239,68,68,0.3)') : 'rgba(56,189,248,0.2)'};">
+                    <div class="pos-card" style="border: 1px solid ${activeInspectMode === 'LIVE' ? 'rgba(239,68,68,0.3)' : 'rgba(56,189,248,0.2)'};">
                         <div class="pos-card-header">
                             <div>
                                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
@@ -3837,8 +3603,8 @@ td {
                                     <div class="pos-metric-sub ${pnlClass}" style="margin-top: 0;">${pnlInrSign}₹${pos.leg_pnl_inr.toFixed(0)}</div>
                                 </div>
                             </div>
-                            <div class="pos-metric" style="background: ${activeInspectMode === 'LIVE' ? (isDemo ? 'rgba(168,85,247,0.06)' : 'rgba(239,68,68,0.06)') : 'rgba(56,189,248,0.06)'}; border: 1px solid ${activeInspectMode === 'LIVE' ? (isDemo ? 'rgba(168,85,247,0.15)' : 'rgba(239,68,68,0.15)') : 'rgba(56,189,248,0.15)'};">
-                                <div class="pos-metric-label" style="color: ${activeInspectMode === 'LIVE' ? (isDemo ? '#d8b4fe' : '#fca5a5') : '#7dd3fc'};">${activeInspectMode === 'LIVE' ? 'Live Margin' : 'Virtual Capital'}</div>
+                            <div class="pos-metric" style="background: ${activeInspectMode === 'LIVE' ? 'rgba(239,68,68,0.06)' : 'rgba(56,189,248,0.06)'}; border: 1px solid ${activeInspectMode === 'LIVE' ? 'rgba(239,68,68,0.15)' : 'rgba(56,189,248,0.15)'};">
+                                <div class="pos-metric-label" style="color: ${activeInspectMode === 'LIVE' ? '#fca5a5' : '#7dd3fc'};">${activeInspectMode === 'LIVE' ? 'Live Margin' : 'Virtual Capital'}</div>
                                 <div class="pos-metric-value" style="color: #fff; font-weight: 800;">$${legCapitalUsed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                                 <div class="pos-metric-sub">at $${(data.btc_price || 70000).toLocaleString(undefined, {maximumFractionDigits: 0})} BTC</div>
                             </div>
@@ -3910,8 +3676,8 @@ td {
                                     </div>
                                 </div>
                                 ${activeInspectMode === 'LIVE' ? `
-                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed ${isDemo ? 'rgba(168,85,247,0.25)' : 'rgba(239,68,68,0.2)'}; display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem;">
-                                    <span style="color: ${isDemo ? '#d8b4fe' : '#fca5a5'}; font-weight: 700;">🛡️ ${isDemo ? 'Delta Demo' : 'Delta Exchange'} Backup SL</span>
+                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(239,68,68,0.2); display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem;">
+                                    <span style="color: #fca5a5; font-weight: 700;">🛡️ Delta Exchange Backup SL</span>
                                     <span style="color: #10b981; font-weight: 800; font-family: 'JetBrains Mono', monospace;">${pos.exchange_sl_order_id ? 'Order #' + pos.exchange_sl_order_id : '🟢 Active on Delta'}</span>
                                 </div>` : ''}
                             </div>
@@ -3958,11 +3724,7 @@ td {
                     document.getElementById('overview-active-sl-val').style.color = '#94a3b8';
                 }
                 if(document.getElementById('overview-active-sl-sub')) {
-                    if (activeInspectMode === 'LIVE') {
-                        document.getElementById('overview-active-sl-sub').textContent = isDemo ? 'Delta Demo Stop: Ready' : 'Delta Exchange Stop: Ready';
-                    } else {
-                        document.getElementById('overview-active-sl-sub').textContent = 'Paper Risk: 100% Premium';
-                    }
+                    document.getElementById('overview-active-sl-sub').textContent = activeInspectMode === 'LIVE' ? 'Delta Exchange Stop: Ready' : 'Paper Risk: 100% Premium';
                 }
                 if(document.getElementById('overview-active-tp-val')) {
                     document.getElementById('overview-active-tp-val').textContent = 'Standby (+19% DPL)';
@@ -3989,25 +3751,14 @@ td {
                 if (posContainer) posContainer.classList.remove('active-trade-glow');
 
                 if (activeInspectMode === 'LIVE') {
-                    if (isDemo) {
-                        posCards.innerHTML = `
-                            <div class="pos-empty" style="text-align: center; padding: 48px 24px; background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.06), transparent 70%); border-radius: 14px; border: 1px dashed rgba(168, 85, 247, 0.4);">
-                                <div style="font-size: 2.4rem; margin-bottom: 12px; display: inline-block; filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.5));">🧪</div>
-                                <div style="font-weight: 800; color: #d8b4fe; font-size: 1.15rem; letter-spacing: 0.5px;">DELTA DEMO EXCHANGE STANDBY</div>
-                                <div style="font-size: 0.88rem; margin-top: 6px; color: #94a3b8; max-width: 540px; margin-left: auto; margin-right: auto; line-height: 1.5;">
-                                    Zero active positions on Delta Demo. Virtual funds are active &amp; orders execute strictly on <strong>Delta Demo Testnet</strong>. Zero real-money exposure.
-                                </div>
-                            </div>`;
-                    } else {
-                        posCards.innerHTML = `
-                            <div class="pos-empty" style="text-align: center; padding: 48px 24px; background: radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.05), transparent 70%); border-radius: 14px; border: 1px dashed rgba(239,68,68,0.35);">
-                                <div style="font-size: 2.4rem; margin-bottom: 12px; display: inline-block; filter: drop-shadow(0 0 12px rgba(239,68,68,0.4));">🛡️</div>
-                                <div style="font-weight: 800; color: #fca5a5; font-size: 1.15rem; letter-spacing: 0.5px;">LIVE DELTA EXCHANGE STANDBY</div>
-                                <div style="font-size: 0.88rem; margin-top: 6px; color: #94a3b8; max-width: 540px; margin-left: auto; margin-right: auto; line-height: 1.5;">
-                                    Zero active positions on Delta Exchange. Real money trades only execute when you explicitly toggle <strong>Live Trading Mode ON</strong> above.
-                                </div>
-                            </div>`;
-                    }
+                    posCards.innerHTML = `
+                        <div class="pos-empty" style="text-align: center; padding: 48px 24px; background: radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.05), transparent 70%); border-radius: 14px; border: 1px dashed rgba(239,68,68,0.35);">
+                            <div style="font-size: 2.4rem; margin-bottom: 12px; display: inline-block; filter: drop-shadow(0 0 12px rgba(239,68,68,0.4));">🛡️</div>
+                            <div style="font-weight: 800; color: #fca5a5; font-size: 1.15rem; letter-spacing: 0.5px;">LIVE DELTA EXCHANGE STANDBY</div>
+                            <div style="font-size: 0.88rem; margin-top: 6px; color: #94a3b8; max-width: 540px; margin-left: auto; margin-right: auto; line-height: 1.5;">
+                                Zero active positions on Delta Exchange. Real money trades only execute when you explicitly toggle <strong>Live Trading Mode ON</strong> above.
+                            </div>
+                        </div>`;
                 } else {
                     posCards.innerHTML = `
                         <div class="pos-empty" style="text-align: center; padding: 48px 24px; background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.04), transparent 70%); border-radius: 14px; border: 1px dashed rgba(255,255,255,0.08);">
@@ -4025,56 +3776,8 @@ td {
         function renderDualEngineMetricsCards(data) {
             if (!data) return;
             const isLiveActive = data.mode === 'LIVE';
-            const isDemo = (data.active_api_slot === 'demo');
 
-            // Dual Engines Section Header
-            const dualHeader = document.getElementById('dual-engines-header-title');
-            if (dualHeader) {
-                dualHeader.innerHTML = isDemo
-                    ? '⚡ Two Isolated Engines: Delta Demo vs Paper Simulation Performance'
-                    : '⚡ Two Isolated Engines: Live Delta vs Paper Simulation Performance';
-            }
-
-            // Card 1 container & styling
-            const card1Container = document.getElementById('dual-card-exchange-container');
-            const card1TitleDot = document.getElementById('dual-card-exchange-dot');
-            const card1TitleText = document.getElementById('dual-card-exchange-title-text');
-            const card1Title = document.getElementById('dual-card-exchange-title');
-            const card1BalLabel = document.getElementById('dual-card-exchange-bal-label');
-            const card1PnlLabel = document.getElementById('dual-card-exchange-pnl-label');
-            const card1LedgerBtn = document.getElementById('dual-card-exchange-ledger-btn');
-
-            if (card1Container) {
-                card1Container.style.background = isDemo
-                    ? 'linear-gradient(135deg, rgba(168,85,247,0.08), rgba(0,0,0,0.4))'
-                    : 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(0,0,0,0.4))';
-                card1Container.style.borderColor = isDemo ? 'rgba(168,85,247,0.3)' : 'rgba(239,68,68,0.3)';
-            }
-            if (card1Title) {
-                card1Title.style.color = isDemo ? '#c084fc' : '#ef4444';
-            }
-            if (card1TitleDot) {
-                card1TitleDot.style.background = isDemo ? '#c084fc' : '#ef4444';
-                card1TitleDot.style.boxShadow = isDemo ? '0 0 8px #c084fc' : '0 0 8px #ef4444';
-            }
-            if (card1TitleText) {
-                card1TitleText.textContent = isDemo ? '🧪 Delta Demo Virtual Account' : '🔴 Live Delta Real Account';
-            }
-            if (card1BalLabel) {
-                card1BalLabel.textContent = isDemo ? 'Demo Delta Balance' : 'Live Delta Balance';
-            }
-            if (card1PnlLabel) {
-                card1PnlLabel.textContent = isDemo ? 'Realized Demo PnL' : 'Realized Live PnL';
-            }
-            if (card1LedgerBtn) {
-                card1LedgerBtn.href = isDemo ? '/history?mode=DEMO' : '/history?mode=LIVE';
-                card1LedgerBtn.textContent = isDemo ? '📓 Open Delta Demo Trade Ledger →' : '📓 Open Live Delta Trade Ledger →';
-                card1LedgerBtn.style.background = isDemo ? 'rgba(168,85,247,0.15)' : 'rgba(239,68,68,0.15)';
-                card1LedgerBtn.style.borderColor = isDemo ? 'rgba(168,85,247,0.35)' : 'rgba(239,68,68,0.35)';
-                card1LedgerBtn.style.color = isDemo ? '#d8b4fe' : '#fca5a5';
-            }
-
-            // Live / Demo Engine Metrics
+            // Live Engine Metrics
             const livePerf = data.live_performance || {};
             const liveEq = data.live_equity !== undefined ? data.live_equity : 0.0;
             const livePnl = livePerf.total_pnl !== undefined ? livePerf.total_pnl : 0.0;
@@ -4084,15 +3787,9 @@ td {
 
             const liveTag = document.getElementById('dual-live-status-tag');
             if (liveTag) {
-                if (isDemo) {
-                    liveTag.textContent = '🧪 DEMO ACTIVE';
-                    liveTag.style.background = 'rgba(168,85,247,0.2)';
-                    liveTag.style.color = '#d8b4fe';
-                } else {
-                    liveTag.textContent = isLiveActive ? '🔴 ACTIVE' : 'STANDBY';
-                    liveTag.style.background = isLiveActive ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.15)';
-                    liveTag.style.color = isLiveActive ? '#fff' : '#fca5a5';
-                }
+                liveTag.textContent = isLiveActive ? '🔴 ACTIVE' : 'STANDBY';
+                liveTag.style.background = isLiveActive ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.15)';
+                liveTag.style.color = isLiveActive ? '#fff' : '#fca5a5';
             }
             if (document.getElementById('dual-live-equity')) document.getElementById('dual-live-equity').textContent = `$${Number(liveEq).toFixed(2)}`;
             if (document.getElementById('dual-live-equity-inr')) document.getElementById('dual-live-equity-inr').textContent = `₹${Number(liveEq * 95.5).toFixed(2)} INR`;
@@ -4148,6 +3845,185 @@ td {
             }
         }
 
+        // ═════════════════════════════════════════════════════════════════════
+        // SMART BANDWIDTH & POLLING COORDINATOR (08:30 – 17:30 IST + TAB VISIBILITY)
+        // ═════════════════════════════════════════════════════════════════════
+        let lastKnownStatusData = null;
+        let manualWakeUntil = 0;
+        let statusPollInterval = null;
+        let pnlPollInterval = null;
+        let isCurrentlyStandby = false;
+
+        function getIstDateNow() {
+            try {
+                const now = new Date();
+                const istString = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+                return new Date(istString);
+            } catch (e) {
+                const utcNow = new Date();
+                return new Date(utcNow.getTime() + (330 * 60000));
+            }
+        }
+
+        function isWithinActiveTradingHours() {
+            const ist = getIstDateNow();
+            const mins = ist.getHours() * 60 + ist.getMinutes();
+            // 08:30 IST = 510 minutes (8*60 + 30). 17:30 IST = 1050 minutes (17*60 + 30).
+            return mins >= 510 && mins <= 1050;
+        }
+
+        function hasAnyActivePositions(data) {
+            if (!data) return false;
+            const hasGen = Array.isArray(data.positions) && data.positions.length > 0;
+            const hasLive = Array.isArray(data.live_positions) && data.live_positions.length > 0;
+            const hasPaper = Array.isArray(data.paper_positions) && data.paper_positions.length > 0;
+            return hasGen || hasLive || hasPaper;
+        }
+
+        function shouldBeActivePolling(data) {
+            // 1. Manual user override (e.g. clicked "Wake Active Mode" or placed manual trade)
+            if (Date.now() < manualWakeUntil) return true;
+
+            // 2. CRITICAL SAFEGUARD: If ANY position is open, ALWAYS active poll (never sleep!)
+            if (hasAnyActivePositions(data || lastKnownStatusData)) return true;
+
+            // 3. Normal active daytime window (08:30 to 17:30 IST)
+            if (isWithinActiveTradingHours()) return true;
+
+            // Outside trading window with 0 open positions -> Standby mode
+            return false;
+        }
+
+        function updateStandbyUI(isStandby) {
+            isCurrentlyStandby = isStandby;
+            const banner = document.getElementById('standby-banner');
+            if (banner) {
+                banner.style.display = isStandby ? 'flex' : 'none';
+            }
+            const timeBadge = document.getElementById('standby-time-badge');
+            if (timeBadge && isStandby) {
+                const ist = getIstDateNow();
+                timeBadge.textContent = `(Current: ${String(ist.getHours()).padStart(2, '0')}:${String(ist.getMinutes()).padStart(2, '0')} IST)`;
+            }
+
+            // Update Top Header Schedule Status Badge
+            const schedBadge = document.getElementById('schedule-status-badge');
+            if (schedBadge) {
+                if (hasAnyActivePositions(lastKnownStatusData)) {
+                    schedBadge.className = 'schedule-badge trade-override';
+                    schedBadge.innerHTML = '⚡ TRADE ACTIVE (24/7)';
+                    schedBadge.title = 'Open position detected. Cloud server is awake 24/7 monitoring SL/TP.';
+                } else if (Date.now() < manualWakeUntil) {
+                    const remainingMins = Math.max(1, Math.round((manualWakeUntil - Date.now()) / 60000));
+                    schedBadge.className = 'schedule-badge active';
+                    schedBadge.innerHTML = `⚡ ACTIVE OVERRIDE (${remainingMins}m)`;
+                    schedBadge.title = 'Manual active mode enabled. Click to refresh.';
+                } else if (!isStandby) {
+                    schedBadge.className = 'schedule-badge active';
+                    schedBadge.innerHTML = '🟢 SESSION ACTIVE (08:30-17:30)';
+                    schedBadge.title = 'Regular market session. Automatic real-time polling active.';
+                } else {
+                    schedBadge.className = 'schedule-badge standby';
+                    schedBadge.innerHTML = '🌙 STANDBY / SLEEP (Click to Wake)';
+                    schedBadge.title = 'Overnight Standby: Polling paused to save Render bandwidth. Click to wake active mode!';
+                }
+            }
+        }
+
+        function handleScheduleBadgeClick() {
+            if (isCurrentlyStandby) {
+                wakeManualSession(3600);
+            } else {
+                triggerManualRefresh();
+            }
+        }
+
+        function evaluateStandbyState(data) {
+            lastKnownStatusData = data;
+            const active = shouldBeActivePolling(data);
+            if (!active) {
+                if (!isCurrentlyStandby) {
+                    updateStandbyUI(true);
+                    stopActivePollingLoops();
+                    // In standby, check status every 5 minutes (slow heartbeat to detect 08:30 AM wake-up)
+                    statusPollInterval = setInterval(async () => {
+                        if (!document.hidden) await fetchStatus();
+                    }, 300000);
+                }
+            } else {
+                if (isCurrentlyStandby || !statusPollInterval) {
+                    updateStandbyUI(false);
+                    startActivePollingLoops();
+                }
+            }
+        }
+
+        function wakeManualSession(seconds = 3600) {
+            manualWakeUntil = Date.now() + (seconds * 1000);
+            updateStandbyUI(false);
+            startActivePollingLoops();
+            triggerManualRefresh();
+            if (typeof showToast === 'function') {
+                showToast('⚡ Active Mode Engaged: Continuous real-time updates active for 1 hour.', 'info', 5000);
+            }
+        }
+
+        async function triggerManualRefresh() {
+            const btn = document.getElementById('btn-manual-refresh');
+            if (btn) {
+                btn.textContent = '⏳ Refreshing...';
+                btn.disabled = true;
+            }
+            try {
+                await Promise.all([fetchStatus(), fetchPnlChart()]);
+            } finally {
+                if (btn) {
+                    btn.textContent = '🔄 Refresh Now';
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        function startActivePollingLoops() {
+            stopActivePollingLoops();
+            if (document.hidden) return; // Tab in background -> do not poll
+
+            // Active daytime intervals: 5s status, 6s PnL chart (bandwidth-optimized)
+            statusPollInterval = setInterval(async () => {
+                if (document.hidden) return;
+                await fetchStatus();
+            }, 5000);
+
+            pnlPollInterval = setInterval(async () => {
+                if (document.hidden) return;
+                await fetchPnlChart();
+            }, 6000);
+        }
+
+        function stopActivePollingLoops() {
+            if (statusPollInterval) {
+                clearInterval(statusPollInterval);
+                statusPollInterval = null;
+            }
+            if (pnlPollInterval) {
+                clearInterval(pnlPollInterval);
+                pnlPollInterval = null;
+            }
+        }
+
+        // Page Visibility API: pause polling when minimized or screen locked
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopActivePollingLoops();
+            } else {
+                triggerManualRefresh().then(() => {
+                    if (shouldBeActivePolling(lastKnownStatusData)) {
+                        startActivePollingLoops();
+                    }
+                });
+            }
+        });
+
         // Status Polling
         async function fetchStatus() {
             let dataReceived = false;
@@ -4169,7 +4045,6 @@ td {
 
                 // Update Stats & Separate Paper vs Live Equity
                 const isLive = data.mode === 'LIVE';
-                const isDemo = (data.active_api_slot === 'demo');
                 const paperEq = data.paper_equity !== undefined ? data.paper_equity : (data.mode === 'PAPER' ? data.equity : 50000.0);
                 const liveEq = data.live_equity !== undefined ? data.live_equity : (data.mode === 'LIVE' ? data.equity : 0.0);
                 
@@ -4177,21 +4052,13 @@ td {
                 if (paperEqEl) {
                     paperEqEl.textContent = `$${Number(paperEq).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
                 }
-                const heroEquityTitle = document.getElementById('hero-equity-title');
-                const heroEquityDot = document.getElementById('hero-equity-dot');
-                if (heroEquityTitle) heroEquityTitle.textContent = isDemo ? 'Demo Delta Balance' : 'Live Delta Balance';
-                if (heroEquityDot) {
-                    heroEquityDot.style.background = isDemo ? '#c084fc' : '#ef4444';
-                    heroEquityDot.style.boxShadow = isDemo ? '0 0 8px rgba(168,85,247,0.6)' : '0 0 8px rgba(239,68,68,0.6)';
-                }
                 const liveEqEl = document.getElementById('live-equity-val');
                 if (liveEqEl) {
                     liveEqEl.textContent = `$${Number(liveEq).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                    liveEqEl.style.color = isDemo ? '#c084fc' : '#ef4444';
                 }
                 const liveInrEl = document.getElementById('live-equity-inr-val');
                 if (liveInrEl) {
-                    liveInrEl.textContent = `₹${Number(liveEq * 95.5).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} INR (${isDemo ? 'Delta Demo PM' : 'Delta PM'})`;
+                    liveInrEl.textContent = `₹${Number(liveEq * 95.5).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} INR (Delta PM)`;
                 }
                 const eqEl = document.getElementById('equity-val');
                 if (eqEl) {
@@ -4200,40 +4067,19 @@ td {
                 }
                 const modeEl = document.getElementById('mode-val');
                 if (modeEl) {
-                    if (data.active_api_slot === 'demo' && !isLive) {
-                        modeEl.textContent = '🧪 DELTA DEMO TESTNET';
-                        modeEl.style.color = '#c084fc';
-                    } else {
-                        modeEl.textContent = isLive ? '🔴 LIVE REAL DELTA' : '📝 PAPER SIMULATION';
-                        modeEl.style.color = isLive ? '#ef4444' : '#38bdf8';
-                    }
+                    modeEl.textContent = isLive ? '🔴 LIVE REAL DELTA' : '📝 PAPER SIMULATION';
+                    modeEl.style.color = isLive ? '#ef4444' : '#38bdf8';
                 }
                 const botExecPill = document.getElementById('bot-executing-mode-pill');
                 if (botExecPill) {
-                    if (data.active_api_slot === 'demo' && !isLive) {
-                        botExecPill.textContent = '🧪 DELTA DEMO';
-                        botExecPill.style.color = '#c084fc';
-                        botExecPill.style.borderColor = 'rgba(168,85,247,0.4)';
-                        botExecPill.style.background = 'rgba(168,85,247,0.14)';
-                    } else {
-                        botExecPill.textContent = isLive ? '🔴 LIVE DELTA' : '📄 PAPER';
-                        botExecPill.style.color = isLive ? '#fca5a5' : '#38bdf8';
-                        botExecPill.style.borderColor = isLive ? 'rgba(239,68,68,0.4)' : 'rgba(56,189,248,0.3)';
-                        botExecPill.style.background = isLive ? 'rgba(239,68,68,0.12)' : 'rgba(56,189,248,0.12)';
-                    }
+                    botExecPill.textContent = isLive ? '🔴 LIVE DELTA' : '📄 PAPER';
+                    botExecPill.style.color = isLive ? '#fca5a5' : '#38bdf8';
+                    botExecPill.style.borderColor = isLive ? 'rgba(239,68,68,0.4)' : 'rgba(56,189,248,0.3)';
+                    botExecPill.style.background = isLive ? 'rgba(239,68,68,0.12)' : 'rgba(56,189,248,0.12)';
                 }
 
-                // ── Tab button: "Demo Trade" or "Live Trade" ───────────────────
-                const tabBtnLivePoll = document.getElementById('tab-btn-live');
-                if (tabBtnLivePoll) {
-                    if (isDemo) {
-                        tabBtnLivePoll.innerHTML = '<span class="tab-live-dot" style="background:#c084fc;box-shadow:0 0 6px #c084fc;"></span>Demo Trade';
-                        tabBtnLivePoll.title = 'Delta Demo Account — Virtual Funds';
-                    } else {
-                        tabBtnLivePoll.innerHTML = '<span class="tab-live-dot"></span>Live Trade';
-                        tabBtnLivePoll.title = '';
-                    }
-                }
+
+
 
                 // Update PAPER Mode enhancements
                 const paperNote = document.getElementById('paper-mode-note');
@@ -4246,26 +4092,12 @@ td {
                 }
                 const apiStatusBadge = document.getElementById('api-status-badge');
                 if (apiStatusBadge) {
-                    const isDemo = (data.active_api_slot === 'demo');
                     if (data.api_connected) {
-                        if (isDemo) {
-                            apiStatusBadge.textContent = '🧪 Delta Demo';
-                            apiStatusBadge.style.color = '#c084fc';
-                            apiStatusBadge.style.background = 'rgba(168, 85, 247, 0.16)';
-                            apiStatusBadge.style.borderColor = 'rgba(168, 85, 247, 0.4)';
-                            apiStatusBadge.title = 'Active API: Delta Demo (demo.delta.exchange) - Virtual Funds';
-                        } else {
-                            apiStatusBadge.textContent = '⚡ Delta Live';
-                            apiStatusBadge.style.color = '#34d399';
-                            apiStatusBadge.style.background = 'rgba(16, 185, 129, 0.16)';
-                            apiStatusBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-                            apiStatusBadge.title = 'Active API: Delta India Live';
-                        }
+                        apiStatusBadge.textContent = '🟢 Connected';
+                        apiStatusBadge.style.color = 'var(--success)';
                     } else {
                         apiStatusBadge.textContent = '🔴 Disconnected';
-                        apiStatusBadge.style.color = '#f87171';
-                        apiStatusBadge.style.background = 'rgba(239, 68, 68, 0.12)';
-                        apiStatusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                        apiStatusBadge.style.color = 'var(--danger)';
                     }
                 }
 
@@ -4939,6 +4771,9 @@ td {
                     logTerm.scrollTop = logTerm.scrollHeight;
                 }
 
+                // Evaluate Standby vs Active mode
+                evaluateStandbyState(data);
+
             } catch (e) {
                 console.error("Polling failed", e);
                 if (!dataReceived) {
@@ -5044,6 +4879,10 @@ td {
                 }
 
                 if (result.status === 'success') {
+                    // Manual order placed: automatically wake active monitoring for 2 hours
+                    manualWakeUntil = Date.now() + 7200000;
+                    updateStandbyUI(false);
+                    startActivePollingLoops();
                     showToast(result.message || 'Force strangle entry cycle triggered successfully!', 'success', 8000);
                     btn.innerHTML = `<span style="font-size:1.2rem;">✅</span> ENTRY TRIGGERED`;
                     setTimeout(() => { btn.innerHTML = originalHTML; }, 4000);
@@ -5188,8 +5027,7 @@ td {
             } catch(e) { console.error('Toggle fail', e); }
         }
 
-        // Poll status every 3 seconds for responsive metrics
-        setInterval(fetchStatus, 3000);
+        // Initial fetch - Smart Polling Coordinator manages intervals based on IST hours & positions
         fetchStatus();
 
         // ════════════════════════════════════════════════════
@@ -5323,25 +5161,13 @@ td {
                 // ALWAYS show the chart card
                 if (card) card.style.display = 'block';
 
-                const isDemo = window._latestStatusData && (window._latestStatusData.active_api_slot === 'demo');
-
                 if (engine === 'live') {
-                    if (isDemo) {
-                        if (chartTitle) chartTitle.innerHTML = '📊 🧪 Delta Demo P&L Trajectory';
-                        if (chartBadge) {
-                            chartBadge.textContent = 'DELTA DEMO';
-                            chartBadge.style.background = 'rgba(168,85,247,0.15)';
-                            chartBadge.style.borderColor = 'rgba(168,85,247,0.35)';
-                            chartBadge.style.color = '#c084fc';
-                        }
-                    } else {
-                        if (chartTitle) chartTitle.innerHTML = '📊 🔴 Live Delta P&L Trajectory';
-                        if (chartBadge) {
-                            chartBadge.textContent = 'LIVE DELTA';
-                            chartBadge.style.background = 'rgba(239,68,68,0.12)';
-                            chartBadge.style.borderColor = 'rgba(239,68,68,0.3)';
-                            chartBadge.style.color = '#fca5a5';
-                        }
+                    if (chartTitle) chartTitle.innerHTML = '📊 🔴 Live Delta P&L Trajectory';
+                    if (chartBadge) {
+                        chartBadge.textContent = 'LIVE DELTA';
+                        chartBadge.style.background = 'rgba(239,68,68,0.12)';
+                        chartBadge.style.borderColor = 'rgba(239,68,68,0.3)';
+                        chartBadge.style.color = '#fca5a5';
                     }
                 } else {
                     if (chartTitle) chartTitle.innerHTML = '📊 📄 Paper P&L Trajectory';
@@ -5363,9 +5189,9 @@ td {
                     pnlChart.update('none');
                     if(document.getElementById('pnl-chart-peak')) document.getElementById('pnl-chart-peak').textContent   = '-';
                     if(document.getElementById('pnl-chart-trough')) document.getElementById('pnl-chart-trough').textContent = '-';
-                    if(document.getElementById('pnl-chart-count')) document.getElementById('pnl-chart-count').textContent  = engine === 'live' ? (isDemo ? 'Standby (0 Demo Trades)' : 'Standby (0 Live Trades)') : 'Waiting for trade...';
-                    if(document.getElementById('pnl-chart-start-label')) document.getElementById('pnl-chart-start-label').textContent = engine === 'live' ? (isDemo ? '🧪 Delta Demo Standby' : '🛡️ Live Delta Standby') : 'No active trade';
-                    if(document.getElementById('pnl-chart-end-label')) document.getElementById('pnl-chart-end-label').textContent   = engine === 'live' ? (isDemo ? 'Awaiting demo trade execution' : 'Awaiting real trade execution') : '-';
+                    if(document.getElementById('pnl-chart-count')) document.getElementById('pnl-chart-count').textContent  = engine === 'live' ? 'Standby (0 Live Trades)' : 'Waiting for trade...';
+                    if(document.getElementById('pnl-chart-start-label')) document.getElementById('pnl-chart-start-label').textContent = engine === 'live' ? '🛡️ Live Delta Standby' : 'No active trade';
+                    if(document.getElementById('pnl-chart-end-label')) document.getElementById('pnl-chart-end-label').textContent   = engine === 'live' ? 'Awaiting real trade execution' : '-';
                     const slLegend = document.getElementById('sl-line-legend');
                     if (slLegend) slLegend.style.display = 'none';
                     return;
@@ -5423,8 +5249,7 @@ td {
             }
         }
 
-        // Poll chart every 4 seconds
-        setInterval(() => fetchPnlChart(), 4000);
+        // Initial fetch - Smart Polling Coordinator manages intervals based on IST hours & positions
         fetchPnlChart();
 
         // --- News & Events ---
@@ -6027,26 +5852,14 @@ function updateSystemHealth() {
             const livePnlInr = livePnl.total_pnl_inr || 0;
 
             const capEl = document.getElementById('live-capital-used');
-            const demoCapEl = document.getElementById('demo-capital-used');
             if (capEl) {
                 capEl.innerText = '₹' + liveCapital.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 capEl.style.color = liveCapital > 0 ? '#cbd5e1' : '#64748b';
             }
-            if (demoCapEl) {
-                demoCapEl.innerText = '₹' + liveCapital.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                demoCapEl.style.color = liveCapital > 0 ? '#cbd5e1' : '#64748b';
-            }
             const pnlEl = document.getElementById('live-inr-pnl');
-            const demoPnlEl = document.getElementById('demo-inr-pnl');
-            const pnlFormatted = (livePnlInr >= 0 ? '+₹' : '-₹') + Math.abs(livePnlInr).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            const pnlColor = livePnlInr > 0 ? '#10b981' : livePnlInr < 0 ? '#ef4444' : '#64748b';
             if (pnlEl) {
-                pnlEl.innerText = pnlFormatted;
-                pnlEl.style.color = pnlColor;
-            }
-            if (demoPnlEl) {
-                demoPnlEl.innerText = pnlFormatted;
-                demoPnlEl.style.color = pnlColor;
+                pnlEl.innerText = (livePnlInr >= 0 ? '+₹' : '-₹') + Math.abs(livePnlInr).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                pnlEl.style.color = livePnlInr > 0 ? '#10b981' : livePnlInr < 0 ? '#ef4444' : '#64748b';
             }
         })
         .catch(e => {});
@@ -6054,42 +5867,7 @@ function updateSystemHealth() {
 setInterval(updateSystemHealth, 60000);
 setTimeout(updateSystemHealth, 1000);
 
-// --- Delta Multi-Account API Credentials Management ---
-let selectedTargetSlot = 'demo'; // default to demo for easy addition of demo API keys
-
-function selectTargetSlot(slot) {
-    selectedTargetSlot = slot;
-    const btnDemo = document.getElementById('btn-target-demo');
-    const btnLive = document.getElementById('btn-target-live');
-    const envSelect = document.getElementById('select-api-env');
-
-    if (slot === 'demo') {
-        if (btnDemo) {
-            btnDemo.style.background = 'rgba(168, 85, 247, 0.25)';
-            btnDemo.style.borderColor = '#a855f7';
-            btnDemo.style.color = '#c084fc';
-        }
-        if (btnLive) {
-            btnLive.style.background = 'rgba(15, 23, 42, 0.8)';
-            btnLive.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-            btnLive.style.color = '#94a3b8';
-        }
-        if (envSelect) envSelect.value = 'demo';
-    } else {
-        if (btnLive) {
-            btnLive.style.background = 'rgba(16, 185, 129, 0.25)';
-            btnLive.style.borderColor = '#10b981';
-            btnLive.style.color = '#34d399';
-        }
-        if (btnDemo) {
-            btnDemo.style.background = 'rgba(15, 23, 42, 0.8)';
-            btnDemo.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-            btnDemo.style.color = '#94a3b8';
-        }
-        if (envSelect) envSelect.value = 'india_live';
-    }
-}
-
+// --- API Credentials Management ---
 function toggleApiSecretVisibility() {
     const input = document.getElementById('input-api-secret');
     const btn = document.getElementById('btn-toggle-secret');
@@ -6107,149 +5885,53 @@ async function fetchApiCredentials() {
     try {
         const res = await fetch('/api/api_credentials');
         const data = await res.json();
-        if (!data || !data.success) return;
+        const badge = document.getElementById('api-status-badge');
+        const keyDisplay = document.getElementById('api-masked-key-display');
+        const userDisplay = document.getElementById('api-user-id');
+        const marginDisplay = document.getElementById('api-margin-mode');
+        const marginBadge = document.getElementById('api-margin-badge');
 
-        const activeSlot = data.active_slot || 'live';
-        const activePill = document.getElementById('api-active-slot-pill');
-        if (activePill) {
-            if (activeSlot === 'demo') {
-                activePill.textContent = 'ACTIVE: DEMO ACCOUNT (demo.delta.exchange)';
-                activePill.style.background = 'rgba(168, 85, 247, 0.15)';
-                activePill.style.color = '#c084fc';
-                activePill.style.borderColor = 'rgba(168, 85, 247, 0.35)';
-            } else {
-                activePill.textContent = 'ACTIVE: LIVE ACCOUNT (Delta India)';
-                activePill.style.background = 'rgba(16, 185, 129, 0.15)';
-                activePill.style.color = '#34d399';
-                activePill.style.borderColor = 'rgba(16, 185, 129, 0.35)';
-            }
-        }
+        if (!badge || !keyDisplay) return;
 
-        // --- Populate Live Account Card ---
-        const live = data.live || {};
-        const liveBadge = document.getElementById('api-live-badge');
-        const liveKey = document.getElementById('api-live-key');
-        const liveUser = document.getElementById('api-live-user');
-        const btnActLive = document.getElementById('btn-activate-live');
-
-        if (liveKey) {
-            liveKey.textContent = live.masked_key || 'None (Unconfigured)';
-            liveKey.style.color = live.configured ? '#38bdf8' : '#64748b';
-        }
-        if (liveUser) {
-            const p = live.profile || {};
-            liveUser.textContent = p.user_id ? `UID: ${p.user_id} (${p.email || 'Verified'})` : 'UID: Unconfigured';
-        }
-        if (liveBadge) {
-            if (live.configured) {
-                liveBadge.textContent = 'CONNECTED';
-                liveBadge.style.background = 'rgba(16, 185, 129, 0.14)';
-                liveBadge.style.color = '#34d399';
-                liveBadge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-            } else {
-                liveBadge.textContent = 'NOT CONFIGURED';
-                liveBadge.style.background = 'rgba(100, 116, 139, 0.14)';
-                liveBadge.style.color = '#94a3b8';
-                liveBadge.style.borderColor = 'rgba(100, 116, 139, 0.3)';
+        if (!data.configured) {
+            badge.style.background = 'rgba(239, 68, 68, 0.14)';
+            badge.style.color = '#f87171';
+            badge.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;box-shadow:0 0 6px #ef4444;"></span> NOT CONFIGURED';
+            keyDisplay.textContent = 'None (API Keys Disabled)';
+            keyDisplay.style.color = '#64748b';
+            if (userDisplay) userDisplay.textContent = 'Trading Disabled';
+            if (marginDisplay) marginDisplay.textContent = 'INACTIVE';
+            if (marginBadge) { marginBadge.textContent = 'OFF'; marginBadge.style.color = '#94a3b8'; }
+        } else if (data.connected) {
+            badge.style.background = 'rgba(16, 185, 129, 0.12)';
+            badge.style.color = '#34d399';
+            badge.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 8px #10b981;"></span> CONNECTED (Delta India)';
+            keyDisplay.textContent = data.masked_key;
+            keyDisplay.style.color = '#38bdf8';
+            if (userDisplay) {
+                const p = data.profile || {};
+                userDisplay.textContent = p.user_id ? `ID: ${p.user_id}` : 'Verified Profile';
             }
-        }
-        if (btnActLive) {
-            if (activeSlot === 'live') {
-                btnActLive.textContent = '✔ ACTIVE';
-                btnActLive.style.background = 'rgba(16, 185, 129, 0.2)';
-                btnActLive.style.borderColor = '#10b981';
-                btnActLive.style.color = '#34d399';
-            } else {
-                btnActLive.textContent = 'Switch to Live';
-                btnActLive.style.background = 'rgba(15, 23, 42, 0.8)';
-                btnActLive.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                btnActLive.style.color = '#94a3b8';
+            if (marginDisplay) {
+                const p = data.profile || {};
+                const modeStr = (p.margin_mode || 'portfolio').toUpperCase();
+                marginDisplay.textContent = modeStr + ' MARGIN';
+                if (marginBadge) {
+                    marginBadge.textContent = 'VERIFIED';
+                    marginBadge.style.color = '#a855f7';
+                }
             }
-        }
-
-        // --- Populate Demo Account Card ---
-        const demo = data.demo || {};
-        const demoBadge = document.getElementById('api-demo-badge');
-        const demoKey = document.getElementById('api-demo-key');
-        const demoUser = document.getElementById('api-demo-user');
-        const btnActDemo = document.getElementById('btn-activate-demo');
-
-        if (demoKey) {
-            demoKey.textContent = demo.masked_key || 'None (Add Below)';
-            demoKey.style.color = demo.configured ? '#c084fc' : '#64748b';
-        }
-        if (demoUser) {
-            const p = demo.profile || {};
-            demoUser.textContent = p.user_id ? `UID: ${p.user_id} (${p.email || p.username || 'Verified'})` : 'UID: None configured';
-        }
-        if (demoBadge) {
-            if (demo.configured) {
-                demoBadge.textContent = 'CONNECTED';
-                demoBadge.style.background = 'rgba(168, 85, 247, 0.15)';
-                demoBadge.style.color = '#c084fc';
-                demoBadge.style.borderColor = 'rgba(168, 85, 247, 0.35)';
-            } else {
-                demoBadge.textContent = 'NOT CONFIGURED';
-                demoBadge.style.background = 'rgba(245, 158, 11, 0.12)';
-                demoBadge.style.color = '#fbbf24';
-                demoBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-            }
-        }
-        if (btnActDemo) {
-            if (activeSlot === 'demo') {
-                btnActDemo.textContent = '✔ ACTIVE';
-                btnActDemo.style.background = 'rgba(168, 85, 247, 0.25)';
-                btnActDemo.style.borderColor = '#a855f7';
-                btnActDemo.style.color = '#c084fc';
-                btnActDemo.onclick = () => switchApiSlotAction('demo');
-            } else if (demo.configured) {
-                btnActDemo.textContent = 'Switch to Demo';
-                btnActDemo.style.background = 'rgba(168, 85, 247, 0.15)';
-                btnActDemo.style.borderColor = '#a855f7';
-                btnActDemo.style.color = '#c084fc';
-                btnActDemo.onclick = () => switchApiSlotAction('demo');
-            } else {
-                btnActDemo.textContent = '➕ Configure Demo Key';
-                btnActDemo.style.background = 'rgba(168, 85, 247, 0.15)';
-                btnActDemo.style.borderColor = 'rgba(168, 85, 247, 0.4)';
-                btnActDemo.style.color = '#c084fc';
-                btnActDemo.onclick = () => focusAddCredentials('demo');
-            }
-        }
-
-        // Header status badge
-        const mainBadge = document.getElementById('api-status-badge');
-        if (mainBadge) {
-            if (activeSlot === 'demo') {
-                mainBadge.textContent = '🧪 Delta Demo';
-                mainBadge.style.color = '#c084fc';
-                mainBadge.style.background = 'rgba(168, 85, 247, 0.16)';
-                mainBadge.style.borderColor = 'rgba(168, 85, 247, 0.4)';
-                mainBadge.title = 'Active API: Delta Demo (demo.delta.exchange) - Virtual Funds';
-            } else {
-                mainBadge.textContent = '⚡ Delta Live';
-                mainBadge.style.color = '#34d399';
-                mainBadge.style.background = 'rgba(16, 185, 129, 0.16)';
-                mainBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-                mainBadge.title = 'Active API: Delta India Live';
-            }
-        }
-
-        const panelBadge = document.getElementById('api-panel-status-badge');
-        if (panelBadge) {
-            const activeData = activeSlot === 'demo' ? demo : live;
-            if (activeData.configured) {
-                panelBadge.style.background = activeSlot === 'demo' ? 'rgba(168, 85, 247, 0.12)' : 'rgba(16, 185, 129, 0.12)';
-                panelBadge.style.color = activeSlot === 'demo' ? '#c084fc' : '#34d399';
-                panelBadge.style.borderColor = activeSlot === 'demo' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(16, 185, 129, 0.35)';
-                const dotCol = activeSlot === 'demo' ? '#a855f7' : '#10b981';
-                panelBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${dotCol};display:inline-block;box-shadow:0 0 8px ${dotCol};"></span> ACTIVE (${activeSlot === 'demo' ? 'Delta Demo' : 'Delta India Live'})`;
-            } else {
-                panelBadge.style.background = 'rgba(245, 158, 11, 0.12)';
-                panelBadge.style.color = '#fbbf24';
-                panelBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-                panelBadge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;box-shadow:0 0 8px #f59e0b;"></span> SETUP REQUIRED`;
-            }
+        } else {
+            badge.style.background = 'rgba(245, 158, 11, 0.14)';
+            badge.style.color = '#fbbf24';
+            badge.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+            badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;box-shadow:0 0 6px #f59e0b;"></span> DISCONNECTED / AUTH FAILED';
+            keyDisplay.textContent = data.masked_key;
+            keyDisplay.style.color = '#f59e0b';
+            if (userDisplay) userDisplay.textContent = 'Check API permissions / IP';
+            if (marginDisplay) marginDisplay.textContent = 'UNVERIFIED';
         }
     } catch (e) {
         console.error("Failed to fetch API credentials:", e);
@@ -6259,7 +5941,6 @@ async function fetchApiCredentials() {
 async function saveApiCredentialsAction() {
     const key = document.getElementById('input-api-key').value.trim();
     const secret = document.getElementById('input-api-secret').value.trim();
-    const env = document.getElementById('select-api-env') ? document.getElementById('select-api-env').value : 'auto';
     const btn = document.getElementById('btn-save-api');
 
     if (!key || !secret) {
@@ -6269,133 +5950,69 @@ async function saveApiCredentialsAction() {
 
     const origHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span>⏳</span> VERIFYING GATEWAYS...';
-    const toast = showToast('Testing connection across Delta gateways (Demo & Live)...', 'loading', 15000);
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    btn.innerHTML = '<span>⏳</span> VERIFYING WITH DELTA...';
+    const toast = showToast('Validating credentials with Delta Exchange India...', 'loading', 0);
 
     try {
         const res = await fetch('/api/save_api_credentials', {
             method: 'POST',
-            signal: controller.signal,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                api_key: key,
-                api_secret: secret,
-                environment: env,
-                slot: selectedTargetSlot
-            })
+            body: JSON.stringify({ api_key: key, api_secret: secret })
         });
-        clearTimeout(timeoutId);
         const data = await res.json();
-        if (toast && typeof toast.remove === 'function') toast.remove();
+        toast.remove();
 
         if (data.success) {
-            showToast('✅ ' + data.message, 'success', 7000);
+            showToast('✅ ' + data.message, 'success', 6000);
             document.getElementById('input-api-key').value = '';
             document.getElementById('input-api-secret').value = '';
             btn.innerHTML = '<span>✅</span> CONNECTED';
             setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
             fetchApiCredentials();
         } else {
-            showToast('❌ Failed: ' + (data.error || 'Connection failed'), 'error', 9000);
+            showToast('❌ Failed: ' + (data.error || 'Connection failed'), 'error', 8000);
             btn.innerHTML = '<span>❌</span> FAILED';
             setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
         }
     } catch (err) {
-        clearTimeout(timeoutId);
-        if (toast && typeof toast.remove === 'function') toast.remove();
-        const msg = err.name === 'AbortError' ? 'Verification timed out after 15s. Check network or API Key details.' : err.message;
-        showToast('Network error: ' + msg, 'error', 5000);
+        toast.remove();
+        showToast('Network error: ' + err.message, 'error', 5000);
         btn.innerHTML = origHtml;
         btn.disabled = false;
     }
 }
 
-function focusAddCredentials(slot) {
-    selectTargetSlot(slot);
-    const form = document.getElementById('input-api-key');
-    if (form) {
-        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => form.focus(), 300);
-        showToast(`Please enter your Delta ${slot.toUpperCase()} API Key & Secret below, then click CONNECT & SAVE.`, 'info', 6000);
-    }
-}
-
-async function switchApiSlotAction(slot) {
-    if (slot === 'demo') {
-        const demoKey = document.getElementById('api-demo-key');
-        if (demoKey && (demoKey.textContent.includes('None') || demoKey.textContent.includes('Unconfigured') || demoKey.textContent.includes('Add Below'))) {
-            focusAddCredentials('demo');
-            return;
-        }
-    } else if (slot === 'live') {
-        const liveKey = document.getElementById('api-live-key');
-        if (liveKey && (liveKey.textContent.includes('None') || liveKey.textContent.includes('Unconfigured'))) {
-            focusAddCredentials('live');
-            return;
-        }
-    }
-
-    const toast = showToast(`Switching active engine to ${slot.toUpperCase()} account...`, 'loading', 0);
-    try {
-        const res = await fetch('/api/switch_api_slot', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slot: slot })
-        });
-        const data = await res.json();
-        toast.remove();
-        if (data.success) {
-            showToast(`✅ ${data.message}`, 'success', 5000);
-            fetchApiCredentials();
-            if (typeof loadLiveModeState === 'function') {
-                await loadLiveModeState();
-            }
-            if (typeof fetchStatus === 'function') {
-                await fetchStatus();
-            }
-            if (typeof fetchPnlChart === 'function') {
-                fetchPnlChart();
-            }
-        } else {
-            showToast(`❌ Switch failed: ${data.error}`, 'error', 6000);
-        }
-    } catch (err) {
-        toast.remove();
-        showToast('Network error: ' + err.message, 'error', 5000);
-    }
-}
-
-async function disableApiKeyAction(slot) {
-    const label = slot === 'all' ? 'ALL API keys' : `${slot.toUpperCase()} account API key`;
-    if (!confirm(`Are you sure you want to DISCONNECT and DISABLE ${label}?\n\nThis will safely revert the bot to PAPER simulation mode.`)) {
+async function disableApiKeyAction() {
+    if (!confirm("Are you sure you want to DISABLE and DISCONNECT the Delta API key?\n\nThis will switch the bot to PAPER mode and stop any live trading on Delta Exchange.")) {
         return;
     }
 
-    const toast = showToast(`Disabling ${label}...`, 'loading', 0);
+    const btn = document.getElementById('btn-disable-api');
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> DISABLING...';
+
     try {
-        const res = await fetch('/api/disable_api_key', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slot: slot })
-        });
+        const res = await fetch('/api/disable_api_key', { method: 'POST' });
         const data = await res.json();
-        toast.remove();
         if (data.success) {
-            showToast('🛑 ' + data.message, 'success', 5000);
+            showToast('🛑 API Key disabled. Bot is in safe PAPER mode.', 'success', 6000);
+            btn.innerHTML = '<span>🛑</span> DISABLED';
+            setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 3000);
             fetchApiCredentials();
         } else {
             showToast('Error disabling API: ' + (data.error || 'Unknown error'), 'error', 6000);
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
         }
     } catch (err) {
-        toast.remove();
         showToast('Network error: ' + err.message, 'error', 5000);
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
     }
 }
 
-setTimeout(fetchApiCredentials, 1200);
+setTimeout(fetchApiCredentials, 1500);
 setInterval(fetchApiCredentials, 30000);
 
 </script>

@@ -19,8 +19,11 @@ def handle_exception(e):
 def keep_alive_pinger():
     time.sleep(60)
     import requests
-    port = os.environ.get('PORT', '5000')
-    url = os.environ.get('APP_URL', f'http://127.0.0.1:{port}')
+    url = os.environ.get('RENDER_EXTERNAL_URL')
+    if (not url or url == 'http://localhost:5000') and os.environ.get('RENDER') == 'true':
+        url = 'https://delta-btc-options-bot.onrender.com'
+    if not url:
+        url = 'http://localhost:5000'
     while True:
         try:
             requests.get(f"{url}/health", timeout=15)
@@ -106,7 +109,7 @@ def my_ip():
     import requests as req
     try:
         ip = req.get('https://api.ipify.org', timeout=10).text.strip()
-        return jsonify({'server_outbound_ip': ip, 'whitelist_this_ip': ip})
+        return jsonify({'render_outbound_ip': ip, 'whitelist_this_ip': ip})
     except Exception as e:
         return jsonify({'error': str(e)})
 

@@ -30,8 +30,8 @@ def verify_all_rules():
         {
             "id": 4,
             "name": "Stop Loss & Target",
-            "expected": "Single-Leg 100% SL, ARES Dynamic Profit Lock (No Hard TP)",
-            "check": config.SL_PERCENT == 1.00 and hasattr(config, 'PROFIT_LOCK_TIERS')
+            "expected": "Single-Leg 120% SL, ARES Dynamic Profit Lock (No Hard TP)",
+            "check": config.SL_PERCENT == 1.20 and hasattr(config, 'PROFIT_LOCK_TIERS')
         },
         {
             "id": 5,

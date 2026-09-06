@@ -84,11 +84,10 @@ class ExecutionHandler:
 
     @property
     def active_positions(self):
-        """Routes active positions strictly according to active trading mode."""
+        """Routes active positions strictly according to active trading mode.
+        DEMO mode is treated as PAPER (pure simulation, no real exchange orders)."""
         if self.mode == 'LIVE':
             return self.live_active_positions
-        elif self.mode == 'DEMO':
-            return self.demo_active_positions
         else:
             return self.paper_active_positions
 
@@ -96,8 +95,6 @@ class ExecutionHandler:
     def active_positions(self, val):
         if self.mode == 'LIVE':
             self.live_active_positions = val
-        elif self.mode == 'DEMO':
-            self.demo_active_positions = val
         else:
             self.paper_active_positions = val
 
@@ -126,7 +123,7 @@ class ExecutionHandler:
         }
 
     def save_state(self, dpl_state=None, chart_data=None):
-        """Persists active positions to the corresponding database (Paper vs Demo vs Live)."""
+        """Persists active positions to the corresponding database (Paper vs Live)."""
         if self.mode == 'LIVE':
             data_to_save = dict(self.live_active_positions)
             if dpl_state:
@@ -134,14 +131,11 @@ class ExecutionHandler:
             if chart_data is not None:
                 data_to_save['__chart_data__'] = chart_data
             db_manager.save_live_active_positions(data_to_save)
-        elif self.mode == 'DEMO':
-            data_to_save = dict(self.demo_active_positions)
-            if dpl_state:
-                data_to_save['__dpl_state__'] = dpl_state
-            if chart_data is not None:
-                data_to_save['__chart_data__'] = chart_data
-            db_manager.save_demo_active_positions(data_to_save)
+            # In dual execution, also persist parallel paper positions
+            if getattr(self, 'paper_active_positions', None):
+                db_manager.save_active_positions(dict(self.paper_active_positions))
         else:
+            # PAPER mode uses standard paper storage
             data_to_save = dict(self.paper_active_positions)
             if dpl_state:
                 data_to_save['__dpl_state__'] = dpl_state
@@ -235,43 +229,48 @@ class ExecutionHandler:
 
     def _verify_execution_gateway(self):
         """
-        Hard security verification ensuring orders never hit LIVE when in DEMO slot,
-        and never hit testnet when in LIVE real-money mode.
-        Returns: 'DEMO' or 'LIVE'
+        Hard security verification ensuring real orders are only sent when in LIVE mode
+        and with active LIVE API slot credentials.
+        Returns: 'LIVE'
         """
         active_slot = db_manager.get_active_api_slot()
         base_url = (self.api_client.base_url or '').lower() if self.api_client else ''
 
-        if active_slot == 'demo' or self.mode == 'DEMO':
-            # Hard Isolation: Gateway MUST NOT be production LIVE
-            is_live_gw = ('api.india.delta.exchange' in base_url) or (
-                'api.delta.exchange' in base_url and 'testnet' not in base_url
+        if self.mode != 'LIVE':
+            app_logger.critical("[SAFETY GUARD TRIGGERED] Attempted to place real orders while not in LIVE mode!")
+            raise RuntimeError("LIVE guard tripped: Real orders blocked — execution mode is not LIVE")
+
+        if active_slot == 'demo':
+            app_logger.critical("[ACCOUNT ISOLATION] Blocked order! Mode is LIVE but active slot is demo!")
+            raise RuntimeError("Account Isolation Guard: Real orders blocked while in demo API slot!")
+
+        is_testnet_gw = ('testnet' in base_url) or ('demo.delta.exchange' in base_url)
+        if is_testnet_gw:
+            app_logger.critical(
+                f"[GATEWAY MISMATCH] Blocked order! Execution mode is LIVE but gateway points to testnet: {base_url}"
             )
-            if is_live_gw:
-                app_logger.critical(
-                    f"[AIRTIGHT ACCOUNT ISOLATION] Blocked order! Active slot is DEMO but gateway is LIVE: {base_url}"
-                )
-                raise RuntimeError("Account Isolation Guard: LIVE production gateway strictly blocked while in DEMO mode!")
-            return 'DEMO'
+            raise RuntimeError("Gateway Mismatch: Execution mode is LIVE but gateway points to testnet!")
 
-        elif self.mode == 'LIVE':
-            is_testnet_gw = ('testnet' in base_url) or ('demo.delta.exchange' in base_url)
-            if is_testnet_gw:
-                app_logger.critical(
-                    f"[GATEWAY MISMATCH] Blocked order! Execution mode is LIVE but gateway is TESTNET: {base_url}"
-                )
-                raise RuntimeError("Gateway Mismatch: Execution mode is LIVE but gateway points to testnet!")
-            return 'LIVE'
-
-        else:
-            app_logger.critical("[SAFETY GUARD TRIGGERED] Attempted to place real orders while in PAPER mode!")
-            raise RuntimeError("LIVE guard tripped: Real orders blocked — execution mode is PAPER")
+        return 'LIVE'
 
     def _assert_live_mode(self):
-        """Hard safety guard: Raises RuntimeError if mode is not LIVE to prevent real orders in PAPER mode."""
+        """Hard safety guard: Raises RuntimeError if mode is not LIVE or Live Toggle is OFF."""
         if self.mode != 'LIVE':
             app_logger.critical("[SAFETY GUARD TRIGGERED] Attempted to place real orders while in PAPER mode!")
             raise RuntimeError("LIVE guard tripped: Real orders blocked — execution mode is PAPER")
+        try:
+            import json, os
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            p = os.path.join(base_dir, 'lot_size.json')
+            if os.path.exists(p):
+                with open(p, 'r') as f:
+                    if not json.load(f).get('live_mode', False):
+                        app_logger.critical("[PROTECTION SHIELD] Blocked real order: Live Mode Toggle is OFF in lot_size.json!")
+                        raise RuntimeError("PROTECTION SHIELD tripped: Live Mode Toggle is OFF. Real orders strictly blocked.")
+        except RuntimeError:
+            raise
+        except Exception:
+            pass
 
     def _assert_single_position(self):
         """Hard safety guard: Raises RuntimeError if any live position exists to enforce strictly one trade at a time."""
@@ -295,13 +294,33 @@ class ExecutionHandler:
                 raise RuntimeError(f"Single-Position guard tripped: API verification failed - {e}")
 
     def execute_strangle(self, call_opt, put_opt, size):
-        """Places the short strangle orders (DEMO testnet, LIVE exchange, or pure PAPER simulation)."""
+        """Places the short strangle orders (LIVE exchange only, or pure PAPER/DEMO simulation)."""
         app_logger.info(f"Execution: Placing {self.mode} Strangle. Size: {size}")
         
         active_slot = db_manager.get_active_api_slot()
 
-        # In pure PAPER mode (when LIVE account is active but live toggle is OFF), do pure simulation
-        if self.mode == 'PAPER' and active_slot != 'demo':
+        # ── PROTECTION SHIELD: HARD-GATE FOR REAL ORDERS ──
+        # Real orders are NEVER placed on Delta Exchange unless the user has manually
+        # enabled the Live Mode Toggle in lot_size.json.
+        live_toggle_on = False
+        try:
+            import json, os
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            lot_path = os.path.join(base_dir, 'lot_size.json')
+            if os.path.exists(lot_path):
+                with open(lot_path, 'r') as f:
+                    lot_d = json.load(f)
+                live_toggle_on = bool(lot_d.get('live_mode', False))
+        except Exception:
+            live_toggle_on = False
+
+        # If execution mode is not LIVE OR the user did NOT turn the toggle ON:
+        # HARD BLOCK real orders! Pure paper simulation ONLY!
+        if self.mode != 'LIVE' or not live_toggle_on:
+            if self.mode == 'LIVE' and not live_toggle_on:
+                app_logger.warning("[PROTECTION SHIELD ENGAGED] Execution mode is LIVE but Live Mode Toggle is OFF in settings! Real exchange orders are HARD-BLOCKED. Executing simulated PAPER trade.")
+                self.mode = 'PAPER'
+                config.BOT_MODE = 'PAPER'
             import random
             import time
             
@@ -328,10 +347,11 @@ class ExecutionHandler:
                 )
                 
                 app_logger.info(f"Execution [PAPER]: Simulating sell of {opt['symbol']} @ {simulated_entry_price:.4f} (slippage: -{entry_slippage:.2f} from mark {raw_mark:.4f})")
-                self.active_positions[opt['symbol']] = {
+                self.paper_active_positions[opt['symbol']] = {
                     'entry_price': simulated_entry_price,
                     'entry_price_raw': raw_mark,
                     'size': size,
+                    'entry_size': size,
                     'product_id': opt['product_id'],
                     'side': 'SELL',
                     'leg_type': leg_type,
@@ -340,20 +360,16 @@ class ExecutionHandler:
                 }
                 results.append({'success': True})
             
-            self.save_state()
+            db_manager.save_active_positions(dict(self.paper_active_positions))
             return {'success': True, 'error': None, 'results': results}
 
-        # ── REAL EXCHANGE ORDER EXECUTION (DEMO or LIVE) ──
+        # ── REAL EXCHANGE ORDER EXECUTION (LIVE ONLY) ──
         exec_env = self._verify_execution_gateway()
         if exec_env == 'LIVE':
             self._assert_live_mode()
             self._assert_single_position()
-        elif exec_env == 'DEMO':
-            # In demo mode, square off any prior demo positions to maintain single trade
-            in_mem_demo = [k for k in self.demo_active_positions.keys() if not k.startswith('__')]
-            if in_mem_demo:
-                app_logger.warning(f"Execution [DEMO]: Existing demo positions {in_mem_demo}. Squaring off before new entry.")
-                self.close_all(reason="Square Off before new Demo Entry")
+        else:
+            raise RuntimeError(f"Order placement blocked: execution environment {exec_env} is not LIVE")
         
         results = []
         failed_error = None
@@ -473,6 +489,49 @@ class ExecutionHandler:
                         app_logger.critical(f"Execution [{exec_env}]: Rollback failed for {sym}: {rollback_err}")
             return {'success': False, 'error': failed_error, 'results': results}
 
+        # ── DUAL EXECUTION: PARALLEL PAPER SIMULATION ──
+        # In LIVE mode, also initialize the paper trade in self.paper_active_positions
+        # so Live and Paper run side-by-side on the Pro Dual-Engine Dashboard.
+        try:
+            import json, random
+            paper_lots = 500
+            try:
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                lot_path = os.path.join(base_dir, 'lot_size.json')
+                if os.path.exists(lot_path):
+                    with open(lot_path, 'r') as f:
+                        ld = json.load(f)
+                    paper_lots = max(1, int(ld.get('total_lots', 1000) / 2))
+            except Exception:
+                paper_lots = 500
+
+            entry_time_str = get_ist_now().isoformat()
+            for opt in [call_opt, put_opt]:
+                raw_mark = float(opt.get('mark_price', 0))
+                entry_slippage = random.uniform(0.002, 0.008) * raw_mark if raw_mark > 0 else 0.5
+                sim_entry_p = max(0.01, raw_mark - entry_slippage)
+                _sym = opt.get('symbol', '')
+                _ct  = opt.get('contract_type', '').lower()
+                leg_type = (
+                    'call' if ('call' in _ct or _sym.startswith('C-') or _sym.endswith('-C') or '-C-' in _sym)
+                    else 'put'
+                )
+                self.paper_active_positions[opt['symbol']] = {
+                    'entry_price': sim_entry_p,
+                    'entry_price_raw': raw_mark,
+                    'size': paper_lots,
+                    'entry_size': paper_lots,
+                    'product_id': opt['product_id'],
+                    'side': 'SELL',
+                    'leg_type': leg_type,
+                    'strike': opt.get('strike_price', opt.get('strike', 0)),
+                    'entry_time': entry_time_str,
+                }
+            db_manager.save_active_positions(dict(self.paper_active_positions))
+            app_logger.info(f"Execution [DUAL-ENGINE]: Parallel PAPER strangle initialized with {paper_lots} lots/leg alongside LIVE execution.")
+        except Exception as side_err:
+            app_logger.warning(f"Execution [DUAL-ENGINE]: Error initializing parallel paper trade: {side_err}")
+
         self.save_state()
         return {'success': True, 'error': None, 'results': results}
 
@@ -482,7 +541,7 @@ class ExecutionHandler:
         self.release_hedge_lock(self.hedge_owner) # Release lock regardless of owner
 
         for symbol, data in list(self.active_positions.items()):
-            if self.mode in ('LIVE', 'DEMO'):
+            if self.mode == 'LIVE':
                 # ── Cancel exchange backup SL before closing (prevents double-exit) ──
                 sl_order_id = data.get('exchange_sl_order_id')
                 if sl_order_id:
@@ -501,26 +560,75 @@ class ExecutionHandler:
                 # Also cancel ALL stop orders for this product to prevent any orphan orders
                 self.cancel_all_exchange_stop_orders(product_id=data.get('product_id'))
 
-                res = self.api_client.place_order(data['product_id'], 'buy', data['size'])
-                if res.get('success'):
-                    app_logger.info(f"Execution [{self.mode}]: Successfully closed {symbol}")
+                # Query actual exchange position to prevent ghost fills or reversing into unintended positions
+                real_size = 0
+                try:
+                    pos_res = self.api_client.get_positions(product_id=data['product_id'])
+                    pos_list = pos_res.get('result', []) if isinstance(pos_res, dict) else (pos_res if isinstance(pos_res, list) else [])
+                    for p in pos_list:
+                        if p.get('product_id') == data['product_id']:
+                            real_size = int(p.get('size', 0))
+                            break
+                except Exception as pos_fetch_err:
+                    app_logger.warning(f"Execution [{self.mode}]: Could not query real position for {symbol}: {pos_fetch_err}. Falling back to memory state.")
+                    in_mem_side = data.get('side', 'SELL').upper()
+                    real_size = -int(data.get('size', 0)) if in_mem_side == 'SELL' else int(data.get('size', 0))
+
+                if real_size == 0:
+                    app_logger.info(f"Execution [{self.mode}]: {symbol} is already closed on exchange (size=0). Cleaning internal state.")
                     del self.active_positions[symbol]
                 else:
-                    app_logger.error(f"Execution [{self.mode}]: Failed to close {symbol}: {res}")
+                    # If real_size < 0 (SHORT): close by BUYING with reduce_only=True
+                    # If real_size > 0 (LONG): close by SELLING with reduce_only=True
+                    close_side = 'buy' if real_size < 0 else 'sell'
+                    close_qty = abs(real_size)
+                    app_logger.info(f"Execution [{self.mode}]: Closing {symbol} on exchange with {close_side.upper()} {close_qty} (reduce_only=True)...")
+                    res = self.api_client.place_order(data['product_id'], close_side, close_qty, reduce_only=True)
+                    if res.get('success'):
+                        app_logger.info(f"Execution [{self.mode}]: Successfully closed {symbol}")
+                        del self.active_positions[symbol]
+                    else:
+                        app_logger.error(f"Execution [{self.mode}]: Failed to close {symbol}: {res}")
             else:
                 app_logger.info(f"Execution [PAPER]: Simulating close of {symbol}")
                 del self.active_positions[symbol]
         
+        # Residual sweep: ensure ZERO lingering option positions remain open on Delta Exchange
+        if self.mode == 'LIVE':
+            try:
+                res_all = self.api_client.get_positions()
+                pos_all = res_all.get('result', []) if isinstance(res_all, dict) else (res_all if isinstance(res_all, list) else [])
+                for p in pos_all:
+                    p_sz = int(p.get('size', 0))
+                    if p_sz != 0:
+                        prod = p.get('product', {})
+                        sym = p.get('product_symbol') or prod.get('symbol', '')
+                        if sym.startswith(('C-BTC', 'P-BTC', 'BTC-')) or 'option' in prod.get('contract_type', '').lower():
+                            c_side = 'buy' if p_sz < 0 else 'sell'
+                            app_logger.warning(f"Execution [LIVE]: Residual option position found on exchange: {sym} (size={p_sz}). Closing with {c_side.upper()} reduce_only=True.")
+                            self.api_client.place_order(p.get('product_id'), c_side, abs(p_sz), reduce_only=True)
+            except Exception as _sweep_pos_err:
+                app_logger.error(f"Execution [LIVE]: Error in residual positions sweep: {_sweep_pos_err}")
+
         # Close Hedge
         if self.hedge_position != 0 or abs(self.hedge_size_btc) > 0.0001:
             self.close_hedge()
             
-        # Final safety sweep for LIVE and DEMO mode: cancel ALL remaining stop orders for options
-        if self.mode in ('LIVE', 'DEMO'):
+        # Final safety sweep for LIVE mode: cancel ALL remaining stop orders for options
+        if self.mode == 'LIVE':
             try:
                 self.cancel_all_exchange_stop_orders()
             except Exception as _sweep_err:
-                app_logger.error(f"Execution [{self.mode}]: Error in final stop orders sweep: {_sweep_err}")
+                app_logger.error(f"Execution [LIVE]: Error in final stop orders sweep: {_sweep_err}")
+
+        # Cleanly square off parallel paper simulation if active
+        if getattr(self, 'paper_active_positions', None):
+            app_logger.info(f"Execution [DUAL-ENGINE]: Squaring off {len(self.paper_active_positions)} paper positions.")
+            self.paper_active_positions = {}
+            try:
+                db_manager.save_active_positions({})
+            except Exception as _p_save_err:
+                app_logger.warning(f"Execution [DUAL-ENGINE]: Error saving cleared paper positions: {_p_save_err}")
 
         self.save_state()
 
@@ -528,15 +636,16 @@ class ExecutionHandler:
         """Closes a portion of all active positions."""
         app_logger.info(f"Execution: Partial close {percentage*100}% triggered")
         
-        for symbol, data in self.active_positions.items():
+        for symbol, data in list(self.active_positions.items()):
             close_size = int(data['size'] * percentage)
             if close_size <= 0: continue
             
-            if self.mode in ('LIVE', 'DEMO'):
-                res = self.api_client.place_order(data['product_id'], 'buy', close_size)
+            if self.mode == 'LIVE':
+                close_side = 'buy' if data.get('side', 'SELL').upper() == 'SELL' else 'sell'
+                res = self.api_client.place_order(data['product_id'], close_side, close_size, reduce_only=True)
                 if res.get('success'):
                     data['size'] -= close_size
-                    app_logger.info(f"Execution [{self.mode}]: Successfully partially closed {symbol}")
+                    app_logger.info(f"Execution [LIVE]: Successfully partially closed {symbol}")
             else:
                 data['size'] -= close_size
                 app_logger.info(f"Execution [PAPER]: Simulating partial close of {symbol}")
@@ -562,7 +671,7 @@ class ExecutionHandler:
 
         app_logger.info(f"Execution: Hedging {action}. Required Delta Offset: {order_qty:.4f}. Executing {side} {size_to_execute} contracts.")
 
-        if self.mode in ('LIVE', 'DEMO'):
+        if self.mode == 'LIVE':
             self._verify_execution_gateway()
             # Resolve Product ID for Hedge Symbol
             res_ticker = self.api_client.get_tickers({'symbol': HEDGE_SYMBOL})
@@ -629,7 +738,7 @@ class ExecutionHandler:
                 prod_id = res_ticker['result'][0]['product_id']
                 mark_price = float(res_ticker['result'][0].get('mark_price', 0))
                 
-                if self.mode in ('LIVE', 'DEMO'):
+                if self.mode == 'LIVE':
                     self._verify_execution_gateway()
                     
                     if use_limit and mark_price > 0:
@@ -748,10 +857,17 @@ class ExecutionHandler:
                         existing_sl = self.live_active_positions.get(symbol, {}).get('exchange_sl_order_id')
                         sl_id = sl_map.get(pid) or existing_sl
 
+                        if size > 0:
+                            app_logger.warning(
+                                f"Execution [LIVE]: WARNING - Detected BUY/LONG option position on exchange: "
+                                f"{symbol} (size={size}). Core strategy rule is STRICTLY SHORT ONLY."
+                            )
+
                         synced[symbol] = {
                             'entry_price': float(p.get('entry_price') or p.get('avg_entry_price') or 0.0),
                             'entry_price_raw': float(p.get('entry_price') or 0.0),
                             'size': abs(size),
+                            'entry_size': abs(size),
                             'product_id': pid,
                             'side': 'SELL' if size < 0 else 'BUY',
                             'leg_type': leg_type,
@@ -818,10 +934,17 @@ class ExecutionHandler:
                         existing_sl = self.demo_active_positions.get(symbol, {}).get('exchange_sl_order_id')
                         sl_id = sl_map.get(pid) or existing_sl
 
+                        if size > 0:
+                            app_logger.warning(
+                                f"Execution [DEMO]: WARNING - Detected BUY/LONG option position on exchange: "
+                                f"{symbol} (size={size}). Core strategy rule is STRICTLY SHORT ONLY."
+                            )
+
                         synced[symbol] = {
                             'entry_price': float(p.get('entry_price') or p.get('avg_entry_price') or 0.0),
                             'entry_price_raw': float(p.get('entry_price') or 0.0),
                             'size': abs(size),
+                            'entry_size': abs(size),
                             'product_id': pid,
                             'side': 'SELL' if size < 0 else 'BUY',
                             'leg_type': leg_type,

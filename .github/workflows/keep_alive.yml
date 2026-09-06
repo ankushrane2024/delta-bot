@@ -1,15 +1,19 @@
-name: Keep Alive Pinger
+name: Morning Wake-Up Pinger (08:30 AM IST)
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # Runs every 5 minutes to ensure Render never sleeps
-  workflow_dispatch: # Allows manual trigger from GitHub UI if needed
+    # Runs at 03:00 UTC (08:30 AM IST) daily to wake Render 30 minutes before 09:00 AM market open
+    - cron: '0 3 * * *'
+    # Second safety wake ping at 03:15 UTC (08:45 AM IST)
+    - cron: '15 3 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI anytime
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Render Bot
+      - name: Ping Render Bot to Pre-Warm
         run: |
-          curl -s https://delta-btc-options-bot.onrender.com/ping
-          echo "Ping successful!"
+          echo "Sending wake-up ping to Render Web Service at $(date)..."
+          curl -s -f https://delta-btc-options-bot.onrender.com/ping || true
+          echo "Wake-up ping completed successfully!"

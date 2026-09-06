@@ -693,26 +693,46 @@ def is_connected() -> bool:
     return True # We now always have a connection (either Gist or JSONBlob fallback)
 
 
-def load_all_api_credentials() -> dict:
+_cached_all_creds = None
+
+def load_all_api_credentials(force_cloud: bool = False) -> dict:
     """
     Loads full persistent Delta Exchange API credentials from Cloud or local fallback.
     Supports dual-slots: 'live' and 'demo' accounts.
     Survives Render container reboots and redeploys.
     """
+    global _cached_all_creds
+    if not force_cloud and _cached_all_creds is not None:
+        return _cached_all_creds
+
     with _sync_lock:
+        if not force_cloud and _cached_all_creds is not None:
+            return _cached_all_creds
+
         if not _connected: _connect()
         creds = None
-        try:
-            if GITHUB_PAT and GITHUB_GIST_ID:
-                content = _fetch_gist_file("api_credentials.json")
-                if content:
-                    creds = json.loads(content)
-            elif JSONBLOB_ID:
-                blob_data = _fetch_jsonblob()
-                if blob_data:
-                    creds = blob_data.get("api_credentials", None)
-        except Exception as _e:
-            app_logger.warning(f"DB: Cloud load for api_credentials failed: {_e}")
+
+        # Check local file first (instant, zero network latency)
+        if not force_cloud and os.path.exists(API_CREDENTIALS_FILE):
+            try:
+                with open(API_CREDENTIALS_FILE, 'r', encoding='utf-8') as f:
+                    creds = json.load(f)
+            except Exception:
+                creds = None
+
+        # Only query cloud if forced or if local file is missing
+        if not creds:
+            try:
+                if GITHUB_PAT and GITHUB_GIST_ID:
+                    content = _fetch_gist_file("api_credentials.json")
+                    if content:
+                        creds = json.loads(content)
+                elif JSONBLOB_ID:
+                    blob_data = _fetch_jsonblob()
+                    if blob_data:
+                        creds = blob_data.get("api_credentials", None)
+            except Exception as _e:
+                app_logger.warning(f"DB: Cloud load for api_credentials failed: {_e}")
 
         # Fallback to local file if cloud load was empty
         if not creds and os.path.exists(API_CREDENTIALS_FILE):
@@ -799,6 +819,7 @@ def load_all_api_credentials() -> dict:
             except Exception:
                 pass
 
+        _cached_all_creds = normalized
         return normalized
 
 
@@ -821,6 +842,9 @@ def load_api_credentials() -> tuple:
 
 
 def get_active_api_slot() -> str:
+    global _cached_all_creds
+    if _cached_all_creds is not None:
+        return _cached_all_creds.get("active_slot", "live")
     all_creds = load_all_api_credentials()
     return all_creds.get("active_slot", "live")
 
@@ -911,6 +935,8 @@ def disable_api_slot(slot: str = "active") -> bool:
 
 
 def _persist_credentials_dict(all_creds: dict) -> bool:
+    global _cached_all_creds
+    _cached_all_creds = all_creds
     content_str = json.dumps(all_creds, indent=4)
     try:
         with open(API_CREDENTIALS_FILE, 'w', encoding='utf-8') as f:

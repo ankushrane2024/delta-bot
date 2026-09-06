@@ -2,7 +2,7 @@ services:
   - type: web
     name: delta-btc-options-bot
     env: python
-    plan: starter
+    plan: free
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python main.py"
     envVars:
@@ -12,11 +12,7 @@ services:
         sync: false
       - key: DELTA_API_SECRET
         sync: false
-      - key: BOT_MODE
-        value: "PAPER"
-      - key: ENABLE_TELEGRAM_HEARTBEAT
-        value: "true"
-      - key: HEARTBEAT_INTERVAL_MINS
-        value: "60"
+      - key: RENDER_EXTERNAL_URL
+        sync: false
       - key: ENABLE_ARES
         value: "true"

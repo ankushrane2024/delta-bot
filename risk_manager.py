@@ -87,7 +87,7 @@ class RiskManager:
 
     def reset_trailing_state(self, mode=None):
         """Reset trailing state for a new trade."""
-        if mode == 'LIVE' or mode is None:
+        if mode in ('LIVE', 'DEMO') or mode is None:
             self.live_highest_profit_pct = 0.0
             self.live_current_trailing_sl = None
             self.live_trailing_confirmed = False
@@ -99,7 +99,7 @@ class RiskManager:
             self.paper_confirm_started = False
 
         active_mode = getattr(config, 'BOT_MODE', 'PAPER')
-        if active_mode == 'LIVE':
+        if active_mode in ('LIVE', 'DEMO'):
             self.highest_profit_pct = self.live_highest_profit_pct
             self.current_trailing_sl = self.live_current_trailing_sl
             self.trailing_confirmed = self.live_trailing_confirmed
@@ -114,7 +114,7 @@ class RiskManager:
     def get_trailing_state(self, mode=None):
         """Return trailing state for persistence and dashboard display."""
         active_mode = mode or getattr(config, 'BOT_MODE', 'PAPER')
-        if active_mode == 'LIVE':
+        if active_mode in ('LIVE', 'DEMO'):
             return self.get_live_trailing_state()
         return self.get_paper_trailing_state()
 
@@ -147,7 +147,7 @@ class RiskManager:
         conf = state.get("trailing_confirmed", False)
         start = state.get("confirm_started", False)
 
-        if target_mode == 'LIVE':
+        if target_mode in ('LIVE', 'DEMO'):
             self.live_highest_profit_pct = peak
             self.live_current_trailing_sl = sl
             self.live_trailing_confirmed = conf
@@ -160,7 +160,7 @@ class RiskManager:
 
         # Update active pointer
         active_mode = getattr(config, 'BOT_MODE', 'PAPER')
-        if active_mode == 'LIVE':
+        if active_mode in ('LIVE', 'DEMO'):
             self.highest_profit_pct = self.live_highest_profit_pct
             self.current_trailing_sl = self.live_current_trailing_sl
             self.trailing_confirmed = self.live_trailing_confirmed
@@ -185,7 +185,7 @@ class RiskManager:
         active_mode = mode or getattr(config, 'BOT_MODE', 'PAPER')
         
         # Select target state
-        if active_mode == 'LIVE':
+        if active_mode in ('LIVE', 'DEMO'):
             peak = self.live_highest_profit_pct
             sl = self.live_current_trailing_sl
             conf = self.live_trailing_confirmed
@@ -242,7 +242,7 @@ class RiskManager:
         self._save_ratchet_state(active_mode, peak, sl, conf, start)
 
     def _save_ratchet_state(self, mode, peak, sl, conf, start):
-        if mode == 'LIVE':
+        if mode in ('LIVE', 'DEMO'):
             self.live_highest_profit_pct = peak
             self.live_current_trailing_sl = sl
             self.live_trailing_confirmed = conf

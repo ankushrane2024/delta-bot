@@ -29,6 +29,13 @@ try:
 except ImportError:
     pass
 
+try:
+    from flask_compress import Compress
+    compress = Compress()
+    compress.init_app(app)
+except ImportError:
+    pass
+
 # Global reference to the engine
 bot_engine = None
 ares_runner = None
@@ -65,9 +72,10 @@ def serve_manifest():
 
 @app.after_request
 def add_header(response):
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
+    if request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
     return response
 
 @app.route('/api/premium_conditions')
@@ -95,7 +103,15 @@ def get_premium_conditions():
         "reasons": ["API Error: Could not reach PSCE Engine."]
     })
 
+_hpe_state_cache = None
+_hpe_state_cache_ts = 0.0
+
 def _read_local_hpe_state():
+    global _hpe_state_cache, _hpe_state_cache_ts
+    now = time.time()
+    if _hpe_state_cache is not None and (now - _hpe_state_cache_ts) < 3.0:
+        return _hpe_state_cache
+
     import json
     import os
     res = {}
@@ -113,23 +129,35 @@ def _read_local_hpe_state():
             with open(hist_path, 'r') as f:
                 res['history'] = json.load(f)
                 
+        _hpe_state_cache = res
+        _hpe_state_cache_ts = now
         return res
     except Exception as e:
         app_logger.error(f"Error reading local HPE state: {e}")
+    _hpe_state_cache = res
+    _hpe_state_cache_ts = now
     return res
 
 @app.route('/api/status')
 def get_status():
+    _t0 = time.time()
     if not bot_engine:
         return jsonify({'error': 'Engine not initialized'}), 500
         
     import db_manager
-    # Read last 50 lines of the trading_bot.log and ares.log
+    # Read last 35 lines of trading_bot.log (bandwidth optimization: cuts 30KB payload down to 3KB)
+    logs_limit = int(request.args.get('log_limit', 35))
     logs = []
     try:
-        with open('trading_bot.log', 'r', encoding='utf-8', errors='ignore') as f:
-            lines = f.readlines()
-            logs.extend([line.strip() for line in lines[-150:]])
+        import os
+        if os.path.exists('trading_bot.log'):
+            with open('trading_bot.log', 'rb') as f:
+                f.seek(0, os.SEEK_END)
+                size = f.tell()
+                f.seek(max(0, size - 32768), os.SEEK_SET)
+                content = f.read().decode('utf-8', errors='ignore')
+                lines = content.splitlines()
+                logs.extend([line.strip() for line in lines[-logs_limit:] if line.strip()])
     except Exception as e:
         logs.append(f"Error reading trading_bot.log: {e}")
 
@@ -137,16 +165,21 @@ def get_status():
         import os
         ares_log_path = os.path.join("logs", "system.log")
         if os.path.exists(ares_log_path):
-            with open(ares_log_path, 'r', encoding='utf-8', errors='ignore') as f:
-                lines = f.readlines()
+            with open(ares_log_path, 'rb') as f:
+                f.seek(0, os.SEEK_END)
+                size = f.tell()
+                f.seek(max(0, size - 16384), os.SEEK_SET)
+                content = f.read().decode('utf-8', errors='ignore')
+                lines = content.splitlines()
                 if lines:
                     logs.append("--- ARES SYSTEM LOGS ---")
-                    logs.extend([line.strip() for line in lines[-30:]])
+                    logs.extend([line.strip() for line in lines[-15:] if line.strip()])
     except Exception as e:
         pass
 
     if not logs:
         logs = ["Log file not found."]
+    _t_1 = time.time()
 
     # Format active positions with rich real-time data
     if bot_engine and getattr(bot_engine.execution, 'mode', 'PAPER') == 'LIVE':
@@ -157,6 +190,7 @@ def get_status():
                 bot_engine.execution.sync_live_positions()
             except Exception as _sync_err:
                 app_logger.debug(f"Web status: Failed to sync live positions: {_sync_err}")
+    _t_2 = time.time()
 
     from datetime import datetime, timezone, timedelta
     positions = []
@@ -222,6 +256,7 @@ def get_status():
     # Absolute fallback (e.g. 70000) so we never crash/divide by zero
     if not btc_price or btc_price <= 0:
         btc_price = 70000.0
+    _t_3 = time.time()
 
     def _calculate_pos_metrics(pos_dict):
         pos_list = []
@@ -310,13 +345,11 @@ def get_status():
     current_mode = getattr(bot_engine.execution, 'mode', 'PAPER')
     active_slot = db_manager.get_active_api_slot()
     paper_dict = getattr(bot_engine.execution, 'paper_active_positions', {})
-    if active_slot == 'demo':
-        live_dict = getattr(bot_engine.execution, 'demo_active_positions', {})
-    else:
-        live_dict = getattr(bot_engine.execution, 'live_active_positions', {})
+    live_dict = getattr(bot_engine.execution, 'live_active_positions', {})
 
     paper_positions, paper_entry_prem, paper_cap_used, paper_opt_pnl = _calculate_pos_metrics(paper_dict)
     live_positions, live_entry_prem, live_cap_used, live_opt_pnl = _calculate_pos_metrics(live_dict)
+    _t_4 = time.time()
 
     # Hedge Status (Smart Hedging Fallback)
     hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
@@ -397,7 +430,8 @@ def get_status():
     live_perf = bot_engine.performance_tracker.get_metrics(live_eq, mode='LIVE')
     active_perf = live_perf if current_mode == 'LIVE' else paper_perf
 
-    return jsonify({
+    _t_5 = time.time()
+    resp = jsonify({
         'is_running': bot_engine.is_running,
         'mode': current_mode,
         'equity': round(active_eq, 2),
@@ -466,9 +500,9 @@ def get_status():
         'adx_history': getattr(bot_engine, 'adx_history', []),
         'paper_lot_multiplier': getattr(bot_engine, 'paper_lot_multiplier', 1.0),
         'api_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False,
-        'active_api_slot': getattr(db_manager, 'get_active_api_slot', lambda: 'live')() if 'db_manager' in locals() else 'live',
-        'active_api_label': ('Delta Demo' if (getattr(db_manager, 'get_active_api_slot', lambda: 'live')() if 'db_manager' in locals() else 'live') == 'demo' else 'Delta Live'),
-        'active_api_badge': ('🧪 Delta Demo' if (getattr(db_manager, 'get_active_api_slot', lambda: 'live')() if 'db_manager' in locals() else 'live') == 'demo' else '⚡ Delta Live'),
+        'active_api_slot': 'live',
+        'active_api_label': 'Delta Live',
+        'active_api_badge': '⚡ Delta Live',
         'current_iv': getattr(bot_engine, 'current_iv', 0.0),
         'avg_7d_iv': getattr(bot_engine, 'avg_7d_iv', 0.0),
         'iv_status': getattr(bot_engine, 'iv_status', 'Normal'),
@@ -488,6 +522,9 @@ def get_status():
         'last_api_update': bot_engine.api_client.last_price_update_time if bot_engine.api_client else 0,
         'runtime_state': bot_engine.runtime_state.to_dict() if hasattr(bot_engine, 'runtime_state') else {}
     })
+    _t_end = time.time()
+    app_logger.info(f"[TIMING] logs={_t_1-_t0:.3f}s sync={_t_2-_t_1:.3f}s btc={_t_3-_t_2:.3f}s pos={_t_4-_t_3:.3f}s metrics={_t_5-_t_4:.3f}s json_build={_t_end-_t_5:.3f}s TOTAL={_t_end-_t0:.3f}s")
+    return resp
 
 @app.route('/api/start', methods=['POST'])
 def start_bot():
@@ -701,17 +738,11 @@ def manual_order():
         import db_manager
         active_slot = db_manager.get_active_api_slot()
 
-        if active_slot == 'demo' or bot_engine.execution.mode == 'DEMO':
-            bot_engine.execution.mode = 'DEMO'
-            config.BOT_MODE = 'DEMO'
-        elif bot_engine.execution.mode != 'LIVE':
-            app_logger.warning("Web [manual_order]: Rejected manual order - engine is in PAPER mode")
-            return jsonify({
-                'status': 'error',
-                'message': 'Manual orders can only be placed in LIVE or DEMO mode. Toggle Live Mode ON or switch to Demo.'
-            }), 200
-
-        target_desc = "Demo Account (Virtual Funds - Zero Real Risk)" if bot_engine.execution.mode == 'DEMO' else "Live Account (Delta India)"
+        if bot_engine.execution.mode == 'LIVE':
+            target_desc = "Live Account (Delta India)"
+        else:
+            target_desc = "Paper Trading Account (Simulation)"
+        
         app_logger.info(f"Web [manual_order]: Manual strangle entry cycle triggered via dashboard for {target_desc}.")
         
         # Temporarily bypass the "1 trade per day limit" just for manual force execution
@@ -883,9 +914,17 @@ def save_lot_size():
 
 # ─── Live Trading Mode Endpoints ──────────────────────────────────────────────
 
+_live_mode_cache = {'data': None, 'time': 0}
+
 @app.route('/api/live_mode', methods=['GET'])
 def get_live_mode():
     """Return current live mode state, live lots, and pre-flight checklist."""
+    global _live_mode_cache
+    now_ts = time.time()
+    force_refresh = request.args.get('refresh', '').lower() in ('1', 'true')
+    if not force_refresh and (now_ts - _live_mode_cache.get('time', 0) < 15.0) and _live_mode_cache.get('data') is not None:
+        return jsonify(_live_mode_cache['data'])
+
     import json
     try:
         data = {}
@@ -904,7 +943,8 @@ def get_live_mode():
         
         has_live_positions = False
         if bot_engine:
-            has_live_positions = bool(getattr(bot_engine.execution, 'live_active_positions', {}))
+            live_dict = getattr(bot_engine.execution, 'live_active_positions', {})
+            has_live_positions = bool(live_dict)
             if not has_live_positions and api_key_ok and api_secret_ok:
                 try:
                     pos_res = bot_engine.api_client.get_positions()
@@ -951,7 +991,7 @@ def get_live_mode():
         import db_manager
         active_slot = db_manager.get_active_api_slot()
 
-        return jsonify({
+        payload = {
             'live_mode': live_mode,
             'active_slot': active_slot,
             'live_lots': live_lots,
@@ -967,7 +1007,9 @@ def get_live_mode():
                 'api_error_detail': api_error_detail
             },
             'safe_to_activate': api_key_ok and api_secret_ok and not has_live_positions
-        })
+        }
+        _live_mode_cache = {'data': payload, 'time': now_ts}
+        return jsonify(payload)
     except Exception as e:
         app_logger.error(f"Web [live_mode GET]: Error – {e}")
         return jsonify({'error': str(e)}), 500
@@ -987,17 +1029,10 @@ def toggle_live_mode():
 
     import json
     try:
+        global _live_mode_cache
+        _live_mode_cache['time'] = 0
         body = request.get_json(force=True) or {}
         activate = bool(body.get('activate', body.get('live_mode', False)))
-
-        # ── Safety Gate 0: DEMO slot isolation guard ─────────────────────────
-        import db_manager
-        active_slot = db_manager.get_active_api_slot()
-        if activate and active_slot == 'demo':
-            return jsonify({
-                'success': False,
-                'error': 'Cannot activate LIVE mode while DEMO API slot is active. Real-money live execution is locked. Switch to Live Account first.'
-            }), 400
 
         # ── Safety Gate 1: Validate real API credentials ──────────────────────
         from config import DELTA_API_KEY, DELTA_API_SECRET
@@ -1229,45 +1264,18 @@ def validate_delta_credentials(api_key: str, api_secret: str, preferred_env: str
 
 @app.route('/api/api_credentials', methods=['GET'])
 def get_api_credentials():
-    """Returns dual-slot (Live & Demo) API credentials status and active profile."""
+    """Returns Delta Exchange API credentials status and active profile."""
     try:
         import db_manager
         all_creds = db_manager.load_all_api_credentials()
-        active_slot = all_creds.get('active_slot', 'live')
+        live_data = all_creds.get('live', {}) if isinstance(all_creds, dict) else {}
+        key = (live_data.get('api_key') or getattr(config, 'DELTA_API_KEY', '') or os.environ.get('DELTA_API_KEY', '')).strip()
+        secret = (live_data.get('api_secret') or getattr(config, 'DELTA_API_SECRET', '') or os.environ.get('DELTA_API_SECRET', '')).strip()
 
-        def format_slot(slot_name, data):
-            if not isinstance(data, dict):
-                data = {}
-            key = (data.get('api_key') or '').strip()
-            secret = (data.get('api_secret') or '').strip()
-            is_conf = bool(key and secret and key not in ('testnet_key', 'YOUR_KEY_HERE', '') and secret not in ('testnet_secret', 'YOUR_SECRET_HERE', ''))
-            masked = f"{key[:4]}...{key[-4:]}" if len(key) >= 8 else ("***" if key else "")
-            prof = data.get('profile') or {}
-            connected = bool(is_conf and (prof.get('user_id') or prof.get('id') or prof.get('email')))
-            
-            default_base = "https://api.india.delta.exchange" if slot_name == "live" else "https://testnet-api.delta.exchange"
-            base_url = data.get('base_url') or default_base
-            env_name = "Delta India Live" if slot_name == "live" else "Delta Demo (demo.delta.exchange)"
-            if "testnet-api.delta.exchange" in base_url:
-                env_name = "Delta Demo (demo.delta.exchange)"
-            elif "cdn-ind.testnet.deltaex.org" in base_url:
-                env_name = "Delta India Demo"
-            elif "api.india.delta.exchange" in base_url:
-                env_name = "Delta India Live"
-
-            return {
-                'configured': is_conf,
-                'connected': connected,
-                'masked_key': masked,
-                'environment': data.get('environment', 'india_live' if slot_name == 'live' else 'demo'),
-                'gateway_name': env_name,
-                'base_url': base_url,
-                'profile': prof
-            }
-
-        live_info = format_slot('live', all_creds.get('live', {}))
-        demo_info = format_slot('demo', all_creds.get('demo', {}))
-        active_info = demo_info if active_slot == 'demo' else live_info
+        is_conf = bool(key and secret and key not in ('testnet_key', 'YOUR_KEY_HERE', '') and secret not in ('testnet_secret', 'YOUR_SECRET_HERE', ''))
+        masked = f"{key[:4]}...{key[-4:]}" if len(key) >= 8 else ("***" if key else "")
+        prof = live_data.get('profile') or {}
+        connected = bool(is_conf and (prof.get('user_id') or prof.get('id') or prof.get('email')))
 
         live_m = False
         try:
@@ -1278,13 +1286,10 @@ def get_api_credentials():
 
         return jsonify({
             'success': True,
-            'active_slot': active_slot,
-            'live': live_info,
-            'demo': demo_info,
-            'configured': active_info['configured'],
-            'connected': active_info['connected'],
-            'masked_key': active_info['masked_key'],
-            'profile': active_info['profile'],
+            'configured': is_conf,
+            'connected': connected,
+            'masked_key': masked,
+            'profile': prof,
             'live_mode': live_m
         })
     except Exception as e:
@@ -1292,11 +1297,10 @@ def get_api_credentials():
         return jsonify({
             'success': False,
             'error': str(e),
-            'active_slot': 'live',
             'configured': False,
             'connected': False,
-            'live': {},
-            'demo': {},
+            'masked_key': '',
+            'profile': {},
             'live_mode': False
         }), 200
 
@@ -1322,9 +1326,8 @@ def save_api_credentials():
                 'error': f'Delta Exchange validation failed across gateways: {err_msg}. Check API Key, Secret, and IP Whitelist.'
             }), 400
 
-        # Determine target slot
-        if target_slot not in ('live', 'demo'):
-            target_slot = 'demo' if matched_gw.get('is_demo') else 'live'
+        # Always save to live slot
+        target_slot = 'live'
 
         profile_info = {
             'user_id': str(prof_data.get('id', '')),
@@ -1419,6 +1422,8 @@ def switch_api_slot():
         if target_slot not in ('live', 'demo'):
             return jsonify({'success': False, 'error': 'Invalid slot specified.'}), 400
 
+        global _live_mode_cache
+        _live_mode_cache['time'] = 0
         import db_manager
         ok, slot_dict = db_manager.set_active_api_slot(target_slot)
         if not ok or not slot_dict.get('api_key'):
@@ -1445,14 +1450,10 @@ def switch_api_slot():
                 pass
 
         if target_slot == 'demo':
-            # Set execution mode strictly to DEMO (virtual testnet orders, 0% real money risk)
+            # Demo slot now uses PAPER (simulation) mode - no real exchange orders
             if bot_engine and hasattr(bot_engine, 'execution') and bot_engine.execution:
-                bot_engine.execution.mode = 'DEMO'
-                try:
-                    bot_engine.execution.sync_demo_positions()
-                except Exception as _sync_err:
-                    app_logger.warning(f"Web [switch_api_slot]: Error syncing demo positions: {_sync_err}")
-            config.BOT_MODE = 'DEMO'
+                bot_engine.execution.mode = 'PAPER'
+            config.BOT_MODE = 'PAPER'
             try:
                 if os.path.exists(LOT_SIZE_FILE):
                     with open(LOT_SIZE_FILE, 'r') as f:
@@ -1799,10 +1800,7 @@ def get_pnl_chart():
 
     if engine_mode == 'LIVE':
         active_slot = db_manager.get_active_api_slot()
-        if active_slot == 'demo':
-            live_positions = getattr(bot_engine.execution, 'demo_active_positions', {})
-        else:
-            live_positions = getattr(bot_engine.execution, 'live_active_positions', {})
+        live_positions = getattr(bot_engine.execution, 'live_active_positions', {})
         real_positions = {k: v for k, v in live_positions.items() if not k.startswith('__')}
         has_trade = bool(real_positions)
 
@@ -1824,7 +1822,7 @@ def get_pnl_chart():
                 "active": False,
                 "engine": "LIVE",
                 "points": [],
-                "message": "Zero active demo positions on Delta Demo." if active_slot == 'demo' else "Zero active live positions on Delta Exchange.",
+                "message": "Zero active live positions on Delta Exchange.",
                 "trail_state": trail_state,
                 "total_entry_premium": 0.0
             })
