@@ -17,10 +17,11 @@ def setup_logger(name, log_file, level=logging.INFO):
     
     formatter = CustomFormatter('%(ist_time)s - %(name)s - %(levelname)s - %(message)s')
 
-    handler = logging.FileHandler(log_file)        
+    handler = logging.FileHandler(log_file, encoding='utf-8')        
     handler.setFormatter(formatter)
 
-    console_handler = logging.StreamHandler()
+    import sys
+    console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
 
     logger = logging.getLogger(name)

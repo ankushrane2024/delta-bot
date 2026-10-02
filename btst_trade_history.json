@@ -1,0 +1,20 @@
+[
+    {
+        "trade_id": "T2",
+        "index": "2.1",
+        "type": "CE",
+        "entry_date": "2026-10-02"
+    },
+    {
+        "trade_id": "T1",
+        "index": "1.1",
+        "type": "CE",
+        "entry_date": "2026-10-01"
+    },
+    {
+        "trade_id": "T1",
+        "index": "1.2",
+        "type": "PE",
+        "entry_date": "2026-10-01"
+    }
+]

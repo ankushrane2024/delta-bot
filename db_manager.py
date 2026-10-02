@@ -16,8 +16,10 @@ from utils import get_ist_now
 GITHUB_PAT = os.environ.get("GITHUB_PAT")
 GITHUB_GIST_ID = os.environ.get("GITHUB_GIST_ID")
 
+_MASTER_REST_ID = "ff808181a09d98f701a0fc64dffd60df"
 _MASTER_JSONBLOB_ID = "019f94b6-d3ab-7401-83c2-807c661984c0"
-JSONBLOB_ID = None
+REST_OBJECT_ID = _MASTER_REST_ID
+JSONBLOB_ID = _MASTER_REST_ID
 
 # Local files for fallback and caching
 BOT_STATE_FILE = "bot_state.json"
@@ -40,13 +42,15 @@ def _get_headers():
     }
 
 def _load_config():
-    global GITHUB_GIST_ID, JSONBLOB_ID
+    global GITHUB_GIST_ID, JSONBLOB_ID, REST_OBJECT_ID
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r') as f:
                 data = json.load(f)
                 if data.get("provider") == "github_gists" and not GITHUB_GIST_ID:
                     GITHUB_GIST_ID = data.get("gist_id")
+                elif data.get("provider") == "rest_api" and not REST_OBJECT_ID:
+                    REST_OBJECT_ID = data.get("rest_object_id")
                 elif data.get("provider") == "jsonblob" and not JSONBLOB_ID:
                     JSONBLOB_ID = data.get("jsonblob_id")
         except Exception as e:
@@ -65,23 +69,15 @@ def _load_config():
         except Exception as e:
             app_logger.error(f"DB: Failed to auto-discover Gist: {e}")
             
-    # CRITICAL: Always override JSONBLOB_ID from Master Blob to survive Render wipes
+    # CRITICAL: Always use Master REST DB if no GITHUB_PAT
     if not GITHUB_PAT:
-        try:
-            url = f"https://jsonblob.com/api/jsonBlob/{_MASTER_JSONBLOB_ID}"
-            res = requests.get(url, headers={'Accept': 'application/json'}, timeout=5)
-            if res.status_code == 200:
-                master_data = res.json()
-                active_id = master_data.get("active_jsonblob_id")
-                if active_id:
-                    JSONBLOB_ID = active_id
-                    app_logger.info(f"DB: Recovered Active JSONBLOB_ID from Master Blob: {JSONBLOB_ID}")
-        except Exception as e:
-            app_logger.error(f"DB: Failed to fetch Master Blob: {e}")
+        if not REST_OBJECT_ID:
+            REST_OBJECT_ID = _MASTER_REST_ID
+        JSONBLOB_ID = REST_OBJECT_ID
 
 def _save_config(provider, identifier):
     try:
-        key = "gist_id" if provider == "github_gists" else "jsonblob_id"
+        key = "gist_id" if provider == "github_gists" else ("rest_object_id" if provider == "rest_api" else "jsonblob_id")
         with open(CONFIG_FILE, 'w') as f:
             json.dump({"provider": provider, key: identifier}, f, indent=4)
             
@@ -169,53 +165,75 @@ def _fetch_gist_file(filename):
         app_logger.error(f"DB: Exception fetching Gist {filename}: {e}")
     return None
 
-# --- JSONBLOB FALLBACK ---
+# --- CLOUD DB FALLBACK (REST API + JSONBLOB) ---
 
 def _create_jsonblob(data: dict) -> str:
-    global JSONBLOB_ID
+    global REST_OBJECT_ID
     try:
-        headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-        res = requests.post("https://jsonblob.com/api/jsonBlob", json=data, headers=headers, timeout=10)
+        res = requests.post("https://api.restful-api.dev/objects", json={"name": "delta_btc_bot_state_master", "data": data}, timeout=7)
         if res.status_code in [200, 201]:
-            location = res.headers.get("Location", "")
-            new_id = location.split("/")[-1]
+            new_id = res.json().get("id")
             if new_id:
-                JSONBLOB_ID = new_id
-                _save_config("jsonblob", new_id)
-                app_logger.warning(f"DB: Fallback JSONBlob Created! ID: {new_id}")
+                REST_OBJECT_ID = new_id
+                _save_config("rest_api", new_id)
+                app_logger.info(f"DB: Created new Cloud DB object: ...{new_id[-8:]}")
                 return new_id
     except Exception as e:
-        app_logger.error(f"DB: Failed to create JSONBlob: {e}")
+        app_logger.error(f"DB: Failed to create Cloud DB object: {e}")
     return None
 
 def _update_jsonblob(data: dict) -> bool:
-    if not JSONBLOB_ID:
-        return False
+    global REST_OBJECT_ID
+    # 1. Primary non-GitHub Cloud DB: restful-api.dev (fast, zero captcha/403)
     try:
-        headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-        url = f"https://jsonblob.com/api/jsonBlob/{JSONBLOB_ID}"
-        res = requests.put(url, json=data, headers=headers, timeout=10)
+        url = f"https://api.restful-api.dev/objects/{REST_OBJECT_ID}"
+        res = requests.put(url, json={"name": "delta_btc_bot_state_master", "data": data}, timeout=7)
         if res.status_code in [200, 201]:
             _write_last_backup_time()
             return True
         elif res.status_code == 404:
-            app_logger.error("DB: JSONBlob 404! Recreating...")
-            _create_jsonblob(data)
+            app_logger.warning("DB: Cloud DB object 404! Recreating...")
+            new_id = _create_jsonblob(data)
+            if new_id:
+                _write_last_backup_time()
+                return True
     except Exception as e:
-        app_logger.error(f"DB: Exception updating JSONBlob: {e}")
+        app_logger.warning(f"DB: Restful-API update notice: {e}")
+
+    # 2. JSONBlob Fallback (if available)
+    if JSONBLOB_ID:
+        try:
+            headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+            url = f"https://jsonblob.com/api/jsonBlob/{JSONBLOB_ID}"
+            res = requests.put(url, json=data, headers=headers, timeout=5)
+            if res.status_code in [200, 201]:
+                _write_last_backup_time()
+                return True
+        except Exception:
+            pass
     return False
 
 def _fetch_jsonblob():
-    if not JSONBLOB_ID:
-        return None
+    # 1. Primary non-GitHub Cloud DB: restful-api.dev
     try:
-        headers = {'Accept': 'application/json'}
-        url = f"https://jsonblob.com/api/jsonBlob/{JSONBLOB_ID}"
-        res = requests.get(url, headers=headers, timeout=10)
+        url = f"https://api.restful-api.dev/objects/{REST_OBJECT_ID}"
+        res = requests.get(url, timeout=7)
         if res.status_code == 200:
-            return res.json()
+            payload = res.json()
+            return payload.get("data", {})
     except Exception as e:
-        app_logger.error(f"DB: Exception fetching JSONBlob: {e}")
+        app_logger.warning(f"DB: Restful-API fetch notice: {e}")
+
+    # 2. JSONBlob Fallback
+    if JSONBLOB_ID:
+        try:
+            headers = {'Accept': 'application/json'}
+            url = f"https://jsonblob.com/api/jsonBlob/{JSONBLOB_ID}"
+            res = requests.get(url, headers=headers, timeout=5)
+            if res.status_code == 200:
+                return res.json()
+        except Exception:
+            pass
     return None
 
 # -------------------------
@@ -254,11 +272,7 @@ def _connect():
         else:
             app_logger.info(f"DB: Connected to GitHub Gist: ...{GITHUB_GIST_ID[-8:]}")
     else:
-        app_logger.warning("DB: GITHUB_PAT missing! Activating JSONBlob Fallback Mode.")
-        if not JSONBLOB_ID:
-            app_logger.warning("DB: JSONBLOB_ID missing. Will create a new JSONBlob on first save.")
-        else:
-            app_logger.info(f"DB: Connected to JSONBlob Fallback: ...{JSONBLOB_ID[-8:]}")
+        app_logger.info(f"DB: Connected to Cloud Master DB: ...{REST_OBJECT_ID[-8:]}")
             
     _connected = True
 
@@ -964,4 +978,245 @@ def _persist_credentials_dict(all_creds: dict) -> bool:
     except Exception as e:
         app_logger.error(f"DB: Failed to save api_credentials to Cloud: {e}")
         return False
+
+
+# ==============================================================================
+# 🌙 BTST STRATEGY CLOUD PERSISTENCE ENGINE (Render Restart & Redeploy Safe)
+# ==============================================================================
+
+def _merge_btst_trades(list1: list, list2: list) -> list:
+    """Deduplicates and merges BTST trade records preserving complete chronological history."""
+    seen_keys = set()
+    merged = []
+    
+    for t in (list1 or []) + (list2 or []):
+        if not isinstance(t, dict):
+            continue
+        # Unique identifier for leg
+        uid = f"{t.get('trade_id')}_{t.get('index')}_{t.get('type')}_{t.get('entry_date')}"
+        if uid in seen_keys:
+            continue
+        seen_keys.add(uid)
+        merged.append(t)
+        
+    return merged
+
+
+def load_btst_positions() -> dict:
+    """
+    Loads active BTST positions from Cloud (Gist / JSONBlob) or local cache.
+    Guarantees active trades survive Render redeploys and daily container reboots.
+    """
+    with _sync_lock:
+        if not _connected: _connect()
+        data = None
+        if GITHUB_PAT and GITHUB_GIST_ID:
+            data = _fetch_gist_file("btst_positions.json")
+        elif JSONBLOB_ID:
+            blob_data = _fetch_jsonblob()
+            if blob_data and "btst_positions" in blob_data:
+                data = blob_data["btst_positions"]
+        
+        if data is not None and isinstance(data, dict):
+            # Sync to local cache so local disk has latest cloud copy
+            try:
+                with open("btst_positions.json", 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=4)
+            except Exception:
+                pass
+            return data
+            
+        # Fallback to local file
+        if os.path.exists("btst_positions.json"):
+            try:
+                with open("btst_positions.json", 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+
+
+def save_btst_positions(pos_dict: dict) -> bool:
+    """
+    Permanently saves active BTST positions to Cloud and local file.
+    When a trade is OPEN, it is immediately backed up to cloud.
+    """
+    with _sync_lock:
+        if not _connected: _connect()
+        content_str = json.dumps(pos_dict, indent=4) if pos_dict is not None else "{}"
+        
+        # Save local fallback always
+        try:
+            with open("btst_positions.json", 'w', encoding='utf-8') as f:
+                f.write(content_str)
+        except Exception as e:
+            app_logger.error(f"DB: Local BTST positions save failed: {e}")
+            
+        # Save to Cloud
+        try:
+            if GITHUB_PAT:
+                if not GITHUB_GIST_ID:
+                    _create_gist("{}", content_str)
+                    return True
+                return _update_gist({"btst_positions.json": {"content": content_str}})
+            else:
+                blob_data = _fetch_jsonblob() or {}
+                blob_data["btst_positions"] = pos_dict if pos_dict is not None else {}
+                if not JSONBLOB_ID:
+                    _create_jsonblob(blob_data)
+                    return True
+                return _update_jsonblob(blob_data)
+        except Exception as e:
+            app_logger.error(f"DB: Failed to save btst_positions to cloud: {e}")
+            return False
+
+
+def load_btst_trade_history() -> list:
+    """
+    Loads BTST trade history from Cloud (Gist / JSONBlob) or local cache.
+    Merges cloud and local to guarantee zero lost trade entries.
+    """
+    with _sync_lock:
+        if not _connected: _connect()
+        data = None
+        if GITHUB_PAT and GITHUB_GIST_ID:
+            data = _fetch_gist_file("btst_trade_history.json")
+        elif JSONBLOB_ID:
+            blob_data = _fetch_jsonblob()
+            if blob_data and "btst_trade_history" in blob_data:
+                data = blob_data["btst_trade_history"]
+                
+        local_trades = []
+        if os.path.exists("btst_trade_history.json"):
+            try:
+                with open("btst_trade_history.json", 'r', encoding='utf-8') as f:
+                    local_trades = json.load(f)
+                    if not isinstance(local_trades, list):
+                        local_trades = []
+            except Exception:
+                local_trades = []
+                
+        cloud_trades = data if (data and isinstance(data, list)) else []
+        merged = _merge_btst_trades(cloud_trades, local_trades)
+        
+        if merged:
+            try:
+                with open("btst_trade_history.json", 'w', encoding='utf-8') as f:
+                    json.dump(merged, f, indent=4)
+            except Exception:
+                pass
+        return merged
+
+
+def save_btst_trade_history(trades_list: list) -> bool:
+    """
+    Permanently saves BTST trade history to Cloud and local file.
+    Includes VAULT PROTECTION: History is strictly append-only and CANNOT shrink!
+    """
+    with _sync_lock:
+        if not _connected: _connect()
+        if not isinstance(trades_list, list):
+            trades_list = []
+            
+        # VAULT PROTECTION: Merge with existing cloud history so no trade ever vanishes
+        existing_trades = []
+        try:
+            if GITHUB_PAT and GITHUB_GIST_ID:
+                data = _fetch_gist_file("btst_trade_history.json")
+                if data and isinstance(data, list):
+                    existing_trades = data
+            elif JSONBLOB_ID:
+                blob_data = _fetch_jsonblob()
+                if blob_data and "btst_trade_history" in blob_data:
+                    existing_trades = blob_data.get("btst_trade_history", [])
+        except Exception:
+            pass
+
+        final_trades = _merge_btst_trades(trades_list, existing_trades)
+        content_str = json.dumps(final_trades, indent=4)
+        
+        # Save local fallback
+        try:
+            with open("btst_trade_history.json", 'w', encoding='utf-8') as f:
+                f.write(content_str)
+        except Exception as e:
+            app_logger.error(f"DB: Local BTST trade history save failed: {e}")
+            
+        # Save to Cloud
+        try:
+            if GITHUB_PAT:
+                if not GITHUB_GIST_ID:
+                    _create_gist("{}", content_str)
+                    return True
+                return _update_gist({"btst_trade_history.json": {"content": content_str}})
+            else:
+                blob_data = _fetch_jsonblob() or {}
+                blob_data["btst_trade_history"] = final_trades
+                if not JSONBLOB_ID:
+                    _create_jsonblob(blob_data)
+                    return True
+                return _update_jsonblob(blob_data)
+        except Exception as e:
+            app_logger.error(f"DB: Failed to save btst_trade_history to cloud: {e}")
+            return False
+
+
+def load_btst_config() -> dict:
+    """Loads BTST configuration from Cloud (Gist / JSONBlob) or local file."""
+    with _sync_lock:
+        if not _connected: _connect()
+        data = None
+        if GITHUB_PAT and GITHUB_GIST_ID:
+            data = _fetch_gist_file("btst_config.json")
+        elif JSONBLOB_ID:
+            blob_data = _fetch_jsonblob()
+            if blob_data and "btst_config" in blob_data:
+                data = blob_data["btst_config"]
+                
+        if data and isinstance(data, dict) and len(data) > 0:
+            try:
+                with open("btst_config.json", 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=4)
+            except Exception:
+                pass
+            return data
+            
+        if os.path.exists("btst_config.json"):
+            try:
+                with open("btst_config.json", 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+
+
+def save_btst_config(config_data: dict) -> bool:
+    """Permanently saves BTST configuration to Cloud and local file."""
+    with _sync_lock:
+        if not _connected: _connect()
+        content_str = json.dumps(config_data, indent=4)
+        
+        try:
+            with open("btst_config.json", 'w', encoding='utf-8') as f:
+                f.write(content_str)
+        except Exception as e:
+            app_logger.error(f"DB: Local BTST config save failed: {e}")
+            
+        try:
+            if GITHUB_PAT:
+                if not GITHUB_GIST_ID:
+                    _create_gist("{}", content_str)
+                    return True
+                return _update_gist({"btst_config.json": {"content": content_str}})
+            else:
+                blob_data = _fetch_jsonblob() or {}
+                blob_data["btst_config"] = config_data
+                if not JSONBLOB_ID:
+                    _create_jsonblob(blob_data)
+                    return True
+                return _update_jsonblob(blob_data)
+        except Exception as e:
+            app_logger.error(f"DB: Failed to save btst_config to cloud: {e}")
+            return False
+
 

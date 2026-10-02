@@ -61,6 +61,23 @@ class BTSTStrangleEngine:
 
     # ── CONFIG & PERSISTENCE ──────────────────────────────────────────────────
     def _load_config(self):
+        # 1. Try Cloud DB (GitHub Gist / JSONBlob)
+        try:
+            import db_manager
+            cloud_cfg = db_manager.load_btst_config()
+            if cloud_cfg and isinstance(cloud_cfg, dict) and len(cloud_cfg) > 0:
+                merged = {**DEFAULT_CONFIG, **cloud_cfg}
+                try:
+                    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                        json.dump(merged, f, indent=4)
+                except Exception:
+                    pass
+                app_logger.info(f"[BTST] Config restored from Cloud DB (Capital=₹{merged.get('capital_inr', 100000):,}, Lev={merged.get('leverage', 25.0)}x).")
+                return merged
+        except Exception as e:
+            app_logger.warning(f"[BTST] Could not load config from Cloud DB: {e}")
+
+        # 2. Local fallback
         try:
             if os.path.exists(CONFIG_FILE):
                 with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -187,11 +204,20 @@ class BTSTStrangleEngine:
                     self._save_positions()
                     app_logger.info(f"[BTST] Active trade target exit time updated to {self.active_trade['target_exit_time']}.")
 
+                # Save local file
                 with open(CONFIG_FILE, "w", encoding="utf-8") as f:
                     json.dump(self.config, f, indent=4)
+
+                # Save to Cloud DB (GitHub Gist / JSONBlob)
+                try:
+                    import db_manager
+                    db_manager.save_btst_config(self.config)
+                except Exception as _ce:
+                    app_logger.warning(f"[BTST] Cloud config sync error: {_ce}")
+
                 sizing = self.calculate_position_sizing()
                 app_logger.info(
-                    f"[BTST] Config saved | Capital=₹{self.config['capital_inr']:,} | "
+                    f"[BTST] Config saved & synced to Cloud | Capital=₹{self.config['capital_inr']:,} | "
                     f"Utilization={int(self.config.get('capital_utilization', 0.90)*100)}% | "
                     f"Leverage={self.config['leverage']}x | "
                     f"Notional=₹{sizing['notional_inr']:,.0f} | "
@@ -204,38 +230,116 @@ class BTSTStrangleEngine:
 
 
     def _load_positions(self):
+        """
+        Loads active position. Checks Cloud DB first to survive Render redeploys and restarts,
+        then falls back to local positions file.
+        """
+        # 1. Try Cloud DB
+        try:
+            import db_manager
+            cloud_data = db_manager.load_btst_positions()
+            if cloud_data and isinstance(cloud_data, dict) and cloud_data.get("status") in ["OPEN", "PARTIALLY_CLOSED"]:
+                app_logger.info(f"[BTST] Restored active trade {cloud_data.get('trade_id')} ({cloud_data.get('status')}) from Cloud DB!")
+                try:
+                    with open(POSITIONS_FILE, "w", encoding="utf-8") as f:
+                        json.dump(cloud_data, f, indent=4)
+                except Exception:
+                    pass
+                return cloud_data
+        except Exception as e:
+            app_logger.warning(f"[BTST] Cloud load_positions notice: {e}")
+
+        # 2. Local fallback
         try:
             if os.path.exists(POSITIONS_FILE):
                 with open(POSITIONS_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     if data and isinstance(data, dict) and data.get("status") in ["OPEN", "PARTIALLY_CLOSED"]:
+                        # Sync up to Cloud immediately
+                        try:
+                            import db_manager
+                            db_manager.save_btst_positions(data)
+                        except Exception:
+                            pass
                         return data
         except Exception as e:
             app_logger.error(f"[BTST] Error loading positions: {e}")
         return None
 
     def _save_positions(self):
+        """
+        Saves active position to both local disk and Cloud DB.
+        Ensures ongoing trades NEVER vanish even if Render restarts mid-trade.
+        """
         try:
             with open(POSITIONS_FILE, "w", encoding="utf-8") as f:
                 json.dump(self.active_trade, f, indent=4)
         except Exception as e:
-            app_logger.error(f"[BTST] Error saving positions: {e}")
+            app_logger.error(f"[BTST] Error saving positions locally: {e}")
+
+        # Cloud sync to Cloud DB (GitHub Gist / JSONBlob)
+        try:
+            import db_manager
+            db_manager.save_btst_positions(self.active_trade)
+        except Exception as e:
+            app_logger.error(f"[BTST] Error syncing positions to Cloud DB: {e}")
 
     def _load_trade_history(self):
+        """
+        Loads trade history from Cloud DB and local file, merging both so no trades are ever lost.
+        """
+        # 1. Try Cloud DB
+        cloud_history = []
+        try:
+            import db_manager
+            cloud_history = db_manager.load_btst_trade_history()
+            if not isinstance(cloud_history, list):
+                cloud_history = []
+        except Exception as e:
+            app_logger.warning(f"[BTST] Cloud load_trade_history notice: {e}")
+
+        # 2. Check local file
+        local_history = []
         try:
             if os.path.exists(TRADES_FILE):
                 with open(TRADES_FILE, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        local_history = data
         except Exception as e:
-            app_logger.error(f"[BTST] Error loading trade history: {e}")
-        return []
+            app_logger.error(f"[BTST] Error loading trade history locally: {e}")
+
+        # Merge both sources
+        try:
+            import db_manager
+            merged = db_manager._merge_btst_trades(cloud_history, local_history)
+        except Exception:
+            merged = cloud_history or local_history
+
+        if merged:
+            try:
+                with open(TRADES_FILE, "w", encoding="utf-8") as f:
+                    json.dump(merged, f, indent=4)
+            except Exception:
+                pass
+        return merged
 
     def _save_trade_history(self):
+        """
+        Saves trade history with Vault Protection (append-only, never shrink).
+        """
         try:
             with open(TRADES_FILE, "w", encoding="utf-8") as f:
                 json.dump(self.trade_history, f, indent=4)
         except Exception as e:
-            app_logger.error(f"[BTST] Error saving trade history: {e}")
+            app_logger.error(f"[BTST] Error saving trade history locally: {e}")
+
+        # Cloud sync with Vault Protection
+        try:
+            import db_manager
+            db_manager.save_btst_trade_history(self.trade_history)
+        except Exception as e:
+            app_logger.error(f"[BTST] Error syncing trade history to Cloud DB: {e}")
 
     # ── MARKET DATA & STRIKE CALCULATION ──────────────────────────────────────
     def get_btc_spot_price(self):
@@ -587,14 +691,30 @@ class BTSTStrangleEngine:
                 return
 
             trade = self.active_trade
+
+            # Guard: skip if legs are missing or incomplete (e.g. stale test trades)
+            ce_leg_data = trade.get('ce_leg') or {}
+            pe_leg_data = trade.get('pe_leg') or {}
+            if not ce_leg_data.get('symbol') or not pe_leg_data.get('symbol'):
+                app_logger.warning("[BTST] active_trade missing ce_leg/pe_leg symbols — skipping evaluate_open_positions. Clearing stale trade.")
+                self.active_trade = None
+                self._save_positions()
+                return
+            # Guard: skip if sl_price not set (incomplete trade structure)
+            if not ce_leg_data.get('sl_price') or not pe_leg_data.get('sl_price'):
+                app_logger.warning("[BTST] active_trade ce_leg/pe_leg missing sl_price — skipping evaluate. Clearing stale trade.")
+                self.active_trade = None
+                self._save_positions()
+                return
+
             now_ist = get_ist_now()
             rate = float(self.config.get("usd_to_inr", 85.0))
             lots = int(trade.get("lots", 500))
             qty_btc = float(trade.get("qty_btc", lots * LOT_TO_BTC))
 
             # Fetch fresh quotes for both legs
-            call_sym = trade['ce_leg']['symbol']
-            put_sym = trade['pe_leg']['symbol']
+            call_sym = ce_leg_data['symbol']
+            put_sym = pe_leg_data['symbol']
 
             ce_ticker = None
             pe_ticker = None
@@ -621,40 +741,46 @@ class BTSTStrangleEngine:
                         app_logger.warning(f"[BTST] Error refreshing ticker quotes: {e}")
 
             # Update Call Leg
-            ce = trade['ce_leg']
+            ce = trade.get('ce_leg', {})
             ce_qty = float(ce.get('qty_btc') or trade.get('qty_btc') or (lots * LOT_TO_BTC))
-            if ce['status'] == 'OPEN' and ce_ticker:
+            if ce.get('status') == 'OPEN' and ce_ticker:
                 curr_ce = float(ce_ticker.get('mark_price') or ce_ticker.get('close') or ce.get('current_price') or 0)
                 if curr_ce > 0:
                     ce['current_price'] = curr_ce
-                    ce_pnl_usd = (ce['entry_price'] - curr_ce) * ce_qty
+                    ce_entry = float(ce.get('entry_price') or 0)
+                    ce_pnl_usd = (ce_entry - curr_ce) * ce_qty
                     ce['pnl_usd'] = round(ce_pnl_usd, 2)
                     ce['pnl_inr'] = round(ce_pnl_usd * rate, 2)
 
             # Update Put Leg
-            pe = trade['pe_leg']
+            pe = trade.get('pe_leg', {})
             pe_qty = float(pe.get('qty_btc') or trade.get('qty_btc') or (lots * LOT_TO_BTC))
-            if pe['status'] == 'OPEN' and pe_ticker:
+            if pe.get('status') == 'OPEN' and pe_ticker:
                 curr_pe = float(pe_ticker.get('mark_price') or pe_ticker.get('close') or pe.get('current_price') or 0)
                 if curr_pe > 0:
                     pe['current_price'] = curr_pe
-                    pe_pnl_usd = (pe['entry_price'] - curr_pe) * pe_qty
+                    pe_entry = float(pe.get('entry_price') or 0)
+                    pe_pnl_usd = (pe_entry - curr_pe) * pe_qty
                     pe['pnl_usd'] = round(pe_pnl_usd, 2)
                     pe['pnl_inr'] = round(pe_pnl_usd * rate, 2)
 
-            trade['total_pnl_usd'] = round(ce['pnl_usd'] + pe['pnl_usd'], 2)
-            trade['total_pnl_inr'] = round(ce['pnl_inr'] + pe['pnl_inr'], 2)
+            trade['total_pnl_usd'] = round(ce.get('pnl_usd', 0.0) + pe.get('pnl_usd', 0.0), 2)
+            trade['total_pnl_inr'] = round(ce.get('pnl_inr', 0.0) + pe.get('pnl_inr', 0.0), 2)
             trade['last_update_time'] = now_ist.strftime('%Y-%m-%d %H:%M:%S')
 
             # ── PARTIAL STOP LOSS EVALUATION ──────────────────────────────────
             # If Call hits SL -> square off Call. Put continues running!
-            if ce['status'] == 'OPEN' and ce['current_price'] >= ce['sl_price']:
-                app_logger.warning(f"[BTST] Call Leg SL HIT! Current: ${ce['current_price']} >= SL: ${ce['sl_price']}. Squaring off Call leg...")
+            ce_curr = ce.get('current_price', 0)
+            ce_sl = ce.get('sl_price', 0)
+            if ce.get('status') == 'OPEN' and ce_curr and ce_sl and ce_curr >= ce_sl:
+                app_logger.warning(f"[BTST] Call Leg SL HIT! Current: ${ce_curr} >= SL: ${ce_sl}. Squaring off Call leg...")
                 self._square_off_leg('ce_leg', exit_reason='SL_HIT')
 
             # If Put hits SL -> square off Put. Call continues running!
-            if pe['status'] == 'OPEN' and pe['current_price'] >= pe['sl_price']:
-                app_logger.warning(f"[BTST] Put Leg SL HIT! Current: ${pe['current_price']} >= SL: ${pe['sl_price']}. Squaring off Put leg...")
+            pe_curr = pe.get('current_price', 0)
+            pe_sl = pe.get('sl_price', 0)
+            if pe.get('status') == 'OPEN' and pe_curr and pe_sl and pe_curr >= pe_sl:
+                app_logger.warning(f"[BTST] Put Leg SL HIT! Current: ${pe_curr} >= SL: ${pe_sl}. Squaring off Put leg...")
                 self._square_off_leg('pe_leg', exit_reason='SL_HIT')
 
             # ── EXPIRY EXIT TIME CHECK (exit_time_ist on Expiry Date) ─────────────
@@ -738,25 +864,40 @@ class BTSTStrangleEngine:
             if not self.active_trade or self.active_trade.get("status") not in ["OPEN", "PARTIALLY_CLOSED"]:
                 return False, "No active BTST position to square off."
 
-            if self.active_trade['ce_leg']['status'] == 'OPEN':
+            ce = self.active_trade.get('ce_leg')
+            pe = self.active_trade.get('pe_leg')
+
+            if ce and isinstance(ce, dict) and ce.get('status') == 'OPEN':
                 self._square_off_leg('ce_leg', exit_reason=reason)
-            if self.active_trade['pe_leg']['status'] == 'OPEN':
+            if pe and isinstance(pe, dict) and pe.get('status') == 'OPEN':
                 self._square_off_leg('pe_leg', exit_reason=reason)
 
-            self.active_trade['total_pnl_usd'] = round(self.active_trade['ce_leg']['pnl_usd'] + self.active_trade['pe_leg']['pnl_usd'], 2)
-            self.active_trade['total_pnl_inr'] = round(self.active_trade['ce_leg']['pnl_inr'] + self.active_trade['pe_leg']['pnl_inr'], 2)
+            ce_pnl_usd = (self.active_trade.get('ce_leg') or {}).get('pnl_usd', 0.0)
+            pe_pnl_usd = (self.active_trade.get('pe_leg') or {}).get('pnl_usd', 0.0)
+            ce_pnl_inr = (self.active_trade.get('ce_leg') or {}).get('pnl_inr', 0.0)
+            pe_pnl_inr = (self.active_trade.get('pe_leg') or {}).get('pnl_inr', 0.0)
+
+            self.active_trade['total_pnl_usd'] = round(ce_pnl_usd + pe_pnl_usd, 2)
+            self.active_trade['total_pnl_inr'] = round(ce_pnl_inr + pe_pnl_inr, 2)
             self.active_trade['status'] = 'CLOSED'
 
-            self._archive_trade_to_history(self.active_trade)
+            if ce and pe and isinstance(ce, dict) and isinstance(pe, dict):
+                self._archive_trade_to_history(self.active_trade)
             self.active_trade = None
             self._save_positions()
             return True, "All BTST positions have been squared off."
 
     def _archive_trade_to_history(self, trade):
         """Archives completed trade into the AlgoTest-formatted trade history ledger."""
-        trade_id = trade['trade_id']
-        ce = trade['ce_leg']
-        pe = trade['pe_leg']
+        now_ist = get_ist_now()
+        trade_id = trade.get('trade_id') or f"BTST-{now_ist.strftime('%Y%m%d-%H%M%S')}"
+        ce = trade.get('ce_leg') or {}
+        pe = trade.get('pe_leg') or {}
+        entry_date = trade.get('entry_date') or now_ist.strftime('%Y-%m-%d')
+        raw_entry_time = trade.get('entry_time') or now_ist.strftime('%H:%M:%S')
+        entry_time_str = raw_entry_time.split(' ')[1] if ' ' in raw_entry_time else raw_entry_time
+        target_exp = trade.get('target_expiry_date') or entry_date
+        mode = trade.get('mode', 'PAPER')
 
         # Determine next index number
         base_idx = len(self.trade_history) // 2 + 1
@@ -764,41 +905,41 @@ class BTSTStrangleEngine:
         ce_entry = {
             "index": f"{base_idx}.1",
             "trade_id": trade_id,
-            "entry_date": trade['entry_date'],
-            "entry_time": trade['entry_time'].split(' ')[1] if ' ' in trade['entry_time'] else trade['entry_time'],
-            "exit_date": ce['exit_time'].split(' ')[0] if ce.get('exit_time') else trade['target_expiry_date'],
-            "exit_time": ce['exit_time'].split(' ')[1] if ce.get('exit_time') else "17:28:00",
+            "entry_date": entry_date,
+            "entry_time": entry_time_str,
+            "exit_date": ce.get('exit_time', '').split(' ')[0] if ce.get('exit_time') else target_exp,
+            "exit_time": ce.get('exit_time', '').split(' ')[1] if ce.get('exit_time') and ' ' in ce['exit_time'] else "17:28:00",
             "type": "CE",
-            "strike": ce['strike'],
+            "strike": ce.get('strike', 0.0),
             "side": "Sell",
-            "lots": ce['lots'],
+            "lots": ce.get('lots', trade.get('lots', 500)),
             "qty_btc": ce.get('qty_btc', trade.get('qty_btc', 0.5)),
-            "entry_price": ce['entry_price'],
-            "exit_price": ce['exit_price'],
-            "pnl_usd": ce['pnl_usd'],
-            "pnl_inr": ce['pnl_inr'],
-            "exit_reason": ce['exit_reason'],
-            "mode": trade['mode']
+            "entry_price": ce.get('entry_price', 0.0),
+            "exit_price": ce.get('exit_price', 0.0),
+            "pnl_usd": ce.get('pnl_usd', 0.0),
+            "pnl_inr": ce.get('pnl_inr', 0.0),
+            "exit_reason": ce.get('exit_reason', 'EXIT'),
+            "mode": mode
         }
 
         pe_entry = {
             "index": f"{base_idx}.2",
             "trade_id": trade_id,
-            "entry_date": trade['entry_date'],
-            "entry_time": trade['entry_time'].split(' ')[1] if ' ' in trade['entry_time'] else trade['entry_time'],
-            "exit_date": pe['exit_time'].split(' ')[0] if pe.get('exit_time') else trade['target_expiry_date'],
-            "exit_time": pe['exit_time'].split(' ')[1] if pe.get('exit_time') else "17:28:00",
+            "entry_date": entry_date,
+            "entry_time": entry_time_str,
+            "exit_date": pe.get('exit_time', '').split(' ')[0] if pe.get('exit_time') else target_exp,
+            "exit_time": pe.get('exit_time', '').split(' ')[1] if pe.get('exit_time') and ' ' in pe['exit_time'] else "17:28:00",
             "type": "PE",
-            "strike": pe['strike'],
+            "strike": pe.get('strike', 0.0),
             "side": "Sell",
-            "lots": pe['lots'],
+            "lots": pe.get('lots', trade.get('lots', 500)),
             "qty_btc": pe.get('qty_btc', trade.get('qty_btc', 0.5)),
-            "entry_price": pe['entry_price'],
-            "exit_price": pe['exit_price'],
-            "pnl_usd": pe['pnl_usd'],
-            "pnl_inr": pe['pnl_inr'],
-            "exit_reason": pe['exit_reason'],
-            "mode": trade['mode']
+            "entry_price": pe.get('entry_price', 0.0),
+            "exit_price": pe.get('exit_price', 0.0),
+            "pnl_usd": pe.get('pnl_usd', 0.0),
+            "pnl_inr": pe.get('pnl_inr', 0.0),
+            "exit_reason": pe.get('exit_reason', 'EXIT'),
+            "mode": mode
         }
 
         self.trade_history.insert(0, pe_entry)
