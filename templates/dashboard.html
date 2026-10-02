@@ -2033,7 +2033,8 @@ td {
         // Load live mode state on page load
         document.addEventListener('DOMContentLoaded', loadLiveModeState);
         // Refresh preflight every 10 seconds
-        setInterval(loadLiveModeState, 10000);
+        // BW-OPT: Increased from 10s to 120s — live mode state is low-frequency info
+        setInterval(loadLiveModeState, 120000);
         </script>
 
         <!-- Section: Market Regime Detector -->
@@ -3988,16 +3989,15 @@ td {
             stopActivePollingLoops();
             if (document.hidden) return; // Tab in background -> do not poll
 
-            // Active daytime intervals: 5s status, 6s PnL chart (bandwidth-optimized)
+            // BW-OPT: Increased from 5s to 30s — saves ~85% status polling bandwidth
             statusPollInterval = setInterval(async () => {
-                if (document.hidden) return;
-                await fetchStatus();
-            }, 5000);
+                if (!document.hidden) await fetchStatus();
+            }, 30000);
 
+            // BW-OPT: Increased from 6s to 45s — PnL chart doesn't need sub-minute updates
             pnlPollInterval = setInterval(async () => {
-                if (document.hidden) return;
-                await fetchPnlChart();
-            }, 6000);
+                if (!document.hidden) await fetchPnlChart();
+            }, 45000);
         }
 
         function stopActivePollingLoops() {
@@ -5843,26 +5843,8 @@ function updateSystemHealth() {
         })
         .catch(e => {});
 
-    // Strictly populate Live Trading Panel metrics from live_pnl (Delta Exchange only)
-    fetch('/api/status')
-        .then(r => r.json())
-        .then(data => {
-            const livePnl = data.live_pnl || {};
-            const liveCapital = livePnl.total_capital_used || 0;
-            const livePnlInr = livePnl.total_pnl_inr || 0;
-
-            const capEl = document.getElementById('live-capital-used');
-            if (capEl) {
-                capEl.innerText = '₹' + liveCapital.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                capEl.style.color = liveCapital > 0 ? '#cbd5e1' : '#64748b';
-            }
-            const pnlEl = document.getElementById('live-inr-pnl');
-            if (pnlEl) {
-                pnlEl.innerText = (livePnlInr >= 0 ? '+₹' : '-₹') + Math.abs(livePnlInr).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                pnlEl.style.color = livePnlInr > 0 ? '#10b981' : livePnlInr < 0 ? '#ef4444' : '#64748b';
-            }
-        })
-        .catch(e => {});
+    // BW-OPT: Removed duplicate /api/status call here — the main poll loop at 30s already covers this.
+    // The Live Trading Panel values update via the main fetchStatus() loop.
 }
 setInterval(updateSystemHealth, 60000);
 setTimeout(updateSystemHealth, 1000);

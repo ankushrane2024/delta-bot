@@ -497,7 +497,7 @@ def get_status():
         'smart_hedging_enabled': getattr(bot_engine, 'smart_hedging_enabled', True),
         'current_market_regime': bot_engine.current_market_regime,
         'current_adx_value': bot_engine.current_adx_value,
-        'adx_history': getattr(bot_engine, 'adx_history', []),
+        'adx_history': getattr(bot_engine, 'adx_history', [])[-50:],  # Cap to last 50 — prevents unbounded BW growth
         'paper_lot_multiplier': getattr(bot_engine, 'paper_lot_multiplier', 1.0),
         'api_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False,
         'active_api_slot': 'live',
@@ -510,7 +510,8 @@ def get_status():
         # New advanced metrics
         'dvol_status': dvol_status,
         'hedge_status': hedge_status,
-        'local_hpe_status': _read_local_hpe_state(),
+        # BW-OPT: Only send HPE status when positions are active (saves ~3KB per poll when idle)
+        'local_hpe_status': _read_local_hpe_state() if (paper_positions or live_positions) else {},
         'size_multiplier': round(getattr(bot_engine, 'size_multiplier', 1.0), 2),
         'consecutive_loss_count': getattr(bot_engine, 'consecutive_loss_count', 0),
         'next_day_paused': getattr(bot_engine, 'next_day_paused', False),
@@ -520,7 +521,7 @@ def get_status():
         'data_age_seconds': round(time.time() - bot_engine.api_client.last_price_update_time) if bot_engine.api_client.last_price_update_time > 0 else 999,
         'ws_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False,
         'last_api_update': bot_engine.api_client.last_price_update_time if bot_engine.api_client else 0,
-        'runtime_state': bot_engine.runtime_state.to_dict() if hasattr(bot_engine, 'runtime_state') else {}
+        # BW-OPT: runtime_state removed from hot /api/status path — use /api/runtime_state endpoint directly
     })
     _t_end = time.time()
     app_logger.info(f"[TIMING] logs={_t_1-_t0:.3f}s sync={_t_2-_t_1:.3f}s btc={_t_3-_t_2:.3f}s pos={_t_4-_t_3:.3f}s metrics={_t_5-_t_4:.3f}s json_build={_t_end-_t_5:.3f}s TOTAL={_t_end-_t0:.3f}s")
@@ -1968,43 +1969,18 @@ def get_system_health():
 
 @app.route('/api/backtest', methods=['POST'])
 def run_backtest():
-    """Runs the advanced strangle backtest and returns metrics and curve data."""
-    try:
-        from backtester import AdvancedBacktester
-        
-        data = request.get_json(force=True) or {}
-        starting_capital = float(data.get('starting_capital', 50000.0))
-        start_str = data.get('start_date')
-        end_str = data.get('end_date')
-        
-        days = 90
-        if start_str and end_str:
-            from datetime import date
-            try:
-                s_dt = date.fromisoformat(start_str)
-                e_dt = date.fromisoformat(end_str)
-                days = (e_dt - s_dt).days
-                if days <= 0:
-                    days = 90
-            except Exception:
-                pass
-                
-        app_logger.info(f"Web: Running backtest for {days} days, capital: ${starting_capital}...")
-        backtester = AdvancedBacktester(starting_capital=starting_capital)
-        results = backtester.run(days=days, start_date=start_str, end_date=end_str)
-        
-        return jsonify({
-            'success': True,
-            'metrics': results.get('metrics', {}),
-            'trades': results.get('trades', [])[:100],  # Limit trade logs to avoid overloading
-            'equity_curve': results.get('equity_curve', [])
-        }), 200
-        
-    except Exception as e:
-        import traceback
-        tb = traceback.format_exc()
-        app_logger.error(f"Web [backtest]: Backtester error: {e}\n{tb}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+    """Backtest engine has been removed to reduce Render bandwidth consumption.
+    The backtester.py module was a large dependency (numpy/pandas) that was only
+    used for this offline analysis endpoint and consumed excessive memory on startup.
+    Run backtests locally using backtester.py on your development machine instead.
+    """
+    app_logger.info("Web [backtest]: Backtest endpoint is disabled on Render (bandwidth optimization).")
+    return jsonify({
+        'success': False,
+        'error': 'Backtest engine is disabled on the cloud deployment to conserve bandwidth/memory. '
+                 'Run backtests locally on your dev machine using backtester.py directly.',
+        'disabled': True
+    }), 503
 
 
 
