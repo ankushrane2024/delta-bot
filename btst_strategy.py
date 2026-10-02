@@ -839,10 +839,14 @@ class BTSTStrangleEngine:
                             allowed_weekdays = self.config.get("weekdays", ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
                             weekday_str = now_ist.strftime('%a')
                             if not allowed_weekdays or weekday_str in allowed_weekdays:
-                                app_logger.info(f"[BTST] Scheduled entry triggered at {now_ist.strftime('%H:%M:%S')} IST for scheduled time {cfg_h:02d}:{cfg_m:02d} (Key: {entry_key})!")
-                                self.last_entry_trigger_key = entry_key
-                                self.last_evaluated_entry_date = now_date
-                                self.trigger_entry(force=False)
+                                app_logger.info(f"[BTST] Evaluating scheduled entry at {now_ist.strftime('%H:%M:%S')} IST for scheduled time {cfg_h:02d}:{cfg_m:02d} (Key: {entry_key})...")
+                                ok, msg = self.trigger_entry(force=False)
+                                if ok:
+                                    app_logger.info(f"[BTST] Scheduled trade successfully opened: {msg}")
+                                    self.last_entry_trigger_key = entry_key
+                                    self.last_evaluated_entry_date = now_date
+                                else:
+                                    app_logger.warning(f"[BTST] Scheduled trade entry attempt returned: {msg}. Will retry on next loop within window.")
                     except Exception as ex:
                         app_logger.error(f"[BTST] Error in scheduled entry evaluation: {ex}")
             except Exception as e:

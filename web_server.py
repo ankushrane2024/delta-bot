@@ -51,19 +51,25 @@ def init_web_server(engine):
 
 @app.route('/')
 def index():
-    # Read directly from disk to bypass Jinja2 template bytecode cache.
-    # This ensures live edits to dashboard.html are reflected immediately.
     import os
     from flask import Response
     tmpl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates', 'dashboard.html')
+    mtime = str(int(os.path.getmtime(tmpl_path))) if os.path.exists(tmpl_path) else '0'
+    if_match = request.headers.get('If-None-Match', '').strip('"')
+    if if_match and if_match == mtime:
+        return '', 304
+
     with open(tmpl_path, 'r', encoding='utf-8') as f:
         content = f.read()
-    return Response(content, mimetype='text/html')
+    resp = Response(content, mimetype='text/html')
+    resp.set_etag(mtime)
+    resp.headers['Cache-Control'] = 'public, max-age=60, must-revalidate'
+    return resp
 
 @app.route('/ping')
 def ping():
     # Lightweight endpoint for Keep-Alive pinger and UptimeRobot
-    return "OK", 200
+    return "OK", 200, {'Content-Type': 'text/plain'}
 
 @app.route('/sw.js')
 def serve_sw():
@@ -81,6 +87,29 @@ def add_header(response):
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
+
+    # ── BANDWIDTH PROTECTION: High-efficiency Gzip Compression Middleware ──
+    # Automatically compresses HTML, JSON, JS, and CSS responses > 400 bytes by ~85%
+    accept_encoding = request.headers.get('Accept-Encoding', '')
+    if ('gzip' in accept_encoding and 
+        response.status_code < 300 and 
+        len(response.data) > 400 and 
+        'Content-Encoding' not in response.headers):
+        
+        content_type = response.headers.get('Content-Type', '')
+        if any(t in content_type for t in ['json', 'text', 'html', 'javascript', 'css']):
+            import gzip
+            from io import BytesIO
+            gzip_buffer = BytesIO()
+            with gzip.GzipFile(mode='wb', fileobj=gzip_buffer, compresslevel=6) as gzip_file:
+                gzip_file.write(response.data)
+            compressed_data = gzip_buffer.getvalue()
+            if len(compressed_data) < len(response.data):
+                response.data = compressed_data
+                response.headers['Content-Encoding'] = 'gzip'
+                response.headers['Content-Length'] = len(compressed_data)
+                response.headers['Vary'] = 'Accept-Encoding'
+
     return response
 
 @app.route('/api/premium_conditions')

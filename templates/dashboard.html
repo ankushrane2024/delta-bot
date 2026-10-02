@@ -5753,13 +5753,14 @@ tr:hover td {
             }
         }
 
-        // Poll BTST data when tab is active
+        // Poll BTST data when tab is active (BW-OPT: 25s polling, suspended when tab is in background)
         setInterval(() => {
+            if (document.hidden) return;
             const btstPane = document.getElementById('tab-btst');
             if (btstPane && btstPane.classList.contains('active')) {
                 loadBtstData();
             }
-        }, 5000);
+        }, 25000);
 
         function switchTab(name) {
             // Hide all panes cleanly
@@ -6190,7 +6191,22 @@ async function disableApiKeyAction() {
 }
 
 setTimeout(fetchApiCredentials, 1500);
-setInterval(fetchApiCredentials, 30000);
+// BW-OPT: Credentials check every 5 mins instead of 30s
+setInterval(() => {
+    if (!document.hidden) fetchApiCredentials();
+}, 300000);
+
+// ── MASTER VISIBILITY GUARD: Immediate refresh when tab is brought into focus ──
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        const btstPane = document.getElementById('tab-btst');
+        if (btstPane && btstPane.classList.contains('active') && typeof loadBtstData === 'function') {
+            loadBtstData(true);
+        } else if (typeof fetchStatus === 'function') {
+            fetchStatus();
+        }
+    }
+});
 
 </script>
 </body>
