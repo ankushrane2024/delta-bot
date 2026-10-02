@@ -351,13 +351,10 @@ def get_status():
     live_positions, live_entry_prem, live_cap_used, live_opt_pnl = _calculate_pos_metrics(live_dict)
     _t_4 = time.time()
 
-    # Hedge Status (Smart Hedging Fallback)
-    hedge_status = bot_engine.smart_hedging.get_status() if getattr(bot_engine, 'smart_hedging', None) else {}
-    hedge_pnl_usd = hedge_status.get('hedge_pnl_usd', 0.0)
-
-    paper_pnl_usd = round(paper_opt_pnl + (hedge_pnl_usd if current_mode == 'PAPER' else 0.0), 2)
+    # Hedge engine removed — PnL is purely from options premium
+    paper_pnl_usd = round(paper_opt_pnl, 2)
     paper_pnl_inr = round(paper_pnl_usd * 95.5, 2)
-    live_pnl_usd = round(live_opt_pnl + (hedge_pnl_usd if current_mode == 'LIVE' else 0.0), 2)
+    live_pnl_usd = round(live_opt_pnl, 2)
     live_pnl_inr = round(live_pnl_usd * 95.5, 2)
 
     # Compute dedicated SL and TP targets for both engines
@@ -494,7 +491,7 @@ def get_status():
         'rule_report': bot_engine.latest_rule_report,
         'schedule_info': bot_engine.get_schedule_info(),
         'regime_filter_enabled': bot_engine.market_regime_filter_enabled,
-        'smart_hedging_enabled': getattr(bot_engine, 'smart_hedging_enabled', True),
+        # smart_hedging_enabled removed — hedge engine no longer present
         'current_market_regime': bot_engine.current_market_regime,
         'current_adx_value': bot_engine.current_adx_value,
         'adx_history': getattr(bot_engine, 'adx_history', [])[-50:],  # Cap to last 50 — prevents unbounded BW growth
@@ -509,8 +506,7 @@ def get_status():
         'today_skip_reason': getattr(bot_engine, 'today_skip_reason', None),
         # New advanced metrics
         'dvol_status': dvol_status,
-        'hedge_status': hedge_status,
-        # BW-OPT: Only send HPE status when positions are active (saves ~3KB per poll when idle)
+        'hedge_status': {},  # Hedge engine removed
         'local_hpe_status': _read_local_hpe_state() if (paper_positions or live_positions) else {},
         'size_multiplier': round(getattr(bot_engine, 'size_multiplier', 1.0), 2),
         'consecutive_loss_count': getattr(bot_engine, 'consecutive_loss_count', 0),
@@ -619,7 +615,9 @@ def emergency_close():
         # safety switch, which flips the mode to PAPER. If mode is PAPER,
         # close_all will just simulate the close and leave live positions orphaned!
         bot_engine.execution.close_all(reason="Emergency Manual Square-Off")
-        bot_engine.smart_hedging.close_hedge()
+        # Note: smart_hedging stub no-ops this safely
+        if getattr(bot_engine, 'smart_hedging', None):
+            bot_engine.smart_hedging.close_hedge()
         
         bot_engine._log_and_reset_trade(profit, "Manual Square-Off")
         from notifier import notifier
@@ -627,7 +625,6 @@ def emergency_close():
     else:
         # If no active positions, just ensure everything is closed anyway
         bot_engine.execution.close_all(reason="Emergency Manual Square-Off")
-        bot_engine.smart_hedging.close_hedge()
 
     bot_engine.reset_daily_state()
 
@@ -664,38 +661,7 @@ def toggle_regime():
     
     return jsonify({'status': 'success', 'enabled': bot_engine.market_regime_filter_enabled})
 
-@app.route('/api/force_shadow_hedge', methods=['POST'])
-def force_shadow_hedge():
-    try:
-        import os
-        with open('force_hedge.flag', 'w') as f:
-            f.write("1")
-        app_logger.info("Web: Manual Shadow Hedge triggered.")
-        return jsonify({'status': 'success'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/close_shadow_hedge', methods=['POST'])
-def close_shadow_hedge():
-    try:
-        if bot_engine and getattr(bot_engine, 'smart_hedging', None):
-            bot_engine.smart_hedging.close_hedge()
-        app_logger.info("Web: Manual Live Hedge Close triggered.")
-        return jsonify({'status': 'success'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/toggle_hedge', methods=['POST'])
-def toggle_hedge():
-    if not bot_engine:
-        return jsonify({'error': 'Engine not initialized'}), 500
-        
-    bot_engine.smart_hedging_enabled = not bot_engine.smart_hedging_enabled
-    state = "ENABLED" if bot_engine.smart_hedging_enabled else "DISABLED"
-    app_logger.info(f"Web: Smart Hedging {state}")
-    
-    return jsonify({'status': 'success', 'enabled': bot_engine.smart_hedging_enabled})
-    
 @app.route('/api/test_order', methods=['POST'])
 def test_order():
     try:
@@ -1938,7 +1904,6 @@ def get_system_health():
         'position_sync': 'SYNCED' if bot_engine.execution.active_positions is not None else 'ERROR',
         'iv_feed': 'ONLINE' if getattr(bot_engine, 'current_iv', 0) > 0 else 'OFFLINE',
         'premium_feed': 'ONLINE' if bot_engine.api_client.last_price_update_time > 0 else 'OFFLINE',
-        'hedge_engine': 'ONLINE' if getattr(bot_engine, 'smart_hedging', None) else 'OFFLINE',
         'graph_feed': 'ACTIVE' if len(getattr(bot_engine, 'pnl_chart_data', [])) > 0 else 'WAITING',
         'audit_system': 'ONLINE',
         'database_sync': 'ONLINE',
