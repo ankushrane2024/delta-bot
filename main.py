@@ -15,56 +15,59 @@ def run_bot_engine(engine):
 
 def keep_alive_pinger(engine):
     """
-    Smart Background Keep-Alive Pinger
-    Maintains active cloud execution during the trading session (08:30 AM to 05:30 PM IST)
-    AND anytime an active position is open (day or night).
-    
-    Outside the trading window (17:30 to 08:30 IST) when there are 0 open positions,
-    the pinger sleeps, allowing Render to automatically hibernate and consume 0 bandwidth.
+    24/7 Persistent Cloud Keep-Alive Pinger.
+    Guarantees that the bot NEVER sleeps or hibernates on Render (24*7, 365 days a year).
+    Pings https://delta-btc-options-bot.onrender.com/ping every 240 seconds (4 minutes)
+    so Render's 15-minute inactivity counter NEVER expires.
+    Supports both:
+    1. Morning Intraday Strategy (09:00 - 17:00 IST)
+    2. Night BTST 44H Strategy (22:30 IST entry - 44h hold to D+2 17:28 IST)
     """
-    time.sleep(60)
+    time.sleep(30)
     url = os.environ.get('RENDER_EXTERNAL_URL')
     if (not url or url == 'http://localhost:5000') and os.environ.get('RENDER') == 'true':
         url = 'https://delta-btc-options-bot.onrender.com'
     if not url:
-        url = 'http://localhost:5000'
-    app_logger.info(f"Smart Keep-alive pinger started. Target URL: {url}")
+        url = 'https://delta-btc-options-bot.onrender.com'
+        
+    app_logger.info(f"[24/7 KEEPALIVE] Persistent keep-alive pinger started. Target URL: {url}")
     
-    last_log_dormant_ts = 0.0
     while True:
         try:
-            # 1. Check if any positions are active in paper or live mode
+            from utils import get_ist_now
+            now_ist = get_ist_now()
+            
+            # Check BTST and Intraday position status
+            has_btst_pos = False
+            try:
+                from btst_strategy import btst_engine
+                has_btst_pos = bool(btst_engine.active_trade and btst_engine.active_trade.get('status') in ['OPEN', 'PARTIALLY_CLOSED'])
+            except Exception:
+                pass
+                
+            has_intraday_pos = False
             exec_module = getattr(engine, 'execution', None)
-            has_active_pos = False
             if exec_module:
-                has_active_pos = bool(
+                has_intraday_pos = bool(
                     getattr(exec_module, 'active_positions', None) or
                     getattr(exec_module, 'live_positions', None) or
                     getattr(exec_module, 'paper_positions', None)
                 )
 
-            # 2. Check current time in IST (08:30 to 17:30 IST is active daytime window)
-            from utils import get_ist_now
-            now_ist = get_ist_now()
-            current_mins = now_ist.hour * 60 + now_ist.minute
-            # 08:30 IST is 510 minutes. 17:30 IST is 1050 minutes.
-            is_active_window = 510 <= current_mins <= 1050
-
-            # 3. Decision: Ping if within trading hours OR if ANY position is open
-            if is_active_window or has_active_pos:
-                requests.get(f"{url}/ping", timeout=15)
-                mode = getattr(getattr(engine, 'execution', None), 'mode', 'PAPER')
-                reason = "ACTIVE_WINDOW" if is_active_window else "OPEN_POSITIONS_OVERRIDE"
-                app_logger.info(f"[KEEPALIVE] Ping sent ({reason}). Engine={'ON' if getattr(engine, 'is_running', True) else 'OFF'} (Mode: {mode}, Pos: {has_active_pos})")
-                time.sleep(240)  # Ping every 4 minutes while active
-            else:
-                # Outside window & 0 open positions -> Sleep and allow Render to hibernate
-                if time.time() - last_log_dormant_ts > 1800:
-                    last_log_dormant_ts = time.time()
-                    app_logger.info(f"[KEEPALIVE] Standby period ({now_ist.strftime('%H:%M')} IST). No open trades. Pinger dormant to allow Render hibernation.")
-                time.sleep(120)  # Check every 2 minutes for new trade entries
+            # Send HTTP keep-alive ping to Render
+            try:
+                res = requests.get(f"{url}/ping", timeout=15)
+                app_logger.info(
+                    f"[24/7 KEEPALIVE] Ping sent at {now_ist.strftime('%H:%M:%S')} IST (HTTP {res.status_code}). "
+                    f"Intraday Pos: {has_intraday_pos}, BTST Pos: {has_btst_pos}. Container active 24/7."
+                )
+            except Exception as ping_err:
+                app_logger.warning(f"[24/7 KEEPALIVE] Ping network notice: {ping_err}")
+                
+            # Sleep 240 seconds (4 minutes) — well below Render's 15-minute hibernation timeout
+            time.sleep(240)
         except Exception as e:
-            app_logger.warning(f"[KEEPALIVE] Keep-alive ping check error: {e}")
+            app_logger.warning(f"[24/7 KEEPALIVE] Error in keepalive loop: {e}")
             time.sleep(60)
 
 def main():

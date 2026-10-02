@@ -13,6 +13,8 @@ services:
       - key: DELTA_API_SECRET
         sync: false
       - key: RENDER_EXTERNAL_URL
-        sync: false
+        value: "https://delta-btc-options-bot.onrender.com"
+      - key: RENDER
+        value: "true"
       - key: ENABLE_ARES
         value: "true"

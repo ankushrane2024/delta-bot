@@ -49,11 +49,16 @@ MANUAL_TOTAL_LOTS = int(os.getenv("MANUAL_TOTAL_LOTS", 1000))
 LOT_TO_BTC = 0.001  # 1 lot = 0.001 BTC (Delta Exchange BTC Options contract size)
 
 # --- Entry/Exit Times (IST) ---
-ENTRY_TIMES = ["09:00", "09:30"]
-EXIT_PREPARE_TIME = "16:55"   # Start preparing forced exit at 16:55 IST
-EXIT_TIME_HARD = "17:00"      # Hard square off at 17:00 IST
-EXIT_TIME_START = "17:00"     # Kept for backward compatibility
-EXIT_TIME_END = "17:20"       # Kept for backward compatibility
+_env_entry_times = os.getenv("ENTRY_TIMES")
+if _env_entry_times:
+    ENTRY_TIMES = [t.strip() for t in _env_entry_times.split(",") if t.strip()]
+else:
+    ENTRY_TIMES = ["09:00", "09:30"]
+
+EXIT_PREPARE_TIME = os.getenv("EXIT_PREPARE_TIME", "16:55")   # Start preparing forced exit at 16:55 IST
+EXIT_TIME_HARD = os.getenv("EXIT_TIME_HARD", "17:00")         # Hard square off at 17:00 IST
+EXIT_TIME_START = os.getenv("EXIT_TIME_START", "17:00")       # Kept for backward compatibility
+EXIT_TIME_END = os.getenv("EXIT_TIME_END", "17:20")           # Kept for backward compatibility
 
 # --- Telegram Settings ---
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")

@@ -17,28 +17,110 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* ========================================================
+        
+        #tab-btst.active { display: flex !important; }
+        .btst-badge-ce { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; padding: 2px 8px; font-weight: 700; font-size: 0.75rem; }
+        .btst-badge-pe { background: rgba(244, 114, 182, 0.15); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.3); border-radius: 6px; padding: 2px 8px; font-weight: 700; font-size: 0.75rem; }
+        .btst-card {
+            background: rgba(22, 32, 68, 0.78);
+            border: 1px solid rgba(147, 197, 253, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px);
+        }
+        .btst-metric-card {
+            background: linear-gradient(135deg, rgba(26, 36, 76, 0.75), rgba(15, 23, 52, 0.85));
+            border: 1px solid rgba(147, 197, 253, 0.2);
+            border-radius: 14px;
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25), inset 0 1px 1px rgba(255,255,255,0.08);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .btst-metric-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(168, 85, 247, 0.4);
+        }
+        .btst-metric-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        .btst-metric-val {
+            font-size: 1.55rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: #fff;
+        }
+        .btst-input {
+            width: 100%;
+            background: rgba(11, 17, 44, 0.85);
+            border: 1px solid rgba(147, 197, 253, 0.25);
+            border-radius: 10px;
+            color: #fff;
+            padding: 10px 14px;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .btst-input:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+        }
+        .btst-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .btst-table th {
+            background: rgba(15, 23, 52, 0.8);
+            padding: 12px 14px;
+            text-align: left;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(147, 197, 253, 0.2);
+        }
+        .btst-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .btst-table tr:hover td {
+            background: rgba(255,255,255,0.03);
+        }
+
+/* ========================================================
            GLOBAL EMBOSSED THEME - DELTA OPTIONS ENGINE
            ======================================================== */
         :root {
-            --bg-color: #0a0f1c; /* Deep futuristic space blue/black */
-            --panel-bg: rgba(16, 20, 30, 0.65); /* Glassmorphism base */
-            --border-color: rgba(255, 255, 255, 0.04);
+            --bg-color: #0b112c;
+            --panel-bg: rgba(22, 32, 68, 0.78);
+            --border-color: rgba(147, 197, 253, 0.2);
             
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e1;
             
             /* Accents */
-            --emerald: #10b981;
-            --rose: #f43f5e;
-            --cyan: #06b6d4;
-            --violet: #8b5cf6;
+            --emerald: #00f59b;
+            --rose: #ff4b72;
+            --cyan: #00f2fe;
+            --violet: #c084fc;
             
-            /* Neumorphic / Embossed Depth Variables */
-            --btn-bg: #131824;
-            --btn-border: rgba(255, 255, 255, 0.08);
-            --emboss-inner: inset 0 1px 1px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.4);
-            --emboss-drop: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            /* Embossed Depth Variables */
+            --btn-bg: rgba(26, 36, 76, 0.85);
+            --btn-border: rgba(147, 197, 253, 0.3);
+            --emboss-inner: inset 0 1px 1px rgba(255, 255, 255, 0.25), inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+            --emboss-drop: 0 6px 16px -2px rgba(7, 11, 30, 0.5), 0 2px 6px -1px rgba(99, 102, 241, 0.2);
         }
 
         body {
@@ -148,39 +230,47 @@
 
         /* ----- TAB NAVIGATION ----- */
         .tab-nav {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 30px;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: linear-gradient(180deg, rgba(17, 24, 48, 0.85) 0%, rgba(10, 15, 32, 0.92) 100%);
+            padding: 6px;
             border-radius: 14px;
-            border: 1px solid rgba(255,255,255,0.03);
+            border: 1px solid rgba(147, 197, 253, 0.15);
             max-width: 1800px;
             width: 100%;
             box-sizing: border-box;
             overflow-x: auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
         }
         .tab-btn {
             background: transparent;
-            color: var(--text-secondary);
-            border: none;
-            padding: 12px 24px;
+            color: #94a3b8;
+            border: 1px solid transparent;
+            padding: 10px 20px;
             border-radius: 10px;
             font-weight: 700;
-            font-size: 0.95rem;
+            font-size: 0.88rem;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
         .tab-btn:hover {
-            color: #fff;
+            color: #f8fafc;
             background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.08);
         }
         .tab-btn.active {
-            background: var(--btn-bg);
-            color: #fff;
-            box-shadow: var(--emboss-drop), var(--emboss-inner);
-            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.22) 0%, rgba(139, 92, 246, 0.26) 100%) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(56, 189, 248, 0.45) !important;
+            box-shadow: 0 4px 18px rgba(56, 189, 248, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+            text-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
         }
         .tab-pane {
             display: none;
@@ -190,9 +280,11 @@
             box-sizing: border-box;
         }
         .tab-pane.active {
-            display: block;
+            display: flex !important;
+            flex-direction: column !important;
         }
         #tab-live.active { display: flex !important; }
+        #tab-btst.active { display: flex !important; }
 
         /* ----- EMBOSSED PREMIUM BUTTONS ----- */
         .btn-embossed {
@@ -1076,15 +1168,15 @@
 .psce-block-alert.active { display: flex; }
 
 /* ==========================================================================
-   STANDARD PRO TRADING TERMINAL DESIGN TOKENS & SIZING
-   Strict adherence to standard UI scales (Linear / TradingView / Binance Pro)
+   VIBRANT COSMIC AURORA PRO TRADING TERMINAL DESIGN SYSTEM
+   Luminous glassmorphism, vibrant radiant gradients, minimal black parts
    ========================================================================== */
 :root {
-    --bg-obsidian: #070a12;
-    --card-surface: rgba(13, 19, 33, 0.75);
-    --card-surface-hover: rgba(18, 26, 46, 0.85);
-    --card-border: rgba(255, 255, 255, 0.08);
-    --card-border-glow: rgba(56, 189, 248, 0.25);
+    --bg-main: #0b112c;
+    --card-surface: rgba(22, 32, 68, 0.78);
+    --card-surface-hover: rgba(30, 42, 88, 0.9);
+    --card-border: rgba(147, 197, 253, 0.22);
+    --card-border-glow: rgba(99, 102, 241, 0.4);
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
     
@@ -1098,27 +1190,33 @@
     --text-xl:  1.35rem;   /* 21.6px - Major KPI / Net PnL */
     --text-2xl: 1.5rem;    /* 24px - Main Page Title */
 
-    /* Standard Color Tokens */
-    --accent-blue: #38bdf8;
-    --accent-emerald: #10b981;
-    --accent-rose: #f43f5e;
-    --accent-purple: #a855f7;
-    --accent-amber: #f59e0b;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    /* Vibrant Radiant Color Tokens */
+    --accent-blue: #00f2fe;
+    --accent-cyan: #38bdf8;
+    --accent-emerald: #00f59b;
+    --accent-rose: #ff4b72;
+    --accent-purple: #c084fc;
+    --accent-violet: #818cf8;
+    --accent-pink: #f472b6;
+    --accent-amber: #fbbf24;
+    --text-primary: #ffffff;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
 }
 
-/* Global Reset & Pro Scale */
+/* Global Reset & Vibrant Aurora Canvas */
 body {
-    background-color: var(--bg-obsidian) !important;
+    background-color: var(--bg-main) !important;
     background-image: 
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56, 189, 248, 0.06), transparent),
-        radial-gradient(circle at 95% 20%, rgba(168, 85, 247, 0.04), transparent 40%),
-        radial-gradient(circle at 5% 80%, rgba(16, 185, 129, 0.04), transparent 40%),
-        linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px) !important;
-    background-size: 100% 100%, 100% 100%, 100% 100%, 32px 32px, 32px 32px !important;
+        radial-gradient(circle at 10% 8%, rgba(99, 102, 241, 0.3), transparent 45%),
+        radial-gradient(circle at 90% 12%, rgba(236, 72, 153, 0.25), transparent 42%),
+        radial-gradient(circle at 50% 35%, rgba(6, 182, 212, 0.2), transparent 48%),
+        radial-gradient(circle at 15% 75%, rgba(139, 92, 246, 0.25), transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.2), transparent 45%),
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px) !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 36px 36px, 36px 36px !important;
+    background-attachment: fixed !important;
     font-family: var(--font-sans) !important;
     font-size: var(--text-sm) !important;
     color: var(--text-primary) !important;
@@ -1130,16 +1228,17 @@ body {
 /* Typography Hierarchy */
 h1 {
     font-size: var(--text-2xl) !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     letter-spacing: -0.02em !important;
     margin: 0 !important;
-    background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%) !important;
+    background: linear-gradient(135deg, #00f2fe 0%, #38bdf8 25%, #818cf8 50%, #c084fc 75%, #f472b6 100%) !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
+    filter: drop-shadow(0 2px 12px rgba(99, 102, 241, 0.4)) !important;
 }
 h2 {
     font-size: var(--text-md) !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     letter-spacing: -0.01em !important;
     color: var(--text-primary) !important;
     margin: 0 0 12px 0 !important;
@@ -1149,7 +1248,7 @@ h2 {
 }
 h3 {
     font-size: var(--text-base) !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
 }
 
 /* Monospace Tabular Numerics for All Financial Values */
@@ -1165,125 +1264,134 @@ h3 {
 
 /* Standard KPI & Metric Values */
 .hero-val {
-    font-size: 1.25rem !important; /* 20px */
-    font-weight: 700 !important;
+    font-size: 1.25rem !important;
+    font-weight: 800 !important;
 }
 .hero-label, .stat-label, .pos-metric-label {
-    font-size: var(--text-2xs) !important; /* 11px */
-    font-weight: 600 !important;
-    letter-spacing: 0.05em !important;
+    font-size: var(--text-2xs) !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em !important;
     text-transform: uppercase !important;
-    color: var(--text-muted) !important;
+    color: #94a3b8 !important;
 }
 
-/* Net PnL Standard Pro Display (Clean & Balanced) */
+/* Net PnL Standard Pro Display (Clean & Vibrant) */
 #pos-total-pnl-inr {
-    font-size: 1.6rem !important; /* 25.6px */
-    font-weight: 700 !important;
+    font-size: 1.6rem !important;
+    font-weight: 800 !important;
     line-height: 1.1 !important;
 }
 
-/* Standard Panels */
+/* Standard Luminous Panels (Minimal Black) */
 .glass-panel {
-    background: var(--card-surface) !important;
-    border: 1px solid var(--card-border) !important;
-    border-radius: 12px !important;
-    padding: 16px 20px !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    background: linear-gradient(135deg, rgba(24, 34, 70, 0.8) 0%, rgba(18, 26, 56, 0.85) 100%) !important;
+    border: 1px solid rgba(147, 197, 253, 0.2) !important;
+    border-radius: 14px !important;
+    padding: 18px 22px !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    box-shadow: 0 10px 32px -4px rgba(7, 11, 30, 0.5), 0 0 20px rgba(99, 102, 241, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+    transition: all 0.25s ease !important;
 }
 .glass-panel:hover {
-    border-color: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(147, 197, 253, 0.38) !important;
+    box-shadow: 0 14px 40px -4px rgba(7, 11, 30, 0.65), 0 0 30px rgba(99, 102, 241, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
 }
 
 /* Header */
 header {
-    background: rgba(13, 19, 33, 0.6) !important;
-    border: 1px solid var(--card-border) !important;
-    border-radius: 12px !important;
-    padding: 12px 20px !important;
+    background: linear-gradient(135deg, rgba(28, 38, 80, 0.85) 0%, rgba(32, 24, 68, 0.85) 100%) !important;
+    border: 1px solid rgba(168, 85, 247, 0.3) !important;
+    border-radius: 14px !important;
+    padding: 14px 24px !important;
     box-sizing: border-box !important;
-    backdrop-filter: blur(14px) !important;
+    backdrop-filter: blur(20px) !important;
+    box-shadow: 0 10px 30px rgba(7, 11, 30, 0.5), 0 0 25px rgba(139, 92, 246, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
 #regime-badge {
     font-family: var(--font-mono) !important;
     font-size: var(--text-xs) !important;
-    font-weight: 600 !important;
-    padding: 3px 10px !important;
-    border-radius: 12px !important;
-    background: rgba(56, 189, 248, 0.08) !important;
-    border: 1px solid rgba(56, 189, 248, 0.25) !important;
-    color: var(--accent-blue) !important;
+    font-weight: 700 !important;
+    padding: 4px 12px !important;
+    border-radius: 14px !important;
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(168, 85, 247, 0.15)) !important;
+    border: 1px solid rgba(0, 242, 254, 0.45) !important;
+    color: #38bdf8 !important;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.25) !important;
 }
 .status-badge {
-    padding: 5px 12px !important;
+    padding: 6px 14px !important;
     font-size: var(--text-xs) !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     letter-spacing: 0.5px !important;
     border-radius: 14px !important;
+    background: rgba(16, 185, 129, 0.15) !important;
+    border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    color: #34d399 !important;
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.25) !important;
 }
 
-/* Navigation Tabs - Standard Scale */
+/* Navigation Tabs */
 .tab-nav {
-    background: rgba(10, 15, 26, 0.85) !important;
-    border: 1px solid rgba(255, 255, 255, 0.07) !important;
-    padding: 4px !important;
-    border-radius: 10px !important;
-    gap: 4px !important;
+    background: rgba(20, 28, 62, 0.88) !important;
+    border: 1px solid rgba(139, 92, 246, 0.28) !important;
+    padding: 6px !important;
+    border-radius: 12px !important;
+    gap: 6px !important;
+    box-shadow: 0 8px 24px rgba(7, 11, 30, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 .tab-btn {
-    border-radius: 7px !important;
-    padding: 6px 16px !important;
-    height: 32px !important;
-    font-weight: 600 !important;
-    font-size: var(--text-sm) !important; /* 13px */
-    color: var(--text-secondary) !important;
+    border-radius: 9px !important;
+    padding: 8px 18px !important;
+    height: 36px !important;
+    font-weight: 700 !important;
+    font-size: var(--text-sm) !important;
+    color: #cbd5e1 !important;
     background: transparent !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
-    transition: all 0.15s ease !important;
+    gap: 8px !important;
+    transition: all 0.2s ease !important;
 }
 .tab-btn:hover {
     color: #ffffff !important;
-    background: rgba(255, 255, 255, 0.04) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    transform: translateY(-1px);
 }
 .tab-btn.active {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(99, 102, 241, 0.12)) !important;
-    border: 1px solid rgba(56, 189, 248, 0.35) !important;
-    color: #38bdf8 !important;
-    box-shadow: 0 2px 10px rgba(56, 189, 248, 0.15) !important;
+    background: linear-gradient(135deg, #06b6d4 0%, #6366f1 50%, #a855f7 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 18px rgba(99, 102, 241, 0.5) !important;
 }
 
 /* ==========================================================================
-   BUTTONS - STRICT STANDARD SCALE (13px, 34-36px height, 6-8px radius)
+   BUTTONS - VIBRANT GLOWING DESIGN
    ========================================================================== */
 button, .btn-embossed, .btn-modern, .btn-standard {
     font-family: var(--font-sans) !important;
-    font-size: var(--text-sm) !important; /* 13px */
-    font-weight: 600 !important;
-    padding: 7px 14px !important;
-    height: 36px !important;
-    border-radius: 7px !important;
+    font-size: var(--text-sm) !important;
+    font-weight: 700 !important;
+    padding: 8px 16px !important;
+    height: 38px !important;
+    border-radius: 9px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
+    gap: 8px !important;
     cursor: pointer !important;
     line-height: 1.2 !important;
     letter-spacing: 0.2px !important;
     box-sizing: border-box !important;
-    transition: all 0.15s ease !important;
+    transition: all 0.2s ease !important;
     text-transform: none !important;
 }
 button span, .btn-embossed span {
     font-size: 0.95rem !important;
 }
 button:hover, .btn-embossed:hover {
-    transform: translateY(-1px) !important;
+    transform: translateY(-2px) !important;
 }
 button:active, .btn-embossed:active {
     transform: translateY(1px) !important;
@@ -1291,94 +1399,92 @@ button:active, .btn-embossed:active {
 
 /* Button Color Variants */
 .btn-green {
-    background: linear-gradient(180deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1)) !important;
-    border: 1px solid rgba(16, 185, 129, 0.35) !important;
-    color: #34d399 !important;
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+    border: 1px solid rgba(52, 211, 153, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
 }
 .btn-green:hover {
-    background: linear-gradient(180deg, rgba(16, 185, 129, 0.35), rgba(16, 185, 129, 0.2)) !important;
-    border-color: rgba(16, 185, 129, 0.6) !important;
-    color: #ffffff !important;
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.2) !important;
+    background: linear-gradient(135deg, #10b981 0%, #34d399 100%) !important;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5) !important;
 }
 
 .btn-red, .btn-danger {
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1)) !important;
-    border: 1px solid rgba(239, 68, 68, 0.35) !important;
-    color: #f87171 !important;
+    background: linear-gradient(135deg, #dc2626 0%, #f43f5e 100%) !important;
+    border: 1px solid rgba(251, 113, 133, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35) !important;
 }
 .btn-red:hover, .btn-danger:hover {
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.35), rgba(239, 68, 68, 0.2)) !important;
-    border-color: rgba(239, 68, 68, 0.6) !important;
-    color: #ffffff !important;
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2) !important;
+    background: linear-gradient(135deg, #e11d48 0%, #fb7185 100%) !important;
+    box-shadow: 0 6px 20px rgba(244, 63, 94, 0.5) !important;
 }
 
 .btn-cyan, .btn-primary {
-    background: linear-gradient(180deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.1)) !important;
-    border: 1px solid rgba(56, 189, 248, 0.35) !important;
-    color: #38bdf8 !important;
+    background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%) !important;
+    border: 1px solid rgba(56, 189, 248, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35) !important;
 }
 .btn-cyan:hover, .btn-primary:hover {
-    background: linear-gradient(180deg, rgba(56, 189, 248, 0.35), rgba(56, 189, 248, 0.2)) !important;
-    border-color: rgba(56, 189, 248, 0.6) !important;
-    color: #ffffff !important;
-    box-shadow: 0 0 12px rgba(56, 189, 248, 0.2) !important;
+    background: linear-gradient(135deg, #0ea5e9 0%, #22d3ee 100%) !important;
+    box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5) !important;
 }
 
 .btn-violet {
-    background: linear-gradient(180deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.1)) !important;
-    border: 1px solid rgba(168, 85, 247, 0.35) !important;
-    color: #c084fc !important;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+    border: 1px solid rgba(192, 132, 252, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(168, 85, 247, 0.35) !important;
 }
 .btn-violet:hover {
-    background: linear-gradient(180deg, rgba(168, 85, 247, 0.35), rgba(168, 85, 247, 0.2)) !important;
-    border-color: rgba(168, 85, 247, 0.6) !important;
-    color: #ffffff !important;
-    box-shadow: 0 0 12px rgba(168, 85, 247, 0.2) !important;
+    background: linear-gradient(135deg, #8b5cf6 0%, #c084fc 100%) !important;
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.5) !important;
 }
 
 .btn-emergency-pulse {
-    background: linear-gradient(180deg, rgba(225, 29, 72, 0.3), rgba(159, 18, 57, 0.4)) !important;
-    border: 1px solid rgba(244, 63, 94, 0.5) !important;
+    background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%) !important;
+    border: 1px solid rgba(253, 164, 175, 0.6) !important;
     color: #ffffff !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.5px !important;
-    box-shadow: 0 0 14px rgba(225, 29, 72, 0.3) !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.8px !important;
+    box-shadow: 0 0 20px rgba(225, 29, 72, 0.5) !important;
 }
 
 /* Small Action / Inline Buttons */
 .btn-sm, #saveLotSizeBtn, #save-live-lots-btn, .btn-squareoff {
-    height: 30px !important;
-    padding: 4px 12px !important;
-    font-size: var(--text-xs) !important; /* 12px */
-    border-radius: 6px !important;
-    font-weight: 600 !important;
+    height: 32px !important;
+    padding: 6px 14px !important;
+    font-size: var(--text-xs) !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
 }
 
 /* ==========================================================================
-   INPUTS - STRICT STANDARD SCALE (13px, 32-34px height)
+   INPUTS - SLEEK TRANSLUCENT GLASS (No pitch black)
    ========================================================================== */
 input[type="text"], input[type="number"], .input-modern, select {
     font-family: var(--font-mono) !important;
-    font-size: var(--text-sm) !important; /* 13px */
-    height: 32px !important;
-    padding: 4px 10px !important;
-    background: rgba(0, 0, 0, 0.4) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 6px !important;
-    color: var(--text-primary) !important;
+    font-size: var(--text-sm) !important;
+    height: 34px !important;
+    padding: 4px 12px !important;
+    background: rgba(22, 32, 68, 0.8) !important;
+    border: 1px solid rgba(147, 197, 253, 0.22) !important;
+    border-radius: 8px !important;
+    color: #ffffff !important;
     box-sizing: border-box !important;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+    transition: all 0.2s ease !important;
 }
 input[type="text"]:focus, input[type="number"]:focus, .input-modern:focus, select:focus {
     border-color: #38bdf8 !important;
     outline: none !important;
-    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2) !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    background: rgba(28, 40, 84, 0.95) !important;
 }
 
 /* ==========================================================================
-   TABLES & CARDS - STRICT STANDARD SCALE
+   TABLES & CARDS - VIBRANT MODERN SYSTEM
    ========================================================================== */
 table {
     width: 100% !important;
@@ -1387,67 +1493,118 @@ table {
     font-size: var(--text-sm) !important;
 }
 th {
-    padding: 8px 12px !important;
+    padding: 10px 14px !important;
     font-size: var(--text-2xs) !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.05em !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em !important;
     text-transform: uppercase !important;
-    color: var(--text-muted) !important;
-    border-bottom: 1px solid var(--card-border) !important;
+    color: #94a3b8 !important;
+    border-bottom: 1px solid rgba(147, 197, 253, 0.15) !important;
+    background: rgba(26, 36, 72, 0.45) !important;
 }
 td {
-    padding: 10px 12px !important;
+    padding: 12px 14px !important;
     font-size: var(--text-sm) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+    border-bottom: 1px solid rgba(147, 197, 253, 0.08) !important;
+    background: rgba(255, 255, 255, 0.015) !important;
+}
+tr:hover td {
+    background: rgba(99, 102, 241, 0.1) !important;
+}
+
+/* Sub-surfaces & Stat Boxes (Replacing pitch black) */
+.stat-box-modern, .stat-row-modern, .pos-metric {
+    background: rgba(28, 38, 78, 0.55) !important;
+    border: 1px solid rgba(147, 197, 253, 0.18) !important;
+    box-shadow: 0 4px 14px rgba(7, 11, 30, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
 /* Hero Summary Bar */
 .summary-bar-hero {
-    padding: 14px 20px !important;
+    background: linear-gradient(135deg, rgba(26, 36, 74, 0.85) 0%, rgba(20, 26, 58, 0.88) 100%) !important;
+    border: 1px solid rgba(147, 197, 253, 0.22) !important;
+    box-shadow: 0 10px 32px rgba(7, 11, 30, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+    padding: 16px 24px !important;
     gap: 16px !important;
-    border-radius: 12px !important;
+    border-radius: 14px !important;
 }
 
 /* Live Trading Execution Deck */
 #live-trading-panel {
-    border-radius: 12px !important;
-    padding: 16px 20px !important;
+    background: linear-gradient(135deg, rgba(34, 26, 60, 0.88) 0%, rgba(24, 30, 66, 0.88) 100%) !important;
+    border: 1px solid rgba(244, 63, 94, 0.3) !important;
+    box-shadow: 0 10px 32px rgba(7, 11, 30, 0.5), 0 0 25px rgba(244, 63, 94, 0.1) !important;
+    border-radius: 14px !important;
+    padding: 18px 24px !important;
 }
 #live-delta-balance, #live-capital-used, #live-inr-pnl {
-    font-size: 1.15rem !important; /* 18.4px */
-    font-weight: 700 !important;
+    font-size: 1.25rem !important;
+    font-weight: 800 !important;
 }
 
 /* Active Positions Container & Ticket Cards */
 #active-positions-container {
-    border-radius: 12px !important;
+    border-radius: 14px !important;
 }
 .pos-card {
-    border-radius: 10px !important;
-    padding: 14px 18px !important;
-    gap: 12px !important;
+    background: linear-gradient(135deg, rgba(28, 38, 80, 0.7) 0%, rgba(20, 27, 58, 0.78) 100%) !important;
+    border: 1px solid rgba(147, 197, 253, 0.2) !important;
+    box-shadow: 0 8px 24px rgba(7, 11, 30, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    padding: 16px 20px !important;
+    gap: 14px !important;
+}
+.pos-card:hover {
+    border-color: rgba(139, 92, 246, 0.5) !important;
+    box-shadow: 0 12px 32px rgba(7, 11, 30, 0.6), 0 0 25px rgba(139, 92, 246, 0.2) !important;
 }
 .pos-metric {
-    border-radius: 8px !important;
-    padding: 8px 12px !important;
+    border-radius: 9px !important;
+    padding: 10px 14px !important;
 }
 .pos-metric-value {
-    font-size: 1.05rem !important;
+    font-size: 1.15rem !important;
+    font-weight: 800 !important;
 }
 .pos-empty {
-    padding: 36px 20px !important;
-    border-radius: 10px !important;
+    padding: 40px 24px !important;
+    border-radius: 12px !important;
+    background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.08), transparent 70%) !important;
+    border: 1px dashed rgba(147, 197, 253, 0.2) !important;
 }
 .pos-empty-icon {
-    font-size: 2rem !important;
+    font-size: 2.2rem !important;
     margin-bottom: 8px !important;
 }
 
-/* Sleek Dark Custom Scrollbars */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.4); }
+/* ARES IV Container - Luminous Radiant System (Minimal Black) */
+.ares-iv-container {
+    background: linear-gradient(135deg, rgba(22, 32, 68, 0.88) 0%, rgba(32, 24, 62, 0.88) 100%) !important;
+    border: 1px solid rgba(168, 85, 247, 0.3) !important;
+    box-shadow: 0 16px 40px rgba(7, 11, 30, 0.6), 0 0 30px rgba(168, 85, 247, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+.ares-metric-box, .ares-right-col, .ares-zone-meter, .ares-strip-box {
+    background: rgba(28, 40, 84, 0.55) !important;
+    border: 1px solid rgba(147, 197, 253, 0.18) !important;
+    box-shadow: 0 4px 14px rgba(7, 11, 30, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+.ares-header-stat {
+    background: rgba(36, 48, 96, 0.55) !important;
+    border: 1px solid rgba(147, 197, 253, 0.2) !important;
+}
+
+/* Log Terminals (No pitch black) */
+.log-terminal {
+    background: rgba(16, 24, 52, 0.8) !important;
+    border: 1px solid rgba(147, 197, 253, 0.18) !important;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Sleek Radiant Custom Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(14, 20, 48, 0.6); }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1, #a855f7); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #38bdf8, #ec4899); }
 
 </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
@@ -1520,22 +1677,34 @@ td {
     </div>
 
     <header>
-        <div>
-            <h1 style="display: flex; align-items: center; gap: 15px;">
-                Delta Engine 
-                <span id="regime-badge" style="font-size: 0.9rem; padding: 4px 10px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
-                    Regime: Unknown
-                </span>
-            </h1>
-            <div style="display: flex; align-items: center; gap: 12px; margin-top: 5px;">
-                <div style="color: var(--text-secondary); font-size: 0.9rem;">Automated Short Strangle Strategy</div>
-                <div style="width: 4px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 50%;"></div>
-                <div style="font-size: 0.85rem; color: #a855f7; font-weight: 600; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(168, 85, 247, 0.4);">
-                    Created by Ankush Rane
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(168, 85, 247, 0.25)); border: 1px solid rgba(56, 189, 248, 0.4); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; color: #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.25);">
+                Δ
+            </div>
+            <div>
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <h1 style="font-size: 1.65rem; margin: 0; background: linear-gradient(90deg, #ffffff 30%, #38bdf8 70%, #c084fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px;">
+                        Delta Options Engine
+                    </h1>
+                    <span id="regime-badge" style="font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8;">
+                        Regime: Standby
+                    </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 0.84rem; color: #94a3b8; flex-wrap: wrap;">
+                    <span>Dual Automated Strangle Systems</span>
+                    <span style="color: rgba(255,255,255,0.2);">•</span>
+                    <span>1DTE Daily & 44H BTST</span>
+                    <span style="color: rgba(255,255,255,0.2);">•</span>
+                    <span style="color: #a855f7; font-weight: 600; text-shadow: 0 0 10px rgba(168, 85, 247, 0.4);">
+                        Created by Ankush Rane
+                    </span>
                 </div>
             </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div id="live-ist-clock" style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 700; color: #38bdf8; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); padding: 7px 14px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                --:--:-- IST
+            </div>
             <div id="schedule-status-badge" class="schedule-badge standby" onclick="handleScheduleBadgeClick()" title="Click to wake active mode or refresh">
                 🌙 STANDBY
             </div>
@@ -1545,9 +1714,18 @@ td {
 
     <!-- Tab Navigation -->
     <nav class="tab-nav">
-        <button class="tab-btn active" id="tab-btn-live"      onclick="switchTab('live')"><span class="tab-live-dot"></span>Live Trade</button>
-        <button class="tab-btn"        id="tab-btn-history"   onclick="window.location.href='/history'">📓 Trade History</button>
-        <button class="tab-btn"        id="tab-btn-config"    onclick="switchTab('config')">&#9881;&#65039; Config</button>
+        <button class="tab-btn active" id="tab-btn-live" onclick="switchTab('live')">
+            <span class="tab-live-dot"></span>⚡ Live Intraday Strangle
+        </button>
+        <button class="tab-btn" id="tab-btn-btst" onclick="switchTab('btst')">
+            🌙 BTST 44H Strangle <span style="font-size: 0.7rem; padding: 2px 7px; border-radius: 12px; background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.35); color: #c084fc; margin-left: 4px;">AlgoTest BTC</span>
+        </button>
+        <button class="tab-btn" id="tab-btn-history" onclick="window.location.href='/history'">
+            📓 Trade History
+        </button>
+        <button class="tab-btn" id="tab-btn-config" onclick="switchTab('config')">
+            ⚙️ System Config & Logs
+        </button>
     </nav>
 
     
@@ -1600,12 +1778,12 @@ td {
 
             <div class="hero-divider" style="display:block; height: auto;"></div>
             <!-- Lot Size Box -->
-                    <div style="background: rgba(0,0,0,0.15); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 10px; padding: 18px; box-shadow: inset 0 0 10px rgba(168, 85, 247, 0.02);">
+                    <div style="background: linear-gradient(135deg, rgba(28, 38, 82, 0.6) 0%, rgba(20, 28, 64, 0.6) 100%); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 12px; padding: 18px 22px; box-shadow: 0 4px 16px rgba(7, 11, 30, 0.3), 0 0 15px rgba(168, 85, 247, 0.1);">
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                             <div>
                                 <div style="font-weight: 700; font-size: 1.05rem; color: #f8fafc; margin-bottom: 4px;">Manual Lot Size Override</div>
-                                <div style="font-size: 0.9rem; color: #94a3b8;">
-                                    Currently active: <strong id="active-lot-display" style="color: #c084fc; font-size: 1.15rem;">— lots</strong> <span id="active-lot-perleg" style="opacity: 0.8; font-size: 0.85rem;"></span>
+                                <div style="font-size: 0.9rem; color: #cbd5e1;">
+                                    Currently active: <strong id="active-lot-display" style="color: #c084fc; font-size: 1.15rem; text-shadow: 0 0 10px rgba(192, 132, 252, 0.4);">— lots</strong> <span id="active-lot-perleg" style="opacity: 0.8; font-size: 0.85rem;"></span>
                                 </div>
                             </div>
                             <div style="display: flex; flex-direction: column; align-items: flex-end;">
@@ -2104,19 +2282,19 @@ td {
                 justify-content: space-between;
                 flex-wrap: wrap;
                 gap: 14px;
-                padding: 14px 20px;
-                background: rgba(10, 14, 26, 0.9);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 12px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+                padding: 16px 22px;
+                background: linear-gradient(135deg, rgba(26, 36, 74, 0.85) 0%, rgba(20, 26, 58, 0.88) 100%);
+                border: 1px solid rgba(147, 197, 253, 0.22);
+                border-radius: 14px;
+                box-shadow: 0 8px 30px rgba(7, 11, 30, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
             }
             .engine-tabs {
                 display: flex;
-                gap: 4px;
-                background: rgba(0,0,0,0.5);
-                padding: 4px;
-                border-radius: 10px;
-                border: 1px solid rgba(255,255,255,0.08);
+                gap: 6px;
+                background: rgba(18, 26, 56, 0.75);
+                padding: 5px;
+                border-radius: 12px;
+                border: 1px solid rgba(147, 197, 253, 0.18);
             }
             .engine-tab-btn {
                 display: flex;
@@ -2202,12 +2380,12 @@ td {
         </div>
 
         <!-- Section 1: Trade Overview Card -->
-        <div class="glass-panel" id="overview-card-panel" style="padding: 24px; position: relative; border: 1px solid rgba(56, 189, 248, 0.3); background: radial-gradient(circle at top left, rgba(56,189,248,0.05) 0%, transparent 50%), rgba(0,0,0,0.4);">
+        <div class="glass-panel" id="overview-card-panel" style="padding: 24px; position: relative; border: 1px solid rgba(56, 189, 248, 0.4); background: linear-gradient(135deg, rgba(24, 34, 76, 0.85) 0%, rgba(18, 26, 62, 0.88) 100%); box-shadow: 0 10px 32px rgba(7, 11, 30, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h2 style="margin: 0; font-size: 1.15rem; color: #fff; font-weight: 700; display: flex; align-items: center; gap: 8px;" id="overview-card-title">
                     📊 Paper Simulation Overview
                 </h2>
-                <div id="overview-engine-tag" style="font-size: 0.72rem; font-weight: 800; letter-spacing: 1px; padding: 4px 12px; border-radius: 6px; background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3);">
+                <div id="overview-engine-tag" style="font-size: 0.72rem; font-weight: 800; letter-spacing: 1px; padding: 5px 14px; border-radius: 8px; background: linear-gradient(135deg, rgba(56,189,248,0.2), rgba(99,102,241,0.2)); color: #38bdf8; border: 1px solid rgba(56,189,248,0.4); box-shadow: 0 0 12px rgba(56,189,248,0.2);">
                     📄 PAPER SIMULATION
                 </div>
             </div>
@@ -2215,84 +2393,84 @@ td {
             <div id="pos-total-bar" style="display: flex; flex-direction: column; gap: 16px;">
                 
                 <!-- Main Header: INR P&L + Peak -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 16px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 18px 22px; background: linear-gradient(135deg, rgba(30, 42, 88, 0.65) 0%, rgba(22, 32, 72, 0.65) 100%); border-radius: 12px; border: 1px solid rgba(147, 197, 253, 0.2); box-shadow: 0 6px 20px rgba(7, 11, 30, 0.35);">
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;" id="pos-pnl-label">NET P&L</span>
-                        <div id="pos-total-pnl-inr" class="stat-val pnl-pos" style="font-size: 2.5rem; font-weight: 800; text-shadow: 0 0 20px rgba(16,185,129,0.4); line-height: 1;">₹0.00</div>
-                        <div id="pos-total-pnl-usd-sub" style="font-size: 0.85rem; font-weight: 500; opacity: 0.9; margin-top: 6px; text-shadow: 0 0 10px rgba(16,185,129,0.2);">--</div>
+                        <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;" id="pos-pnl-label">NET P&L</span>
+                        <div id="pos-total-pnl-inr" class="stat-val pnl-pos" style="font-size: 2.5rem; font-weight: 800; text-shadow: 0 0 24px rgba(16,185,129,0.5); line-height: 1;">₹0.00</div>
+                        <div id="pos-total-pnl-usd-sub" style="font-size: 0.88rem; font-weight: 600; opacity: 0.95; margin-top: 6px; text-shadow: 0 0 12px rgba(16,185,129,0.3);">--</div>
                     </div>
                     
-                    <div id="dpl-indicator" style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
-                        <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
-                            <span style="color: #34d399; font-size: 0.75rem; font-weight: 500;">Peak:</span>
-                            <span id="dpl-peak-value" style="color: #34d399; font-size: 0.85rem; font-weight: 700; text-shadow: 0 0 10px rgba(16,185,129,0.5);">--</span>
+                    <div id="dpl-indicator" style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                        <div style="background: rgba(16,185,129,0.18); border: 1px solid rgba(16,185,129,0.4); padding: 5px 12px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 14px rgba(16,185,129,0.2);">
+                            <span style="color: #34d399; font-size: 0.75rem; font-weight: 600;">Peak:</span>
+                            <span id="dpl-peak-value" style="color: #34d399; font-size: 0.9rem; font-weight: 800; text-shadow: 0 0 12px rgba(16,185,129,0.5);">--</span>
                         </div>
-                        <div style="font-size: 0.7rem; color: #38bdf8; display: flex; align-items: center; gap: 4px;">
+                        <div style="font-size: 0.75rem; color: #38bdf8; display: flex; align-items: center; gap: 6px; font-weight: 600;">
                             <span>SL Locked At:</span>
-                            <span id="dpl-sl-value" style="font-weight: 700;">--</span>
+                            <span id="dpl-sl-value" style="font-weight: 800; color: #7dd3fc;">--</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Active SL & TP Intelligence Grid -->
-                <div id="overview-risk-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding: 14px 16px; background: rgba(0,0,0,0.25); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                <div id="overview-risk-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; padding: 16px 20px; background: linear-gradient(135deg, rgba(28, 40, 84, 0.6) 0%, rgba(20, 30, 68, 0.6) 100%); border-radius: 12px; border: 1px solid rgba(147, 197, 253, 0.18); box-shadow: 0 4px 16px rgba(7, 11, 30, 0.3);">
                     <!-- Active Stop Loss -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <div style="font-size: 0.7rem; color: #ef4444; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 6px #ef4444;"></span>
+                        <div style="font-size: 0.72rem; color: #ff4b72; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                            <span style="width: 8px; height: 8px; border-radius: 50%; background: #ff4b72; box-shadow: 0 0 8px #ff4b72;"></span>
                             🛡️ Stop Loss (SL)
                         </div>
-                        <div id="overview-active-sl-val" style="font-size: 1.05rem; font-weight: 800; color: #f87171; font-family: 'JetBrains Mono', monospace;">--</div>
+                        <div id="overview-active-sl-val" style="font-size: 1.1rem; font-weight: 800; color: #f87171; font-family: 'JetBrains Mono', monospace;">--</div>
                         <div id="overview-active-sl-sub" style="font-size: 0.72rem; color: #94a3b8;">Hard SL: -100% of Premium</div>
                     </div>
                     <!-- Target Profit -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <div style="font-size: 0.7rem; color: #10b981; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
+                        <div style="font-size: 0.72rem; color: #00f59b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                            <span style="width: 8px; height: 8px; border-radius: 50%; background: #00f59b; box-shadow: 0 0 8px #00f59b;"></span>
                             🎯 Target Profit (TP)
                         </div>
-                        <div id="overview-active-tp-val" style="font-size: 1.05rem; font-weight: 800; color: #34d399; font-family: 'JetBrains Mono', monospace;">--</div>
+                        <div id="overview-active-tp-val" style="font-size: 1.1rem; font-weight: 800; color: #34d399; font-family: 'JetBrains Mono', monospace;">--</div>
                         <div id="overview-active-tp-sub" style="font-size: 0.72rem; color: #94a3b8;">+19% triggers +5% SL Lock</div>
                     </div>
                     <!-- Peak Profit -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <div style="font-size: 0.7rem; color: #38bdf8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 6px #38bdf8;"></span>
+                        <div style="font-size: 0.72rem; color: #00f2fe; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                            <span style="width: 8px; height: 8px; border-radius: 50%; background: #00f2fe; box-shadow: 0 0 8px #00f2fe;"></span>
                             📈 Peak Profit
                         </div>
-                        <div id="overview-peak-val" style="font-size: 1.05rem; font-weight: 800; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">--</div>
+                        <div id="overview-peak-val" style="font-size: 1.1rem; font-weight: 800; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">--</div>
                         <div id="overview-peak-sub" style="font-size: 0.72rem; color: #94a3b8;">Highest profit captured</div>
                     </div>
                     <!-- Profit Lock Status -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <div style="font-size: 0.7rem; color: #f59e0b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 6px #f59e0b;"></span>
+                        <div style="font-size: 0.72rem; color: #fbbf24; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                            <span style="width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; box-shadow: 0 0 8px #fbbf24;"></span>
                             🔒 Dynamic SL Lock
                         </div>
-                        <div id="overview-lock-status-val" style="font-size: 1.05rem; font-weight: 800; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">--</div>
+                        <div id="overview-lock-status-val" style="font-size: 1.1rem; font-weight: 800; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">--</div>
                         <div id="overview-lock-status-sub" style="font-size: 0.72rem; color: #94a3b8;">One-way profit ratchet</div>
                     </div>
                 </div>
 
                 <!-- 3 Column Grid -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                    <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
-                        <span style="font-size: 0.7rem; color: var(--text-secondary);" id="capital-used-label">Capital in Trade</span>
-                        <span style="font-size: 1.1rem; font-weight: 600; color: #10b981; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px rgba(16,185,129,0.3);">$<span id="pos-total-capital">0.00</span></span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+                    <div style="background: rgba(28, 40, 84, 0.6); border: 1px solid rgba(147,197,253,0.18); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 4px 12px rgba(7, 11, 30, 0.25);">
+                        <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;" id="capital-used-label">Capital in Trade</span>
+                        <span style="font-size: 1.15rem; font-weight: 800; color: #00f59b; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 12px rgba(0,245,155,0.35);">$<span id="pos-total-capital">0.00</span></span>
                     </div>
-                    <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
-                        <span style="font-size: 0.7rem; color: var(--text-secondary);">Premium Collected</span>
-                        <span style="font-size: 1.1rem; font-weight: 600; color: #10b981; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px rgba(16,185,129,0.3);">$<span id="pos-total-entry">0.00</span></span>
+                    <div style="background: rgba(28, 40, 84, 0.6); border: 1px solid rgba(147,197,253,0.18); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 4px 12px rgba(7, 11, 30, 0.25);">
+                        <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">Premium Collected</span>
+                        <span style="font-size: 1.15rem; font-weight: 800; color: #00f59b; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 12px rgba(0,245,155,0.35);">$<span id="pos-total-entry">0.00</span></span>
                     </div>
-                    <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
-                        <span style="font-size: 0.7rem; color: var(--text-secondary);">Total P&L (USDT)</span>
-                        <span id="pos-total-pnl-usd" class="stat-val pnl-pos" style="font-size: 1.1rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px rgba(16,185,129,0.3);">0.00</span>
+                    <div style="background: rgba(28, 40, 84, 0.6); border: 1px solid rgba(147,197,253,0.18); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 4px 12px rgba(7, 11, 30, 0.25);">
+                        <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">Total P&L (USDT)</span>
+                        <span id="pos-total-pnl-usd" class="stat-val pnl-pos" style="font-size: 1.15rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 12px rgba(0,245,155,0.35);">0.00</span>
                     </div>
                 </div>
 
                 <!-- Time Left -->
-                <div style="margin-top: 4px; padding: 12px; border-radius: 8px; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
-                    <span style="color: #34d399; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">Time to Square-off</span>
+                <div style="margin-top: 4px; padding: 14px 18px; border-radius: 10px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.12)); border: 1px solid rgba(16, 185, 129, 0.3); display: flex; flex-direction: row; justify-content: space-between; align-items: center; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);">
+                    <span style="color: #34d399; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Time to Square-off</span>
                     <span id="pos-time-remaining" style="color: #10b981; font-size: 1.2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px rgba(16,185,129,0.4);">--</span>
                 </div>
             </div>
@@ -2358,81 +2536,81 @@ td {
             </div>
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
                 <!-- Card 1: Live Delta Engine -->
-                <div style="background:linear-gradient(135deg, rgba(239,68,68,0.08), rgba(0,0,0,0.4)); border:1px solid rgba(239,68,68,0.3); border-radius:14px; padding:20px;">
+                <div style="background:linear-gradient(135deg, rgba(239,68,68,0.18) 0%, rgba(48, 20, 56, 0.75) 100%); border:1px solid rgba(239,68,68,0.45); border-radius:14px; padding:22px; box-shadow: 0 8px 30px rgba(239,68,68,0.15), inset 0 1px 0 rgba(255,255,255,0.1);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                        <span style="font-size:0.85rem; font-weight:800; color:#ef4444; letter-spacing:1px; text-transform:uppercase; display:flex; align-items:center; gap:6px;">
-                            <span style="width:8px; height:8px; border-radius:50%; background:#ef4444; box-shadow:0 0 8px #ef4444;"></span>
+                        <span style="font-size:0.88rem; font-weight:800; color:#ff4b72; letter-spacing:1px; text-transform:uppercase; display:flex; align-items:center; gap:8px;">
+                            <span style="width:9px; height:9px; border-radius:50%; background:#ff4b72; box-shadow:0 0 10px #ff4b72;"></span>
                             🔴 Live Delta Real Account
                         </span>
-                        <span id="dual-live-status-tag" style="font-size:0.7rem; font-weight:800; padding:3px 8px; border-radius:6px; background:rgba(239,68,68,0.15); color:#fca5a5;">STANDBY</span>
+                        <span id="dual-live-status-tag" style="font-size:0.72rem; font-weight:800; padding:4px 10px; border-radius:8px; background:rgba(239,68,68,0.25); color:#fca5a5; border:1px solid rgba(239,68,68,0.4);">STANDBY</span>
                     </div>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
                         <div>
-                            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Live Delta Balance</div>
-                            <div id="dual-live-equity" style="font-size:1.25rem; font-weight:800; color:#fff; font-family:'JetBrains Mono', monospace;">$0.00</div>
-                            <div id="dual-live-equity-inr" style="font-size:0.75rem; color:#94a3b8;">₹0.00 INR</div>
+                            <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; font-weight:600;">Live Delta Balance</div>
+                            <div id="dual-live-equity" style="font-size:1.3rem; font-weight:800; color:#fff; font-family:'JetBrains Mono', monospace;">$0.00</div>
+                            <div id="dual-live-equity-inr" style="font-size:0.75rem; color:#cbd5e1;">₹0.00 INR</div>
                         </div>
                         <div>
-                            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Realized Live PnL</div>
-                            <div id="dual-live-realized-pnl" style="font-size:1.25rem; font-weight:800; color:#10b981; font-family:'JetBrains Mono', monospace;">$0.00</div>
-                            <div id="dual-live-realized-inr" style="font-size:0.75rem; color:#94a3b8;">₹0.00 INR</div>
+                            <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; font-weight:600;">Realized Live PnL</div>
+                            <div id="dual-live-realized-pnl" style="font-size:1.3rem; font-weight:800; color:#00f59b; font-family:'JetBrains Mono', monospace; text-shadow:0 0 12px rgba(0,245,155,0.35);">$0.00</div>
+                            <div id="dual-live-realized-inr" style="font-size:0.75rem; color:#cbd5e1;">₹0.00 INR</div>
                         </div>
                     </div>
-                    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; padding:12px; background:rgba(0,0,0,0.3); border-radius:8px; border:1px solid rgba(255,255,255,0.04); margin-bottom:14px; text-align:center;">
+                    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; padding:14px; background:rgba(26, 36, 76, 0.6); border-radius:10px; border:1px solid rgba(147,197,253,0.18); margin-bottom:14px; text-align:center; box-shadow:0 4px 12px rgba(7,11,30,0.25);">
                         <div>
-                            <div style="font-size:0.68rem; color:#94a3b8;">Win Rate</div>
-                            <div id="dual-live-winrate" style="font-size:1rem; font-weight:800; color:#fff;">--%</div>
+                            <div style="font-size:0.7rem; color:#94a3b8; font-weight:600;">Win Rate</div>
+                            <div id="dual-live-winrate" style="font-size:1.1rem; font-weight:800; color:#fff;">--%</div>
                         </div>
                         <div>
-                            <div style="font-size:0.68rem; color:#94a3b8;">Closed Trades</div>
-                            <div id="dual-live-trades" style="font-size:1rem; font-weight:800; color:#fff;">0</div>
+                            <div style="font-size:0.7rem; color:#94a3b8; font-weight:600;">Closed Trades</div>
+                            <div id="dual-live-trades" style="font-size:1.1rem; font-weight:800; color:#fff;">0</div>
                         </div>
                         <div>
-                            <div style="font-size:0.68rem; color:#94a3b8;">Profit Factor</div>
-                            <div id="dual-live-pf" style="font-size:1rem; font-weight:800; color:#fff;">--</div>
+                            <div style="font-size:0.7rem; color:#94a3b8; font-weight:600;">Profit Factor</div>
+                            <div id="dual-live-pf" style="font-size:1.1rem; font-weight:800; color:#fff;">--</div>
                         </div>
                     </div>
-                    <a href="/history?mode=LIVE" style="display:block; text-align:center; padding:10px; border-radius:8px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.35); color:#fca5a5; font-size:0.82rem; font-weight:700; text-decoration:none; transition:all 0.2s;">
+                    <a href="/history?mode=LIVE" style="display:block; text-align:center; padding:11px; border-radius:9px; background:linear-gradient(135deg, rgba(239,68,68,0.25), rgba(225,29,72,0.25)); border:1px solid rgba(239,68,68,0.45); color:#fca5a5; font-size:0.85rem; font-weight:700; text-decoration:none; transition:all 0.2s; box-shadow:0 4px 12px rgba(239,68,68,0.15);">
                         📓 Open Live Delta Trade Ledger →
                     </a>
                 </div>
 
                 <!-- Card 2: Paper Simulation Engine -->
-                <div style="background:linear-gradient(135deg, rgba(56,189,248,0.08), rgba(0,0,0,0.4)); border:1px solid rgba(56,189,248,0.3); border-radius:14px; padding:20px;">
+                <div style="background:linear-gradient(135deg, rgba(6,182,212,0.18) 0%, rgba(24, 38, 86, 0.75) 100%); border:1px solid rgba(56,189,248,0.45); border-radius:14px; padding:22px; box-shadow: 0 8px 30px rgba(6,182,212,0.15), inset 0 1px 0 rgba(255,255,255,0.1);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                        <span style="font-size:0.85rem; font-weight:800; color:#38bdf8; letter-spacing:1px; text-transform:uppercase; display:flex; align-items:center; gap:6px;">
-                            <span style="width:8px; height:8px; border-radius:50%; background:#38bdf8; box-shadow:0 0 8px #38bdf8;"></span>
+                        <span style="font-size:0.88rem; font-weight:800; color:#38bdf8; letter-spacing:1px; text-transform:uppercase; display:flex; align-items:center; gap:8px;">
+                            <span style="width:9px; height:9px; border-radius:50%; background:#38bdf8; box-shadow:0 0 10px #38bdf8;"></span>
                             📄 Paper Simulation Sandbox
                         </span>
-                        <span id="dual-paper-status-tag" style="font-size:0.7rem; font-weight:800; padding:3px 8px; border-radius:6px; background:rgba(56,189,248,0.15); color:#7dd3fc;">RUNNING</span>
+                        <span id="dual-paper-status-tag" style="font-size:0.72rem; font-weight:800; padding:4px 10px; border-radius:8px; background:rgba(56,189,248,0.25); color:#7dd3fc; border:1px solid rgba(56,189,248,0.4);">RUNNING</span>
                     </div>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
                         <div>
-                            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Paper Sim Equity</div>
-                            <div id="dual-paper-equity" style="font-size:1.25rem; font-weight:800; color:#fff; font-family:'JetBrains Mono', monospace;">$50,000.00</div>
-                            <div style="font-size:0.75rem; color:#94a3b8;">$50,000.00 Base</div>
+                            <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; font-weight:600;">Paper Sim Equity</div>
+                            <div id="dual-paper-equity" style="font-size:1.3rem; font-weight:800; color:#fff; font-family:'JetBrains Mono', monospace;">$50,000.00</div>
+                            <div style="font-size:0.75rem; color:#cbd5e1;">$50,000.00 Base</div>
                         </div>
                         <div>
-                            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Realized Paper PnL</div>
-                            <div id="dual-paper-realized-pnl" style="font-size:1.25rem; font-weight:800; color:#10b981; font-family:'JetBrains Mono', monospace;">$0.00</div>
-                            <div id="dual-paper-realized-inr" style="font-size:0.75rem; color:#94a3b8;">₹0.00 INR</div>
+                            <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; font-weight:600;">Realized Paper PnL</div>
+                            <div id="dual-paper-realized-pnl" style="font-size:1.3rem; font-weight:800; color:#00f59b; font-family:'JetBrains Mono', monospace; text-shadow:0 0 12px rgba(0,245,155,0.35);">$0.00</div>
+                            <div id="dual-paper-realized-inr" style="font-size:0.75rem; color:#cbd5e1;">₹0.00 INR</div>
                         </div>
                     </div>
-                    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; padding:12px; background:rgba(0,0,0,0.3); border-radius:8px; border:1px solid rgba(255,255,255,0.04); margin-bottom:14px; text-align:center;">
+                    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; padding:14px; background:rgba(26, 36, 76, 0.6); border-radius:10px; border:1px solid rgba(147,197,253,0.18); margin-bottom:14px; text-align:center; box-shadow:0 4px 12px rgba(7,11,30,0.25);">
                         <div>
-                            <div style="font-size:0.68rem; color:#94a3b8;">Win Rate</div>
-                            <div id="dual-paper-winrate" style="font-size:1rem; font-weight:800; color:#10b981;">--%</div>
+                            <div style="font-size:0.7rem; color:#94a3b8; font-weight:600;">Win Rate</div>
+                            <div id="dual-paper-winrate" style="font-size:1.1rem; font-weight:800; color:#00f59b;">--%</div>
                         </div>
                         <div>
-                            <div style="font-size:0.68rem; color:#94a3b8;">Closed Trades</div>
-                            <div id="dual-paper-trades" style="font-size:1rem; font-weight:800; color:#fff;">0</div>
+                            <div style="font-size:0.7rem; color:#94a3b8; font-weight:600;">Closed Trades</div>
+                            <div id="dual-paper-trades" style="font-size:1.1rem; font-weight:800; color:#fff;">0</div>
                         </div>
                         <div>
-                            <div style="font-size:0.68rem; color:#94a3b8;">Profit Factor</div>
-                            <div id="dual-paper-pf" style="font-size:1rem; font-weight:800; color:#fff;">--</div>
+                            <div style="font-size:0.7rem; color:#94a3b8; font-weight:600;">Profit Factor</div>
+                            <div id="dual-paper-pf" style="font-size:1.1rem; font-weight:800; color:#fff;">--</div>
                         </div>
                     </div>
-                    <a href="/history?mode=PAPER" style="display:block; text-align:center; padding:10px; border-radius:8px; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.35); color:#7dd3fc; font-size:0.82rem; font-weight:700; text-decoration:none; transition:all 0.2s;">
+                    <a href="/history?mode=PAPER" style="display:block; text-align:center; padding:11px; border-radius:9px; background:linear-gradient(135deg, rgba(56,189,248,0.25), rgba(99,102,241,0.25)); border:1px solid rgba(56,189,248,0.45); color:#7dd3fc; font-size:0.85rem; font-weight:700; text-decoration:none; transition:all 0.2s; box-shadow:0 4px 12px rgba(56,189,248,0.15);">
                         📓 Open Paper Simulation History →
                     </a>
                 </div>
@@ -2760,7 +2938,470 @@ td {
 
 
 
-    </div><!-- /tab-market -->
+    </div><!-- /tab-live -->
+
+
+    <!-- ============================================================================== -->
+    <!-- TAB 2: BTST 44H STRANGLE STRATEGY (AlgoTest Forward-Testing Engine)           -->
+    <!-- ============================================================================== -->
+    <div class="tab-pane" id="tab-btst" style="display:none; max-width: 1800px; width: 100%; flex-direction: column; gap: 24px; animation: fadeIn 0.3s ease;">
+        
+        <!-- HERO COCKPIT HEADER -->
+        <div class="summary-bar-hero" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; background: linear-gradient(135deg, rgba(26, 36, 76, 0.88), rgba(15, 23, 52, 0.92)); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 16px; padding: 20px 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.15);">
+            <div style="display: flex; align-items: center; gap: 18px; flex-wrap: wrap;">
+                <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(56, 189, 248, 0.25)); border: 1px solid rgba(168, 85, 247, 0.4); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);">
+                    🌙
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; background: linear-gradient(90deg, #c084fc, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                            BTST 44H Strangle Forward-Tester
+                        </h2>
+                        <span id="btst-status-badge" style="font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.15); color: #00f59b;">
+                            🟢 ENGINE READY
+                        </span>
+                        <span id="btst-mode-badge" style="font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+                            📝 PAPER FORWARD-TEST
+                        </span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 4px;">
+                        Replicated from AlgoTest Strangle BTC | Entry: <b>10:30 PM IST</b> | Exit: <b>05:28 PM IST</b> (D+2 Expiry) | Partial SL Enabled
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <button id="btn-btst-trigger" onclick="triggerBtstEntry()" style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: 1px solid rgba(56, 189, 248, 0.4); padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35); transition: all 0.2s;">
+                    ⚡ Trigger Forward Test Entry Now
+                </button>
+                <button id="btn-btst-squareoff" onclick="squareOffBtst()" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.3)); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
+                    🛑 Square Off All
+                </button>
+                <button onclick="loadBtstData(true)" style="background: rgba(255,255,255,0.08); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.15); padding: 10px 14px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- QUICK STATS BAR -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div class="btst-metric-card">
+                <span class="btst-metric-label">Live BTC Spot Price</span>
+                <span class="btst-metric-val" id="btst-spot-price" style="color: #38bdf8;">$--</span>
+                <span style="font-size: 0.72rem; color: #64748b;">Delta Index / Real-time</span>
+            </div>
+            <div class="btst-metric-card">
+                <span class="btst-metric-label">Strategy Capital</span>
+                <span class="btst-metric-val" id="btst-capital-stat" style="color: #00f59b;">₹10,00,000</span>
+                <span style="font-size: 0.72rem; color: #64748b;" id="btst-lots-stat">500 Lots (0.5 BTC)</span>
+            </div>
+            <div class="btst-metric-card">
+                <span class="btst-metric-label">Target Holding Time</span>
+                <span class="btst-metric-val" style="color: #c084fc;">~44 Hours</span>
+                <span style="font-size: 0.72rem; color: #64748b;">10:30 PM to 05:28 PM (D+2)</span>
+            </div>
+            <div class="btst-metric-card">
+                <span class="btst-metric-label">Active Leg Stop Loss</span>
+                <span class="btst-metric-val" id="btst-sl-stat" style="color: #fbbf24;">100% (2x)</span>
+                <span style="font-size: 0.72rem; color: #34d399;">Partial SL Supported</span>
+            </div>
+            <div class="btst-metric-card">
+                <span class="btst-metric-label">Time to Expiry</span>
+                <span class="btst-metric-val" id="btst-time-remaining" style="color: #f472b6;">--</span>
+                <span style="font-size: 0.72rem; color: #64748b;" id="btst-expiry-date-stat">05:28 PM IST Target</span>
+            </div>
+        </div>
+
+        <!-- ACTIVE POSITION DECK -->
+        <div class="btst-card" style="border-color: rgba(56, 189, 248, 0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 1.25rem;">📡</span>
+                    <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #fff;">
+                        Active Forward-Test Trade Deck
+                    </h3>
+                    <span id="btst-pos-status-badge" style="font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #94a3b8;">
+                        NO ACTIVE POSITION
+                    </span>
+                </div>
+                <div id="btst-active-pnl-banner" style="display: none; align-items: center; gap: 14px;">
+                    <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 600;">Trade PnL:</span>
+                    <span id="btst-active-total-pnl-inr" style="font-size: 1.35rem; font-weight: 900; font-family: 'JetBrains Mono', monospace;">₹0.00</span>
+                    <span id="btst-active-total-pnl-usd" style="font-size: 0.95rem; font-weight: 700; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">($0.00)</span>
+                </div>
+            </div>
+
+            <!-- EMPTY STATE WHEN FLAT -->
+            <div id="btst-pos-empty" style="text-align: center; padding: 40px 20px; background: rgba(0,0,0,0.2); border-radius: 14px; border: 1px dashed rgba(147, 197, 253, 0.2);">
+                <div style="font-size: 2.2rem; margin-bottom: 12px;">💤</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 6px;">
+                    No Active BTST Position Currently Open
+                </div>
+                <div style="font-size: 0.85rem; color: #94a3b8; max-width: 600px; margin: 0 auto 20px auto;">
+                    The BTST engine will automatically calculate ATM straddle width and enter at <b>10:30 PM IST</b> on active trading days. You can also trigger an immediate forward-test trade at any time below.
+                </div>
+                <button onclick="triggerBtstEntry()" style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: 1px solid rgba(56, 189, 248, 0.4); padding: 10px 22px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);">
+                    ⚡ Open BTST Forward Test Trade Now
+                </button>
+            </div>
+
+            <!-- ACTIVE LEGS GRID -->
+            <div id="btst-pos-details" style="display: none; flex-direction: column; gap: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 12px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap; gap: 10px; font-size: 0.85rem;">
+                    <div>Trade ID: <b id="btst-trade-id-val" style="color: #38bdf8; font-family: 'JetBrains Mono', monospace;">BTST--</b></div>
+                    <div>Entry: <b id="btst-trade-entry-val" style="color: #e2e8f0;">--</b></div>
+                    <div>Expiry Target: <b id="btst-trade-expiry-val" style="color: #c084fc;">--</b> (05:28 PM IST)</div>
+                    <div>Straddle Offset: <b id="btst-trade-offset-val" style="color: #fbbf24;">-- pts (1.8x)</b></div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px;">
+                    <!-- CALL LEG CARD -->
+                    <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <span class="btst-badge-ce">CALL OPTION (CE)</span>
+                                <div id="btst-ce-symbol" style="font-size: 1.15rem; font-weight: 800; color: #fff; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">C-BTC--</div>
+                                <div id="btst-ce-sub" style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">Strike: -- | Lots: --</div>
+                            </div>
+                            <span id="btst-ce-status" style="font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #00f59b;">
+                                OPEN
+                            </span>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); text-align: center;">
+                            <div>
+                                <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Entry Price</div>
+                                <div id="btst-ce-entry" style="font-size: 1.05rem; font-weight: 700; color: #fff; font-family: 'JetBrains Mono', monospace;">$--</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Live Mark</div>
+                                <div id="btst-ce-current" style="font-size: 1.05rem; font-weight: 700; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">$--</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.72rem; color: #f87171; text-transform: uppercase;">Stop Loss (100%)</div>
+                                <div id="btst-ce-sl" style="font-size: 1.05rem; font-weight: 700; color: #f87171; font-family: 'JetBrains Mono', monospace;">$--</div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
+                            <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">Leg PnL:</span>
+                            <div style="text-align: right;">
+                                <div id="btst-ce-pnl-inr" style="font-size: 1.15rem; font-weight: 800; font-family: 'JetBrains Mono', monospace;">₹0.00</div>
+                                <div id="btst-ce-pnl-usd" style="font-size: 0.75rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">$0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PUT LEG CARD -->
+                    <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(244, 114, 182, 0.3); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <span class="btst-badge-pe">PUT OPTION (PE)</span>
+                                <div id="btst-pe-symbol" style="font-size: 1.15rem; font-weight: 800; color: #fff; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">P-BTC--</div>
+                                <div id="btst-pe-sub" style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">Strike: -- | Lots: --</div>
+                            </div>
+                            <span id="btst-pe-status" style="font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #00f59b;">
+                                OPEN
+                            </span>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); text-align: center;">
+                            <div>
+                                <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Entry Price</div>
+                                <div id="btst-pe-entry" style="font-size: 1.05rem; font-weight: 700; color: #fff; font-family: 'JetBrains Mono', monospace;">$--</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Live Mark</div>
+                                <div id="btst-pe-current" style="font-size: 1.05rem; font-weight: 700; color: #f472b6; font-family: 'JetBrains Mono', monospace;">$--</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.72rem; color: #f87171; text-transform: uppercase;">Stop Loss (100%)</div>
+                                <div id="btst-pe-sl" style="font-size: 1.05rem; font-weight: 700; color: #f87171; font-family: 'JetBrains Mono', monospace;">$--</div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
+                            <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">Leg PnL:</span>
+                            <div style="text-align: right;">
+                                <div id="btst-pe-pnl-inr" style="font-size: 1.15rem; font-weight: 800; font-family: 'JetBrains Mono', monospace;">₹0.00</div>
+                                <div id="btst-pe-pnl-usd" style="font-size: 0.75rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">$0.00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PARTIAL SL HIGHLIGHT BANNER -->
+                <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 0.82rem; color: #34d399;">
+                    <span>🛡️</span>
+                    <span><b>Partial Stop Loss Active:</b> If one leg hits its 100% SL, it will square off immediately to cap loss while the surviving leg continues running until 05:28 PM IST expiry to harvest theta decay.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- DUAL COLUMN: STRATEGY CONFIGURATION & STRIKE CALCULATION PREVIEW -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px;">
+            
+            <!-- COLUMN 1: EDITABLE STRATEGY PARAMETERS -->
+            <div class="btst-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.2rem;">⚙️</span>
+                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #fff;">Strategy Settings</h3>
+                    </div>
+                    <span style="font-size: 0.75rem; color: #38bdf8; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); border-radius: 6px; padding: 2px 8px;">
+                        AlgoTest BTC Strangle
+                    </span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Capital in INR -->
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                            Strategy Capital (INR ₹)
+                        </label>
+                        <input type="number" id="btst-cfg-capital" class="btst-input" placeholder="1000000" step="50000">
+                        <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">Editable capital base for margin and sizing calculation.</div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <!-- Lot Size -->
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                                Lots per Leg
+                            </label>
+                            <input type="number" id="btst-cfg-lots" class="btst-input" placeholder="500" min="1">
+                            <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">500 lots = 0.50 BTC</div>
+                        </div>
+
+                        <!-- Stop Loss % -->
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                                Stop Loss (%)
+                            </label>
+                            <input type="number" id="btst-cfg-sl" class="btst-input" placeholder="100" min="10" max="500">
+                            <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">100% = 2x entry premium</div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <!-- Straddle Multiplier -->
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                                Straddle Multiplier
+                            </label>
+                            <input type="number" id="btst-cfg-multiplier" class="btst-input" placeholder="1.8" step="0.1" min="0.5" max="5.0">
+                            <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">Default 1.8x Straddle Width</div>
+                        </div>
+
+                        <!-- USD to INR Rate -->
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                                USD / INR FX Rate
+                            </label>
+                            <input type="number" id="btst-cfg-fx" class="btst-input" placeholder="85.0" step="0.5">
+                            <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">Standard Delta rate: ₹85</div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <!-- Entry Time IST -->
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                                Entry Time (IST)
+                            </label>
+                            <input type="text" id="btst-cfg-entry-time" class="btst-input" placeholder="22:30">
+                            <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">22:30 IST (10:30 PM)</div>
+                        </div>
+
+                        <!-- Exit Time IST -->
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                                Exit Time (IST)
+                            </label>
+                            <input type="text" id="btst-cfg-exit-time" class="btst-input" placeholder="17:28">
+                            <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">17:28 IST (05:28 PM)</div>
+                        </div>
+                    </div>
+
+                    <!-- Mode Selection -->
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                            Execution Mode
+                        </label>
+                        <select id="btst-cfg-mode" class="btst-input">
+                            <option value="PAPER">📝 PAPER (Automated Forward-Test Sandbox)</option>
+                            <option value="LIVE">⚡ LIVE (Real Exchange Orders via Delta API)</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 6px;">
+                        <button id="btn-save-btst-cfg" onclick="saveBtstConfig()" style="flex: 1; background: linear-gradient(135deg, #059669, #10b981); color: #fff; border: 1px solid rgba(16,185,129,0.4); padding: 12px 18px; border-radius: 10px; font-weight: 800; font-size: 0.95rem; cursor: pointer; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transition: all 0.2s;">
+                            💾 Save Strategy Settings
+                        </button>
+                    </div>
+                    <div id="btst-cfg-feedback" style="font-size: 0.82rem; font-weight: 600; text-align: center;"></div>
+                </div>
+            </div>
+
+            <!-- COLUMN 2: LIVE MATH PREVIEW CARD -->
+            <div class="btst-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.2rem;">🎯</span>
+                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #fff;">
+                            Straddle Width Strike Calculation
+                        </h3>
+                    </div>
+                    <button onclick="previewBtstStrikes()" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #38bdf8; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">
+                        🔄 Recalculate
+                    </button>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 6px; font-weight: 600;">ALGO MATH FORMULA:</div>
+                        <div style="font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; color: #c084fc; line-height: 1.6;">
+                            ATM Straddle Price = ATM CE + ATM PE<br>
+                            Offset = Round(1.8 × ATM Straddle Price)<br>
+                            CE Strike = ATM + Offset (Nearest Available)<br>
+                            PE Strike = ATM - Offset (Nearest Available)
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
+                            <div style="font-size: 0.72rem; color: #94a3b8;">ATM Strike</div>
+                            <div id="btst-preview-atm" style="font-size: 1.1rem; font-weight: 800; color: #fff; font-family: 'JetBrains Mono', monospace;">--</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
+                            <div style="font-size: 0.72rem; color: #94a3b8;">ATM Straddle Price</div>
+                            <div id="btst-preview-straddle" style="font-size: 1.1rem; font-weight: 800; color: #00f59b; font-family: 'JetBrains Mono', monospace;">$--</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
+                            <div style="font-size: 0.72rem; color: #94a3b8;">1.8x Straddle Offset</div>
+                            <div id="btst-preview-offset" style="font-size: 1.1rem; font-weight: 800; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">-- pts</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
+                            <div style="font-size: 0.72rem; color: #94a3b8;">Target Expiry (D+2)</div>
+                            <div id="btst-preview-exp" style="font-size: 1.1rem; font-weight: 800; color: #f472b6; font-family: 'JetBrains Mono', monospace;">--</div>
+                        </div>
+                    </div>
+
+                    <!-- Projected Strikes Box -->
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 10px 14px;">
+                            <div>
+                                <span class="btst-badge-ce">CALL STRIKE</span>
+                                <div id="btst-preview-ce-sym" style="font-size: 0.95rem; font-weight: 700; color: #fff; font-family: 'JetBrains Mono', monospace; margin-top: 3px;">C-BTC--</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div id="btst-preview-ce-price" style="font-size: 0.95rem; font-weight: 800; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">$--</div>
+                                <div id="btst-preview-ce-sl" style="font-size: 0.72rem; color: #f87171;">SL: $--</div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(244, 114, 182, 0.08); border: 1px solid rgba(244, 114, 182, 0.25); border-radius: 8px; padding: 10px 14px;">
+                            <div>
+                                <span class="btst-badge-pe">PUT STRIKE</span>
+                                <div id="btst-preview-pe-sym" style="font-size: 0.95rem; font-weight: 700; color: #fff; font-family: 'JetBrains Mono', monospace; margin-top: 3px;">P-BTC--</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div id="btst-preview-pe-price" style="font-size: 0.95rem; font-weight: 800; color: #f472b6; font-family: 'JetBrains Mono', monospace;">$--</div>
+                                <div id="btst-preview-pe-sl" style="font-size: 0.72rem; color: #f87171;">SL: $--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PERFORMANCE SUMMARY CARDS (Matching AlgoTest Screenshot Report) -->
+        <div class="btst-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.25rem;">📈</span>
+                    <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #fff;">
+                        AlgoTest Forward-Test Performance Ledger
+                    </h3>
+                </div>
+                <div style="font-size: 0.8rem; color: #94a3b8;">
+                    All PnL values calculated in INR (₹) at standard Delta 85 FX rate
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px;">
+                <div class="btst-metric-card">
+                    <span class="btst-metric-label">Overall Profit</span>
+                    <span class="btst-metric-val" id="btst-stat-overall-pnl" style="color: #00f59b;">₹0.00</span>
+                    <span id="btst-stat-overall-usd" style="font-size: 0.75rem; color: #94a3b8;">$0.00 USD</span>
+                </div>
+                <div class="btst-metric-card">
+                    <span class="btst-metric-label">No. of Trades</span>
+                    <span class="btst-metric-val" id="btst-stat-trades" style="color: #38bdf8;">0</span>
+                    <span id="btst-stat-legs" style="font-size: 0.75rem; color: #94a3b8;">0 Total Legs</span>
+                </div>
+                <div class="btst-metric-card">
+                    <span class="btst-metric-label">Win Rate %</span>
+                    <span class="btst-metric-val" id="btst-stat-winrate" style="color: #c084fc;">0.0%</span>
+                    <span id="btst-stat-lossrate" style="font-size: 0.75rem; color: #94a3b8;">Loss %: 0.0%</span>
+                </div>
+                <div class="btst-metric-card">
+                    <span class="btst-metric-label">Avg Profit / Trade</span>
+                    <span class="btst-metric-val" id="btst-stat-avg-trade" style="color: #fbbf24;">₹0.00</span>
+                    <span style="font-size: 0.75rem; color: #64748b;">Per Completed Strangle</span>
+                </div>
+                <div class="btst-metric-card">
+                    <span class="btst-metric-label">Max Profit / Loss</span>
+                    <span class="btst-metric-val" id="btst-stat-max-profit" style="color: #34d399; font-size: 1.25rem;">₹0.00</span>
+                    <span id="btst-stat-max-loss" style="font-size: 0.75rem; color: #f87171;">Max Loss: ₹0.00</span>
+                </div>
+                <div class="btst-metric-card">
+                    <span class="btst-metric-label">Max Drawdown</span>
+                    <span class="btst-metric-val" id="btst-stat-mdd" style="color: #ff4b72;">₹0.00</span>
+                    <span id="btst-stat-rrr" style="font-size: 0.75rem; color: #94a3b8;">Reward/Risk: 0.00</span>
+                </div>
+            </div>
+
+            <!-- TRADE HISTORY TABLE (AlgoTest Format) -->
+            <div style="border-radius: 12px; overflow: hidden; border: 1px solid rgba(147, 197, 253, 0.2);">
+                <div style="background: rgba(15, 23, 52, 0.9); padding: 12px 18px; border-bottom: 1px solid rgba(147, 197, 253, 0.2); font-weight: 700; font-size: 0.9rem; color: #fff; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Completed Trades (AlgoTest Schema)</span>
+                    <span id="btst-table-count" style="font-size: 0.75rem; color: #94a3b8;">0 records</span>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="btst-table">
+                        <thead>
+                            <tr>
+                                <th>Index</th>
+                                <th>Entry Date</th>
+                                <th>Entry Time</th>
+                                <th>Exit Date</th>
+                                <th>Exit Time</th>
+                                <th>Type</th>
+                                <th>Strike</th>
+                                <th>B/S</th>
+                                <th>Lots</th>
+                                <th>Entry Price ($)</th>
+                                <th>Exit Price ($)</th>
+                                <th>P/L (₹)</th>
+                                <th>Exit Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody id="btst-history-tbody">
+                            <tr>
+                                <td colspan="13" style="text-align: center; color: #94a3b8; padding: 30px;">
+                                    No completed forward-test trades yet. Trades will automatically populate here upon leg exit or expiry.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /tab-btst -->
+
 
     <!-- TAB 3b: CONFIG remainder -->
     <div class="tab-pane" id="tab-config-b">
@@ -2780,10 +3421,22 @@ td {
                 Loading Pro-Trader Journal...
             </div>
         </div>
-
+    </div><!-- /tab-config-b -->
 
     <script>
         console.log("Dashboard: Script Initializing...");
+
+        // Live IST Clock Updater (Delta Exchange India operates in IST)
+        function updateLiveIstClock() {
+            const clock = document.getElementById('live-ist-clock');
+            if (clock) {
+                const now = new Date();
+                const istStr = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour12: false });
+                clock.textContent = istStr + ' IST';
+            }
+        }
+        setInterval(updateLiveIstClock, 1000);
+        updateLiveIstClock();
 
         // ── P&L Smoothing Cache ──────────────────────────────────────────────
         // Prevents wild jumps when switching screens or tab-switching.
@@ -2914,14 +3567,14 @@ td {
 
             if (activeInspectMode === 'LIVE') {
                 if (overviewPanel) {
-                    overviewPanel.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                    overviewPanel.style.background = 'radial-gradient(circle at top left, rgba(239,68,68,0.06) 0%, transparent 50%), rgba(0,0,0,0.4)';
+                    overviewPanel.style.borderColor = 'rgba(239, 68, 68, 0.45)';
+                    overviewPanel.style.background = 'linear-gradient(135deg, rgba(46, 22, 58, 0.85) 0%, rgba(26, 32, 70, 0.85) 100%)';
                 }
                 if (overviewTitle) overviewTitle.innerHTML = '📊 🔴 Live Delta Trade Overview';
                 if (overviewTag) {
                     overviewTag.textContent = '🔴 REAL DELTA EXCHANGE';
-                    overviewTag.style.background = 'rgba(239, 68, 68, 0.15)';
-                    overviewTag.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                    overviewTag.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(225, 29, 72, 0.25))';
+                    overviewTag.style.borderColor = 'rgba(239, 68, 68, 0.5)';
                     overviewTag.style.color = '#fca5a5';
                 }
                 if (posHeading) posHeading.innerHTML = '📈 🔴 Live Delta Active Positions';
@@ -2932,14 +3585,14 @@ td {
                 if (capUsedLabel) capUsedLabel.textContent = 'Margin in Trade';
             } else {
                 if (overviewPanel) {
-                    overviewPanel.style.borderColor = 'rgba(56, 189, 248, 0.3)';
-                    overviewPanel.style.background = 'radial-gradient(circle at top left, rgba(56,189,248,0.06) 0%, transparent 50%), rgba(0,0,0,0.4)';
+                    overviewPanel.style.borderColor = 'rgba(56, 189, 248, 0.45)';
+                    overviewPanel.style.background = 'linear-gradient(135deg, rgba(24, 34, 76, 0.85) 0%, rgba(18, 26, 62, 0.88) 100%)';
                 }
                 if (overviewTitle) overviewTitle.innerHTML = '📊 📄 Paper Simulation Overview';
                 if (overviewTag) {
                     overviewTag.textContent = '📄 PAPER SIMULATION';
-                    overviewTag.style.background = 'rgba(56, 189, 248, 0.15)';
-                    overviewTag.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+                    overviewTag.style.background = 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(99, 102, 241, 0.2))';
+                    overviewTag.style.borderColor = 'rgba(56, 189, 248, 0.4)';
                     overviewTag.style.color = '#38bdf8';
                 }
                 if (posHeading) posHeading.innerHTML = '📈 📄 Paper Simulated Positions';
@@ -3903,9 +4556,11 @@ td {
                         pill.style.boxShadow = 'none';
                     }
                 }
-
-
-                if (data.today_skip_reason) {
+                // Today's Skip Reason Section update
+                const skipTitle = document.getElementById('skip-reason-title');
+                const skipText = document.getElementById('skip-reason-text');
+                if (skipTitle && skipText) {
+                    if (data.today_skip_reason) {
                         // We have an active skip today! Style in red.
                         skipTitle.innerHTML = "🚫 Today's Skip Reason";
                         skipText.textContent = data.today_skip_reason;
@@ -3944,9 +4599,9 @@ td {
                 // Update Skip & Schedule Info
                 if(data.schedule_info) {
                     const statusBadge = document.getElementById('today-status-badge');
-                    const status = data.schedule_info.today_status;
-                    const reason = data.schedule_info.today_reason;
-                    
+                    if(statusBadge) {
+                        const status = data.schedule_info.today_status;
+                        const reason = data.schedule_info.today_reason;
                     if (status === "Trade Taken") {
                         statusBadge.textContent = "✅ " + status;
                         statusBadge.style.color = "var(--success)";
@@ -3973,6 +4628,7 @@ td {
                         statusBadge.style.color = "var(--text-secondary)";
                         statusBadge.style.background = "rgba(255, 255, 255, 0.05)";
                         statusBadge.style.border = "1px solid rgba(255, 255, 255, 0.1)";
+                    }
                     }
 
                     // ── TRADE SKIP ALERT CARD ──────────────────────────────────────
@@ -4045,7 +4701,7 @@ td {
                     let warningText = "";
                     
                     if (data.schedule_info.upcoming_schedule && data.schedule_info.upcoming_schedule.length > 0) {
-                        schedBody.innerHTML = '';
+                        if (schedBody) schedBody.innerHTML = '';
                         data.schedule_info.upcoming_schedule.forEach((day, index) => {
                             if ((index === 1 || index === 2) && day.skip && !showWarning) {
                                 showWarning = true;
@@ -4055,39 +4711,45 @@ td {
                             let statusColor = day.skip ? (day.skip_type === 'severe' ? 'var(--danger)' : 'var(--warning)') : 'var(--success)';
                             let statusText = day.skip ? '⏭️ Skipped' : '✅ Scheduled';
                             
-                            schedBody.innerHTML += `
-                                <tr>
+                            if (schedBody) {
+                                schedBody.innerHTML += `
+                                    <tr>
                                     <td style="font-weight: 600;">${day.date}</td>
                                     <td style="color: var(--text-secondary);">${day.day}</td>
                                     <td style="color: ${statusColor}; font-weight: 600;">${statusText}</td>
                                     <td style="color: var(--text-secondary);">${day.reason || '-'}</td>
                                 </tr>
                             `;
+                            }
                         });
                     }
                     
                     const warningBox = document.getElementById('early-warning-box');
-                    if (showWarning) {
-                        warningBox.style.display = 'flex';
-                        warningBox.textContent = warningText;
-                    } else {
-                        warningBox.style.display = 'none';
+                    if (warningBox) {
+                        if (showWarning) {
+                            warningBox.style.display = 'flex';
+                            warningBox.textContent = warningText;
+                        } else {
+                            warningBox.style.display = 'none';
+                        }
                     }
                 }
 
                 // Update Logs
                 const logTerm = document.getElementById('log-terminal');
-                const isScrolledToBottom = logTerm.scrollHeight - logTerm.clientHeight <= logTerm.scrollTop + 10;
-                
-                logTerm.innerHTML = data.logs.map(line => {
-                    let color = "#a7f3d0"; // default green-ish
-                    if(line.includes("ERROR") || line.includes("CRITICAL")) color = "#fca5a5";
-                    if(line.includes("WARNING")) color = "#fde047";
-                    return `<div class="log-line" style="color: ${color};">${line}</div>`;
-                }).join('');
+                if (logTerm && data.logs) {
+                    const isScrolledToBottom = logTerm.scrollHeight - logTerm.clientHeight <= logTerm.scrollTop + 10;
+                    
+                    logTerm.innerHTML = data.logs.map(line => {
+                        let color = "#a7f3d0"; // default green-ish
+                        if(line.includes("ERROR") || line.includes("CRITICAL")) color = "#fca5a5";
+                        if(line.includes("WARNING")) color = "#fde047";
+                        return `<div class="log-line" style="color: ${color};">${line}</div>`;
+                    }).join('');
 
-                if (isScrolledToBottom) {
-                    logTerm.scrollTop = logTerm.scrollHeight;
+                    if (isScrolledToBottom) {
+                        logTerm.scrollTop = logTerm.scrollHeight;
+                    }
                 }
 
                 // Evaluate Standby vs Active mode
@@ -4523,6 +5185,8 @@ td {
                 const tbody = document.getElementById('news-body');
                 const alertBadge = document.getElementById('news-alert-badge');
                 
+                if (!tbody) return;
+
                 if(!events || events.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-secondary);">No high/medium impact USD events found this week.</td></tr>';
                     if(alertBadge) alertBadge.style.display = 'none';
@@ -4566,6 +5230,7 @@ td {
                 const res = await fetch('/api/reports');
                 const reports = await res.json();
                 const tbody = document.getElementById('reports-body');
+                if (!tbody) return;
                 
                 if (!reports || Object.keys(reports).length === 0) {
                     tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No reports available yet.</td></tr>';
@@ -4574,13 +5239,14 @@ td {
                 
                 let html = '';
                 for (const [date, data] of Object.entries(reports)) {
-                    const pnl = data.summary.net_pnl_usd;
+                    const summary = data.summary || {net_pnl_usd: 0, total_trades: 0, win_rate: 0};
+                    const pnl = summary.net_pnl_usd;
                     const pnlColor = pnl >= 0 ? 'var(--success)' : 'var(--danger)';
                     html += `
                         <tr>
                             <td style="font-weight: 600;">${date}</td>
                             <td style="color: ${pnlColor}; font-weight: 800;">$${pnl.toFixed(2)}</td>
-                            <td>${data.summary.total_trades} Trades (${data.summary.win_rate.toFixed(1)}% Win)</td>
+                            <td>${summary.total_trades} Trades (${summary.win_rate.toFixed(1)}% Win)</td>
                             <td style="display: flex; gap: 8px; justify-content: flex-end;">
                                 <button onclick="window.open('${data.pdf_path}', '_blank')" style="padding: 4px 10px; font-size: 0.8rem; background: rgba(255,255,255,0.1); color: #fff; width: auto; flex: none; border-radius: 8px;">View</button>
                                 <a href="${data.pdf_path}" download style="padding: 6px 12px; font-size: 0.8rem; background: rgba(16, 185, 129, 0.2); color: var(--success); border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">PDF</a>
@@ -4710,26 +5376,418 @@ td {
 
 
 
+
+        // ==============================================================================
+        // 🌙 BTST 44H STRANGLE STRATEGY (AlgoTest Forward-Testing Engine)
+        // ==============================================================================
+        let btstUserEditing = false;
+        let btstPollingTimer = null;
+
+        async function loadBtstData(forcePreview = false) {
+            try {
+                const res = await fetch('/api/btst/status');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                renderBtstUI(data);
+
+                if (forcePreview) {
+                    previewBtstStrikes();
+                }
+            } catch (err) {
+                console.warn('[BTST] Standby / offline:', err);
+                const posBadge = document.getElementById('btst-pos-status-badge');
+                if (posBadge && (!posBadge.textContent || posBadge.textContent.includes('NO ACTIVE'))) {
+                    posBadge.textContent = 'ENGINE STANDBY';
+                }
+            }
+        }
+
+        function renderBtstUI(data) {
+            if (!data) return;
+
+            // Spot Price & Quick Stats
+            if (data.btc_spot_price) {
+                const spEl = document.getElementById('btst-spot-price');
+                if (spEl) spEl.textContent = '$' + Number(data.btc_spot_price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+            if (data.time_remaining) {
+                const trEl = document.getElementById('btst-time-remaining');
+                if (trEl) trEl.textContent = data.time_remaining;
+            }
+
+            // Fill Configuration Inputs (only if user is not actively editing)
+            if (data.config && !btstUserEditing) {
+                const cfg = data.config;
+                if (document.getElementById('btst-cfg-capital')) document.getElementById('btst-cfg-capital').value = cfg.capital_inr || 1000000;
+                if (document.getElementById('btst-cfg-lots')) document.getElementById('btst-cfg-lots').value = cfg.lots || 500;
+                if (document.getElementById('btst-cfg-sl')) document.getElementById('btst-cfg-sl').value = cfg.sl_pct || 100;
+                if (document.getElementById('btst-cfg-multiplier')) document.getElementById('btst-cfg-multiplier').value = cfg.straddle_multiplier || 1.8;
+                if (document.getElementById('btst-cfg-fx')) document.getElementById('btst-cfg-fx').value = cfg.usd_to_inr || 85.0;
+                if (document.getElementById('btst-cfg-entry-time')) document.getElementById('btst-cfg-entry-time').value = cfg.entry_time_ist || '22:30';
+                if (document.getElementById('btst-cfg-exit-time')) document.getElementById('btst-cfg-exit-time').value = cfg.exit_time_ist || '17:28';
+                if (document.getElementById('btst-cfg-mode')) document.getElementById('btst-cfg-mode').value = cfg.mode || 'PAPER';
+
+                // Badges in header
+                const mb = document.getElementById('btst-mode-badge');
+                if (mb) {
+                    if (cfg.mode === 'LIVE') {
+                        mb.textContent = '⚡ LIVE REAL ORDERS';
+                        mb.style.color = '#ef4444';
+                        mb.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                        mb.style.background = 'rgba(239, 68, 68, 0.15)';
+                    } else {
+                        mb.textContent = '📝 PAPER FORWARD-TEST';
+                        mb.style.color = '#38bdf8';
+                        mb.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+                        mb.style.background = 'rgba(56, 189, 248, 0.15)';
+                    }
+                }
+
+                const capStat = document.getElementById('btst-capital-stat');
+                if (capStat) capStat.textContent = '₹' + Number(cfg.capital_inr || 1000000).toLocaleString('en-IN');
+                const lotsStat = document.getElementById('btst-lots-stat');
+                if (lotsStat) lotsStat.textContent = (cfg.lots || 500) + ' Lots (' + ((cfg.lots || 500) * 0.001).toFixed(2) + ' BTC)';
+                const slStat = document.getElementById('btst-sl-stat');
+                if (slStat) slStat.textContent = (cfg.sl_pct || 100) + '% (2x)';
+            }
+
+            // Render Active Position Deck
+            const trade = data.active_trade;
+            const emptyEl = document.getElementById('btst-pos-empty');
+            const detailsEl = document.getElementById('btst-pos-details');
+            const posBadge = document.getElementById('btst-pos-status-badge');
+            const pnlBanner = document.getElementById('btst-active-pnl-banner');
+
+            if (!trade || trade.status === 'CLOSED') {
+                if (emptyEl) emptyEl.style.display = 'block';
+                if (detailsEl) detailsEl.style.display = 'none';
+                if (pnlBanner) pnlBanner.style.display = 'none';
+                if (posBadge) {
+                    posBadge.textContent = 'STANDBY (NO ACTIVE TRADE)';
+                    posBadge.style.color = '#94a3b8';
+                    posBadge.style.borderColor = 'rgba(255,255,255,0.15)';
+                    posBadge.style.background = 'rgba(255,255,255,0.06)';
+                }
+            } else {
+                if (emptyEl) emptyEl.style.display = 'none';
+                if (detailsEl) detailsEl.style.display = 'flex';
+                if (pnlBanner) pnlBanner.style.display = 'flex';
+
+                if (posBadge) {
+                    posBadge.textContent = trade.status === 'PARTIALLY_CLOSED' ? '🟡 PARTIAL SL TRIGGERED' : '🟢 RUNNING (BOTH LEGS)';
+                    posBadge.style.color = trade.status === 'PARTIALLY_CLOSED' ? '#fbbf24' : '#00f59b';
+                    posBadge.style.borderColor = trade.status === 'PARTIALLY_CLOSED' ? 'rgba(251, 191, 36, 0.4)' : 'rgba(16, 185, 129, 0.4)';
+                    posBadge.style.background = trade.status === 'PARTIALLY_CLOSED' ? 'rgba(251, 191, 36, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+                }
+
+                // Top meta
+                if (document.getElementById('btst-trade-id-val')) document.getElementById('btst-trade-id-val').textContent = trade.trade_id;
+                if (document.getElementById('btst-trade-entry-val')) document.getElementById('btst-trade-entry-val').textContent = trade.entry_time;
+                if (document.getElementById('btst-trade-expiry-val')) document.getElementById('btst-trade-expiry-val').textContent = trade.target_exit_time;
+                if (document.getElementById('btst-trade-offset-val')) document.getElementById('btst-trade-offset-val').textContent = trade.offset_points + ' pts (' + (trade.straddle_multiplier || 1.8) + 'x)';
+
+                // Overall Active PnL
+                const pnlInrEl = document.getElementById('btst-active-total-pnl-inr');
+                const pnlUsdEl = document.getElementById('btst-active-total-pnl-usd');
+                const totalInr = trade.total_pnl_inr || 0;
+                const totalUsd = trade.total_pnl_usd || 0;
+                if (pnlInrEl) {
+                    pnlInrEl.textContent = (totalInr >= 0 ? '+' : '') + '₹' + Number(totalInr).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    pnlInrEl.style.color = totalInr >= 0 ? '#00f59b' : '#ff4b72';
+                }
+                if (pnlUsdEl) {
+                    pnlUsdEl.textContent = '(' + (totalUsd >= 0 ? '+' : '') + '$' + Number(totalUsd).toFixed(2) + ')';
+                }
+
+                // Call Leg
+                const ce = trade.ce_leg;
+                if (ce) {
+                    if (document.getElementById('btst-ce-symbol')) document.getElementById('btst-ce-symbol').textContent = ce.symbol;
+                    if (document.getElementById('btst-ce-sub')) document.getElementById('btst-ce-sub').textContent = 'Strike: ' + ce.strike + ' | ' + ce.lots + ' Lots (' + trade.qty_btc + ' BTC)';
+                    if (document.getElementById('btst-ce-entry')) document.getElementById('btst-ce-entry').textContent = '$' + Number(ce.entry_price).toFixed(2);
+                    if (document.getElementById('btst-ce-current')) document.getElementById('btst-ce-current').textContent = '$' + Number(ce.current_price).toFixed(2);
+                    if (document.getElementById('btst-ce-sl')) document.getElementById('btst-ce-sl').textContent = '$' + Number(ce.sl_price).toFixed(2);
+
+                    const ceStatusEl = document.getElementById('btst-ce-status');
+                    if (ceStatusEl) {
+                        ceStatusEl.textContent = ce.status;
+                        if (ce.status === 'SL_HIT') {
+                            ceStatusEl.style.color = '#ff4b72';
+                            ceStatusEl.style.borderColor = 'rgba(255, 75, 114, 0.4)';
+                            ceStatusEl.style.background = 'rgba(255, 75, 114, 0.15)';
+                        } else {
+                            ceStatusEl.style.color = '#00f59b';
+                            ceStatusEl.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                            ceStatusEl.style.background = 'rgba(16, 185, 129, 0.15)';
+                        }
+                    }
+
+                    const ceInrEl = document.getElementById('btst-ce-pnl-inr');
+                    const ceUsdEl = document.getElementById('btst-ce-pnl-usd');
+                    if (ceInrEl) {
+                        const inr = ce.pnl_inr || 0;
+                        ceInrEl.textContent = (inr >= 0 ? '+' : '') + '₹' + Number(inr).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        ceInrEl.style.color = inr >= 0 ? '#00f59b' : '#ff4b72';
+                    }
+                    if (ceUsdEl) {
+                        ceUsdEl.textContent = '(' + ((ce.pnl_usd || 0) >= 0 ? '+' : '') + '$' + Number(ce.pnl_usd || 0).toFixed(2) + ')';
+                    }
+                }
+
+                // Put Leg
+                const pe = trade.pe_leg;
+                if (pe) {
+                    if (document.getElementById('btst-pe-symbol')) document.getElementById('btst-pe-symbol').textContent = pe.symbol;
+                    if (document.getElementById('btst-pe-sub')) document.getElementById('btst-pe-sub').textContent = 'Strike: ' + pe.strike + ' | ' + pe.lots + ' Lots (' + trade.qty_btc + ' BTC)';
+                    if (document.getElementById('btst-pe-entry')) document.getElementById('btst-pe-entry').textContent = '$' + Number(pe.entry_price).toFixed(2);
+                    if (document.getElementById('btst-pe-current')) document.getElementById('btst-pe-current').textContent = '$' + Number(pe.current_price).toFixed(2);
+                    if (document.getElementById('btst-pe-sl')) document.getElementById('btst-pe-sl').textContent = '$' + Number(pe.sl_price).toFixed(2);
+
+                    const peStatusEl = document.getElementById('btst-pe-status');
+                    if (peStatusEl) {
+                        peStatusEl.textContent = pe.status;
+                        if (pe.status === 'SL_HIT') {
+                            peStatusEl.style.color = '#ff4b72';
+                            peStatusEl.style.borderColor = 'rgba(255, 75, 114, 0.4)';
+                            peStatusEl.style.background = 'rgba(255, 75, 114, 0.15)';
+                        } else {
+                            peStatusEl.style.color = '#00f59b';
+                            peStatusEl.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                            peStatusEl.style.background = 'rgba(16, 185, 129, 0.15)';
+                        }
+                    }
+
+                    const peInrEl = document.getElementById('btst-pe-pnl-inr');
+                    const peUsdEl = document.getElementById('btst-pe-pnl-usd');
+                    if (peInrEl) {
+                        const inr = pe.pnl_inr || 0;
+                        peInrEl.textContent = (inr >= 0 ? '+' : '') + '₹' + Number(inr).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        peInrEl.style.color = inr >= 0 ? '#00f59b' : '#ff4b72';
+                    }
+                    if (peUsdEl) {
+                        peUsdEl.textContent = '(' + ((pe.pnl_usd || 0) >= 0 ? '+' : '') + '$' + Number(pe.pnl_usd || 0).toFixed(2) + ')';
+                    }
+                }
+            }
+
+            // Render Metrics (AlgoTest Format)
+            const m = data.metrics || {};
+            const pnlOverall = document.getElementById('btst-stat-overall-pnl');
+            if (pnlOverall) {
+                const val = m.overall_profit_inr || 0;
+                pnlOverall.textContent = (val >= 0 ? '+' : '') + '₹' + Number(val).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                pnlOverall.style.color = val >= 0 ? '#00f59b' : '#ff4b72';
+            }
+            if (document.getElementById('btst-stat-overall-usd')) {
+                const u = m.overall_profit_usd || 0;
+                document.getElementById('btst-stat-overall-usd').textContent = (u >= 0 ? '+' : '') + '$' + Number(u).toFixed(2) + ' USD';
+            }
+            if (document.getElementById('btst-stat-trades')) document.getElementById('btst-stat-trades').textContent = m.total_trades || 0;
+            if (document.getElementById('btst-stat-winrate')) document.getElementById('btst-stat-winrate').textContent = (m.win_pct || 0).toFixed(1) + '%';
+            if (document.getElementById('btst-stat-lossrate')) document.getElementById('btst-stat-lossrate').textContent = 'Loss %: ' + (m.loss_pct || 0).toFixed(1) + '%';
+            if (document.getElementById('btst-stat-avg-trade')) document.getElementById('btst-stat-avg-trade').textContent = '₹' + Number(m.avg_profit_per_trade_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
+            if (document.getElementById('btst-stat-max-profit')) document.getElementById('btst-stat-max-profit').textContent = '₹' + Number(m.max_profit_inr || 0).toLocaleString('en-IN');
+            if (document.getElementById('btst-stat-max-loss')) document.getElementById('btst-stat-max-loss').textContent = 'Max Loss: ₹' + Number(m.max_loss_inr || 0).toLocaleString('en-IN');
+            if (document.getElementById('btst-stat-mdd')) document.getElementById('btst-stat-mdd').textContent = '₹' + Number(m.max_drawdown_inr || 0).toLocaleString('en-IN');
+            if (document.getElementById('btst-stat-rrr')) document.getElementById('btst-stat-rrr').textContent = 'Reward/Risk: ' + (m.reward_to_risk || 0).toFixed(2);
+
+            // Render Trade History Ledger Table
+            const tbody = document.getElementById('btst-history-tbody');
+            const history = data.trade_history || [];
+            if (document.getElementById('btst-table-count')) document.getElementById('btst-table-count').textContent = history.length + ' records';
+
+            if (tbody) {
+                if (history.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; color: #94a3b8; padding: 30px;">No completed forward-test trades yet. Trades will automatically populate here upon leg exit or expiry.</td></tr>`;
+                } else {
+                    let rows = '';
+                    history.forEach(t => {
+                        const isWin = (t.pnl_inr || 0) >= 0;
+                        const pnlColor = isWin ? '#00f59b' : '#ff4b72';
+                        const typeBadge = t.type === 'CE' ? '<span class="btst-badge-ce">CE</span>' : '<span class="btst-badge-pe">PE</span>';
+                        rows += `
+                            <tr>
+                                <td style="font-weight: 700; color: #fff;">${t.index}</td>
+                                <td>${t.entry_date}</td>
+                                <td>${t.entry_time}</td>
+                                <td>${t.exit_date || '--'}</td>
+                                <td>${t.exit_time || '--'}</td>
+                                <td>${typeBadge}</td>
+                                <td style="font-weight: 700; color: #fff;">${t.strike}</td>
+                                <td><span style="color: #f87171; font-weight: 700;">Sell</span></td>
+                                <td>${t.lots || 500}</td>
+                                <td>$${Number(t.entry_price || 0).toFixed(2)}</td>
+                                <td>$${Number(t.exit_price || 0).toFixed(2)}</td>
+                                <td style="font-weight: 800; color: ${pnlColor};">${isWin ? '+' : ''}₹${Number(t.pnl_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td><span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">${t.exit_reason || 'COMPLETE'}</span></td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = rows;
+                }
+            }
+        }
+
+        async function previewBtstStrikes() {
+            try {
+                const res = await fetch('/api/btst/preview_strikes');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success && data.preview) {
+                    const p = data.preview;
+                    if (document.getElementById('btst-preview-atm')) document.getElementById('btst-preview-atm').textContent = p.atm_strike;
+                    if (document.getElementById('btst-preview-straddle')) document.getElementById('btst-preview-straddle').textContent = '$' + Number(p.straddle_price).toFixed(2);
+                    if (document.getElementById('btst-preview-offset')) document.getElementById('btst-preview-offset').textContent = p.offset + ' pts';
+                    if (document.getElementById('btst-preview-exp')) document.getElementById('btst-preview-exp').textContent = p.expiry_str + ' (' + p.expiry_date_str + ')';
+
+                    if (document.getElementById('btst-preview-ce-sym')) document.getElementById('btst-preview-ce-sym').textContent = p.call_symbol;
+                    if (document.getElementById('btst-preview-ce-price')) document.getElementById('btst-preview-ce-price').textContent = '$' + Number(p.call_entry_price).toFixed(2);
+                    if (document.getElementById('btst-preview-ce-sl')) document.getElementById('btst-preview-ce-sl').textContent = 'SL: $' + Number(p.call_sl_price).toFixed(2);
+
+                    if (document.getElementById('btst-preview-pe-sym')) document.getElementById('btst-preview-pe-sym').textContent = p.put_symbol;
+                    if (document.getElementById('btst-preview-pe-price')) document.getElementById('btst-preview-pe-price').textContent = '$' + Number(p.put_entry_price).toFixed(2);
+                    if (document.getElementById('btst-preview-pe-sl')) document.getElementById('btst-preview-pe-sl').textContent = 'SL: $' + Number(p.put_sl_price).toFixed(2);
+                }
+            } catch (e) {
+                console.warn('[BTST] previewStrikes error:', e);
+            }
+        }
+
+        async function saveBtstConfig() {
+            const btn = document.getElementById('btn-save-btst-cfg');
+            const feedback = document.getElementById('btst-cfg-feedback');
+            if (btn) btn.disabled = true;
+            if (feedback) feedback.textContent = 'Saving...';
+
+            const payload = {
+                capital_inr: parseInt(document.getElementById('btst-cfg-capital')?.value || 1000000, 10),
+                lots: parseInt(document.getElementById('btst-cfg-lots')?.value || 500, 10),
+                sl_pct: parseFloat(document.getElementById('btst-cfg-sl')?.value || 100),
+                straddle_multiplier: parseFloat(document.getElementById('btst-cfg-multiplier')?.value || 1.8),
+                usd_to_inr: parseFloat(document.getElementById('btst-cfg-fx')?.value || 85.0),
+                entry_time_ist: document.getElementById('btst-cfg-entry-time')?.value || '22:30',
+                exit_time_ist: document.getElementById('btst-cfg-exit-time')?.value || '17:28',
+                mode: document.getElementById('btst-cfg-mode')?.value || 'PAPER'
+            };
+
+            try {
+                const res = await fetch('/api/btst/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const resData = await res.json();
+                if (resData.success) {
+                    if (feedback) {
+                        feedback.style.color = '#00f59b';
+                        feedback.textContent = '✅ Strategy parameters saved successfully!';
+                    }
+                    setTimeout(() => { if (feedback) feedback.textContent = ''; }, 4000);
+                    loadBtstData();
+                } else {
+                    if (feedback) {
+                        feedback.style.color = '#ff4b72';
+                        feedback.textContent = '❌ ' + (resData.message || 'Save failed.');
+                    }
+                }
+            } catch (err) {
+                if (feedback) {
+                    feedback.style.color = '#ff4b72';
+                    feedback.textContent = '❌ Network error saving configuration.';
+                }
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        async function triggerBtstEntry() {
+            if (!confirm('Open automated BTST 44H Strangle trade now? (Will select D+2 expiry with 1.8x ATM Straddle Width and 100% partial SL).')) {
+                return;
+            }
+            const btn = document.getElementById('btn-btst-trigger');
+            if (btn) btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/btst/trigger_entry', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({force: true})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ BTST Trade Entered Successfully! ' + data.message);
+                    loadBtstData();
+                } else {
+                    alert('⚠️ Could not enter trade: ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ Network error triggering BTST entry.');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        async function squareOffBtst() {
+            if (!confirm('Square off all active BTST strangle positions immediately?')) {
+                return;
+            }
+            const btn = document.getElementById('btn-btst-squareoff');
+            if (btn) btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/btst/square_off', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ BTST Positions Squared Off: ' + data.message);
+                    loadBtstData();
+                } else {
+                    alert('⚠️ ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ Network error squaring off.');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        // Poll BTST data when tab is active
+        setInterval(() => {
+            const btstPane = document.getElementById('tab-btst');
+            if (btstPane && btstPane.classList.contains('active')) {
+                loadBtstData();
+            }
+        }, 5000);
+
         function switchTab(name) {
-            // Hide all panes
-            document.querySelectorAll('.tab-pane').forEach(p => { p.classList.remove('active'); });
+            // Hide all panes cleanly
+            document.querySelectorAll('.tab-pane').forEach(p => { 
+                p.classList.remove('active'); 
+                p.style.display = 'none';
+            });
             // Update buttons
             document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); });
 
             if (name === 'live') {
-                document.getElementById('tab-live').classList.add('active');
-                document.getElementById('tab-btn-live').classList.add('active');
-            } else if (name === 'analytics') {
-                document.getElementById('tab-analytics').classList.add('active');
-                document.getElementById('tab-btn-analytics').classList.add('active');
+                const p = document.getElementById('tab-live');
+                if (p) { p.classList.add('active'); p.style.display = 'flex'; }
+                document.getElementById('tab-btn-live')?.classList.add('active');
+            } else if (name === 'btst') {
+                const p = document.getElementById('tab-btst');
+                if (p) { p.classList.add('active'); p.style.display = 'flex'; }
+                document.getElementById('tab-btn-btst')?.classList.add('active');
+                if (typeof loadBtstData === 'function') {
+                    loadBtstData(true);
+                }
             } else if (name === 'config') {
-                document.getElementById('tab-config').classList.add('active');
-                document.getElementById('tab-config-b').classList.add('active');
-                document.getElementById('tab-btn-config').classList.add('active');
+                const p = document.getElementById('tab-config-b');
+                if (p) { p.classList.add('active'); p.style.display = 'block'; }
+                document.getElementById('tab-btn-config')?.classList.add('active');
             }
         }
     </script>
-    </div><!-- /tab-config-b -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -4780,36 +5838,35 @@ function updateAresPremium() {
             
             const isRed = data.zone === "RED" || data.zone === "LOW EDGE";
             const isYellow = data.zone === "YELLOW" || data.zone === "CAUTION";
-            const mainColor = isRed ? "#ef4444" : (isYellow ? "#f59e0b" : "#10b981");
+            const isStandby = data.zone === "STANDBY" || data.status === "standby";
+            const mainColor = isStandby ? "#38bdf8" : (isRed ? "#ef4444" : (isYellow ? "#f59e0b" : "#10b981"));
 
             // Block alert
-            if (!data.trade_allowed && data.decision !== "WAITING") {
+            if (isStandby) {
+                el('psce-block-alert').classList.remove('active');
+            } else if (!data.trade_allowed && data.decision !== "WAITING") {
                 el('psce-block-alert').classList.add('active');
-                el('psce-block-reason').innerText = "Reason: " + (data.decision_reason || data.reasons[0] || "Low Edge");
+                el('psce-block-reason').innerText = "Reason: " + (data.decision_reason || (data.reasons && data.reasons[0]) || "Low Edge");
             } else {
                 el('psce-block-alert').classList.remove('active');
             }
 
             if (data.metrics) {
-                el('ares-btc-price').innerText = "$" + parseFloat(data.metrics.btc_price).toLocaleString();
-                el('ares-atm-iv').innerText = parseFloat(data.metrics.atm_iv).toFixed(1) + "%";
+                if (data.metrics.btc_price) {
+                    el('ares-btc-price').innerText = "$" + parseFloat(data.metrics.btc_price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                }
+                el('ares-atm-iv').innerText = isStandby ? "Standby" : (parseFloat(data.metrics.atm_iv || 0).toFixed(1) + "%");
 
-                // A2 FIX: iv_percentile and iv_rank can be null when the 30-day history
-                // window isn't populated yet (< 5 entries). Show "Insufficient data" instead
-                // of 0% / -0 to avoid misleading the user.
-                // Root cause trace: server sends null sentinel; client guards it here.
                 if (data.metrics.iv_percentile === null || data.metrics.iv_percentile === undefined) {
-                    el('ares-iv-pct').innerText = "Insufficient data";
+                    el('ares-iv-pct').innerText = isStandby ? "Standby" : "Insufficient data";
                     el('ares-bar-pct').style.width = "0%";
                 } else {
                     el('ares-iv-pct').innerText = parseFloat(data.metrics.iv_percentile).toFixed(0) + "%";
                     el('ares-bar-pct').style.width = Math.min(100, Math.max(0, parseFloat(data.metrics.iv_percentile))) + "%";
                 }
 
-                // A2 FIX: iv_rank clamped to [0,100] server-side, but also guarded here
-                // to prevent -0 display (toFixed(0) of e.g. -0.4 = "-0").
                 if (data.metrics.iv_rank === null || data.metrics.iv_rank === undefined) {
-                    el('ares-iv-rank').innerText = "Insufficient data";
+                    el('ares-iv-rank').innerText = isStandby ? "Standby" : "Insufficient data";
                     el('ares-bar-rank').style.width = "0%";
                 } else {
                     const rankVal = Math.max(0, parseFloat(data.metrics.iv_rank));
@@ -4817,78 +5874,101 @@ function updateAresPremium() {
                     el('ares-bar-rank').style.width = Math.min(100, rankVal) + "%";
                 }
 
-                el('ares-iv-trend').innerText = data.metrics.iv_trend_5d;
-                el('ares-iv-change').innerText = data.metrics.iv_change_1h;
+                el('ares-iv-trend').innerText = data.metrics.iv_trend_5d || "--";
+                el('ares-iv-change').innerText = data.metrics.iv_change_1h || "--";
                 
-                el('ares-live-dot').innerText = (data.health.iv_feed === "ONLINE") ? "LIVE" : "OFFLINE";
-                el('ares-live-dot').style.color = (data.health.iv_feed === "ONLINE") ? "#10b981" : "#ef4444";
+                const isFeedOnline = (data.health && data.health.iv_feed === "ONLINE");
+                el('ares-live-dot').innerText = isFeedOnline ? "LIVE" : (isStandby ? "STANDBY" : "OFFLINE");
+                el('ares-live-dot').style.color = isFeedOnline ? "#10b981" : (isStandby ? "#38bdf8" : "#ef4444");
             }
 
-            // New transparency fields
+            // Data freshness badge
             aresLocalDataAge = data.data_age_seconds || 0;
             const ageEl = el('ares-data-age');
-            ageEl.innerText = aresLocalDataAge + "s";
-            ageEl.className = 'ares-metric-val ' + (aresLocalDataAge > 300 ? 'text-red' : 'text-green');
-            el('ares-iv-timestamp').innerText = data.iv_data_timestamp || '--';
+            if (ageEl) {
+                ageEl.innerText = isStandby ? "0s" : (aresLocalDataAge + "s");
+                ageEl.className = 'ares-metric-val ' + (aresLocalDataAge > 300 ? 'text-red' : 'text-green');
+            }
+            if (el('ares-iv-timestamp')) {
+                el('ares-iv-timestamp').innerText = data.iv_data_timestamp || (isStandby ? 'Engine Standby' : '--');
+            }
 
             const fdEl = el('ares-final-decision');
-            const fd = data.final_decision || (data.trade_allowed ? 'ALLOW' : 'BLOCK');
-            fdEl.innerText = fd;
-            fdEl.style.color = fd === 'ALLOW' ? '#10b981' : '#ef4444';
-            el('ares-decision-reason').innerText = data.decision_reason || '--';
+            const fd = data.final_decision || (isStandby ? 'STANDBY' : (data.trade_allowed ? 'ALLOW' : 'BLOCK'));
+            if (fdEl) {
+                fdEl.innerText = fd;
+                fdEl.style.color = isStandby ? '#38bdf8' : (fd === 'ALLOW' ? '#10b981' : '#ef4444');
+            }
+            if (el('ares-decision-reason')) {
+                el('ares-decision-reason').innerText = data.decision_reason || '--';
+            }
 
             // Center Card
             const shield = el('ares-center-shield');
-            shield.classList.remove('zone-red', 'zone-yellow');
-            if (isRed) shield.classList.add('zone-red');
-            if (isYellow) shield.classList.add('zone-yellow');
+            if (shield) {
+                shield.classList.remove('zone-red', 'zone-yellow');
+                if (isRed) shield.classList.add('zone-red');
+                if (isYellow) shield.classList.add('zone-yellow');
+            }
 
-            // A1 FIX: Zone badge text matches the SAME 3-tier threshold scale as the
-            // IV Zone Meter component at the bottom of this panel:
-            //   RED / LOW EDGE: IV < 20% (server zone = "RED")
-            //   MEDIUM IV:      20% <= IV < 50% (server zone = "MEDIUM")
-            //   HEALTHY IV:     IV >= 50% (server zone = "HEALTHY")
-            // Previously this was hardcoded to "HEALTHY" for any non-red/yellow case.
-            const zoneText = isRed ? "LOW EDGE" : (data.zone === "MEDIUM" ? "MEDIUM IV" : "HEALTHY IV");
-            el('ares-zone-main').innerText = zoneText;
-            el('ares-zone-main').style.color = mainColor;
-            el('ares-zone-sub').innerText = data.trade_allowed ? "OPTIMAL FOR PREMIUM SELLING" : "UNFAVORABLE FOR STRANGLES";
-            el('ares-zone-sub').style.color = mainColor;
-            el('ares-zone-sub').style.background = `rgba(${isRed?239:16}, ${isRed?68:185}, ${isRed?68:129}, 0.1)`;
+            const zoneText = isStandby ? "STANDBY" : (isRed ? "LOW EDGE" : (data.zone === "MEDIUM" ? "MEDIUM IV" : "HEALTHY IV"));
+            if (el('ares-zone-main')) {
+                el('ares-zone-main').innerText = zoneText;
+                el('ares-zone-main').style.color = mainColor;
+            }
+            if (el('ares-zone-sub')) {
+                el('ares-zone-sub').innerText = isStandby ? "START BOT TO ACTIVATE TELEMETRY" : (data.trade_allowed ? "OPTIMAL FOR PREMIUM SELLING" : "UNFAVORABLE FOR STRANGLES");
+                el('ares-zone-sub').style.color = mainColor;
+                el('ares-zone-sub').style.background = isStandby ? "rgba(56, 189, 248, 0.1)" : `rgba(${isRed?239:16}, ${isRed?68:185}, ${isRed?68:129}, 0.1)`;
+            }
 
-            el('ares-edge-score').innerText = Math.round(data.edge_score) + "%";
-            el('ares-decision').innerHTML = `<span style="font-size:20px;">🎯</span> ` + data.decision;
-            el('ares-action-box').style.borderColor = `rgba(${isRed?239:16}, ${isRed?68:185}, ${isRed?68:129}, 0.4)`;
-            el('ares-action-box').style.background = `rgba(${isRed?239:16}, ${isRed?68:185}, ${isRed?68:129}, 0.05)`;
+            if (el('ares-edge-score')) {
+                el('ares-edge-score').innerText = isStandby ? "50%" : (Math.round(data.edge_score || 0) + "%");
+            }
+            if (el('ares-decision')) {
+                el('ares-decision').innerHTML = isStandby ? `<span style="font-size:20px;">⏸️</span> STANDBY` : (`<span style="font-size:20px;">🎯</span> ` + (data.decision || "WAITING"));
+            }
+            if (el('ares-action-box')) {
+                el('ares-action-box').style.borderColor = isStandby ? "rgba(56, 189, 248, 0.4)" : `rgba(${isRed?239:16}, ${isRed?68:185}, ${isRed?68:129}, 0.4)`;
+                el('ares-action-box').style.background = isStandby ? "rgba(56, 189, 248, 0.05)" : `rgba(${isRed?239:16}, ${isRed?68:185}, ${isRed?68:129}, 0.05)`;
+            }
             
-            el('ares-cf-risk').innerText = isRed ? "HIGH" : (isYellow ? "MEDIUM" : "LOW");
-            el('ares-cf-risk').style.color = mainColor;
+            if (el('ares-cf-risk')) {
+                el('ares-cf-risk').innerText = isStandby ? "LOW" : (isRed ? "HIGH" : (isYellow ? "MEDIUM" : "LOW"));
+                el('ares-cf-risk').style.color = mainColor;
+            }
 
-            // A3 FIX: Market Condition is now derived from server-side data (trend + edge score)
-            // instead of the previous heuristic (premium_state.includes("Excellent")).
-            // When DIRECTIONAL, reward stars are also penalized (3 stars instead of 5).
-            const mktCond = data.market_condition || (data.premium_state.includes("Excellent") ? "RANGE" : "DIRECTIONAL");
-            el('ares-cf-market').innerText = mktCond;
-            el('ares-cf-market').style.color = mktCond === "DIRECTIONAL" ? "#f59e0b" : mainColor;
+            const mktCond = data.market_condition || ((data.premium_state && data.premium_state.includes("Excellent")) ? "RANGE" : (isStandby ? "STANDBY" : "DIRECTIONAL"));
+            if (el('ares-cf-market')) {
+                el('ares-cf-market').innerText = mktCond;
+                el('ares-cf-market').style.color = mktCond === "DIRECTIONAL" ? "#f59e0b" : mainColor;
+            }
 
-            // Reward stars: RED=1, YELLOW=3, DIRECTIONAL (non-red)=3, RANGE+HEALTHY=5
-            el('ares-cf-reward').innerText = isRed ? "★☆☆☆☆" : (isYellow ? "★★★☆☆" : (mktCond === "DIRECTIONAL" ? "★★★☆☆" : "★★★★★"));
+            if (el('ares-cf-reward')) {
+                el('ares-cf-reward').innerText = isStandby ? "★★★☆☆" : (isRed ? "★☆☆☆☆" : (isYellow ? "★★★☆☆" : (mktCond === "DIRECTIONAL" ? "★★★☆☆" : "★★★★★")));
+            }
 
-            // Reasons mapping (matching the 5 icons design roughly)
             const iconMap = ["✓", "〰", "📊", "🛡️", "🕒"];
-            const reasonsHtml = data.reasons.map((r, i) => `
+            const reasonsList = data.reasons || ["Telemetry standby."];
+            const reasonsHtml = reasonsList.map((r, i) => `
                 <div class="ares-reason-row">
                     <div class="ares-reason-icon" style="color:${mainColor}; border-color:rgba(${isRed?239:16}, ${isRed?68:185}, ${isRed?68:129},0.3)">${iconMap[i%5]}</div>
                     <div>
                         <div class="ares-reason-text-main">${r}</div>
-                        <div class="ares-reason-text-sub">${isRed ? "Condition blocking trade" : "Supporting edge metric"}</div>
+                        <div class="ares-reason-text-sub">${isStandby ? "System Readiness Info" : (isRed ? "Condition blocking trade" : "Supporting edge metric")}</div>
                     </div>
                 </div>
             `).join("");
-            el('ares-reasons-list').innerHTML = reasonsHtml;
+            if (el('ares-reasons-list')) {
+                el('ares-reasons-list').innerHTML = reasonsHtml;
+            }
 
-            // Slider thumb
-            el('ares-zm-thumb').style.left = Math.min(100, Math.max(0, data.edge_score)) + "%";
+            if (el('ares-zm-thumb')) {
+                el('ares-zm-thumb').style.left = Math.min(100, Math.max(0, data.edge_score || 50)) + "%";
+            }
+        })
+        .catch(err => {
+            console.warn("[ARES] Error updating conditions:", err);
         });
 }
 

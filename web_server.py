@@ -43,6 +43,11 @@ ares_runner = None
 def init_web_server(engine):
     global bot_engine
     bot_engine = engine
+    try:
+        from btst_strategy import btst_engine
+        btst_engine.start()
+    except Exception as e:
+        app_logger.error(f"Failed to start BTST engine: {e}")
 
 @app.route('/')
 def index():
@@ -81,12 +86,31 @@ def add_header(response):
 @app.route('/api/premium_conditions')
 def get_premium_conditions():
     if not bot_engine:
+        spot = 0.0
+        try:
+            from btst_strategy import btst_engine
+            spot = btst_engine.get_btc_spot_price()
+        except Exception:
+            pass
         return jsonify({
-            "status": "error",
+            "status": "standby",
             "trade_allowed": False,
-            "zone": "RED",
-            "decision": "DATA UNAVAILABLE",
-            "reasons": ["API Error: Engine not initialized."]
+            "zone": "STANDBY",
+            "decision": "STANDBY",
+            "decision_reason": "Bot engine in standby. Start with python main.py or START_BOT.bat",
+            "reasons": ["Engine is in standby mode.", "Telemetry activates when bot starts."],
+            "edge_score": 50,
+            "metrics": {
+                "btc_price": spot or 0.0,
+                "atm_iv": 0.0,
+                "iv_percentile": None,
+                "iv_rank": None,
+                "iv_trend_5d": "STANDBY",
+                "iv_change_1h": "0.0%"
+            },
+            "health": {
+                "iv_feed": "STANDBY"
+            }
         })
     try:
         if hasattr(bot_engine, 'premium_engine') and bot_engine.premium_engine:
@@ -142,7 +166,32 @@ def _read_local_hpe_state():
 def get_status():
     _t0 = time.time()
     if not bot_engine:
-        return jsonify({'error': 'Engine not initialized'}), 500
+        logs = []
+        try:
+            import os
+            if os.path.exists('trading_bot.log'):
+                with open('trading_bot.log', 'rb') as f:
+                    f.seek(0, os.SEEK_END)
+                    size = f.tell()
+                    f.seek(max(0, size - 16384), os.SEEK_SET)
+                    lines = f.read().decode('utf-8', errors='ignore').splitlines()
+                    logs = [line.strip() for line in lines[-25:] if line.strip()]
+        except Exception:
+            pass
+        return jsonify({
+            'status': 'STANDBY',
+            'is_running': False,
+            'mode': 'STANDBY',
+            'active_positions': [],
+            'live_positions': [],
+            'paper_positions': [],
+            'closed_trades': [],
+            'logs': logs or ['Bot engine in standby. Start with python main.py or START_BOT.bat'],
+            'btc_spot_price': 0.0,
+            'summary': {'total_pnl': 0.0, 'net_pnl_usd': 0.0, 'total_trades': 0, 'win_rate': 0.0},
+            'regime': 'STANDBY',
+            'schedule_info': {'is_active': False, 'current_window': 'STANDBY', 'reason': 'Engine standby'}
+        }), 200
         
     import db_manager
     # Read last 35 lines of trading_bot.log (bandwidth optimization: cuts 30KB payload down to 3KB)
@@ -1896,7 +1945,23 @@ def get_live_equity_api():
 def get_system_health():
     """Permanent diagnostics panel endpoint for dashboard health monitoring."""
     if not bot_engine:
-        return jsonify({'error': 'Engine not initialized'}), 500
+        return jsonify({
+            'delta_api': 'STANDBY',
+            'websocket': 'STANDBY',
+            'position_sync': 'STANDBY',
+            'iv_feed': 'STANDBY',
+            'premium_feed': 'STANDBY',
+            'graph_feed': 'STANDBY',
+            'audit_system': 'STANDBY',
+            'database_sync': 'STANDBY',
+            'hot_recovery': 'STANDBY',
+            'last_heartbeat': round(time.time()),
+            'data_age_seconds': 0,
+            'last_error': 'Engine standby. Start with python main.py or START_BOT.bat',
+            'backend_version': '2.0.0',
+            'engine_uptime_seconds': 0,
+            'ares_status': 'STANDBY'
+        }), 200
     
     health = {
         'delta_api': 'ONLINE' if getattr(bot_engine.api_client, 'ws_connected', False) else 'OFFLINE',
@@ -2311,4 +2376,58 @@ def ares_logs():
     if not logs:
         logs = ['No logs found.']
     return jsonify({'logs': logs})
+
+
+# ==============================================================================
+# 🌙 BTST 44H STRANGLE STRATEGY (AlgoTest Forward-Testing Engine)
+# ==============================================================================
+from btst_strategy import btst_engine
+
+@app.route('/api/btst/status')
+def get_btst_status():
+    try:
+        return jsonify(btst_engine.get_status_payload())
+    except Exception as e:
+        app_logger.error(f"[BTST API] Error in status: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/btst/config', methods=['GET', 'POST'])
+def handle_btst_config():
+    if request.method == 'POST':
+        try:
+            data = request.get_json() or {}
+            ok, msg = btst_engine.save_config(data)
+            return jsonify({"success": ok, "message": msg, "config": btst_engine.config})
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 400
+    return jsonify(btst_engine.config)
+
+@app.route('/api/btst/trigger_entry', methods=['POST'])
+def trigger_btst_entry():
+    try:
+        data = request.get_json() or {}
+        force = bool(data.get('force', True))
+        ok, msg = btst_engine.trigger_entry(force=force)
+        return jsonify({"success": ok, "message": msg})
+    except Exception as e:
+        app_logger.error(f"[BTST API] Error triggering entry: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/btst/square_off', methods=['POST'])
+def square_off_btst():
+    try:
+        ok, msg = btst_engine.square_off_all(reason='MANUAL_USER_EXIT')
+        return jsonify({"success": ok, "message": msg})
+    except Exception as e:
+        app_logger.error(f"[BTST API] Error squaring off: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/btst/preview_strikes')
+def preview_btst_strikes():
+    try:
+        ok, msg, res = btst_engine.calculate_strangle_strikes()
+        return jsonify({"success": ok, "message": msg, "preview": res})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
 

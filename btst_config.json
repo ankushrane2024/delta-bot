@@ -1,0 +1,20 @@
+{
+    "capital_inr": 100000,
+    "lots": 500,
+    "sl_pct": 100.0,
+    "straddle_multiplier": 1.8,
+    "entry_time_ist": "22:30",
+    "exit_time_ist": "17:28",
+    "weekdays": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+        "Sun"
+    ],
+    "is_active": true,
+    "mode": "PAPER",
+    "usd_to_inr": 85.0
+}

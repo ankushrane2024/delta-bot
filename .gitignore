@@ -10,3 +10,8 @@ db_config.json
 api_credentials.json
 logs/
 *.log
+*.err
+cloudflared.exe
+scratch/
+server_output.txt
+srv_*.txt

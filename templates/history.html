@@ -16,20 +16,30 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --panel-bg: #1e293b;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --accent: #3b82f6;
-            --border-color: rgba(255,255,255,0.06);
+            --bg-dark: #0b112c;
+            --panel-bg: rgba(22, 32, 68, 0.78);
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e1;
+            --success: #00f59b;
+            --danger: #ff4b72;
+            --warning: #fbbf24;
+            --accent: #38bdf8;
+            --border-color: rgba(147, 197, 253, 0.2);
         }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 10% 8%, rgba(99, 102, 241, 0.28), transparent 45%),
+                radial-gradient(circle at 90% 12%, rgba(236, 72, 153, 0.22), transparent 42%),
+                radial-gradient(circle at 50% 35%, rgba(6, 182, 212, 0.18), transparent 48%),
+                radial-gradient(circle at 15% 75%, rgba(139, 92, 246, 0.22), transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.18), transparent 45%),
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+            background-attachment: fixed;
             color: var(--text-primary);
             margin: 0;
             padding: 30px 20px;
@@ -47,37 +57,56 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
+            background: linear-gradient(135deg, rgba(28, 38, 80, 0.85) 0%, rgba(32, 24, 68, 0.85) 100%);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 14px;
+            padding: 16px 24px;
+            box-sizing: border-box;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(7, 11, 30, 0.5), 0 0 25px rgba(139, 92, 246, 0.12);
         }
 
-        h1 { font-weight: 800; margin: 0; display: flex; align-items: center; gap: 15px;}
+        h1 { 
+            font-weight: 800; 
+            margin: 0; 
+            display: flex; 
+            align-items: center; 
+            gap: 15px;
+            background: linear-gradient(135deg, #00f2fe 0%, #38bdf8 25%, #818cf8 50%, #c084fc 75%, #f472b6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 2px 10px rgba(99, 102, 241, 0.35));
+        }
         
         .tab-nav {
             max-width: 1800px;
             width: 100%;
             display: flex;
-            gap: 4px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px;
+            gap: 6px;
+            background: rgba(20, 28, 62, 0.88);
+            border: 1px solid rgba(139, 92, 246, 0.28);
+            border-radius: 12px;
             padding: 6px;
+            box-shadow: 0 8px 24px rgba(7, 11, 30, 0.45);
         }
 
         .tab-btn {
             background: transparent;
-            color: var(--text-secondary);
+            color: #cbd5e1;
             border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
+            padding: 8px 18px;
+            border-radius: 9px;
             font-size: 0.9rem;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
         }
-        .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.08); transform: translateY(-1px); }
         .tab-btn.active {
-            background: rgba(255,255,255,0.1);
+            background: linear-gradient(135deg, #06b6d4 0%, #6366f1 50%, #a855f7 100%);
+            border: 1px solid rgba(255, 255, 255, 0.35);
             color: #fff;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 18px rgba(99, 102, 241, 0.5);
         }
 
         .container {
@@ -95,11 +124,12 @@
             gap: 12px;
         }
         .summary-card {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, rgba(28, 38, 80, 0.75) 0%, rgba(20, 27, 58, 0.82) 100%);
+            border: 1px solid rgba(147, 197, 253, 0.2);
             border-radius: 12px;
             padding: 16px;
             text-align: center;
+            box-shadow: 0 6px 18px rgba(7, 11, 30, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
         .summary-card .label {
             font-size: 0.72rem;
@@ -115,10 +145,11 @@
 
         /* ── Chart Panels ─────────────────── */
         .chart-panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, rgba(24, 34, 72, 0.82) 0%, rgba(18, 25, 56, 0.88) 100%);
+            border: 1px solid rgba(147, 197, 253, 0.22);
             border-radius: 14px;
             padding: 20px 24px;
+            box-shadow: 0 10px 32px rgba(7, 11, 30, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
         .chart-panel h2 {
             margin: 0 0 16px 0;
@@ -143,29 +174,33 @@
             height: 8px;
         }
         .chart-wrap::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
+            background: rgba(14, 20, 48, 0.6);
             border-radius: 4px;
         }
         .chart-wrap::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.15);
+            background: linear-gradient(180deg, #6366f1, #a855f7);
             border-radius: 4px;
         }
         .chart-wrap::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: linear-gradient(180deg, #38bdf8, #ec4899);
         }
 
         /* ── Trade Cards ──────────────────── */
         .trade-card {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, rgba(26, 36, 76, 0.78) 0%, rgba(20, 28, 62, 0.82) 100%);
+            border: 1px solid rgba(147, 197, 253, 0.2);
             border-radius: 12px;
             padding: 20px;
             display: flex;
             flex-direction: column;
             gap: 15px;
-            transition: border-color 0.2s;
+            transition: all 0.25s ease;
+            box-shadow: 0 6px 20px rgba(7, 11, 30, 0.35);
         }
-        .trade-card:hover { border-color: rgba(255,255,255,0.15); }
+        .trade-card:hover { 
+            border-color: rgba(139, 92, 246, 0.45); 
+            box-shadow: 0 10px 30px rgba(7, 11, 30, 0.5), 0 0 20px rgba(139, 92, 246, 0.15);
+        }
 
         /* ── View Chart Button ────────────── */
         .view-chart-btn {
