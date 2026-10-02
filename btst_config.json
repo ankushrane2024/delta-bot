@@ -1,6 +1,7 @@
 {
     "capital_inr": 100000,
-    "lots": 500,
+    "leverage": 25.0,
+    "capital_utilization": 0.90,
     "sl_pct": 100.0,
     "straddle_multiplier": 1.8,
     "entry_time_ist": "22:30",

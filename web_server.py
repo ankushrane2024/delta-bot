@@ -90,25 +90,31 @@ def add_header(response):
 
     # ── BANDWIDTH PROTECTION: High-efficiency Gzip Compression Middleware ──
     # Automatically compresses HTML, JSON, JS, and CSS responses > 400 bytes by ~85%
-    accept_encoding = request.headers.get('Accept-Encoding', '')
-    if ('gzip' in accept_encoding and 
-        response.status_code < 300 and 
-        len(response.data) > 400 and 
-        'Content-Encoding' not in response.headers):
-        
-        content_type = response.headers.get('Content-Type', '')
-        if any(t in content_type for t in ['json', 'text', 'html', 'javascript', 'css']):
-            import gzip
-            from io import BytesIO
-            gzip_buffer = BytesIO()
-            with gzip.GzipFile(mode='wb', fileobj=gzip_buffer, compresslevel=6) as gzip_file:
-                gzip_file.write(response.data)
-            compressed_data = gzip_buffer.getvalue()
-            if len(compressed_data) < len(response.data):
-                response.data = compressed_data
-                response.headers['Content-Encoding'] = 'gzip'
-                response.headers['Content-Length'] = len(compressed_data)
-                response.headers['Vary'] = 'Accept-Encoding'
+    try:
+        accept_encoding = request.headers.get('Accept-Encoding', '')
+        if ('gzip' in accept_encoding and 
+            response.status_code < 300 and 
+            not getattr(response, 'is_streamed', False) and
+            not getattr(response, 'direct_passthrough', False) and
+            'Content-Encoding' not in response.headers):
+            
+            content_type = response.headers.get('Content-Type', '')
+            if any(t in content_type for t in ['json', 'text', 'html', 'javascript', 'css']):
+                data = response.get_data()
+                if len(data) > 400:
+                    import gzip
+                    from io import BytesIO
+                    gzip_buffer = BytesIO()
+                    with gzip.GzipFile(mode='wb', fileobj=gzip_buffer, compresslevel=6) as gzip_file:
+                        gzip_file.write(data)
+                    compressed_data = gzip_buffer.getvalue()
+                    if len(compressed_data) < len(data):
+                        response.set_data(compressed_data)
+                        response.headers['Content-Encoding'] = 'gzip'
+                        response.headers['Content-Length'] = len(compressed_data)
+                        response.headers['Vary'] = 'Accept-Encoding'
+    except Exception:
+        pass
 
     return response
 
@@ -595,6 +601,7 @@ def get_status():
         'data_age_seconds': round(time.time() - bot_engine.api_client.last_price_update_time) if bot_engine.api_client.last_price_update_time > 0 else 999,
         'ws_connected': bot_engine.api_client.ws_connected if bot_engine.api_client else False,
         'last_api_update': bot_engine.api_client.last_price_update_time if bot_engine.api_client else 0,
+        'has_btst_pos': bool(getattr(btst_engine, 'active_trade', None) and btst_engine.active_trade.get('status') in ['OPEN', 'PARTIALLY_CLOSED']),
         # BW-OPT: runtime_state removed from hot /api/status path — use /api/runtime_state endpoint directly
     })
     _t_end = time.time()
@@ -2426,10 +2433,35 @@ def handle_btst_config():
         try:
             data = request.get_json() or {}
             ok, msg = btst_engine.save_config(data)
-            return jsonify({"success": ok, "message": msg, "config": btst_engine.config})
+            return jsonify({
+                "success": ok, 
+                "message": msg, 
+                "config": btst_engine.config,
+                "sizing": btst_engine.calculate_position_sizing()
+            })
         except Exception as e:
             return jsonify({"success": False, "message": str(e)}), 400
-    return jsonify(btst_engine.config)
+    return jsonify({
+        "config": btst_engine.config,
+        "sizing": btst_engine.calculate_position_sizing()
+    })
+
+@app.route('/api/btst/calculate_sizing', methods=['GET', 'POST'])
+def calculate_btst_sizing():
+    try:
+        data = request.get_json() if request.method == 'POST' else request.args
+        capital = data.get('capital_inr')
+        leverage = data.get('leverage')
+        utilization = data.get('capital_utilization')
+        res = btst_engine.calculate_position_sizing(
+            capital_inr=int(capital) if capital is not None and str(capital).strip() != '' else None,
+            leverage=float(leverage) if leverage is not None and str(leverage).strip() != '' else None,
+            capital_utilization=float(utilization) if utilization is not None and str(utilization).strip() != '' else None
+        )
+        return jsonify({"success": True, "sizing": res})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
 
 @app.route('/api/btst/trigger_entry', methods=['POST'])
 def trigger_btst_entry():

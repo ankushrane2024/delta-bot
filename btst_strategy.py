@@ -15,8 +15,9 @@ POSITIONS_FILE = os.path.join(BASE_DIR, "btst_positions.json")
 TRADES_FILE = os.path.join(BASE_DIR, "btst_trade_history.json")
 
 DEFAULT_CONFIG = {
-    "capital_inr": 1000000,
-    "lots": 500,
+    "capital_inr": 100000,
+    "leverage": 25.0,
+    "capital_utilization": 0.90,  # Use 90% of capital as margin; lots always derived dynamically
     "sl_pct": 100.0,
     "straddle_multiplier": 1.8,
     "entry_time_ist": "22:30",
@@ -70,34 +71,108 @@ class BTSTStrangleEngine:
             app_logger.error(f"[BTST] Error loading config: {e}")
         return dict(DEFAULT_CONFIG)
 
+    def calculate_position_sizing(self, capital_inr=None, leverage=None, capital_utilization=None, **kwargs):
+        """
+        Dynamically calculates position sizing across both strangle legs.
+
+        Sizing Formula (ALWAYS dynamic — no fixed lots):
+          1. effective_margin = capital_inr * capital_utilization (default 90%)
+          2. notional_inr     = effective_margin * leverage
+          3. total_lots       = floor(notional_inr / 2500), rounded down to even
+          4. lots_per_leg     = total_lots // 2   (50% CE, 50% PE)
+          5. qty_btc_per_leg  = lots_per_leg * 0.001 BTC
+
+        Example (1L capital, 25x leverage, 90% utilization):
+          effective_margin = ₹1,00,000 × 0.90 = ₹90,000
+          notional         = ₹90,000 × 25     = ₹22,50,000
+          total_lots       = 22,50,000 / 2500 = 900 (even)
+          per leg          = 450 CE / 450 PE
+          qty_btc_per_leg  = 0.450 BTC
+        """
+        capital = int(capital_inr if capital_inr is not None else self.config.get("capital_inr", 100000))
+        lev = float(leverage if leverage is not None else self.config.get("leverage", 25.0))
+        utilization = float(
+            capital_utilization if capital_utilization is not None
+            else self.config.get("capital_utilization", 0.90)
+        )
+        if lev <= 0:
+            lev = 1.0
+        # Clamp utilization: 1% minimum, 100% maximum
+        utilization = max(0.01, min(1.0, utilization))
+
+        # Step 1: Effective margin (90% of capital used for margin)
+        effective_margin_inr = capital * utilization
+
+        # Step 2: Total notional via leverage
+        notional_inr = effective_margin_inr * lev
+
+        # Step 3: Lots (floor, not round — never exceed capital)
+        raw_total_lots = int(notional_inr / 2500.0)
+        if raw_total_lots < 2:
+            raw_total_lots = 2
+        # Round DOWN to even for equal 50/50 split
+        if raw_total_lots % 2 != 0:
+            raw_total_lots -= 1
+        total_lots = raw_total_lots
+        lots_per_leg = total_lots // 2
+
+        qty_btc_per_leg = round(lots_per_leg * LOT_TO_BTC, 4)
+        total_qty_btc = round(total_lots * LOT_TO_BTC, 4)
+        notional_per_leg_inr = round(lots_per_leg * 2500.0, 2)
+        margin_per_leg_inr = round(notional_per_leg_inr / lev, 2) if lev > 0 else 0.0
+        total_margin_deployed_inr = round(margin_per_leg_inr * 2, 2)
+
+        return {
+            "sizing_mode": "LEVERAGE",
+            "capital_inr": capital,
+            "capital_utilization": round(utilization, 2),
+            "effective_margin_inr": round(effective_margin_inr, 2),
+            "leverage": lev,
+            "notional_inr": round(notional_inr, 2),
+            "total_lots": total_lots,
+            "lots_per_leg": lots_per_leg,
+            "qty_btc_per_leg": qty_btc_per_leg,
+            "total_qty_btc": total_qty_btc,
+            "notional_per_leg_inr": notional_per_leg_inr,
+            "margin_per_leg_inr": margin_per_leg_inr,
+            "total_margin_deployed_inr": total_margin_deployed_inr
+        }
+
+
     def save_config(self, new_cfg):
         with self.lock:
             try:
                 time_changed = False
                 exit_time_changed = False
                 for k, v in new_cfg.items():
-                    if k in self.config:
-                        # Type-cast safely
-                        if k in ["capital_inr", "lots"]:
-                            self.config[k] = int(v)
-                        elif k in ["sl_pct", "straddle_multiplier", "usd_to_inr"]:
-                            self.config[k] = float(v)
-                        elif k == "is_active":
-                            self.config[k] = bool(v)
-                        elif k == "entry_time_ist":
-                            val_str = str(v).strip()
-                            if val_str != self.config.get("entry_time_ist"):
-                                time_changed = True
-                            self.config[k] = val_str
-                        elif k == "exit_time_ist":
-                            val_str = str(v).strip()
-                            if val_str != self.config.get("exit_time_ist"):
-                                exit_time_changed = True
-                            self.config[k] = val_str
-                        elif k == "mode":
-                            self.config[k] = str(v).strip()
-                        elif k == "weekdays" and isinstance(v, list):
-                            self.config[k] = v
+                    # Core capital & leverage inputs (lots are ALWAYS derived, never stored as fixed)
+                    if k == "capital_inr":
+                        self.config[k] = max(1000, int(v))
+                    elif k == "leverage":
+                        self.config[k] = max(1.0, float(v))
+                    elif k == "capital_utilization":
+                        # Clamp between 1% and 100%
+                        self.config[k] = max(0.01, min(1.0, float(v)))
+                    elif k in ["sl_pct", "straddle_multiplier", "usd_to_inr"]:
+                        self.config[k] = float(v)
+                    elif k == "is_active":
+                        self.config[k] = bool(v)
+                    elif k == "entry_time_ist":
+                        val_str = str(v).strip()
+                        if val_str != self.config.get("entry_time_ist"):
+                            time_changed = True
+                        self.config[k] = val_str
+                    elif k == "exit_time_ist":
+                        val_str = str(v).strip()
+                        if val_str != self.config.get("exit_time_ist"):
+                            exit_time_changed = True
+                        self.config[k] = val_str
+                    elif k == "mode":
+                        self.config[k] = str(v).strip().upper()
+                    elif k == "weekdays" and isinstance(v, list):
+                        self.config[k] = v
+                    # NOTE: 'lots', 'total_lots', 'notional_inr', 'sizing_mode' are IGNORED here.
+                    # Lot sizing is always 100% dynamic: capital × utilization × leverage / 2500
 
                 # If entry time changed, re-arm scheduler immediately
                 if time_changed:
@@ -114,11 +189,19 @@ class BTSTStrangleEngine:
 
                 with open(CONFIG_FILE, "w", encoding="utf-8") as f:
                     json.dump(self.config, f, indent=4)
-                app_logger.info(f"[BTST] Configuration successfully saved: {self.config}")
+                sizing = self.calculate_position_sizing()
+                app_logger.info(
+                    f"[BTST] Config saved | Capital=₹{self.config['capital_inr']:,} | "
+                    f"Utilization={int(self.config.get('capital_utilization', 0.90)*100)}% | "
+                    f"Leverage={self.config['leverage']}x | "
+                    f"Notional=₹{sizing['notional_inr']:,.0f} | "
+                    f"Lots={sizing['lots_per_leg']} CE / {sizing['lots_per_leg']} PE (Total {sizing['total_lots']})"
+                )
                 return True, "Configuration updated successfully."
             except Exception as e:
                 app_logger.error(f"[BTST] Failed to save config: {e}")
                 return False, str(e)
+
 
     def _load_positions(self):
         try:
@@ -331,6 +414,7 @@ class BTSTStrangleEngine:
         sl_multiplier = 1.0 + (float(self.config.get("sl_pct", 100.0)) / 100.0)
         call_sl_price = round(call_entry_price * sl_multiplier, 4)
         put_sl_price = round(put_entry_price * sl_multiplier, 4)
+        sizing = self.calculate_position_sizing()
 
         result = {
             "entry_dt": entry_dt,
@@ -356,6 +440,7 @@ class BTSTStrangleEngine:
             "put_entry_price": put_entry_price,
             "call_sl_price": call_sl_price,
             "put_sl_price": put_sl_price,
+            "sizing": sizing
         }
         return True, "Strike calculation successful.", result
 
@@ -379,13 +464,17 @@ class BTSTStrangleEngine:
                 return False, f"Strike selection failed: {msg}"
 
             trade_id = f"BTST-{now_ist.strftime('%Y%m%d-%H%M%S')}"
-            lots = int(self.config.get("lots", 500))
-            qty_btc = round(lots * LOT_TO_BTC, 4)
+            sizing = self.calculate_position_sizing()
+            lots_per_leg = sizing['lots_per_leg']
+            total_lots = sizing['total_lots']
+            qty_btc = sizing['qty_btc_per_leg']
+            total_qty_btc = sizing['total_qty_btc']
             mode = self.config.get("mode", "PAPER")
 
             app_logger.info(
-                f"[BTST] Opening {mode} Strangle Trade {trade_id} | ATM={math_res['atm_strike']} | "
-                f"Offset={math_res['offset']} ({math_res['multiplier']}x) | "
+                f"[BTST] Opening {mode} Strangle Trade {trade_id} | Capital=₹{sizing['capital_inr']:,} @ {sizing['leverage']}x (₹{sizing['notional_inr']:,} Notional) | "
+                f"Lots={lots_per_leg} CE / {lots_per_leg} PE (Total {total_lots} lots, {total_qty_btc} BTC) | "
+                f"ATM={math_res['atm_strike']} | Offset={math_res['offset']} ({math_res['multiplier']}x) | "
                 f"CE={math_res['call_symbol']} @ ${math_res['call_entry_price']} (SL ${math_res['call_sl_price']}) | "
                 f"PE={math_res['put_symbol']} @ ${math_res['put_entry_price']} (SL ${math_res['put_sl_price']})"
             )
@@ -398,7 +487,7 @@ class BTSTStrangleEngine:
                     c_res = self.api_client.place_order(
                         product_id=math_res['call_product_id'],
                         side='sell',
-                        size=lots,
+                        size=lots_per_leg,
                         order_type='market_order'
                     )
                     if not c_res.get('success'):
@@ -408,12 +497,12 @@ class BTSTStrangleEngine:
                     p_res = self.api_client.place_order(
                         product_id=math_res['put_product_id'],
                         side='sell',
-                        size=lots,
+                        size=lots_per_leg,
                         order_type='market_order'
                     )
                     if not p_res.get('success'):
                         # Safe rollback if PE fails
-                        self.api_client.place_order(product_id=math_res['call_product_id'], side='buy', size=lots, order_type='market_order', reduce_only=True)
+                        self.api_client.place_order(product_id=math_res['call_product_id'], side='buy', size=lots_per_leg, order_type='market_order', reduce_only=True)
                         return False, f"Live PE leg order failed: {p_res.get('error')}"
                     put_live_order_id = p_res.get('result', {}).get('id')
                 except Exception as e:
@@ -436,15 +525,19 @@ class BTSTStrangleEngine:
                 "offset_points": math_res['offset'],
                 "status": "OPEN",
                 "mode": mode,
-                "lots": lots,
+                "lots": lots_per_leg,
+                "total_lots": total_lots,
                 "qty_btc": qty_btc,
+                "total_qty_btc": total_qty_btc,
+                "sizing": sizing,
                 "sl_pct": self.config.get("sl_pct", 100.0),
                 "ce_leg": {
                     "symbol": math_res['call_symbol'],
                     "product_id": math_res['call_product_id'],
                     "strike": math_res['selected_ce_strike'],
                     "side": "sell",
-                    "lots": lots,
+                    "lots": lots_per_leg,
+                    "qty_btc": qty_btc,
                     "entry_price": math_res['call_entry_price'],
                     "sl_price": math_res['call_sl_price'],
                     "current_price": math_res['call_entry_price'],
@@ -461,7 +554,8 @@ class BTSTStrangleEngine:
                     "product_id": math_res['put_product_id'],
                     "strike": math_res['selected_pe_strike'],
                     "side": "sell",
-                    "lots": lots,
+                    "lots": lots_per_leg,
+                    "qty_btc": qty_btc,
                     "entry_price": math_res['put_entry_price'],
                     "sl_price": math_res['put_sl_price'],
                     "current_price": math_res['put_entry_price'],
@@ -528,21 +622,23 @@ class BTSTStrangleEngine:
 
             # Update Call Leg
             ce = trade['ce_leg']
+            ce_qty = float(ce.get('qty_btc') or trade.get('qty_btc') or (lots * LOT_TO_BTC))
             if ce['status'] == 'OPEN' and ce_ticker:
                 curr_ce = float(ce_ticker.get('mark_price') or ce_ticker.get('close') or ce.get('current_price') or 0)
                 if curr_ce > 0:
                     ce['current_price'] = curr_ce
-                    ce_pnl_usd = (ce['entry_price'] - curr_ce) * qty_btc
+                    ce_pnl_usd = (ce['entry_price'] - curr_ce) * ce_qty
                     ce['pnl_usd'] = round(ce_pnl_usd, 2)
                     ce['pnl_inr'] = round(ce_pnl_usd * rate, 2)
 
             # Update Put Leg
             pe = trade['pe_leg']
+            pe_qty = float(pe.get('qty_btc') or trade.get('qty_btc') or (lots * LOT_TO_BTC))
             if pe['status'] == 'OPEN' and pe_ticker:
                 curr_pe = float(pe_ticker.get('mark_price') or pe_ticker.get('close') or pe.get('current_price') or 0)
                 if curr_pe > 0:
                     pe['current_price'] = curr_pe
-                    pe_pnl_usd = (pe['entry_price'] - curr_pe) * qty_btc
+                    pe_pnl_usd = (pe['entry_price'] - curr_pe) * pe_qty
                     pe['pnl_usd'] = round(pe_pnl_usd, 2)
                     pe['pnl_inr'] = round(pe_pnl_usd * rate, 2)
 
@@ -606,7 +702,7 @@ class BTSTStrangleEngine:
 
         now_ist = get_ist_now()
         rate = float(self.config.get("usd_to_inr", 85.0))
-        qty_btc = float(self.active_trade.get("qty_btc", 0.5))
+        leg_qty_btc = float(leg.get("qty_btc") or self.active_trade.get("qty_btc", 0.5))
 
         # Real order square off in LIVE mode
         if self.active_trade.get("mode") == "LIVE":
@@ -626,7 +722,7 @@ class BTSTStrangleEngine:
         if exit_reason == 'EXPIRED_EXIT' and exit_price <= 1.0:
             exit_price = 0.10
 
-        pnl_usd = (leg['entry_price'] - exit_price) * qty_btc
+        pnl_usd = (leg['entry_price'] - exit_price) * leg_qty_btc
         pnl_inr = pnl_usd * rate
 
         leg['status'] = exit_reason
@@ -676,7 +772,7 @@ class BTSTStrangleEngine:
             "strike": ce['strike'],
             "side": "Sell",
             "lots": ce['lots'],
-            "qty_btc": trade['qty_btc'],
+            "qty_btc": ce.get('qty_btc', trade.get('qty_btc', 0.5)),
             "entry_price": ce['entry_price'],
             "exit_price": ce['exit_price'],
             "pnl_usd": ce['pnl_usd'],
@@ -696,7 +792,7 @@ class BTSTStrangleEngine:
             "strike": pe['strike'],
             "side": "Sell",
             "lots": pe['lots'],
-            "qty_btc": trade['qty_btc'],
+            "qty_btc": pe.get('qty_btc', trade.get('qty_btc', 0.5)),
             "entry_price": pe['entry_price'],
             "exit_price": pe['exit_price'],
             "pnl_usd": pe['pnl_usd'],
@@ -795,6 +891,7 @@ class BTSTStrangleEngine:
 
         return {
             "config": self.config,
+            "sizing": self.calculate_position_sizing(),
             "active_trade": self.active_trade,
             "trade_history": self.trade_history[:50],  # Latest 50 trade entries
             "metrics": metrics,

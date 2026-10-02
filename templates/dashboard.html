@@ -3050,6 +3050,7 @@ tr:hover td {
             <div id="btst-pos-details" style="display: none; flex-direction: column; gap: 18px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 12px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap; gap: 10px; font-size: 0.85rem;">
                     <div>Trade ID: <b id="btst-trade-id-val" style="color: #38bdf8; font-family: 'JetBrains Mono', monospace;">BTST--</b></div>
+                    <div>Allocation: <b id="btst-trade-lots-val" style="color: #00f59b;">--</b></div>
                     <div>Entry: <b id="btst-trade-entry-val" style="color: #e2e8f0;">--</b></div>
                     <div>Expiry Target: <b id="btst-trade-expiry-val" style="color: #c084fc;">--</b> (05:28 PM IST)</div>
                     <div>Straddle Offset: <b id="btst-trade-offset-val" style="color: #fbbf24;">-- pts (1.8x)</b></div>
@@ -3155,25 +3156,95 @@ tr:hover td {
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 16px;">
-                    <!-- Capital in INR -->
+                    <!-- Capital Input (full width) -->
                     <div>
                         <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
                             Strategy Capital (INR ₹)
                         </label>
-                        <input type="number" id="btst-cfg-capital" class="btst-input" placeholder="1000000" step="50000">
-                        <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">Editable capital base for margin and sizing calculation.</div>
+                        <input type="number" id="btst-cfg-capital" class="btst-input" placeholder="100000" step="10000" oninput="recalculateBtstSizingClient()">
+                        <div style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">Total capital deployed for this strategy</div>
+                    </div>
+
+                    <!-- Capital Quick Preset Pills -->
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: -6px;">
+                        <span style="font-size: 0.68rem; color: #64748b; align-self: center; margin-right: 4px;">Capital:</span>
+                        <button type="button" onclick="setBtstCapitalPreset(50000)" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #94a3b8; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; cursor: pointer; transition: all 0.15s;">₹50K</button>
+                        <button type="button" onclick="setBtstCapitalPreset(100000)" style="background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.15s;">₹1 Lakh (1L)</button>
+                        <button type="button" onclick="setBtstCapitalPreset(200000)" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #94a3b8; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; cursor: pointer; transition: all 0.15s;">₹2 Lakh (2L)</button>
+                        <button type="button" onclick="setBtstCapitalPreset(500000)" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #94a3b8; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; cursor: pointer; transition: all 0.15s;">₹5 Lakh (5L)</button>
+                    </div>
+
+                    <!-- Leverage & Lots Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <!-- Leverage Multiplier -->
+                        <div id="btst-leverage-row">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1;">
+                                    Leverage Multiplier
+                                </label>
+                                <span style="font-size: 0.7rem; color: #fbbf24; font-weight: 700;">Max 100x</span>
+                            </div>
+                            <input type="number" id="btst-cfg-leverage" class="btst-input" placeholder="25" min="1" max="100" step="1" oninput="recalculateBtstSizingClient()">
+                            <!-- Leverage Quick Preset Buttons -->
+                            <div style="display: flex; gap: 4px; margin-top: 6px;">
+                                <button type="button" onclick="setBtstLeveragePreset(10)" style="flex:1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #94a3b8; padding: 2px 4px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">10x</button>
+                                <button type="button" onclick="setBtstLeveragePreset(20)" style="flex:1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #94a3b8; padding: 2px 4px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">20x</button>
+                                <button type="button" onclick="setBtstLeveragePreset(25)" style="flex:1; background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.3); color: #fbbf24; font-weight: 700; padding: 2px 4px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">25x</button>
+                                <button type="button" onclick="setBtstLeveragePreset(50)" style="flex:1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #94a3b8; padding: 2px 4px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">50x</button>
+                            </div>
+                        </div>
+
+                        <!-- Capital Utilization % -->
+                        <div id="btst-utilization-row">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1;">
+                                    Capital Utilization
+                                </label>
+                                <span style="font-size: 0.7rem; color: #00f59b; font-weight: 700;">Default 90%</span>
+                            </div>
+                            <input type="number" id="btst-cfg-utilization" class="btst-input" placeholder="90" min="1" max="100" step="5" oninput="recalculateBtstSizingClient()">
+                            <div style="font-size: 0.7rem; color: #64748b; margin-top: 6px;">% of capital used as margin (safety buffer)</div>
+                        </div>
+                    </div>
+
+                    <!-- DYNAMIC POSITION SIZING BREAKDOWN CARD -->
+                    <div id="btst-sizing-preview-card" style="background: linear-gradient(145deg, rgba(15, 23, 42, 0.75), rgba(30, 41, 59, 0.5)); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 14px 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                                <span>⚖️</span> Dynamic Capital Allocation & Sizing
+                            </span>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: #00f59b; background: rgba(0, 245, 155, 0.1); border: 1px solid rgba(0, 245, 155, 0.25); padding: 2px 8px; border-radius: 10px;">
+                                Equal 50/50 Leg Split
+                            </span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div style="background: rgba(0, 0, 0, 0.25); border-radius: 8px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">Total Notional Exposure</div>
+                                <div id="btst-calc-notional" style="font-size: 1.1rem; font-weight: 800; color: #00f59b; font-family: 'JetBrains Mono', monospace;">₹22,50,000</div>
+                                <div id="btst-calc-notional-sub" style="font-size: 0.68rem; color: #64748b;">(22.5 Lakhs Notional)</div>
+                            </div>
+                            <div style="background: rgba(0, 0, 0, 0.25); border-radius: 8px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">Total Strangle Lots</div>
+                                <div id="btst-calc-total-lots" style="font-size: 1.1rem; font-weight: 800; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">900 Lots</div>
+                                <div id="btst-calc-total-btc" style="font-size: 0.68rem; color: #64748b;">0.900 BTC combined</div>
+                            </div>
+                        </div>
+                        <!-- Per Leg Equal Allocation -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08);">
+                            <div style="border-left: 3px solid #38bdf8; padding-left: 8px;">
+                                <div style="font-size: 0.68rem; color: #38bdf8; font-weight: 700;">CALL LEG (CE)</div>
+                                <div id="btst-calc-ce-lots" style="font-size: 0.88rem; font-weight: 700; color: #fff;">450 Lots <span style="font-size: 0.72rem; color: #94a3b8;">(0.450 BTC)</span></div>
+                                <div id="btst-calc-ce-notional" style="font-size: 0.68rem; color: #64748b;">₹11.25L Notional (₹45,000 Margin)</div>
+                            </div>
+                            <div style="border-left: 3px solid #f472b6; padding-left: 8px;">
+                                <div style="font-size: 0.68rem; color: #f472b6; font-weight: 700;">PUT LEG (PE)</div>
+                                <div id="btst-calc-pe-lots" style="font-size: 0.88rem; font-weight: 700; color: #fff;">450 Lots <span style="font-size: 0.72rem; color: #94a3b8;">(0.450 BTC)</span></div>
+                                <div id="btst-calc-pe-notional" style="font-size: 0.68rem; color: #64748b;">₹11.25L Notional (₹45,000 Margin)</div>
+                            </div>
+                        </div>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                        <!-- Lot Size -->
-                        <div>
-                            <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
-                                Lots per Leg
-                            </label>
-                            <input type="number" id="btst-cfg-lots" class="btst-input" placeholder="500" min="1">
-                            <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">500 lots = 0.50 BTC</div>
-                        </div>
-
                         <!-- Stop Loss % -->
                         <div>
                             <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
@@ -3182,9 +3253,7 @@ tr:hover td {
                             <input type="number" id="btst-cfg-sl" class="btst-input" placeholder="100" min="10" max="500">
                             <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">100% = 2x entry premium</div>
                         </div>
-                    </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                         <!-- Straddle Multiplier -->
                         <div>
                             <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
@@ -3193,7 +3262,9 @@ tr:hover td {
                             <input type="number" id="btst-cfg-multiplier" class="btst-input" placeholder="1.8" step="0.1" min="0.5" max="5.0">
                             <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">Default 1.8x Straddle Width</div>
                         </div>
+                    </div>
 
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                         <!-- USD to INR Rate -->
                         <div>
                             <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
@@ -3201,6 +3272,17 @@ tr:hover td {
                             </label>
                             <input type="number" id="btst-cfg-fx" class="btst-input" placeholder="85.0" step="0.5">
                             <div style="font-size: 0.72rem; color: #64748b; margin-top: 3px;">Standard Delta rate: ₹85</div>
+                        </div>
+
+                        <!-- Execution Mode -->
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                                Execution Mode
+                            </label>
+                            <select id="btst-cfg-mode" class="btst-input">
+                                <option value="PAPER">📝 PAPER (Forward-Test Sandbox)</option>
+                                <option value="LIVE">⚡ LIVE (Real Exchange Orders)</option>
+                            </select>
                         </div>
                     </div>
 
@@ -3224,20 +3306,9 @@ tr:hover td {
                         </div>
                     </div>
 
-                    <!-- Mode Selection -->
-                    <div>
-                        <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1; display: block; margin-bottom: 6px;">
-                            Execution Mode
-                        </label>
-                        <select id="btst-cfg-mode" class="btst-input">
-                            <option value="PAPER">📝 PAPER (Automated Forward-Test Sandbox)</option>
-                            <option value="LIVE">⚡ LIVE (Real Exchange Orders via Delta API)</option>
-                        </select>
-                    </div>
-
                     <div style="display: flex; gap: 10px; margin-top: 6px;">
                         <button id="btn-save-btst-cfg" onclick="saveBtstConfig()" style="flex: 1; background: linear-gradient(135deg, #059669, #10b981); color: #fff; border: 1px solid rgba(16,185,129,0.4); padding: 12px 18px; border-radius: 10px; font-weight: 800; font-size: 0.95rem; cursor: pointer; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transition: all 0.2s;">
-                            💾 Save Strategy Settings
+                            💾 Save Strategy & Leverage Settings
                         </button>
                     </div>
                     <div id="btst-cfg-feedback" style="font-size: 0.82rem; font-weight: 600; text-align: center;"></div>
@@ -4089,7 +4160,8 @@ tr:hover td {
             const hasGen = Array.isArray(data.positions) && data.positions.length > 0;
             const hasLive = Array.isArray(data.live_positions) && data.live_positions.length > 0;
             const hasPaper = Array.isArray(data.paper_positions) && data.paper_positions.length > 0;
-            return hasGen || hasLive || hasPaper;
+            const hasBtst = Boolean(data.has_btst_pos);
+            return hasGen || hasLive || hasPaper || hasBtst;
         }
 
         function shouldBeActivePolling(data) {
@@ -5381,7 +5453,133 @@ tr:hover td {
         // 🌙 BTST 44H STRANGLE STRATEGY (AlgoTest Forward-Testing Engine)
         // ==============================================================================
         let btstUserEditing = false;
+        let btstUserEditingLots = false;
         let btstPollingTimer = null;
+
+        function attachBtstInputListeners() {
+            const inputs = ['btst-cfg-capital', 'btst-cfg-leverage', 'btst-cfg-lots', 'btst-cfg-sl', 'btst-cfg-multiplier', 'btst-cfg-fx', 'btst-cfg-entry-time', 'btst-cfg-exit-time', 'btst-cfg-mode', 'btst-cfg-sizing-mode'];
+            inputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('focus', () => { btstUserEditing = true; });
+                    el.addEventListener('blur', () => { 
+                        setTimeout(() => { btstUserEditing = false; }, 1000); 
+                    });
+                }
+            });
+            const lotsEl = document.getElementById('btst-cfg-lots');
+            if (lotsEl) {
+                lotsEl.addEventListener('focus', () => { btstUserEditingLots = true; });
+                lotsEl.addEventListener('blur', () => { btstUserEditingLots = false; });
+            }
+        }
+        document.addEventListener('DOMContentLoaded', attachBtstInputListeners);
+
+        function recalculateBtstSizingClient() {
+            const capInput = document.getElementById('btst-cfg-capital');
+            const levInput = document.getElementById('btst-cfg-leverage');
+            const utilInput = document.getElementById('btst-cfg-utilization');
+
+            let capital = parseInt(capInput?.value || 100000, 10);
+            if (isNaN(capital) || capital <= 0) capital = 100000;
+
+            let leverage = parseFloat(levInput?.value || 25.0);
+            if (isNaN(leverage) || leverage <= 0) leverage = 25.0;
+
+            let utilization = parseFloat(utilInput?.value || 90) / 100.0;
+            if (isNaN(utilization) || utilization <= 0) utilization = 0.90;
+            utilization = Math.max(0.01, Math.min(1.0, utilization));
+
+            // Core formula: effective_margin × leverage = notional
+            const effectiveMargin = capital * utilization;
+            const notionalInr = effectiveMargin * leverage;
+
+            // Floor to nearest even number (never exceed capital)
+            let rawLots = Math.floor(notionalInr / 2500);
+            if (rawLots < 2) rawLots = 2;
+            if (rawLots % 2 !== 0) rawLots -= 1;  // round DOWN for even split
+            const totalLots = rawLots;
+            const lotsPerLeg = Math.floor(totalLots / 2);
+
+            const totalBtc = (totalLots * 0.001).toFixed(3);
+            const legBtc = (lotsPerLeg * 0.001).toFixed(3);
+            const legNotional = (lotsPerLeg * 2500);
+            const legMargin = leverage > 0 ? Math.round(legNotional / leverage) : 0;
+            const notionalLakhs = (notionalInr / 100000).toFixed(2);
+
+            // Update UI Card
+            const notionalEl = document.getElementById('btst-calc-notional');
+            if (notionalEl) notionalEl.textContent = '₹' + Number(notionalInr).toLocaleString('en-IN');
+
+            const notionalSubEl = document.getElementById('btst-calc-notional-sub');
+            if (notionalSubEl) notionalSubEl.textContent = '(' + notionalLakhs + ' Lakhs Notional | ' + Math.round(utilization * 100) + '% utilized)';
+
+            const totalLotsEl = document.getElementById('btst-calc-total-lots');
+            if (totalLotsEl) totalLotsEl.textContent = Number(totalLots).toLocaleString('en-IN') + ' Lots';
+
+            const totalBtcEl = document.getElementById('btst-calc-total-btc');
+            if (totalBtcEl) totalBtcEl.textContent = totalBtc + ' BTC combined';
+
+            const ceLotsEl = document.getElementById('btst-calc-ce-lots');
+            if (ceLotsEl) ceLotsEl.innerHTML = Number(lotsPerLeg).toLocaleString('en-IN') + ' Lots <span style="font-size: 0.72rem; color: #94a3b8;">(' + legBtc + ' BTC)</span>';
+
+            const ceNotionalEl = document.getElementById('btst-calc-ce-notional');
+            if (ceNotionalEl) ceNotionalEl.textContent = '₹' + (legNotional / 100000).toFixed(2) + 'L Notional (₹' + Number(legMargin).toLocaleString('en-IN') + ' Margin)';
+
+            const peLotsEl = document.getElementById('btst-calc-pe-lots');
+            if (peLotsEl) peLotsEl.innerHTML = Number(lotsPerLeg).toLocaleString('en-IN') + ' Lots <span style="font-size: 0.72rem; color: #94a3b8;">(' + legBtc + ' BTC)</span>';
+
+            const peNotionalEl = document.getElementById('btst-calc-pe-notional');
+            if (peNotionalEl) peNotionalEl.textContent = '₹' + (legNotional / 100000).toFixed(2) + 'L Notional (₹' + Number(legMargin).toLocaleString('en-IN') + ' Margin)';
+
+            // Update header metric cards
+            const capStat = document.getElementById('btst-capital-stat');
+            if (capStat) capStat.textContent = '₹' + Number(capital).toLocaleString('en-IN') + ' @ ' + leverage + 'x (' + Math.round(utilization * 100) + '% utilization)';
+
+            const lotsStat = document.getElementById('btst-lots-stat');
+            if (lotsStat) lotsStat.textContent = notionalLakhs + 'L Notional • ' + Number(lotsPerLeg).toLocaleString('en-IN') + ' CE / ' + Number(lotsPerLeg).toLocaleString('en-IN') + ' PE (' + Number(totalLots).toLocaleString('en-IN') + ' Lots)';
+
+            // Update preview strike allocation tags if visible
+            if (document.getElementById('btst-preview-ce-alloc')) {
+                document.getElementById('btst-preview-ce-alloc').textContent = `${lotsPerLeg} Lots (${legBtc} BTC)`;
+            }
+            if (document.getElementById('btst-preview-pe-alloc')) {
+                document.getElementById('btst-preview-pe-alloc').textContent = `${lotsPerLeg} Lots (${legBtc} BTC)`;
+            }
+        }
+
+
+        function setBtstCapitalPreset(val) {
+            const input = document.getElementById('btst-cfg-capital');
+            if (input) {
+                input.value = val;
+                recalculateBtstSizingClient();
+            }
+        }
+
+        function setBtstLeveragePreset(val) {
+            const input = document.getElementById('btst-cfg-leverage');
+            if (input) {
+                input.value = val;
+                recalculateBtstSizingClient();
+            }
+        }
+
+        function onBtstSizingModeChange() {
+            const mode = document.getElementById('btst-cfg-sizing-mode')?.value;
+            const levRow = document.getElementById('btst-leverage-row');
+            if (mode === 'FIXED') {
+                if (levRow) levRow.style.opacity = '0.5';
+            } else {
+                if (levRow) levRow.style.opacity = '1';
+            }
+            recalculateBtstSizingClient();
+        }
+
+        function onBtstLotsManualInput() {
+            btstUserEditingLots = true;
+            recalculateBtstSizingClient();
+        }
 
         async function loadBtstData(forcePreview = false) {
             try {
@@ -5418,8 +5616,11 @@ tr:hover td {
             // Fill Configuration Inputs (only if user is not actively editing)
             if (data.config && !btstUserEditing) {
                 const cfg = data.config;
-                if (document.getElementById('btst-cfg-capital')) document.getElementById('btst-cfg-capital').value = cfg.capital_inr || 1000000;
-                if (document.getElementById('btst-cfg-lots')) document.getElementById('btst-cfg-lots').value = cfg.lots || 500;
+                const sizing = data.sizing || {};
+                if (document.getElementById('btst-cfg-capital')) document.getElementById('btst-cfg-capital').value = cfg.capital_inr || 100000;
+                if (document.getElementById('btst-cfg-leverage')) document.getElementById('btst-cfg-leverage').value = cfg.leverage || 25.0;
+                const utilVal = cfg.capital_utilization !== undefined ? cfg.capital_utilization : (sizing.capital_utilization !== undefined ? sizing.capital_utilization : 0.90);
+                if (document.getElementById('btst-cfg-utilization')) document.getElementById('btst-cfg-utilization').value = Math.round(utilVal * 100);
                 if (document.getElementById('btst-cfg-sl')) document.getElementById('btst-cfg-sl').value = cfg.sl_pct || 100;
                 if (document.getElementById('btst-cfg-multiplier')) document.getElementById('btst-cfg-multiplier').value = cfg.straddle_multiplier || 1.8;
                 if (document.getElementById('btst-cfg-fx')) document.getElementById('btst-cfg-fx').value = cfg.usd_to_inr || 85.0;
@@ -5443,10 +5644,7 @@ tr:hover td {
                     }
                 }
 
-                const capStat = document.getElementById('btst-capital-stat');
-                if (capStat) capStat.textContent = '₹' + Number(cfg.capital_inr || 1000000).toLocaleString('en-IN');
-                const lotsStat = document.getElementById('btst-lots-stat');
-                if (lotsStat) lotsStat.textContent = (cfg.lots || 500) + ' Lots (' + ((cfg.lots || 500) * 0.001).toFixed(2) + ' BTC)';
+                recalculateBtstSizingClient();
                 const slStat = document.getElementById('btst-sl-stat');
                 if (slStat) slStat.textContent = (cfg.sl_pct || 100) + '% (2x)';
             }
@@ -5482,6 +5680,11 @@ tr:hover td {
 
                 // Top meta
                 if (document.getElementById('btst-trade-id-val')) document.getElementById('btst-trade-id-val').textContent = trade.trade_id;
+                if (document.getElementById('btst-trade-lots-val')) {
+                    const totalLots = trade.total_lots || (trade.lots * 2);
+                    const totalBtc = trade.total_qty_btc || ((trade.qty_btc || 0.5) * 2);
+                    document.getElementById('btst-trade-lots-val').textContent = `${trade.lots} CE / ${trade.lots} PE (${totalLots} Lots, ${totalBtc} BTC)`;
+                }
                 if (document.getElementById('btst-trade-entry-val')) document.getElementById('btst-trade-entry-val').textContent = trade.entry_time;
                 if (document.getElementById('btst-trade-expiry-val')) document.getElementById('btst-trade-expiry-val').textContent = trade.target_exit_time;
                 if (document.getElementById('btst-trade-offset-val')) document.getElementById('btst-trade-offset-val').textContent = trade.offset_points + ' pts (' + (trade.straddle_multiplier || 1.8) + 'x)';
@@ -5503,7 +5706,7 @@ tr:hover td {
                 const ce = trade.ce_leg;
                 if (ce) {
                     if (document.getElementById('btst-ce-symbol')) document.getElementById('btst-ce-symbol').textContent = ce.symbol;
-                    if (document.getElementById('btst-ce-sub')) document.getElementById('btst-ce-sub').textContent = 'Strike: ' + ce.strike + ' | ' + ce.lots + ' Lots (' + trade.qty_btc + ' BTC)';
+                    if (document.getElementById('btst-ce-sub')) document.getElementById('btst-ce-sub').textContent = 'Strike: ' + ce.strike + ' | ' + ce.lots + ' Lots (' + (ce.qty_btc || trade.qty_btc) + ' BTC)';
                     if (document.getElementById('btst-ce-entry')) document.getElementById('btst-ce-entry').textContent = '$' + Number(ce.entry_price).toFixed(2);
                     if (document.getElementById('btst-ce-current')) document.getElementById('btst-ce-current').textContent = '$' + Number(ce.current_price).toFixed(2);
                     if (document.getElementById('btst-ce-sl')) document.getElementById('btst-ce-sl').textContent = '$' + Number(ce.sl_price).toFixed(2);
@@ -5538,7 +5741,7 @@ tr:hover td {
                 const pe = trade.pe_leg;
                 if (pe) {
                     if (document.getElementById('btst-pe-symbol')) document.getElementById('btst-pe-symbol').textContent = pe.symbol;
-                    if (document.getElementById('btst-pe-sub')) document.getElementById('btst-pe-sub').textContent = 'Strike: ' + pe.strike + ' | ' + pe.lots + ' Lots (' + trade.qty_btc + ' BTC)';
+                    if (document.getElementById('btst-pe-sub')) document.getElementById('btst-pe-sub').textContent = 'Strike: ' + pe.strike + ' | ' + pe.lots + ' Lots (' + (pe.qty_btc || trade.qty_btc) + ' BTC)';
                     if (document.getElementById('btst-pe-entry')) document.getElementById('btst-pe-entry').textContent = '$' + Number(pe.entry_price).toFixed(2);
                     if (document.getElementById('btst-pe-current')) document.getElementById('btst-pe-current').textContent = '$' + Number(pe.current_price).toFixed(2);
                     if (document.getElementById('btst-pe-sl')) document.getElementById('btst-pe-sl').textContent = '$' + Number(pe.sl_price).toFixed(2);
@@ -5647,6 +5850,16 @@ tr:hover td {
                     if (document.getElementById('btst-preview-pe-sym')) document.getElementById('btst-preview-pe-sym').textContent = p.put_symbol;
                     if (document.getElementById('btst-preview-pe-price')) document.getElementById('btst-preview-pe-price').textContent = '$' + Number(p.put_entry_price).toFixed(2);
                     if (document.getElementById('btst-preview-pe-sl')) document.getElementById('btst-preview-pe-sl').textContent = 'SL: $' + Number(p.put_sl_price).toFixed(2);
+
+                    if (p.sizing) {
+                        const s = p.sizing;
+                        if (document.getElementById('btst-preview-ce-alloc')) {
+                            document.getElementById('btst-preview-ce-alloc').textContent = `${s.lots_per_leg} Lots (${s.qty_btc_per_leg} BTC)`;
+                        }
+                        if (document.getElementById('btst-preview-pe-alloc')) {
+                            document.getElementById('btst-preview-pe-alloc').textContent = `${s.lots_per_leg} Lots (${s.qty_btc_per_leg} BTC)`;
+                        }
+                    }
                 }
             } catch (e) {
                 console.warn('[BTST] previewStrikes error:', e);
@@ -5659,9 +5872,13 @@ tr:hover td {
             if (btn) btn.disabled = true;
             if (feedback) feedback.textContent = 'Saving...';
 
+            const utilPercent = parseFloat(document.getElementById('btst-cfg-utilization')?.value || 90);
+            const capitalUtilization = utilPercent > 1 ? (utilPercent / 100.0) : utilPercent;
+
             const payload = {
-                capital_inr: parseInt(document.getElementById('btst-cfg-capital')?.value || 1000000, 10),
-                lots: parseInt(document.getElementById('btst-cfg-lots')?.value || 500, 10),
+                capital_inr: parseInt(document.getElementById('btst-cfg-capital')?.value || 100000, 10),
+                leverage: parseFloat(document.getElementById('btst-cfg-leverage')?.value || 25.0),
+                capital_utilization: capitalUtilization,
                 sl_pct: parseFloat(document.getElementById('btst-cfg-sl')?.value || 100),
                 straddle_multiplier: parseFloat(document.getElementById('btst-cfg-multiplier')?.value || 1.8),
                 usd_to_inr: parseFloat(document.getElementById('btst-cfg-fx')?.value || 85.0),
@@ -5680,10 +5897,11 @@ tr:hover td {
                 if (resData.success) {
                     if (feedback) {
                         feedback.style.color = '#00f59b';
-                        feedback.textContent = '✅ Strategy parameters saved successfully!';
+                        feedback.textContent = '✅ Strategy & leverage parameters saved successfully!';
                     }
                     setTimeout(() => { if (feedback) feedback.textContent = ''; }, 4000);
                     loadBtstData();
+                    previewBtstStrikes();
                 } else {
                     if (feedback) {
                         feedback.style.color = '#ff4b72';
