@@ -1062,34 +1062,33 @@ class DeltaTradingEngine:
                     try:
                         now_ist = get_ist_now()
                         current_time_minutes = now_ist.hour * 60 + now_ist.minute
-                        # 16:55 IST is 1015 minutes, 17:00 IST is 1020 minutes
-                        # Reset the guard at midnight so the bot can exit next day too
-                        if current_time_minutes < 60:  # Past midnight resets the daily guard
+                        # EOD safeguard: Force close at 16:55 IST (before options expire at 17:28 IST).
+                        # Handles BOTH daytime and overnight entries:
+                        #   - Daytime entry  (e.g. 09:00 IST): fires at 16:55 same day
+                        #   - Overnight entry (e.g. 22:30 IST): fires at 16:55 the NEXT calendar day
+                        # Reset the guard at midnight so the bot can exit next day too.
+                        if current_time_minutes < 60:  # Past midnight -> reset daily guard
                             _eod_exit_triggered = False
-                            
-                        # Check if the trade was entered during the daytime session (before 16:55)
-                        trade_entry_time_str = self.current_trade_info.get("entry_time")
-                        entered_today_before_eod = True
-                        if trade_entry_time_str:
-                            try:
-                                import datetime
-                                entry_dt = datetime.datetime.fromisoformat(trade_entry_time_str)
-                                entry_mins = entry_dt.hour * 60 + entry_dt.minute
-                                if entry_mins >= 1015:
-                                    entered_today_before_eod = False
-                            except Exception:
-                                pass
 
                         trade_age_seconds = time.time() - self._trade_start_ts if getattr(self, '_trade_start_ts', None) else 999
 
-                        # If we passed 17:00 (1020 minutes) and there are still active positions, FORCE CLOSE.
-                        if current_time_minutes >= 1015 and entered_today_before_eod and trade_age_seconds >= 300 and not _eod_exit_triggered:
+                        # Fire EOD exit when:
+                        #  1. Current time >= 16:55 IST (1015 minutes into the day)
+                        #  2. Trade is at least 10 minutes old (600s grace — prevents
+                        #     instantly closing a trade manually force-entered after 16:55)
+                        #  3. Guard has not already fired today
+                        if current_time_minutes >= 1015 and trade_age_seconds >= 600 and not _eod_exit_triggered:
                             _eod_exit_triggered = True
-                            app_logger.info(f"Engine Monitor Safeguard: Time is {now_ist.strftime('%H:%M')} IST (>= 16:55 IST) with active daytime positions. Triggering EOD Force Square-off.")
+                            app_logger.info(
+                                f"Engine Monitor Safeguard: Time is {now_ist.strftime('%H:%M')} IST "
+                                f"(>= 16:55 IST). Trade age={trade_age_seconds:.0f}s. "
+                                f"Triggering EOD Force Square-off (pre-expiry safety exit)."
+                            )
                             self.run_exit_cycle()
                             continue
                     except Exception as time_err:
                         error_logger.error(f"Error checking time safeguard in monitor loop: {time_err}")
+
  
                     # 30-Second Critical Data Failure Safeguard (In LIVE mode)
                     if self.execution.mode == 'LIVE' and time.time() - self.api_client.last_price_update_time > 30:

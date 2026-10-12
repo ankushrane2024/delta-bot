@@ -53,7 +53,7 @@ _env_entry_times = os.getenv("ENTRY_TIMES")
 if _env_entry_times:
     ENTRY_TIMES = [t.strip() for t in _env_entry_times.split(",") if t.strip()]
 else:
-    ENTRY_TIMES = ["09:00", "09:30"]
+    ENTRY_TIMES = ["22:30"]  # 10:30 PM IST — Midnight BTC Strangle overnight session
 
 EXIT_PREPARE_TIME = os.getenv("EXIT_PREPARE_TIME", "16:55")   # Start preparing forced exit at 16:55 IST
 EXIT_TIME_HARD = os.getenv("EXIT_TIME_HARD", "17:00")         # Hard square off at 17:00 IST
