@@ -6869,13 +6869,19 @@ setInterval(fetchApiCredentials, 30000);
                     const totalClass = dayTotalInr >= 0 ? '' : 'neg';
 
                     const ceSymbol = trade.call_symbol || 'BTCUSD Call Option';
-                    const ceEntry = trade.call_entry_price || 0.0;
+                    let ceEntry = trade.call_entry_price || 0.0;
+                    if (ceEntry === 0 && (trade.premium_collected || 0) > 0) {
+                        ceEntry = (trade.premium_collected / 2);
+                    }
                     const ceExit = trade.call_exit_price || 0.0;
                     const ceMtmInr = trade.call_pnl_inr != null ? trade.call_pnl_inr : (dayTotalInr * 0.5);
                     const ceMtmUsd = ceMtmInr / HIST_USD_TO_INR;
 
                     const peSymbol = trade.put_symbol || 'BTCUSD Put Option';
-                    const peEntry = trade.put_entry_price || 0.0;
+                    let peEntry = trade.put_entry_price || 0.0;
+                    if (peEntry === 0 && (trade.premium_collected || 0) > 0) {
+                        peEntry = (trade.premium_collected / 2);
+                    }
                     const peExit = trade.put_exit_price || 0.0;
                     const peMtmInr = trade.put_pnl_inr != null ? trade.put_pnl_inr : (dayTotalInr * 0.5);
                     const peMtmUsd = peMtmInr / HIST_USD_TO_INR;
