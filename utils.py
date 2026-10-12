@@ -15,10 +15,28 @@ def is_within_time_range(current_time_str, start_time_str, end_time_str):
     return start_time_str <= current_time_str <= end_time_str
 
 def get_next_expiry_date():
-    """Calculates the D2 (tomorrow) expiry date string for Delta Exchange."""
+    """Calculates the appropriate expiry date string for Delta Exchange BTC options.
+
+    BTC options on Delta Exchange expire at approximately 17:28 IST each day.
+    - Before 17:28 IST  → use TODAY's expiry (same-day contracts, highest premium)
+    - After  17:28 IST  → use TOMORROW's expiry (today's contracts gone from chain)
+
+    Returns:
+        str: Expiry date in '%d%m%y' format, e.g. '121026'
+    """
+    EXPIRY_HOUR   = 17   # 5 PM IST
+    EXPIRY_MINUTE = 28   # :28
+
     now = get_ist_now()
-    tomorrow = now + datetime.timedelta(days=1)
-    return tomorrow.strftime('%d%m%y') # e.g. 120526
+    current_minutes = now.hour * 60 + now.minute
+
+    # Use today's expiry if we are still before the 17:28 cutoff
+    if current_minutes < EXPIRY_HOUR * 60 + EXPIRY_MINUTE:
+        expiry_date = now
+    else:
+        expiry_date = now + datetime.timedelta(days=1)
+
+    return expiry_date.strftime('%d%m%y')  # e.g. '121026'
 
 def calculate_pnl(entry_price, current_price, size, side='SELL'):
     """Calculates USDT PnL for a position."""

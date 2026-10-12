@@ -82,9 +82,23 @@ DVOL_PREMIUM_RANGES = {
 }
 
 # --- Stop Loss & Dynamic Profit Lock (Section 6) ---
-SL_PERCENT = 1.20              # 120% of collected premium → triggers full exit
+SL_PERCENT = 1.20              # 120% of collected premium → triggers full exit (combined strangle SL)
 MIN_ENTRY_PREMIUM = 80.0       # Minimum required premium for entry
 MIN_HOLD_SECONDS = 30          # Minimum seconds to hold before any exit is allowed
+
+# --- Per-Leg SL Re-Entry (AlgoTest: RE MOMENTUM, 2 re-entries) ---
+# When one leg (CE or PE) hits its individual stop loss, close only that leg
+# and re-enter a delta-matched replacement using RE MOMENTUM (surviving leg's delta).
+SL_REENTRY_ENABLED   = True   # Enable per-leg re-entry on SL hit
+SL_REENTRY_MAX_COUNT = 2      # Max re-entries per day (mirrors AlgoTest setting)
+SL_REENTRY_LEG_SL_PCT = 1.00  # 100% gain on leg premium triggers per-leg re-entry
+                               # (AlgoTest: Stop Loss Percent 100%)
+# Delta tolerance for RE MOMENTUM matching: accept strikes within ±this of surviving leg delta
+SL_REENTRY_DELTA_TOLERANCE = 0.05
+
+# --- Expiry Cutoff (Delta Exchange BTC options expire at 17:28 IST) ---
+EXPIRY_CUTOFF_HOUR   = 17     # 5 PM IST
+EXPIRY_CUTOFF_MINUTE = 28     # :28 — after this, switch to next day's expiry
 
 # --- ARES Dynamic Profit Lock ---
 # Trailing confirmation: lock SL at +5% as soon as 19% profit is confirmed

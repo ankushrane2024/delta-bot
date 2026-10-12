@@ -201,6 +201,9 @@ class DeltaTradingEngine:
         self.is_running = True
         self.re_entry_count = 0
         self.daily_loss_hits = 0
+        # --- Per-Leg SL Re-Entry state ---
+        self.sl_reentry_count = 0          # Number of per-leg re-entries done today
+        self.sl_reentry_in_progress = False  # Guard: prevents double re-entry trigger
         self.total_entry_premium = 0
         self.last_hedge_check_time = None
         self.daily_start_equity = 0
@@ -1111,8 +1114,13 @@ class DeltaTradingEngine:
                     total_gamma = 0
                     
                     any_leg_hit_sl = False
-                    
+                    # --- Per-leg SL tracking for RE MOMENTUM re-entry ---
+                    sl_hit_legs      = []  # list of {sym, leg_type, entry_price, current_price, size}
+                    surviving_legs   = []  # list of {sym, leg_type, delta}
+
                     for sym, data in self.execution.active_positions.items():
+                        if sym.startswith('__'):
+                            continue
                         entry_price = data.get('entry_price', 0)
                         current_price = entry_price  # default fallback
                         price_is_valid = False
@@ -1169,25 +1177,38 @@ class DeltaTradingEngine:
                             if last_d is not None:
                                 net_delta -= last_d * data['size']
                                 total_gamma -= last_g * data['size']
-                                
-                        # Check Single Leg Stop Loss
-                        # BUG FIX: For SHORT (sell) options positions, we LOSE money when
-                        # premium RISES above entry. The correct check is:
-                        #   premium_gain_pct = (current_price - entry_price) / entry_price
-                        # SL fires when the premium has risen >= SL_PERCENT above entry.
-                        #
-                        # CRITICAL BUG FIX (2026-07-27): The per-leg SL check was running BEFORE
-                        # the grace period suppression logic. This caused the bot to set
-                        # any_leg_hit_sl=True instantly on trade entry due to the wide bid-ask
-                        # spread on crypto options (entry price includes slippage, but first live
-                        # tick is the lower mark/mid price, making it look like a 100%+ SL hit).
-                        # FIX: Skip per-leg SL check entirely for the first MIN_HOLD_SECONDS.
+
+                        # ── Per-Leg Stop Loss Check (RE MOMENTUM) ──
+                        # For SHORT options, we LOSE when the premium RISES above entry.
+                        # Per-leg SL uses SL_REENTRY_LEG_SL_PCT (100%) not SL_PERCENT (120%).
+                        # Grace period: skip SL check entirely for first MIN_HOLD_SECONDS (30s).
                         _trade_age_for_sl = time.time() - (getattr(self, '_trade_start_ts', None) or time.time())
                         if entry_price > 0 and _trade_age_for_sl >= getattr(config, 'MIN_HOLD_SECONDS', 30):
                             leg_premium_gain_pct = (current_price - entry_price) / entry_price
-                            if leg_premium_gain_pct >= config.SL_PERCENT:
-                                app_logger.warning(f"Engine [SL]: Leg {sym} premium gained {leg_premium_gain_pct*100:.1f}% above entry (entry={entry_price:.4f}, current={current_price:.4f}). SL_PERCENT={config.SL_PERCENT*100:.0f}%. Triggering STOP_LOSS_ALL.")
+                            leg_sl_threshold = getattr(config, 'SL_REENTRY_LEG_SL_PCT', 1.00)
+                            if leg_premium_gain_pct >= leg_sl_threshold:
                                 any_leg_hit_sl = True
+                                sl_hit_legs.append({
+                                    'sym':           sym,
+                                    'leg_type':      data.get('leg_type', 'unknown'),
+                                    'entry_price':   entry_price,
+                                    'current_price': current_price,
+                                    'size':          data.get('entry_size', data.get('size', 1)),
+                                    'product_id':    data.get('product_id'),
+                                })
+                                app_logger.warning(
+                                    f"Engine [SL-LEG]: {sym} premium +{leg_premium_gain_pct*100:.1f}% "
+                                    f"(entry={entry_price:.4f} → now={current_price:.4f}). "
+                                    f"Per-leg SL threshold={leg_sl_threshold*100:.0f}% hit."
+                                )
+                            else:
+                                # This leg is still alive — record for RE MOMENTUM delta matching
+                                surviving_legs.append({
+                                    'sym':      sym,
+                                    'leg_type': data.get('leg_type', 'unknown'),
+                                    'delta':    data.get('last_known_delta', 0),
+                                    'size':     data.get('entry_size', data.get('size', 1)),
+                                })
                                 
                         # P&L Formula: value = price * lots * LOT_TO_BTC (0.001 BTC per lot)
                         # CRITICAL: Use entry_size (locked at trade start) NOT data['size'] (live position size).
@@ -1355,11 +1376,25 @@ class DeltaTradingEngine:
                         start_ts = getattr(self, '_trade_start_ts', None) or time.time()
                         time_in_trade_seconds = time.time() - start_ts
                         
-                        # Override action if ANY individual leg hit the Stop Loss
+                        # Override action if ANY individual leg hit the Stop Loss.
                         # IMPORTANT: This must come AFTER time_in_trade_seconds is computed,
                         # so that the grace period suppression below can also suppress this override.
+                        # RE MOMENTUM LOGIC: if only one leg hit SL and re-entries remain,
+                        # use PER_LEG_SL_REENTRY instead of closing the whole strangle.
                         if any_leg_hit_sl:
-                            action = "STOP_LOSS_ALL"
+                            reentry_enabled  = getattr(config, 'SL_REENTRY_ENABLED', False)
+                            reentry_max      = getattr(config, 'SL_REENTRY_MAX_COUNT', 2)
+                            only_one_leg_hit = (len(sl_hit_legs) == 1 and len(surviving_legs) >= 1)
+                            can_reenter      = (
+                                reentry_enabled
+                                and only_one_leg_hit
+                                and self.sl_reentry_count < reentry_max
+                                and not self.sl_reentry_in_progress
+                            )
+                            if can_reenter:
+                                action = "PER_LEG_SL_REENTRY"
+                            else:
+                                action = "STOP_LOSS_ALL"
                         
                         # Detailed debug logging required for profit verification
                         hedge_log = f" | Hedge PnL: +${self.smart_hedging.get_live_hedge_pnl():.2f}" if self.smart_hedging.hedge_active else ""
@@ -1569,7 +1604,33 @@ class DeltaTradingEngine:
                                 
                                 profit = adjusted_profit
                         
-                        if action == "STOP_LOSS_ALL":
+                        if action == "PER_LEG_SL_REENTRY":
+                            # ── RE MOMENTUM: Close only the SL leg, re-enter delta-matched ──
+                            sl_leg   = sl_hit_legs[0]
+                            surv_leg = surviving_legs[0]
+                            self.sl_reentry_count += 1
+                            reentry_num = self.sl_reentry_count
+                            reentry_max = getattr(config, 'SL_REENTRY_MAX_COUNT', 2)
+                            app_logger.warning(
+                                f"Engine [RE-ENTRY #{reentry_num}/{reentry_max}]: "
+                                f"Leg {sl_leg['sym']} ({sl_leg['leg_type'].upper()}) SL hit. "
+                                f"Surviving: {surv_leg['sym']} ({surv_leg['leg_type'].upper()}, "
+                                f"delta={surv_leg['delta']:.4f}). Closing SL leg and re-entering."
+                            )
+                            notifier.notify_error(
+                                f"⚡ RE-ENTRY #{reentry_num}/{reentry_max}: {sl_leg['leg_type'].upper()} leg SL hit\n"
+                                f"Closing: {sl_leg['sym']}\n"
+                                f"Surviving: {surv_leg['sym']} (delta={surv_leg['delta']:.4f})\n"
+                                f"Searching for delta-matched replacement..."
+                            )
+                            # Launch re-entry in a background thread so monitor loop isn't blocked
+                            threading.Thread(
+                                target=self._do_sl_reentry,
+                                args=(sl_leg, surv_leg),
+                                daemon=True
+                            ).start()
+
+                        elif action == "STOP_LOSS_ALL":
                             sl_pct = int(config.SL_PERCENT * 100)
                             app_logger.warning(f"Engine: Combined {sl_pct}% Stop Loss Hit!")
                             # CRITICAL FIX: Close exchange positions FIRST before mode deactivation
@@ -1578,7 +1639,7 @@ class DeltaTradingEngine:
                             self._log_and_reset_trade(profit, f"Stop Loss Hit (-{sl_pct}%)")
                             self.risk_manager.reset_trailing_state()
                             notifier.notify_stop_loss(profit, False)
-                            
+
                         elif action == "TRAILING_SL_EXIT":
                             trail_state = self.risk_manager.get_trailing_state()
                             locked_sl = trail_state['current_trailing_sl']
@@ -1696,6 +1757,9 @@ class DeltaTradingEngine:
         self.today_skip_reason = None
         self.trades_taken_today = 0
         self.next_day_paused = False  # CRITICAL FIX: Must reset so bot can trade the next day
+        # Reset per-leg SL re-entry counters at EOD
+        self.sl_reentry_count = 0
+        self.sl_reentry_in_progress = False
         
         # Reset PAPER-specific state at EOD
         self.consecutive_losses = 0
@@ -1704,6 +1768,273 @@ class DeltaTradingEngine:
         # prior trade do not bleed into the next day's first trade and fire immediately.
         self.risk_manager.reset_trailing_state()
         app_logger.info("Engine: Daily state reset (DPL trailing state cleared).")
+
+
+    def _do_sl_reentry(self, sl_leg: dict, surv_leg: dict):
+        """RE MOMENTUM: Close the SL-hit leg and re-enter a delta-matched replacement.
+
+        Called in a background thread from the monitor loop.
+
+        Args:
+            sl_leg  : dict with keys sym, leg_type, entry_price, current_price, size, product_id
+            surv_leg: dict with keys sym, leg_type, delta, size — the surviving strangle leg
+        """
+        self.sl_reentry_in_progress = True
+        try:
+            import random
+            sl_sym      = sl_leg['sym']
+            sl_type     = sl_leg['leg_type']   # 'call' or 'put'
+            surv_delta  = abs(surv_leg.get('delta', 0.15))
+            lot_size    = sl_leg['size']
+
+            # ── Step 1: Close the SL-hit leg on exchange (or paper sim) ──
+            app_logger.info(f"Engine [RE-ENTRY]: Closing SL leg {sl_sym} ({sl_type.upper()}) ...")
+            if self.execution.mode == 'LIVE':
+                try:
+                    # Cancel any exchange backup SL order for this leg first
+                    pos_data = self.execution.active_positions.get(sl_sym, {})
+                    sl_order_id = pos_data.get('exchange_sl_order_id')
+                    if sl_order_id:
+                        self.api_client.cancel_order(
+                            product_id=pos_data.get('product_id'),
+                            order_id=sl_order_id
+                        )
+                    # Query real position size and BUY to close (was short SELL)
+                    pos_res = self.api_client.get_positions(product_id=sl_leg['product_id'])
+                    pos_list = pos_res.get('result', []) if isinstance(pos_res, dict) else []
+                    real_sz = 0
+                    for p in pos_list:
+                        if p.get('product_id') == sl_leg['product_id']:
+                            real_sz = abs(int(p.get('size', 0)))
+                            break
+                    if real_sz > 0:
+                        close_res = self.api_client.place_order(
+                            sl_leg['product_id'], 'buy', real_sz, reduce_only=True
+                        )
+                        if close_res.get('success'):
+                            app_logger.info(f"Engine [RE-ENTRY]: Successfully closed {sl_sym} on exchange.")
+                        else:
+                            app_logger.error(f"Engine [RE-ENTRY]: Failed to close {sl_sym}: {close_res}")
+                    else:
+                        app_logger.warning(f"Engine [RE-ENTRY]: {sl_sym} already zero on exchange, skipping close.")
+                except Exception as close_err:
+                    app_logger.error(f"Engine [RE-ENTRY]: Exception closing SL leg {sl_sym}: {close_err}")
+            else:
+                # PAPER mode: simulate close with a small delay
+                time.sleep(random.uniform(0.2, 0.5))
+                app_logger.info(f"Engine [RE-ENTRY][PAPER]: Simulated close of {sl_sym}.")
+
+            # Remove from active_positions regardless of mode
+            if sl_sym in self.execution.active_positions:
+                del self.execution.active_positions[sl_sym]
+                app_logger.info(f"Engine [RE-ENTRY]: Removed {sl_sym} from active_positions.")
+
+            # ── Step 2: Find a RE MOMENTUM replacement strike ──
+            # RE MOMENTUM = new strike on sl_type side whose |delta| is closest to
+            # abs(surviving leg delta). Same expiry as surviving leg.
+            app_logger.info(
+                f"Engine [RE-ENTRY]: Searching for {sl_type.upper()} replacement "
+                f"with |delta| ≈ {surv_delta:.4f} (RE MOMENTUM)..."
+            )
+            from utils import get_next_expiry_date
+            expiry = get_next_expiry_date()
+
+            res = self.api_client.get_tickers({
+                'contract_types': 'call_options,put_options',
+                'underlying_asset_symbol': 'BTC'
+            })
+            new_opt = None
+            if res and res.get('success'):
+                tickers = res.get('result', [])
+                delta_tol = getattr(config, 'SL_REENTRY_DELTA_TOLERANCE', 0.05)
+                candidates = []
+                for t in tickers:
+                    sym = t.get('symbol', '')
+                    if expiry and expiry not in sym:
+                        continue
+                    if '-BTC-' not in sym:
+                        continue
+                    ct = t.get('contract_type', '').lower()
+                    is_right_type = (sl_type == 'call' and 'call' in ct) or (sl_type == 'put' and 'put' in ct)
+                    if not is_right_type:
+                        continue
+                    greeks = t.get('greeks') or {}
+                    delta_val = abs(float(greeks.get('delta', 0)))
+                    mark = float(t.get('mark_price', 0))
+                    if mark < getattr(config, 'MIN_ENTRY_PREMIUM', 80.0):
+                        continue
+                    if abs(delta_val - surv_delta) <= delta_tol:
+                        candidates.append((abs(delta_val - surv_delta), t))
+
+                if candidates:
+                    candidates.sort(key=lambda x: x[0])
+                    new_opt_raw = candidates[0][1]
+                    greeks = new_opt_raw.get('greeks') or {}
+                    new_opt = {
+                        'symbol':        new_opt_raw.get('symbol'),
+                        'delta':         float(greeks.get('delta', 0)),
+                        'mark_price':    float(new_opt_raw.get('mark_price', 0)),
+                        'strike':        float(new_opt_raw.get('strike_price', 0)),
+                        'product_id':    new_opt_raw.get('product_id'),
+                        'contract_type': new_opt_raw.get('contract_type', ''),
+                        'premium_inr':   float(new_opt_raw.get('mark_price', 0)),
+                    }
+                    app_logger.info(
+                        f"Engine [RE-ENTRY]: Found replacement {sl_type.upper()}: "
+                        f"{new_opt['symbol']} (strike={new_opt['strike']:.0f}, "
+                        f"mark=${new_opt['mark_price']:.2f}, delta={new_opt['delta']:.4f})"
+                    )
+                else:
+                    app_logger.warning(
+                        f"Engine [RE-ENTRY]: No {sl_type.upper()} candidate within delta tolerance "
+                        f"±{delta_tol} of {surv_delta:.4f}. Widening search..."
+                    )
+                    # Fallback: best delta-match with no tolerance filter
+                    all_typed = [
+                        t for t in tickers
+                        if (expiry in t.get('symbol', '')) and '-BTC-' in t.get('symbol', '')
+                        and ((sl_type == 'call' and 'call' in t.get('contract_type', '').lower())
+                             or (sl_type == 'put'  and 'put'  in t.get('contract_type', '').lower()))
+                        and float(t.get('mark_price', 0)) >= getattr(config, 'MIN_ENTRY_PREMIUM', 80.0)
+                    ]
+                    if all_typed:
+                        best = min(all_typed, key=lambda t:
+                            abs(abs(float((t.get('greeks') or {}).get('delta', 0))) - surv_delta))
+                        greeks = best.get('greeks') or {}
+                        new_opt = {
+                            'symbol':        best.get('symbol'),
+                            'delta':         float(greeks.get('delta', 0)),
+                            'mark_price':    float(best.get('mark_price', 0)),
+                            'strike':        float(best.get('strike_price', 0)),
+                            'product_id':    best.get('product_id'),
+                            'contract_type': best.get('contract_type', ''),
+                            'premium_inr':   float(best.get('mark_price', 0)),
+                        }
+                        app_logger.info(
+                            f"Engine [RE-ENTRY]: Fallback best-delta match: "
+                            f"{new_opt['symbol']} (delta={new_opt['delta']:.4f})"
+                        )
+
+            if not new_opt:
+                app_logger.error(
+                    f"Engine [RE-ENTRY]: Could not find any replacement {sl_type.upper()} strike. "
+                    f"Leaving surviving leg open. No re-entry."
+                )
+                notifier.notify_error(
+                    f"⚠️ RE-ENTRY FAILED: No suitable {sl_type.upper()} strike found.\n"
+                    f"Surviving leg {surv_leg['sym']} still open.\n"
+                    f"Monitor manually!"
+                )
+                self.sl_reentry_in_progress = False
+                return
+
+            # ── Step 3: Enter the replacement leg ──
+            new_sym = new_opt['symbol']
+            app_logger.info(
+                f"Engine [RE-ENTRY]: Entering replacement {sl_type.upper()} leg: "
+                f"{new_sym} @ ${new_opt['mark_price']:.2f} x {lot_size} lots ..."
+            )
+            entry_time_str = get_ist_now().isoformat()
+
+            if self.execution.mode == 'LIVE':
+                try:
+                    res_entry = self.api_client.place_order(new_opt['product_id'], 'sell', lot_size)
+                    if res_entry.get('success'):
+                        order_result = res_entry.get('result', {})
+                        fill_price = float(order_result.get('average_fill_price')
+                                           or order_result.get('limit_price')
+                                           or new_opt['mark_price'])
+                        self.execution.active_positions[new_sym] = {
+                            'entry_price':     fill_price,
+                            'entry_price_raw': new_opt['mark_price'],
+                            'size':            lot_size,
+                            'entry_size':      lot_size,
+                            'product_id':      new_opt['product_id'],
+                            'side':            'SELL',
+                            'leg_type':        sl_type,
+                            'strike':          new_opt['strike'],
+                            'entry_time':      entry_time_str,
+                            'exchange_sl_order_id': None,
+                            'is_reentry':      True,
+                        }
+                        app_logger.info(
+                            f"Engine [RE-ENTRY][LIVE]: Entered {new_sym} @ ${fill_price:.4f}."
+                        )
+                    else:
+                        app_logger.error(
+                            f"Engine [RE-ENTRY][LIVE]: Exchange rejected {new_sym}: {res_entry}"
+                        )
+                        self.sl_reentry_in_progress = False
+                        return
+                except Exception as entry_err:
+                    app_logger.error(f"Engine [RE-ENTRY][LIVE]: Exception entering {new_sym}: {entry_err}")
+                    self.sl_reentry_in_progress = False
+                    return
+            else:
+                # PAPER simulation
+                time.sleep(random.uniform(0.2, 0.5))
+                raw_mark = new_opt['mark_price']
+                entry_slip = random.uniform(0.002, 0.008) * raw_mark if raw_mark > 0 else 0.5
+                sim_price  = max(0.01, raw_mark - entry_slip)
+                self.execution.active_positions[new_sym] = {
+                    'entry_price':     sim_price,
+                    'entry_price_raw': raw_mark,
+                    'size':            lot_size,
+                    'entry_size':      lot_size,
+                    'product_id':      new_opt['product_id'],
+                    'side':            'SELL',
+                    'leg_type':        sl_type,
+                    'strike':          new_opt['strike'],
+                    'entry_time':      entry_time_str,
+                    'is_reentry':      True,
+                }
+                app_logger.info(
+                    f"Engine [RE-ENTRY][PAPER]: Simulated entry {new_sym} @ ${sim_price:.4f} "
+                    f"(slip={entry_slip:.2f})."
+                )
+
+            # ── Step 4: Subscribe to new symbol on WebSocket ──
+            try:
+                self.api_client.subscribe_ws([new_sym])
+            except Exception:
+                pass
+
+            # ── Step 5: Recalculate total_entry_premium to include new leg ──
+            new_ep = self.execution.active_positions[new_sym]['entry_price']
+            self.total_entry_premium += new_ep * lot_size * LOT_TO_BTC
+            app_logger.info(
+                f"Engine [RE-ENTRY]: Updated total_entry_premium = "
+                f"{self.total_entry_premium:.4f} (added new {sl_type.upper()} leg)"
+            )
+
+            # ── Step 6: Update trade info lists ──
+            if sl_type == 'call':
+                self.current_trade_info.setdefault('calls', []).append(new_sym)
+            else:
+                self.current_trade_info.setdefault('puts', []).append(new_sym)
+
+            # Persist updated state
+            self.execution.save_state()
+
+            notifier.notify_error(
+                f"✅ RE-ENTRY SUCCESS #{self.sl_reentry_count}/{getattr(config, 'SL_REENTRY_MAX_COUNT', 2)}\n"
+                f"New {sl_type.upper()} leg: {new_sym}\n"
+                f"Strike: {new_opt['strike']:.0f} | Premium: ${new_ep:.2f}\n"
+                f"Delta: {new_opt['delta']:.4f} (target: {surv_delta:.4f})"
+            )
+            app_logger.info(
+                f"Engine [RE-ENTRY]: Complete. New leg {new_sym} active. "
+                f"Total re-entries today: {self.sl_reentry_count}"
+            )
+
+        except Exception as ex:
+            import traceback
+            app_logger.error(
+                f"Engine [RE-ENTRY]: Unexpected exception: {ex}\n{traceback.format_exc()}"
+            )
+            notifier.notify_error(f"🚨 RE-ENTRY ERROR: {ex}")
+        finally:
+            self.sl_reentry_in_progress = False
 
     def _build_audit_snapshot(self, btc_price, options_profit, hedge_pnl, pnl_pct, time_in_trade_seconds, action, reason):
         trail_state = self.risk_manager.get_trailing_state()
