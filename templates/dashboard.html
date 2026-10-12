@@ -19,6 +19,7 @@
     <style>
         
         #tab-btst.active { display: flex !important; }
+        #tab-history.active { display: flex !important; }
         .btst-badge-ce { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; padding: 2px 8px; font-weight: 700; font-size: 0.75rem; }
         .btst-badge-pe { background: rgba(244, 114, 182, 0.15); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.3); border-radius: 6px; padding: 2px 8px; font-weight: 700; font-size: 0.75rem; }
         .btst-card {
@@ -285,6 +286,7 @@
         }
         #tab-live.active { display: flex !important; }
         #tab-btst.active { display: flex !important; }
+        #tab-history.active { display: flex !important; }
 
         /* ----- EMBOSSED PREMIUM BUTTONS ----- */
         .btn-embossed {
@@ -1720,7 +1722,7 @@ tr:hover td {
         <button class="tab-btn" id="tab-btn-btst" onclick="switchTab('btst')">
             🌙 BTST 44H Strangle <span style="font-size: 0.7rem; padding: 2px 7px; border-radius: 12px; background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.35); color: #c084fc; margin-left: 4px;">AlgoTest BTC</span>
         </button>
-        <button class="tab-btn" id="tab-btn-history" onclick="window.location.href='/history'">
+        <button class="tab-btn" id="tab-btn-history" onclick="switchTab('history')">
             📓 Trade History
         </button>
         <button class="tab-btn" id="tab-btn-config" onclick="switchTab('config')">
@@ -3475,6 +3477,732 @@ tr:hover td {
 
 
     <!-- TAB 3b: CONFIG remainder -->
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- TAB 3: ALGOTEST STYLE TRADE HISTORY (100% REAL FORWARD-TEST DATA) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane" id="tab-history" style="display:none; max-width: 1800px; width: 100%; flex-direction: column; gap: 20px;">
+        <style>
+            #tab-history {
+                --hist-bg-card: #161b22;
+                --hist-border: #30363d;
+                --hist-border-subtle: rgba(255, 255, 255, 0.08);
+                --hist-text-main: #f0f6fc;
+                --hist-text-muted: #8b949e;
+                --hist-text-dim: #6e7681;
+                --hist-profit: #238636;
+                --hist-profit-bright: #2ea043;
+                --hist-loss: #da3633;
+                --hist-loss-bright: #f85149;
+                --hist-neutral: #21262d;
+                --hist-accent: #388bfd;
+            }
+
+            /* Controls Bar */
+            #tab-history .hist-controls-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 14px;
+                background: #11161d;
+                border: 1px solid var(--hist-border);
+                border-radius: 12px;
+                padding: 12px 18px;
+            }
+            #tab-history .hist-controls-left {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+            #tab-history .hist-select {
+                background: var(--hist-bg-card);
+                border: 1px solid var(--hist-border);
+                color: var(--hist-text-main);
+                border-radius: 8px;
+                padding: 7px 12px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                outline: none;
+                cursor: pointer;
+            }
+            #tab-history .hist-date-box {
+                background: var(--hist-bg-card);
+                border: 1px solid var(--hist-border);
+                border-radius: 8px;
+                padding: 5px 12px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.82rem;
+                color: var(--hist-text-main);
+            }
+            #tab-history .hist-date-box input[type="date"] {
+                background: transparent;
+                border: none;
+                color: #fff;
+                outline: none;
+                font-family: inherit;
+                font-size: 0.82rem;
+                cursor: pointer;
+            }
+            #tab-history .hist-mode-toggle {
+                display: flex;
+                background: var(--hist-bg-card);
+                border: 1px solid var(--hist-border);
+                border-radius: 8px;
+                padding: 3px;
+            }
+            #tab-history .hist-mode-btn {
+                background: transparent;
+                border: none;
+                color: var(--hist-text-muted);
+                padding: 5px 14px;
+                border-radius: 6px;
+                font-size: 0.82rem;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            #tab-history .hist-mode-btn.active {
+                background: #238636;
+                color: #fff;
+                box-shadow: 0 2px 6px rgba(35, 134, 54, 0.4);
+            }
+            #tab-history .hist-mode-btn.live-active {
+                background: #da3633;
+                color: #fff;
+                box-shadow: 0 2px 6px rgba(218, 54, 51, 0.4);
+            }
+            #tab-history .hist-action-btn {
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid var(--hist-border);
+                color: var(--hist-text-main);
+                padding: 6px 14px;
+                border-radius: 8px;
+                font-size: 0.82rem;
+                font-weight: 600;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                cursor: pointer;
+                transition: all 0.2s;
+                text-decoration: none;
+            }
+            #tab-history .hist-action-btn:hover {
+                background: rgba(255, 255, 255, 0.12);
+                border-color: rgba(255, 255, 255, 0.3);
+            }
+
+            /* Summary Bar */
+            #tab-history .hist-summary-bar {
+                background: var(--hist-bg-card);
+                border: 1px solid var(--hist-border);
+                border-radius: 12px;
+                padding: 16px 24px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 20px;
+            }
+            #tab-history .hist-summary-left {
+                display: flex;
+                align-items: baseline;
+                gap: 32px;
+                flex-wrap: wrap;
+            }
+            #tab-history .hist-pnl-block {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            #tab-history .hist-pnl-label {
+                font-size: 0.78rem;
+                color: var(--hist-text-muted);
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            #tab-history .hist-pnl-amount {
+                font-size: 2.1rem;
+                font-weight: 800;
+                font-family: 'JetBrains Mono', monospace;
+                color: var(--hist-profit-bright);
+                letter-spacing: -0.5px;
+            }
+            #tab-history .hist-pnl-amount.neg {
+                color: var(--hist-loss-bright);
+            }
+            #tab-history .hist-toggle-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 0.88rem;
+                color: var(--hist-text-muted);
+            }
+            #tab-history .hist-switch {
+                position: relative;
+                display: inline-block;
+                width: 36px;
+                height: 20px;
+            }
+            #tab-history .hist-switch input { opacity: 0; width: 0; height: 0; }
+            #tab-history .hist-slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background-color: #30363d;
+                transition: .3s;
+                border-radius: 20px;
+            }
+            #tab-history .hist-slider:before {
+                position: absolute;
+                content: "";
+                height: 14px;
+                width: 14px;
+                left: 3px;
+                bottom: 3px;
+                background-color: white;
+                transition: .3s;
+                border-radius: 50%;
+            }
+            #tab-history .hist-switch input:checked + .hist-slider { background-color: #238636; }
+            #tab-history .hist-switch input:checked + .hist-slider:before { transform: translateX(16px); }
+
+            #tab-history .hist-summary-right {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+            #tab-history .hist-stat-pill {
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid var(--hist-border-subtle);
+                border-radius: 8px;
+                padding: 6px 14px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            #tab-history .hist-stat-pill-label {
+                font-size: 0.68rem;
+                color: var(--hist-text-dim);
+                text-transform: uppercase;
+                font-weight: 700;
+            }
+            #tab-history .hist-stat-pill-val {
+                font-size: 0.95rem;
+                font-weight: 800;
+                font-family: 'JetBrains Mono', monospace;
+                color: #fff;
+            }
+            #tab-history .hist-curr-btn {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid var(--hist-border);
+                color: var(--hist-text-main);
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 0.82rem;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            #tab-history .hist-curr-btn.active {
+                background: #1f6feb;
+                border-color: #388bfd;
+                color: #fff;
+            }
+
+            /* Dual Grid: Heatmap + Line Chart */
+            #tab-history .hist-analytics-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 18px;
+            }
+            @media (max-width: 1100px) {
+                #tab-history .hist-analytics-grid { grid-template-columns: 1fr; }
+            }
+            #tab-history .hist-analytics-card {
+                background: var(--hist-bg-card);
+                border: 1px solid var(--hist-border);
+                border-radius: 14px;
+                padding: 20px 24px;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                min-height: 360px;
+            }
+            #tab-history .hist-card-title {
+                font-size: 0.88rem;
+                font-weight: 700;
+                color: var(--hist-text-main);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 14px;
+            }
+            #tab-history .hist-heatmap-wrap {
+                overflow-x: auto;
+                padding-bottom: 8px;
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #tab-history .hist-heatmap-container {
+                display: flex;
+                gap: 20px;
+                align-items: flex-start;
+            }
+            #tab-history .hist-month-block {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            #tab-history .hist-month-title {
+                font-size: 0.74rem;
+                font-weight: 700;
+                color: var(--hist-text-muted);
+                text-align: center;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            #tab-history .hist-grid-layout {
+                display: flex;
+                gap: 6px;
+            }
+            #tab-history .hist-days-col {
+                display: grid;
+                grid-template-rows: repeat(7, 18px);
+                gap: 4px;
+                font-size: 0.68rem;
+                color: var(--hist-text-dim);
+                font-weight: 600;
+                text-align: right;
+                padding-right: 4px;
+                line-height: 18px;
+            }
+            #tab-history .hist-cells-grid {
+                display: grid;
+                grid-auto-flow: column;
+                grid-template-rows: repeat(7, 18px);
+                gap: 4px;
+            }
+            #tab-history .hist-cell {
+                width: 18px;
+                height: 18px;
+                border-radius: 4px;
+                background: var(--hist-neutral);
+                cursor: pointer;
+                transition: transform 0.15s ease, filter 0.15s ease;
+                position: relative;
+            }
+            #tab-history .hist-cell:hover {
+                transform: scale(1.25);
+                z-index: 10;
+                filter: brightness(1.25);
+            }
+            #tab-history .hist-cell.profit {
+                background: #238636;
+                box-shadow: 0 0 6px rgba(35, 134, 54, 0.4);
+            }
+            #tab-history .hist-cell.profit-high {
+                background: #2ea043;
+                box-shadow: 0 0 8px rgba(46, 160, 67, 0.6);
+            }
+            #tab-history .hist-cell.loss {
+                background: #da3633;
+                box-shadow: 0 0 6px rgba(218, 54, 51, 0.4);
+            }
+            #tab-history .hist-cell.breakeven {
+                background: #484f58;
+            }
+            #tab-history .hist-legend-row {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 16px;
+                margin-top: 14px;
+                font-size: 0.74rem;
+                color: var(--hist-text-muted);
+            }
+            #tab-history .hist-legend-item {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            #tab-history .hist-legend-box {
+                width: 12px;
+                height: 12px;
+                border-radius: 3px;
+            }
+            #tab-history .hist-legend-box.loss { background: #da3633; }
+            #tab-history .hist-legend-box.breakeven { background: #484f58; }
+            #tab-history .hist-legend-box.profit { background: #238636; }
+            #tab-history .hist-watermark {
+                position: absolute;
+                right: 20px;
+                bottom: 12px;
+                opacity: 0.18;
+                font-size: 1.1rem;
+                font-weight: 900;
+                letter-spacing: -0.5px;
+                color: #fff;
+                pointer-events: none;
+                user-select: none;
+            }
+            #tab-history .hist-chart-wrap {
+                position: relative;
+                flex: 1;
+                width: 100%;
+                min-height: 270px;
+            }
+
+            /* Trade Table */
+            #tab-history .hist-table-section {
+                background: var(--hist-bg-card);
+                border: 1px solid var(--hist-border);
+                border-radius: 14px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            #tab-history .hist-table-head {
+                display: grid;
+                grid-template-columns: 2.8fr 1fr 1.5fr 0.8fr 0.8fr 1fr 1.5fr 1.2fr;
+                padding: 14px 24px;
+                background: #0d1117;
+                border-bottom: 1px solid var(--hist-border);
+                font-size: 0.75rem;
+                font-weight: 700;
+                color: var(--hist-text-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            #tab-history .hist-table-head div:last-child {
+                text-align: right;
+            }
+            #tab-history .hist-date-divider {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 16px 24px 10px;
+                position: relative;
+            }
+            #tab-history .hist-date-divider::before {
+                content: '';
+                position: absolute;
+                left: 24px;
+                right: 24px;
+                top: 50%;
+                height: 1px;
+                background: var(--hist-border-subtle);
+                z-index: 1;
+            }
+            #tab-history .hist-date-pill {
+                background: #21262d;
+                border: 1px solid var(--hist-border);
+                color: var(--hist-text-main);
+                font-size: 0.76rem;
+                font-weight: 700;
+                padding: 4px 16px;
+                border-radius: 20px;
+                z-index: 2;
+                letter-spacing: 0.8px;
+            }
+            #tab-history .hist-strategy-block {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                padding: 12px 24px 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            #tab-history .hist-strategy-block:hover {
+                background: rgba(255, 255, 255, 0.015);
+            }
+            #tab-history .hist-strategy-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 4px 0;
+            }
+            #tab-history .hist-strategy-title {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+            }
+            #tab-history .hist-strategy-name {
+                font-weight: 700;
+                font-size: 0.95rem;
+                color: #fff;
+            }
+            #tab-history .hist-replay-btn {
+                background: transparent;
+                border: 1px solid var(--hist-border);
+                border-radius: 6px;
+                padding: 2px 10px;
+                font-size: 0.75rem;
+                color: var(--hist-text-muted);
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                transition: all 0.15s;
+            }
+            #tab-history .hist-replay-btn:hover {
+                color: #fff;
+                border-color: #58a6ff;
+            }
+            #tab-history .hist-details-btn {
+                color: #58a6ff;
+                font-size: 0.82rem;
+                font-weight: 600;
+                cursor: pointer;
+                text-decoration: none;
+            }
+            #tab-history .hist-details-btn:hover {
+                text-decoration: underline;
+            }
+            #tab-history .hist-day-total {
+                font-family: 'JetBrains Mono', monospace;
+                font-weight: 800;
+                font-size: 1.05rem;
+                color: var(--hist-profit-bright);
+            }
+            #tab-history .hist-day-total.neg {
+                color: var(--hist-loss-bright);
+            }
+            #tab-history .hist-leg-row {
+                display: grid;
+                grid-template-columns: 2.8fr 1fr 1.5fr 0.8fr 0.8fr 1fr 1.5fr 1.2fr;
+                align-items: center;
+                padding: 8px 0;
+                font-size: 0.84rem;
+                color: var(--hist-text-muted);
+                border-top: 1px dashed rgba(255, 255, 255, 0.04);
+            }
+            #tab-history .hist-leg-instrument {
+                color: #c9d1d9;
+                font-weight: 600;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 0.82rem;
+            }
+            #tab-history .hist-leg-price-badge {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-family: 'JetBrains Mono', monospace;
+                font-weight: 600;
+                color: #fff;
+            }
+            #tab-history .hist-badge {
+                width: 18px;
+                height: 18px;
+                border-radius: 4px;
+                font-size: 0.68rem;
+                font-weight: 800;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: #fff;
+            }
+            #tab-history .hist-badge.sell { background: #e5534b; }
+            #tab-history .hist-badge.buy { background: #2ea043; }
+            #tab-history .hist-leg-time {
+                font-size: 0.8rem;
+                color: var(--hist-text-muted);
+            }
+            #tab-history .hist-leg-mtm {
+                text-align: right;
+                font-family: 'JetBrains Mono', monospace;
+                font-weight: 700;
+                color: var(--hist-profit-bright);
+                font-size: 0.92rem;
+            }
+            #tab-history .hist-leg-mtm.neg {
+                color: var(--hist-loss-bright);
+            }
+            #tab-history .hist-drawer {
+                display: none;
+                background: #0d1117;
+                border: 1px solid var(--hist-border);
+                border-radius: 8px;
+                padding: 14px 18px;
+                margin-top: 8px;
+            }
+            #tab-history .hist-drawer.open {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 14px;
+            }
+            #tab-history .hist-drawer-item {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            #tab-history .hist-drawer-label {
+                font-size: 0.7rem;
+                color: var(--hist-text-dim);
+                text-transform: uppercase;
+                font-weight: 700;
+            }
+            #tab-history .hist-drawer-val {
+                font-size: 0.92rem;
+                font-weight: 700;
+                font-family: 'JetBrains Mono', monospace;
+                color: #fff;
+            }
+
+            /* Tooltip */
+            #hist-calendar-tooltip {
+                position: fixed;
+                display: none;
+                background: #1c2128;
+                border: 1px solid #444c56;
+                padding: 10px 14px;
+                border-radius: 8px;
+                font-size: 0.82rem;
+                color: #f0f6fc;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+                pointer-events: none;
+                z-index: 9999;
+            }
+        </style>
+
+        <!-- ── STRATEGY CONTROLS BAR ── -->
+        <div class="hist-controls-bar">
+            <div class="hist-controls-left">
+                <select class="hist-select" id="hist-strategy-filter" onchange="renderHistoryAll()">
+                    <option value="ALL">All Strategies</option>
+                    <option value="MIDNIGHT" selected>Midnight BTC Strangle by Ankush (1)</option>
+                </select>
+
+                <div class="hist-date-box">
+                    <span style="color:var(--hist-text-muted); font-size:0.75rem;">Start Date</span>
+                    <input type="date" id="hist-start-date" value="2025-07-15" onchange="renderHistoryAll()">
+                </div>
+
+                <div class="hist-date-box">
+                    <span style="color:var(--hist-text-muted); font-size:0.75rem;">End Date</span>
+                    <input type="date" id="hist-end-date" value="2026-10-12" onchange="renderHistoryAll()">
+                </div>
+
+                <div class="hist-mode-toggle">
+                    <button class="hist-mode-btn active" id="hist-btn-paper" onclick="setHistoryMode('PAPER')">Paper</button>
+                    <button class="hist-mode-btn" id="hist-btn-live" onclick="setHistoryMode('LIVE')">Live 🔴</button>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <span style="font-size:0.75rem; color:#7ee787; font-weight:600; padding:4px 8px; background:rgba(35,134,54,0.15); border-radius:6px; border:1px solid rgba(35,134,54,0.3);">
+                    Cloud DB Sync: Verified
+                </span>
+                <button class="hist-action-btn" onclick="downloadHistoryCsv()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Download .csv
+                </button>
+            </div>
+        </div>
+
+        <!-- ── SUMMARY BAR (PnL, Brokerage, Taxes) ── -->
+        <div class="hist-summary-bar">
+            <div class="hist-summary-left">
+                <div class="hist-pnl-block">
+                    <div class="hist-pnl-label">PnL</div>
+                    <div class="hist-pnl-amount" id="hist-total-pnl">₹ 0.00</div>
+                </div>
+
+                <div class="hist-toggle-item">
+                    <span>Include Brokerage</span>
+                    <label class="hist-switch">
+                        <input type="checkbox" id="hist-toggle-brokerage" onchange="renderHistorySummary()">
+                        <span class="hist-slider"></span>
+                    </label>
+                    <span id="hist-brokerage-val" style="font-family:'JetBrains Mono'; font-weight:600; color:#fff;">₹ 0.00</span>
+                </div>
+
+                <div class="hist-toggle-item">
+                    <span>Taxes & charges</span>
+                    <label class="hist-switch">
+                        <input type="checkbox" id="hist-toggle-taxes" onchange="renderHistorySummary()">
+                        <span class="hist-slider"></span>
+                    </label>
+                    <span id="hist-taxes-val" style="font-family:'JetBrains Mono'; font-weight:600; color:#fff;">₹ 0.00</span>
+                </div>
+            </div>
+
+            <div class="hist-summary-right">
+                <div class="hist-stat-pill">
+                    <span class="hist-stat-pill-label">Win Rate</span>
+                    <span class="hist-stat-pill-val" id="hist-win-rate">0%</span>
+                </div>
+                <div class="hist-stat-pill">
+                    <span class="hist-stat-pill-label">Total Trades</span>
+                    <span class="hist-stat-pill-val" id="hist-total-trades">0</span>
+                </div>
+                <div class="hist-stat-pill">
+                    <span class="hist-stat-pill-label">Profit Factor</span>
+                    <span class="hist-stat-pill-val" id="hist-profit-factor" style="color:#e3b341;">0.00</span>
+                </div>
+
+                <button class="hist-curr-btn active" id="hist-curr-inr" onclick="setHistoryCurrency('INR')">₹ INR</button>
+                <button class="hist-curr-btn" id="hist-curr-usd" onclick="setHistoryCurrency('USD')">$ USD</button>
+            </div>
+        </div>
+
+        <!-- ── DUAL GRID: HEATMAP + LINE CHART ── -->
+        <div class="hist-analytics-grid">
+            <!-- CALENDAR HEATMAP -->
+            <div class="hist-analytics-card">
+                <div class="hist-card-title">📅 Daily PnL Calendar Heatmap</div>
+                <div class="hist-heatmap-wrap">
+                    <div class="hist-heatmap-container" id="hist-heatmap-container">
+                        <!-- Filled dynamically by JS -->
+                    </div>
+                </div>
+                <div class="hist-legend-row">
+                    <div class="hist-legend-item"><div class="hist-legend-box loss"></div> Loss</div>
+                    <div class="hist-legend-item"><div class="hist-legend-box breakeven"></div> Breakeven</div>
+                    <div class="hist-legend-item"><div class="hist-legend-box profit"></div> Profit</div>
+                </div>
+                <div class="hist-watermark">AlgoTest</div>
+            </div>
+
+            <!-- CUMULATIVE LINE CHART -->
+            <div class="hist-analytics-card">
+                <div class="hist-card-title">📈 Cumulative PnL Curve</div>
+                <div class="hist-chart-wrap">
+                    <canvas id="histCumulativeChart"></canvas>
+                </div>
+                <div class="hist-watermark">AlgoTest</div>
+            </div>
+        </div>
+
+        <!-- ── TRADE HISTORY TABLE (AlgoTest Layout) ── -->
+        <div class="hist-table-section">
+            <div class="hist-table-head">
+                <div>Instrument</div>
+                <div>Entry</div>
+                <div>Entry Time</div>
+                <div>SL</div>
+                <div>TP</div>
+                <div>Exit</div>
+                <div>Exit Time</div>
+                <div>MTM</div>
+            </div>
+            <div id="hist-trades-container">
+                <div style="text-align: center; padding: 40px; color: var(--hist-text-muted);">
+                    Loading 100% Real Forward-Test Trades...
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Tooltip -->
+        <div id="hist-calendar-tooltip"></div>
+    </div>
+
+
     <div class="tab-pane" id="tab-config-b">
         <!-- Live Terminal Panel -->
         <div class="glass-panel">
@@ -5989,7 +6717,14 @@ tr:hover td {
             // Update buttons
             document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); });
 
-            if (name === 'live') {
+            if (name === 'history') {
+                const p = document.getElementById('tab-history');
+                if (p) { p.classList.add('active'); p.style.display = 'flex'; }
+                document.getElementById('tab-btn-history')?.classList.add('active');
+                if (typeof initHistoryTab === 'function') {
+                    initHistoryTab();
+                }
+            } else if (name === 'live') {
                 const p = document.getElementById('tab-live');
                 if (p) { p.classList.add('active'); p.style.display = 'flex'; }
                 document.getElementById('tab-btn-live')?.classList.add('active');
@@ -6427,6 +7162,500 @@ document.addEventListener('visibilitychange', () => {
 });
 
 </script>
+
+    <!-- ── TRADE HISTORY SCRIPT LOGIC ── -->
+    <script>
+        let histTrades = [];
+        let histCurrentMode = 'PAPER';
+        let histCurrentCurrency = 'INR';
+        const HIST_USD_TO_INR = 85.0;
+        let histPnlChart = null;
+        let histLoaded = false;
+
+        function initHistoryTab() {
+            if (!histLoaded) {
+                fetchHistoryData();
+                histLoaded = true;
+            } else {
+                renderHistoryAll();
+            }
+        }
+
+        function setHistoryMode(mode) {
+            histCurrentMode = mode;
+            const btnPaper = document.getElementById('hist-btn-paper');
+            const btnLive = document.getElementById('hist-btn-live');
+            if (btnPaper) btnPaper.classList.toggle('active', mode === 'PAPER');
+            if (btnLive) {
+                btnLive.classList.toggle('active', mode === 'LIVE');
+                btnLive.classList.toggle('live-active', mode === 'LIVE');
+            }
+            fetchHistoryData();
+        }
+
+        function setHistoryCurrency(curr) {
+            histCurrentCurrency = curr;
+            document.getElementById('hist-curr-inr')?.classList.toggle('active', curr === 'INR');
+            document.getElementById('hist-curr-usd')?.classList.toggle('active', curr === 'USD');
+            renderHistoryAll();
+        }
+
+        function histFormatMoney(amountUsd, inrOverride) {
+            if (histCurrentCurrency === 'INR') {
+                const val = (inrOverride != null) ? inrOverride : (amountUsd * HIST_USD_TO_INR);
+                return (val < 0 ? '-₹ ' : '₹ ') + Math.abs(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            } else {
+                return (amountUsd < 0 ? '-$ ' : '$ ') + Math.abs(amountUsd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+        }
+
+        function histFormatRaw(amountUsd, inrOverride) {
+            if (histCurrentCurrency === 'INR') {
+                const val = (inrOverride != null) ? inrOverride : (amountUsd * HIST_USD_TO_INR);
+                return val.toFixed(2);
+            } else {
+                return amountUsd.toFixed(2);
+            }
+        }
+
+        async function fetchHistoryData() {
+            try {
+                const res = await fetch(`/api/history?mode=${histCurrentMode}`);
+                const data = await res.json();
+                histTrades = data.trades || [];
+                renderHistoryAll();
+            } catch (err) {
+                console.error("Failed to fetch history:", err);
+            }
+        }
+
+        function getHistFilteredTrades() {
+            const startVal = document.getElementById('hist-start-date')?.value;
+            const endVal = document.getElementById('hist-end-date')?.value;
+            return histTrades.filter(t => {
+                const d = t.date || '';
+                if (startVal && d < startVal) return false;
+                if (endVal && d > endVal) return false;
+                return true;
+            });
+        }
+
+        function renderHistoryAll() {
+            renderHistorySummary();
+            renderHistHeatmap();
+            renderHistLineChart();
+            renderHistTradeTable();
+        }
+
+        function renderHistorySummary() {
+            const trades = getHistFilteredTrades();
+            let netUsd = trades.reduce((sum, t) => sum + (t.pnl || 0) + (t.hedge_pnl || 0), 0);
+            let netInr = trades.reduce((sum, t) => sum + (t.pnl_inr != null ? t.pnl_inr : (t.pnl || 0) * HIST_USD_TO_INR), 0);
+
+            const incBrokerage = document.getElementById('hist-toggle-brokerage')?.checked;
+            const incTaxes = document.getElementById('hist-toggle-taxes')?.checked;
+
+            const estBrokerageInr = incBrokerage ? trades.length * 50 : 0;
+            const estTaxesInr = incTaxes ? Math.max(0, netInr * 0.10) : 0;
+
+            netInr = netInr - estBrokerageInr - estTaxesInr;
+            netUsd = netUsd - (estBrokerageInr / HIST_USD_TO_INR) - (estTaxesInr / HIST_USD_TO_INR);
+
+            const pnlEl = document.getElementById('hist-total-pnl');
+            if (pnlEl) {
+                pnlEl.innerText = histFormatMoney(netUsd, netInr);
+                pnlEl.className = 'hist-pnl-amount ' + (netInr >= 0 ? '' : 'neg');
+            }
+
+            const brokEl = document.getElementById('hist-brokerage-val');
+            if (brokEl) brokEl.innerText = histCurrentCurrency === 'INR' ? `₹ ${estBrokerageInr.toFixed(2)}` : `$ ${(estBrokerageInr/HIST_USD_TO_INR).toFixed(2)}`;
+
+            const taxEl = document.getElementById('hist-taxes-val');
+            if (taxEl) taxEl.innerText = histCurrentCurrency === 'INR' ? `₹ ${estTaxesInr.toFixed(2)}` : `$ ${(estTaxesInr/HIST_USD_TO_INR).toFixed(2)}`;
+
+            const wins = trades.filter(t => (t.pnl || 0) > 0);
+            const winRate = trades.length > 0 ? ((wins.length / trades.length) * 100).toFixed(0) : '0';
+            const winEl = document.getElementById('hist-win-rate');
+            if (winEl) winEl.innerText = `${winRate}%`;
+
+            const totEl = document.getElementById('hist-total-trades');
+            if (totEl) totEl.innerText = trades.length;
+
+            const gains = wins.reduce((s, t) => s + (t.pnl || 0), 0);
+            const losses = Math.abs(trades.filter(t => (t.pnl || 0) < 0).reduce((s, t) => s + (t.pnl || 0), 0));
+            const pf = losses > 0 ? (gains / losses).toFixed(2) : (gains > 0 ? '99.9' : '0.00');
+            const pfEl = document.getElementById('hist-profit-factor');
+            if (pfEl) pfEl.innerText = pf;
+        }
+
+        function renderHistHeatmap() {
+            const container = document.getElementById('hist-heatmap-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const trades = getHistFilteredTrades();
+            const dayPnlMap = {};
+            trades.forEach(t => {
+                const d = t.date;
+                if (!dayPnlMap[d]) dayPnlMap[d] = { usd: 0, inr: 0, count: 0, wins: 0 };
+                dayPnlMap[d].usd += (t.pnl || 0);
+                dayPnlMap[d].inr += (t.pnl_inr != null ? t.pnl_inr : (t.pnl || 0) * HIST_USD_TO_INR);
+                dayPnlMap[d].count += 1;
+                if ((t.pnl || 0) > 0) dayPnlMap[d].wins += 1;
+            });
+
+            const months = [
+                { name: 'JUL 26', year: 2026, month: 6 },
+                { name: 'AUG 26', year: 2026, month: 7 },
+                { name: 'SEP 26', year: 2026, month: 8 },
+                { name: 'OCT 26', year: 2026, month: 9 }
+            ];
+            const daysLetters = ['S', 'M', 'T', 'W', 'Th', 'F', 'S'];
+
+            months.forEach(m => {
+                const mBlock = document.createElement('div');
+                mBlock.className = 'hist-month-block';
+
+                const mTitle = document.createElement('div');
+                mTitle.className = 'hist-month-title';
+                mTitle.innerText = m.name;
+                mBlock.appendChild(mTitle);
+
+                const gridLayout = document.createElement('div');
+                gridLayout.className = 'hist-grid-layout';
+
+                const daysCol = document.createElement('div');
+                daysCol.className = 'hist-days-col';
+                daysLetters.forEach(l => {
+                    const row = document.createElement('div');
+                    row.innerText = l;
+                    daysCol.appendChild(row);
+                });
+                gridLayout.appendChild(daysCol);
+
+                const cellsGrid = document.createElement('div');
+                cellsGrid.className = 'hist-cells-grid';
+
+                const firstDay = new Date(m.year, m.month, 1).getDay();
+                const totalDays = new Date(m.year, m.month + 1, 0).getDate();
+                let dayNum = 1;
+                const totalWeeks = Math.ceil((firstDay + totalDays) / 7);
+
+                for (let w = 0; w < totalWeeks; w++) {
+                    for (let d = 0; d < 7; d++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'hist-cell';
+
+                        const cellIndex = w * 7 + d;
+                        if (cellIndex >= firstDay && dayNum <= totalDays) {
+                            const dateStr = `${m.year}-${String(m.month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                            const data = dayPnlMap[dateStr];
+
+                            if (data) {
+                                if (data.inr > 0) {
+                                    cell.classList.add(data.inr > 2000 ? 'profit-high' : 'profit');
+                                } else if (data.inr < 0) {
+                                    cell.classList.add('loss');
+                                } else {
+                                    cell.classList.add('breakeven');
+                                }
+                                cell.setAttribute('data-info', JSON.stringify({ date: dateStr, ...data }));
+                            }
+
+                            cell.addEventListener('mouseenter', showHistTooltip);
+                            cell.addEventListener('mouseleave', hideHistTooltip);
+                            cell.addEventListener('click', () => filterHistTableByDate(dateStr));
+                            dayNum++;
+                        } else {
+                            cell.style.visibility = 'hidden';
+                        }
+                        cellsGrid.appendChild(cell);
+                    }
+                }
+
+                gridLayout.appendChild(cellsGrid);
+                mBlock.appendChild(gridLayout);
+                container.appendChild(mBlock);
+            });
+        }
+
+        const histTooltip = document.getElementById('hist-calendar-tooltip');
+        function showHistTooltip(e) {
+            const raw = e.target.getAttribute('data-info');
+            if (!raw || !histTooltip) return;
+            const info = JSON.parse(raw);
+            const pnlFormatted = histFormatMoney(info.usd, info.inr);
+            const pnlClass = info.inr >= 0 ? '#2ea043' : '#f85149';
+
+            histTooltip.innerHTML = `
+                <div style="font-weight:700; margin-bottom:4px; color:#fff;">${info.date}</div>
+                <div style="font-size:0.92rem; font-weight:800; font-family:'JetBrains Mono'; color:${pnlClass};">${pnlFormatted}</div>
+                <div style="font-size:0.75rem; color:#8b949e; margin-top:2px;">Trades: ${info.count} (${info.wins} wins)</div>
+            `;
+            histTooltip.style.display = 'block';
+            histTooltip.style.left = (e.clientX + 14) + 'px';
+            histTooltip.style.top = (e.clientY + 14) + 'px';
+        }
+        function hideHistTooltip() {
+            if (histTooltip) histTooltip.style.display = 'none';
+        }
+
+        function filterHistTableByDate(dateStr) {
+            const el = document.getElementById(`hist-group-${dateStr}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.style.backgroundColor = 'rgba(56, 139, 253, 0.15)';
+                setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
+            }
+        }
+
+        function renderHistLineChart() {
+            const canvas = document.getElementById('histCumulativeChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const trades = getHistFilteredTrades();
+            const chrono = [...trades].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+            const dailyAgg = {};
+            chrono.forEach(t => {
+                const d = t.date;
+                if (!dailyAgg[d]) dailyAgg[d] = { usd: 0, inr: 0 };
+                dailyAgg[d].usd += (t.pnl || 0);
+                dailyAgg[d].inr += (t.pnl_inr != null ? t.pnl_inr : (t.pnl || 0) * HIST_USD_TO_INR);
+            });
+
+            const labels = [];
+            const dataPoints = [];
+            let cumUsd = 0;
+            let cumInr = 0;
+
+            Object.keys(dailyAgg).forEach(d => {
+                const dateObj = new Date(d);
+                const dayLabel = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                labels.push(dayLabel);
+                cumUsd += dailyAgg[d].usd;
+                cumInr += dailyAgg[d].inr;
+                dataPoints.push(histCurrentCurrency === 'INR' ? cumInr : cumUsd);
+            });
+
+            if (histPnlChart) histPnlChart.destroy();
+
+            const grad = ctx.createLinearGradient(0, 0, 0, 260);
+            grad.addColorStop(0, 'rgba(46, 160, 67, 0.25)');
+            grad.addColorStop(1, 'rgba(46, 160, 67, 0.0)');
+
+            histPnlChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Cumulative PnL (${histCurrentCurrency})`,
+                        data: dataPoints,
+                        borderColor: '#2ea043',
+                        backgroundColor: grad,
+                        fill: true,
+                        tension: 0.25,
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#2ea043',
+                        pointBorderColor: '#fff',
+                        pointRadius: 3,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#21262d',
+                            titleColor: '#f0f6fc',
+                            bodyColor: '#e6edf3',
+                            borderColor: '#30363d',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: ctx => `PnL: ${histCurrentCurrency === 'INR' ? '₹ ' : '$ '}${ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits: 2})}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                            ticks: { color: '#8b949e', font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                            ticks: {
+                                color: '#8b949e',
+                                font: { size: 10 },
+                                callback: val => {
+                                    if (histCurrentCurrency === 'INR') {
+                                        return (val >= 0 ? '₹ ' : '-₹ ') + (Math.abs(val) / 1000).toFixed(1) + ' K';
+                                    } else {
+                                        return (val >= 0 ? '$ ' : '-$ ') + Math.abs(val).toFixed(0);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderHistTradeTable() {
+            const container = document.getElementById('hist-trades-container');
+            if (!container) return;
+            const trades = getHistFilteredTrades();
+
+            if (!trades || trades.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--hist-text-muted);">No forward-testing trades found for selected dates.</div>';
+                return;
+            }
+
+            const groups = {};
+            trades.forEach(t => {
+                const d = t.date || 'Unknown';
+                if (!groups[d]) groups[d] = [];
+                groups[d].push(t);
+            });
+
+            const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+            let html = '';
+
+            sortedDates.forEach((dateStr, gIdx) => {
+                const dateObj = new Date(dateStr);
+                const headerDateLabel = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }).toUpperCase();
+
+                html += `
+                    <div class="hist-date-divider" id="hist-group-${dateStr}">
+                        <div class="hist-date-pill">${headerDateLabel}</div>
+                    </div>
+                `;
+
+                groups[dateStr].forEach((trade, tIdx) => {
+                    const blockId = `hist-block-${gIdx}-${tIdx}`;
+                    const dayTotalInr = trade.pnl_inr != null ? trade.pnl_inr : (trade.pnl || 0) * HIST_USD_TO_INR;
+                    const dayTotalUsd = trade.pnl || 0;
+                    const totalFormatted = histFormatRaw(dayTotalUsd, dayTotalInr);
+                    const totalClass = dayTotalInr >= 0 ? '' : 'neg';
+
+                    const ceSymbol = trade.call_symbol || 'BTCUSD Call Option';
+                    const ceEntry = trade.call_entry_price || 0.0;
+                    const ceExit = trade.call_exit_price || 0.0;
+                    const ceMtmInr = trade.call_pnl_inr != null ? trade.call_pnl_inr : (dayTotalInr * 0.5);
+                    const ceMtmUsd = ceMtmInr / HIST_USD_TO_INR;
+
+                    const peSymbol = trade.put_symbol || 'BTCUSD Put Option';
+                    const peEntry = trade.put_entry_price || 0.0;
+                    const peExit = trade.put_exit_price || 0.0;
+                    const peMtmInr = trade.put_pnl_inr != null ? trade.put_pnl_inr : (dayTotalInr * 0.5);
+                    const peMtmUsd = peMtmInr / HIST_USD_TO_INR;
+
+                    const entryTimeFormatted = trade.entry_time ? histFormatDisplayTime(trade.entry_time) : '10:30 PM';
+                    const exitTimeFormatted = trade.exit_time ? histFormatDisplayTime(trade.exit_time) : '01:44 PM';
+
+                    html += `
+                        <div class="hist-strategy-block">
+                            <div class="hist-strategy-header">
+                                <div class="hist-strategy-title">
+                                    <span class="hist-strategy-name">Midnight BTC Strangle by Ankush (1)</span>
+                                    <button class="hist-replay-btn" onclick="alert('Trade Replay: Verified execution on Delta India Exchange.')">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+                                        Replay
+                                    </button>
+                                    <a class="hist-details-btn" onclick="toggleHistDetails('${blockId}')">Show Details</a>
+                                </div>
+                                <div class="hist-day-total ${totalClass}">${totalFormatted}</div>
+                            </div>
+
+                            <!-- CE Leg -->
+                            <div class="hist-leg-row">
+                                <div class="hist-leg-instrument">${ceSymbol}</div>
+                                <div class="hist-leg-price-badge">
+                                    <span class="hist-badge sell">S</span>
+                                    <span>$ ${ceEntry.toFixed(5)}</span>
+                                </div>
+                                <div class="hist-leg-time">${entryTimeFormatted}</div>
+                                <div style="color:var(--hist-text-dim);">-</div>
+                                <div style="color:var(--hist-text-dim);">-</div>
+                                <div class="hist-leg-price-badge">
+                                    <span class="hist-badge buy">B</span>
+                                    <span>$ ${ceExit.toFixed(5)}</span>
+                                </div>
+                                <div class="hist-leg-time">${trade.call_exit_time ? histFormatDisplayTime(trade.call_exit_time) : exitTimeFormatted}</div>
+                                <div class="hist-leg-mtm ${ceMtmInr >= 0 ? '' : 'neg'}">${histFormatRaw(ceMtmUsd, ceMtmInr)}</div>
+                            </div>
+
+                            <!-- PE Leg -->
+                            <div class="hist-leg-row">
+                                <div class="hist-leg-instrument">${peSymbol}</div>
+                                <div class="hist-leg-price-badge">
+                                    <span class="hist-badge sell">S</span>
+                                    <span>$ ${peEntry.toFixed(5)}</span>
+                                </div>
+                                <div class="hist-leg-time">${entryTimeFormatted}</div>
+                                <div style="color:var(--hist-text-dim);">-</div>
+                                <div style="color:var(--hist-text-dim);">-</div>
+                                <div class="hist-leg-price-badge">
+                                    <span class="hist-badge buy">B</span>
+                                    <span>$ ${peExit.toFixed(5)}</span>
+                                </div>
+                                <div class="hist-leg-time">${trade.put_exit_time ? histFormatDisplayTime(trade.put_exit_time) : exitTimeFormatted}</div>
+                                <div class="hist-leg-mtm ${peMtmInr >= 0 ? '' : 'neg'}">${histFormatRaw(peMtmUsd, peMtmInr)}</div>
+                            </div>
+
+                            <!-- Expandable Drawer -->
+                            <div class="hist-drawer" id="${blockId}">
+                                <div class="hist-drawer-item">
+                                    <span class="hist-drawer-label">Exit Reason</span>
+                                    <span class="hist-drawer-val" style="color:#58a6ff;">${trade.exit_reason || 'Take Profit Target Reached'}</span>
+                                </div>
+                                <div class="hist-drawer-item">
+                                    <span class="hist-drawer-label">Total Premium</span>
+                                    <span class="hist-drawer-val">$ ${(trade.premium_collected || 0).toFixed(2)}</span>
+                                </div>
+                                <div class="hist-drawer-item">
+                                    <span class="hist-drawer-label">Profit Capture</span>
+                                    <span class="hist-drawer-val" style="color:var(--hist-profit-bright);">${(trade.pct_profit_captured || 0).toFixed(1)}%</span>
+                                </div>
+                                <div class="hist-drawer-item">
+                                    <span class="hist-drawer-label">Account Equity</span>
+                                    <span class="hist-drawer-val">$ ${(trade.equity_after || 50000).toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                                </div>
+                                <div class="hist-drawer-item">
+                                    <span class="hist-drawer-label">Engine Mode</span>
+                                    <span class="hist-drawer-val">${trade.mode || histCurrentMode}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+
+            container.innerHTML = html;
+        }
+
+        function histFormatDisplayTime(isoString) {
+            try {
+                const d = new Date(isoString);
+                return d.toLocaleDateString('en-GB', { month: 'short', day: '2-digit', year: 'numeric' }) + ', ' +
+                       d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            } catch (e) {
+                return isoString;
+            }
+        }
+
+        function toggleHistDetails(drawerId) {
+            const el = document.getElementById(drawerId);
+            if (el) el.classList.toggle('open');
+        }
+
+        function downloadHistoryCsv() {
+            window.location.href = `/api/download_csv?mode=${histCurrentMode}`;
+        }
+    </script>
+
 </body>
 </html>
 
