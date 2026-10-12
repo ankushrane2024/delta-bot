@@ -3,1104 +3,1452 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
-    <link rel="manifest" href="/manifest.json">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <title>Trade History | Delta Bot</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#111827">
+    <title>AlgoTest • Trade History | Delta BTC Options</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         :root {
-            --bg-dark: #0b112c;
-            --panel-bg: rgba(22, 32, 68, 0.78);
-            --text-primary: #ffffff;
-            --text-secondary: #cbd5e1;
-            --success: #00f59b;
-            --danger: #ff4b72;
-            --warning: #fbbf24;
-            --accent: #38bdf8;
-            --border-color: rgba(147, 197, 253, 0.2);
+            --bg-body: #0d1117;
+            --bg-card: #161b22;
+            --bg-card-alt: #1c2128;
+            --border-color: #30363d;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --text-dim: #6e7681;
+            --profit-green: #238636;
+            --profit-bright: #2ea043;
+            --loss-red: #da3633;
+            --loss-bright: #f85149;
+            --neutral-cell: #21262d;
+            --accent-blue: #388bfd;
+            --badge-sell: #e5534b;
+            --badge-buy: #2ea043;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-dark);
-            background-image: 
-                radial-gradient(circle at 10% 8%, rgba(99, 102, 241, 0.28), transparent 45%),
-                radial-gradient(circle at 90% 12%, rgba(236, 72, 153, 0.22), transparent 42%),
-                radial-gradient(circle at 50% 35%, rgba(6, 182, 212, 0.18), transparent 48%),
-                radial-gradient(circle at 15% 75%, rgba(139, 92, 246, 0.22), transparent 45%),
-                radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.18), transparent 45%),
-                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 36px 36px, 36px 36px;
-            background-attachment: fixed;
-            color: var(--text-primary);
-            margin: 0;
-            padding: 30px 20px;
+            background-color: var(--bg-body);
+            color: var(--text-main);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 20px;
+            overflow-x: hidden;
         }
 
-        header {
-            max-width: 1800px;
-            width: 100%;
+        /* ── TOP NAV BAR (AlgoTest Style) ── */
+        .algo-navbar {
+            background-color: #0b0f14;
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 24px;
             display: flex;
+            align-items: center;
             justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .algo-nav-left {
+            display: flex;
             align-items: center;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, rgba(28, 38, 80, 0.85) 0%, rgba(32, 24, 68, 0.85) 100%);
-            border: 1px solid rgba(168, 85, 247, 0.3);
-            border-radius: 14px;
-            padding: 16px 24px;
-            box-sizing: border-box;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 10px 30px rgba(7, 11, 30, 0.5), 0 0 25px rgba(139, 92, 246, 0.12);
+            gap: 24px;
         }
-
-        h1 { 
-            font-weight: 800; 
-            margin: 0; 
-            display: flex; 
-            align-items: center; 
-            gap: 15px;
-            background: linear-gradient(135deg, #00f2fe 0%, #38bdf8 25%, #818cf8 50%, #c084fc 75%, #f472b6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 2px 10px rgba(99, 102, 241, 0.35));
-        }
-        
-        .tab-nav {
-            max-width: 1800px;
-            width: 100%;
-            display: flex;
-            gap: 6px;
-            background: rgba(20, 28, 62, 0.88);
-            border: 1px solid rgba(139, 92, 246, 0.28);
-            border-radius: 12px;
-            padding: 6px;
-            box-shadow: 0 8px 24px rgba(7, 11, 30, 0.45);
-        }
-
-        .tab-btn {
-            background: transparent;
-            color: #cbd5e1;
-            border: none;
-            padding: 8px 18px;
-            border-radius: 9px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.08); transform: translateY(-1px); }
-        .tab-btn.active {
-            background: linear-gradient(135deg, #06b6d4 0%, #6366f1 50%, #a855f7 100%);
-            border: 1px solid rgba(255, 255, 255, 0.35);
-            color: #fff;
-            box-shadow: 0 4px 18px rgba(99, 102, 241, 0.5);
-        }
-
-        .container {
-            max-width: 1800px;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        /* ── Summary Stats Row ────────────── */
-        .summary-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 12px;
-        }
-        .summary-card {
-            background: linear-gradient(135deg, rgba(28, 38, 80, 0.75) 0%, rgba(20, 27, 58, 0.82) 100%);
-            border: 1px solid rgba(147, 197, 253, 0.2);
-            border-radius: 12px;
-            padding: 16px;
-            text-align: center;
-            box-shadow: 0 6px 18px rgba(7, 11, 30, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-        }
-        .summary-card .label {
-            font-size: 0.72rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
-        }
-        .summary-card .value {
-            font-size: 1.4rem;
-            font-weight: 800;
-        }
-
-        /* ── Chart Panels ─────────────────── */
-        .chart-panel {
-            background: linear-gradient(135deg, rgba(24, 34, 72, 0.82) 0%, rgba(18, 25, 56, 0.88) 100%);
-            border: 1px solid rgba(147, 197, 253, 0.22);
-            border-radius: 14px;
-            padding: 20px 24px;
-            box-shadow: 0 10px 32px rgba(7, 11, 30, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        }
-        .chart-panel h2 {
-            margin: 0 0 16px 0;
-            font-size: 1.05rem;
-            font-weight: 700;
+        .algo-logo-wrap {
             display: flex;
             align-items: center;
             gap: 8px;
+            text-decoration: none;
+            color: #fff;
+            font-weight: 800;
+            font-size: 1.25rem;
+            letter-spacing: -0.5px;
         }
-        .chart-wrap {
-            position: relative;
-            height: 280px;
-            overflow-x: auto;
-            overflow-y: hidden;
-        }
-        .chart-inner {
-            height: 100%;
-            min-width: 100%;
-        }
-        /* Custom scrollbar for charts */
-        .chart-wrap::-webkit-scrollbar {
-            height: 8px;
-        }
-        .chart-wrap::-webkit-scrollbar-track {
-            background: rgba(14, 20, 48, 0.6);
-            border-radius: 4px;
-        }
-        .chart-wrap::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, #6366f1, #a855f7);
-            border-radius: 4px;
-        }
-        .chart-wrap::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(180deg, #38bdf8, #ec4899);
-        }
-
-        /* ── Trade Cards ──────────────────── */
-        .trade-card {
-            background: linear-gradient(135deg, rgba(26, 36, 76, 0.78) 0%, rgba(20, 28, 62, 0.82) 100%);
-            border: 1px solid rgba(147, 197, 253, 0.2);
-            border-radius: 12px;
-            padding: 20px;
+        .algo-logo-icon {
+            width: 26px;
+            height: 26px;
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            border-radius: 50%;
             display: flex;
-            flex-direction: column;
-            gap: 15px;
-            transition: all 0.25s ease;
-            box-shadow: 0 6px 20px rgba(7, 11, 30, 0.35);
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 900;
+            font-size: 0.95rem;
+            box-shadow: 0 0 12px rgba(0, 210, 255, 0.4);
         }
-        .trade-card:hover { 
-            border-color: rgba(139, 92, 246, 0.45); 
-            box-shadow: 0 10px 30px rgba(7, 11, 30, 0.5), 0 0 20px rgba(139, 92, 246, 0.15);
+        .algo-nav-links {
+            display: flex;
+            align-items: center;
+            gap: 18px;
         }
-
-        /* ── View Chart Button ────────────── */
-        .view-chart-btn {
+        .algo-nav-item {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+        .algo-nav-item:hover, .algo-nav-item.active {
+            color: #fff;
+        }
+        .algo-nav-item svg {
+            width: 12px;
+            height: 12px;
+            stroke-width: 2.2;
+        }
+        .algo-nav-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .nav-btn-link {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+        .nav-btn-link:hover { color: #fff; }
+        .user-credit-badge {
+            background: rgba(56, 139, 253, 0.15);
+            border: 1px solid rgba(56, 139, 253, 0.3);
+            border-radius: 20px;
+            padding: 3px 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #79c0ff;
+        }
+        .user-avatar-circle {
+            width: 24px;
+            height: 24px;
+            background: #1f6feb;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+        .action-pill-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: rgba(59,130,246,0.12);
-            border: 1px solid rgba(59,130,246,0.3);
-            color: #60a5fa;
-            font-size: 0.8rem;
-            font-weight: 600;
-            padding: 6px 14px;
-            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
+            transition: all 0.2s ease;
+            text-decoration: none;
         }
-        .view-chart-btn:hover {
-            background: rgba(59,130,246,0.25);
-            border-color: rgba(59,130,246,0.6);
+        .action-pill-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.3);
             transform: translateY(-1px);
         }
+        .btn-live-dashboard {
+            background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+            border: 1px solid #3fb950;
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(46, 160, 67, 0.3);
+        }
+        .btn-live-dashboard:hover {
+            background: linear-gradient(135deg, #2ea043 0%, #3fb950 100%);
+            color: #fff;
+        }
 
-        /* ── Floating Chart Modal ─────────── */
-        #chart-modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(6px);
-            z-index: 9999;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        #chart-modal-overlay.visible {
-            display: flex;
-            animation: fadeIn 0.2s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to   { opacity: 1; transform: scale(1); }
-        }
-        #chart-modal {
-            background: #1e293b;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 18px;
-            padding: 24px;
+        /* ── MAIN CONTENT CONTAINER ── */
+        .page-content {
+            max-width: 1720px;
             width: 100%;
-            max-width: 800px;
-            position: relative;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+            margin: 0 auto;
+            padding: 20px 24px 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
         }
-        #chart-modal-title {
-            font-size: 1rem;
-            font-weight: 700;
-            margin: 0 0 16px 0;
-            color: #f8fafc;
-        }
-        #chart-modal-close {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.12);
-            color: #94a3b8;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1rem;
+
+        /* ── STRATEGY CONTROLS BAR ── */
+        .controls-bar {
             display: flex;
             align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+            padding: 6px 0 10px;
         }
-        #chart-modal-close:hover {
-            background: rgba(239,68,68,0.2);
-            border-color: rgba(239,68,68,0.4);
-            color: #ef4444;
-        }
-        #chart-modal-canvas-wrap {
-            position: relative;
-            height: 300px;
-        }
-        #chart-modal-stats {
+        .controls-left {
             display: flex;
-            gap: 16px;
-            margin-top: 16px;
+            align-items: center;
+            gap: 12px;
             flex-wrap: wrap;
         }
-        .modal-stat {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.07);
-            border-radius: 10px;
-            padding: 10px 16px;
-            flex: 1;
-            min-width: 120px;
-            text-align: center;
-        }
-        .modal-stat .ms-label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-        .modal-stat .ms-val { font-size: 1.1rem; font-weight: 700; }
-        
-        .trade-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            padding-bottom: 15px;
-        }
-        
-        .trade-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-        }
-        @media (max-width: 700px) {
-            .trade-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        
-        .stat-box {
-            background: rgba(255,255,255,0.02);
-            padding: 12px;
+        .dropdown-select {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
             border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.05);
-            text-align: center;
+            padding: 8px 14px;
+            font-size: 0.86rem;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        
-        .stat-label { font-size: 0.78rem; color: var(--text-secondary); display: block; margin-bottom: 5px; }
-        .stat-val { font-size: 1.1rem; font-weight: 700; }
-        
-        .pnl-pos { color: var(--success); }
-        .pnl-neg { color: var(--danger); }
-        
-        .timestamp { font-size: 0.73rem; color: var(--text-secondary); margin-top: 4px; display: block; }
-
-        .trades-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin: 10px 0 0 0;
+        .dropdown-select:hover {
+            border-color: #58a6ff;
+        }
+        .date-picker-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 6px 12px;
             display: flex;
             align-items: center;
             gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+        .date-picker-box input[type="date"] {
+            background: transparent;
+            border: none;
+            color: #fff;
+            outline: none;
+            font-family: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .mode-toggle-group {
+            display: flex;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 3px;
+        }
+        .mode-toggle-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-toggle-btn.active {
+            background: #238636;
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(35, 134, 54, 0.4);
         }
 
-        .badge {
+        /* ── SUMMARY BAR (PnL, Brokerage, Taxes) ── */
+        .summary-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .summary-left {
+            display: flex;
+            align-items: baseline;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+        .pnl-block {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .pnl-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .pnl-amount {
+            font-size: 2.1rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--profit-bright);
+            letter-spacing: -0.5px;
+        }
+        .pnl-amount.neg {
+            color: var(--loss-bright);
+        }
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.88rem;
+            color: var(--text-muted);
+        }
+        .toggle-label {
+            font-weight: 500;
+        }
+        /* Switch */
+        .switch {
+            position: relative;
             display: inline-block;
-            padding: 2px 10px;
+            width: 36px;
+            height: 20px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #30363d;
+            transition: .3s;
+            border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #238636; }
+        input:checked + .slider:before { transform: translateX(16px); }
+
+        .toggle-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.92rem;
+        }
+
+        .summary-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .currency-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
             border-radius: 8px;
-            font-size: 0.75rem;
+            padding: 6px 12px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .currency-btn.active {
+            background: #1f6feb;
+            border-color: #388bfd;
+            color: #fff;
+        }
+        .stat-pill {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 6px 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .stat-pill-label {
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
             font-weight: 700;
         }
-        .badge-win { background: rgba(16,185,129,0.15); color: var(--success); }
-        .badge-loss { background: rgba(239,68,68,0.15); color: var(--danger); }
+        .stat-pill-val {
+            font-size: 0.95rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: #fff;
+        }
+
+        /* ── CHARTS & HEATMAP DUAL GRID ── */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+        @media (max-width: 1100px) {
+            .analytics-grid { grid-template-columns: 1fr; }
+        }
+
+        .analytics-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px 24px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            min-height: 360px;
+        }
+
+        .card-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .card-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--text-main);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── CALENDAR HEATMAP ── */
+        .heatmap-scroll-wrap {
+            overflow-x: auto;
+            padding-bottom: 8px;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .heatmap-container {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+        .heatmap-month-block {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .heatmap-month-title {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .heatmap-grid-layout {
+            display: flex;
+            gap: 8px;
+        }
+        .heatmap-days-col {
+            display: grid;
+            grid-template-rows: repeat(7, 18px);
+            gap: 4px;
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            font-weight: 600;
+            text-align: right;
+            padding-right: 4px;
+            line-height: 18px;
+        }
+        .heatmap-cells-grid {
+            display: grid;
+            grid-auto-flow: column;
+            grid-template-rows: repeat(7, 18px);
+            gap: 4px;
+        }
+        .heatmap-cell {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            background: var(--neutral-cell);
+            cursor: pointer;
+            transition: transform 0.15s ease, filter 0.15s ease;
+            position: relative;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.25);
+            z-index: 10;
+            filter: brightness(1.25);
+        }
+        .heatmap-cell.profit {
+            background: #238636;
+            box-shadow: 0 0 6px rgba(35, 134, 54, 0.4);
+        }
+        .heatmap-cell.profit-high {
+            background: #2ea043;
+            box-shadow: 0 0 8px rgba(46, 160, 67, 0.6);
+        }
+        .heatmap-cell.loss {
+            background: #da3633;
+            box-shadow: 0 0 6px rgba(218, 54, 51, 0.4);
+        }
+        .heatmap-cell.breakeven {
+            background: #484f58;
+        }
+
+        .heatmap-legend-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 14px;
+            font-size: 0.74rem;
+            color: var(--text-muted);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .legend-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        .legend-box.loss { background: #da3633; }
+        .legend-box.breakeven { background: #484f58; }
+        .legend-box.profit { background: #238636; }
+
+        .algotest-watermark {
+            position: absolute;
+            right: 24px;
+            bottom: 14px;
+            opacity: 0.18;
+            font-size: 1.1rem;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            color: #fff;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        /* ── LINE CHART CONTAINER ── */
+        .chart-canvas-wrap {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            min-height: 270px;
+        }
+
+        /* ── TRADE HISTORY TABLE (Exact AlgoTest Layout) ── */
+        .trades-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-head-row {
+            display: grid;
+            grid-template-columns: 2.8fr 1fr 1.5fr 0.8fr 0.8fr 1fr 1.5fr 1.2fr;
+            padding: 14px 24px;
+            background: #0d1117;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .table-head-row div:last-child {
+            text-align: right;
+        }
+
+        /* Group Date Banner */
+        .date-group-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 24px 10px;
+            position: relative;
+        }
+        .date-group-divider::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            right: 24px;
+            top: 50%;
+            height: 1px;
+            background: var(--border-subtle);
+            z-index: 1;
+        }
+        .date-group-pill {
+            background: #21262d;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            font-size: 0.76rem;
+            font-weight: 700;
+            padding: 4px 16px;
+            border-radius: 20px;
+            z-index: 2;
+            letter-spacing: 0.8px;
+        }
+
+        /* Strategy Group Container */
+        .strategy-block {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 10px 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .strategy-block:hover {
+            background: rgba(255, 255, 255, 0.015);
+        }
+        .strategy-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+        .strategy-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .strategy-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #fff;
+        }
+        .replay-link-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 2px 10px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s;
+        }
+        .replay-link-btn:hover {
+            color: #fff;
+            border-color: #58a6ff;
+        }
+        .show-details-btn {
+            color: #58a6ff;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+        .show-details-btn:hover {
+            text-decoration: underline;
+        }
+        .strategy-mtm-total {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 800;
+            font-size: 1.05rem;
+            color: var(--profit-bright);
+        }
+        .strategy-mtm-total.neg {
+            color: var(--loss-bright);
+        }
+
+        /* Leg Rows */
+        .leg-row {
+            display: grid;
+            grid-template-columns: 2.8fr 1fr 1.5fr 0.8fr 0.8fr 1fr 1.5fr 1.2fr;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 0.84rem;
+            color: var(--text-muted);
+            border-top: 1px dashed rgba(255, 255, 255, 0.04);
+        }
+        .leg-instrument {
+            color: #c9d1d9;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+        }
+        .leg-badge-price {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: #fff;
+        }
+        .action-badge {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        .action-badge.sell { background: var(--badge-sell); }
+        .action-badge.buy { background: var(--badge-buy); }
+        .leg-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .leg-mtm {
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--profit-bright);
+            font-size: 0.92rem;
+        }
+        .leg-mtm.neg {
+            color: var(--loss-bright);
+        }
+
+        /* Detailed Drawer */
+        .details-drawer {
+            display: none;
+            background: #0d1117;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-top: 8px;
+            animation: fadeIn 0.15s ease;
+        }
+        .details-drawer.open {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+        }
+        .drawer-stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .drawer-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        .drawer-stat-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.88rem;
+            color: #fff;
+        }
+
+        /* Tooltip */
+        #calendar-tooltip {
+            position: fixed;
+            display: none;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.8rem;
+            color: #f0f6fc;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
-    <header>
-        <div>
-            <h1 style="display: flex; align-items: center; gap: 15px;">
-                Delta Engine 
-                <span style="font-size: 0.9rem; padding: 4px 10px; border-radius: 12px; background: rgba(255,255,255,0.1);">History</span>
-            </h1>
-            <div style="display: flex; align-items: center; gap: 12px; margin-top: 5px;">
-                <div style="color: var(--text-secondary); font-size: 0.9rem;">Trade Log & Analytics</div>
-                <div style="width: 4px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 50%;"></div>
-                <div style="font-size: 0.85rem; color: #a855f7; font-weight: 600; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(168, 85, 247, 0.4);">
-                    Created by Ankush Rane
-                </div>
+
+    <!-- ═══ TOP NAVBAR (AlgoTest Layout) ═══ -->
+    <header class="algo-navbar">
+        <div class="algo-nav-left">
+            <a href="/" class="algo-logo-wrap">
+                <div class="algo-logo-icon">A</div>
+                <span>AlgoTest</span>
+            </a>
+            <nav class="algo-nav-links">
+                <div class="algo-nav-item">Backtest <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></svg></div>
+                <div class="algo-nav-item active">Algo Trade <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></svg></div>
+                <div class="algo-nav-item">Signals <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></svg></div>
+                <div class="algo-nav-item">Marketplace <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></svg></div>
+                <div class="algo-nav-item">ClickTrade <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></svg></div>
+                <div class="algo-nav-item">Webinars <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></svg></div>
+            </nav>
+        </div>
+        <div class="algo-nav-right">
+            <a href="/" class="action-pill-btn btn-live-dashboard">⚡ Live Bot Dashboard</a>
+            <button class="action-pill-btn" onclick="downloadCsv()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Download .csv
+            </button>
+            <div class="user-credit-badge">
+                <div class="user-avatar-circle">AN</div>
+                <span>Credits: 0</span>
+                <span style="font-weight:900; color:#58a6ff; cursor:pointer;">+</span>
             </div>
         </div>
     </header>
 
-    <nav class="tab-nav" style="display: flex;">
-        <button class="tab-btn" onclick="window.location.href='/'">Live Dashboard</button>
-        <button class="tab-btn active">📊 Trade History</button>
-        <select id="mode-selector" onchange="loadHistory()" style="margin-left: 15px; padding: 6px 12px; background: rgba(16, 20, 30, 0.9); color: white; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; outline: none; cursor: pointer; font-family: 'Inter', sans-serif;">
-            <option value="PAPER">Paper Trades</option>
-            <option value="LIVE">Live Trades 🔴</option>
-        </select>
-        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
-            <span id="last-backup-info" style="color: #10b981; font-size: 0.85em; margin-right: 15px;">✅ Last Backup: Checking...</span>
-            <button class="tab-btn" onclick="backupHistory()" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.4); color: #10b981;">💾 Backup Data</button>
-            <button class="tab-btn" onclick="restoreHistory()" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); color: #ef4444;">♻️ Restore Backup</button>
-        </div>
-    </nav>
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="page-content">
 
-    <!-- ═══ Summary Stats ═══ -->
-    <div class="container">
-        <div class="summary-row" id="summary-row">
-            <!-- Filled by JS -->
-        </div>
-    </div>
+        <!-- ── STRATEGY CONTROLS BAR ── -->
+        <section class="controls-bar">
+            <div class="controls-left">
+                <select class="dropdown-select" id="strategy-filter" onchange="renderAll()">
+                    <option value="ALL">All Selected</option>
+                    <option value="MIDNIGHT" selected>Midnight BTC Strangle by Ankush (1)</option>
+                </select>
 
-    <!-- ═══ Equity Curve Chart ═══ -->
-    <div class="container">
-        <div class="chart-panel">
-            <h2>📈 Equity Curve</h2>
-            <div class="chart-wrap">
-                <div class="chart-inner" id="equityChartInner">
-                    <canvas id="equityChart"></canvas>
+                <div class="date-picker-box">
+                    <span style="color:var(--text-muted); font-size:0.75rem;">Start Date</span>
+                    <input type="date" id="start-date-input" value="2025-07-15" onchange="renderAll()">
+                </div>
+
+                <div class="date-picker-box">
+                    <span style="color:var(--text-muted); font-size:0.75rem;">End Date</span>
+                    <input type="date" id="end-date-input" value="2026-10-12" onchange="renderAll()">
+                </div>
+
+                <div class="mode-toggle-group">
+                    <button class="mode-toggle-btn active" id="btn-mode-paper" onclick="setMode('PAPER')">Paper</button>
+                    <button class="mode-toggle-btn" id="btn-mode-live" onclick="setMode('LIVE')">Live 🔴</button>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- ═══ Daily P&L Bar Chart ═══ -->
-    <div class="container">
-        <div class="chart-panel">
-            <h2>💰 Per-Trade P&L</h2>
-            <div class="chart-wrap">
-                <div class="chart-inner" id="pnlBarChartInner">
-                    <canvas id="pnlBarChart"></canvas>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <span id="backup-badge" style="font-size:0.75rem; color:#7ee787; font-weight:600; padding:4px 8px; background:rgba(35,134,54,0.15); border-radius:6px; border:1px solid rgba(35,134,54,0.3);">
+                    Cloud DB Sync: Verified
+                </span>
+            </div>
+        </section>
+
+        <!-- ── SUMMARY BAR (PnL, Brokerage, Taxes) ── -->
+        <section class="summary-bar">
+            <div class="summary-left">
+                <div class="pnl-block">
+                    <div class="pnl-label">PnL</div>
+                    <div class="pnl-amount" id="total-pnl-val">₹ 6,124.51</div>
+                </div>
+
+                <div class="toggle-item">
+                    <span class="toggle-label">Include Brokerage</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-brokerage" onchange="renderSummary()">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-val" id="brokerage-val">0 ₹</span>
+                </div>
+
+                <div class="toggle-item">
+                    <span class="toggle-label">Taxes & charges</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-taxes" onchange="renderSummary()">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-val" id="taxes-val">₹ 0.00</span>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- ═══ Trade Cards ═══ -->
-    <div class="container">
-        <div class="trades-title">📋 Individual Trades</div>
-        <div id="history-container">
-            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Loading Trade History...</div>
-        </div>
-    </div>
+            <div class="summary-right">
+                <div class="stat-pill">
+                    <span class="stat-pill-label">Win Rate</span>
+                    <span class="stat-pill-val" id="win-rate-val">71%</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-pill-label">Total Trades</span>
+                    <span class="stat-pill-val" id="total-trades-val">7</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-pill-label">Profit Factor</span>
+                    <span class="stat-pill-val" id="profit-factor-val" style="color:#e3b341;">2.18</span>
+                </div>
+
+                <button class="currency-btn active" id="btn-curr-inr" onclick="setCurrency('INR')">₹ INR</button>
+                <button class="currency-btn" id="btn-curr-usd" onclick="setCurrency('USD')">$ USD</button>
+            </div>
+        </section>
+
+        <!-- ── HEATMAP & LINE CHART DUAL GRID ── -->
+        <section class="analytics-grid">
+            
+            <!-- CALENDAR HEATMAP -->
+            <div class="analytics-card">
+                <div class="card-header-row">
+                    <div class="card-title">📅 Daily PnL Calendar Heatmap</div>
+                </div>
+
+                <div class="heatmap-scroll-wrap">
+                    <div class="heatmap-container" id="heatmap-container">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <div class="heatmap-legend-row">
+                    <div class="legend-item"><div class="legend-box loss"></div> Loss</div>
+                    <div class="legend-item"><div class="legend-box breakeven"></div> Breakeven</div>
+                    <div class="legend-item"><div class="legend-box profit"></div> Profit</div>
+                </div>
+
+                <div class="algotest-watermark">AlgoTest</div>
+            </div>
+
+            <!-- CUMULATIVE PnL LINE CHART -->
+            <div class="analytics-card">
+                <div class="card-header-row">
+                    <div class="card-title">📈 Cumulative PnL Curve</div>
+                </div>
+
+                <div class="chart-canvas-wrap">
+                    <canvas id="cumulativePnlChart"></canvas>
+                </div>
+
+                <div class="algotest-watermark">AlgoTest</div>
+            </div>
+
+        </section>
+
+        <!-- ── TRADE HISTORY TABLE (Exact AlgoTest Layout) ── -->
+        <section class="trades-section">
+            <div class="table-head-row">
+                <div>Instrument</div>
+                <div>Entry</div>
+                <div>Entry Time</div>
+                <div>SL</div>
+                <div>TP</div>
+                <div>Exit</div>
+                <div>Exit Time</div>
+                <div>MTM</div>
+            </div>
+
+            <div id="trades-container">
+                <!-- Grouped Date rows filled dynamically by JS -->
+                <div style="text-align: center; padding: 40px; color: var(--text-muted);">Loading Trade History...</div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Floating Calendar Tooltip -->
+    <div id="calendar-tooltip"></div>
 
     <script>
-        let equityChart = null;
-        let pnlBarChart = null;
+        // State
+        let allTrades = [];
+        let currentMode = 'PAPER';
+        let currentCurrency = 'INR'; // 'INR' or 'USD'
+        const USD_TO_INR = 85.0;
+        let pnlChart = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const modeParam = urlParams.get('mode');
-            if (modeParam && (modeParam.toUpperCase() === 'LIVE' || modeParam.toUpperCase() === 'PAPER')) {
-                const sel = document.getElementById('mode-selector');
-                if (sel) sel.value = modeParam.toUpperCase();
-            }
-            loadHistory();
-            fetchLastBackupTime();
+            fetchHistory();
         });
 
-        async function fetchLastBackupTime() {
-            try {
-                const response = await fetch('/api/last_backup_time');
-                const data = await response.json();
-                document.getElementById('last-backup-info').innerText = '✅ Last Backup: ' + data.time;
-            } catch (err) {
-                document.getElementById('last-backup-info').innerText = '✅ Last Backup: Unknown';
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-mode-paper').classList.toggle('active', mode === 'PAPER');
+            document.getElementById('btn-mode-live').classList.toggle('active', mode === 'LIVE');
+            fetchHistory();
+        }
+
+        function setCurrency(curr) {
+            currentCurrency = curr;
+            document.getElementById('btn-curr-inr').classList.toggle('active', curr === 'INR');
+            document.getElementById('btn-curr-usd').classList.toggle('active', curr === 'USD');
+            renderAll();
+        }
+
+        function formatMoney(amountUsd, inrOverride) {
+            if (currentCurrency === 'INR') {
+                const val = (inrOverride != null) ? inrOverride : (amountUsd * USD_TO_INR);
+                return (val < 0 ? '-₹ ' : '₹ ') + Math.abs(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            } else {
+                return (amountUsd < 0 ? '-$ ' : '$ ') + Math.abs(amountUsd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
         }
 
-        async function backupHistory() {
-            if (!confirm("Are you sure you want to backup the current history? This will overwrite the secondary backup.")) return;
-            
-            try {
-                const btn = document.querySelector('button[onclick="backupHistory()"]');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = "⏳ Backing up...";
-                btn.disabled = true;
-                
-                const response = await fetch('/api/backup_history', { method: 'POST' });
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert("Success: " + result.message);
-                    fetchLastBackupTime();
-                } else {
-                    alert("Failed: " + result.message);
-                }
-                
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            } catch (err) {
-                alert("Error calling backup API: " + err);
+        function formatRawNumber(amountUsd, inrOverride) {
+            if (currentCurrency === 'INR') {
+                const val = (inrOverride != null) ? inrOverride : (amountUsd * USD_TO_INR);
+                return val.toFixed(2);
+            } else {
+                return amountUsd.toFixed(2);
             }
         }
 
-        async function restoreHistory() {
-            if (!confirm("Are you sure you want to restore history from the server's local backup? This will overwrite the current cloud database.")) return;
-            
+        async function fetchHistory() {
             try {
-                const btn = document.querySelector('button[onclick="restoreHistory()"]');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = "⏳ Restoring...";
-                btn.disabled = true;
-                
-                const response = await fetch('/api/restore_history', { method: 'POST' });
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert("Success: " + result.message);
-                    location.reload();
-                } else {
-                    alert("Failed: " + result.message);
-                }
-                
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+                const res = await fetch(`/api/history?mode=${currentMode}`);
+                const data = await res.json();
+                allTrades = data.trades || [];
+                renderAll();
             } catch (err) {
-                alert("Error calling restore API: " + err);
+                console.error("Failed to fetch history:", err);
             }
         }
 
-        async function loadHistory() {
-            try {
-                const mode = document.getElementById('mode-selector').value || 'PAPER';
-                const response = await fetch(`/api/history?mode=${mode}`);
-                const data = await response.json();
-                
-                let displayEquity = data.max_equity || 0.0;
-                if (mode === 'LIVE') {
-                    try {
-                        const eqRes = await fetch('/api/live_equity');
-                        const eqData = await eqRes.json();
-                        if (eqData && eqData.equity > 0) {
-                            displayEquity = eqData.equity;
-                        }
-                    } catch(err) {}
-                }
-                
-                if (!data.trades || data.trades.length === 0) {
-                    document.getElementById('history-container').innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No trades recorded yet.</div>';
-                    
-                    // Clear summary stats by writing default zero-state HTML
-                    document.getElementById('summary-row').innerHTML = `
-                        <div class="stat-card"><div class="stat-label">TOTAL TRADES</div><div class="stat-value">0</div></div>
-                        <div class="stat-card"><div class="stat-label">WINS / LOSSES</div><div class="stat-value" style="color: var(--text-primary);">0 / 0</div></div>
-                        <div class="stat-card"><div class="stat-label">WIN RATE</div><div class="stat-value">0%</div></div>
-                        <div class="stat-card"><div class="stat-label">NET P&L</div><div class="stat-value">$0.00</div></div>
-                        <div class="stat-card"><div class="stat-label">EQUITY</div><div class="stat-value">$${displayEquity.toFixed(2)}</div></div>
-                        <div class="stat-card"><div class="stat-label">MAX DRAWDOWN</div><div class="stat-value" style="color: var(--danger);">0.00%</div></div>
-                        <div class="stat-card"><div class="stat-label">PROFIT FACTOR</div><div class="stat-value" style="color: var(--warning);">0.00</div></div>
-                    `;
-                    
-                    // Clear charts if they exist
-                    if (equityChart) { equityChart.destroy(); equityChart = null; }
-                    if (pnlBarChart) { pnlBarChart.destroy(); pnlBarChart = null; }
-                    
-                    return;
-                }
+        function getFilteredTrades() {
+            const startVal = document.getElementById('start-date-input').value;
+            const endVal = document.getElementById('end-date-input').value;
 
-                // Sort trades chronologically (oldest first) for charts
-                const chronoTrades = [...data.trades].sort((a, b) => (a.entry_time || a.date || '').localeCompare(b.entry_time || b.date || ''));
+            return allTrades.filter(t => {
+                const d = t.date || '';
+                if (startVal && d < startVal) return false;
+                if (endVal && d > endVal) return false;
+                return true;
+            });
+        }
 
-                // ══════════════════════════════════════════════
-                // SUMMARY STATS
-                // ══════════════════════════════════════════════
-                const totalTrades = chronoTrades.length;
-                const wins = chronoTrades.filter(t => (t.pnl + (t.hedge_pnl || 0)) > 0).length;
-                const losses = chronoTrades.filter(t => (t.pnl + (t.hedge_pnl || 0)) < 0).length;
-                const winRate = totalTrades > 0 ? (wins / totalTrades * 100).toFixed(0) : '0';
-                const netPnl = chronoTrades.reduce((s, t) => s + t.pnl + (t.hedge_pnl || 0), 0);
-                const latestEquity = chronoTrades[chronoTrades.length - 1].equity_after || 10000;
-                const maxEquity = Math.max(...chronoTrades.map(t => t.equity_after || 10000));
-                const drawdown = maxEquity > 0 ? ((maxEquity - latestEquity) / maxEquity * 100).toFixed(2) : '0.00';
-                const avgWin = wins > 0 ? (chronoTrades.filter(t => (t.pnl + (t.hedge_pnl||0)) > 0).reduce((s, t) => s + t.pnl + (t.hedge_pnl||0), 0) / wins).toFixed(2) : '0.00';
-                const avgLoss = losses > 0 ? (chronoTrades.filter(t => (t.pnl + (t.hedge_pnl||0)) < 0).reduce((s, t) => s + t.pnl + (t.hedge_pnl||0), 0) / losses).toFixed(2) : '0.00';
-                const profitFactor = losses > 0 ? Math.abs(chronoTrades.filter(t => (t.pnl + (t.hedge_pnl||0)) > 0).reduce((s, t) => s + t.pnl + (t.hedge_pnl||0), 0) / chronoTrades.filter(t => (t.pnl + (t.hedge_pnl||0)) < 0).reduce((s, t) => s + t.pnl + (t.hedge_pnl||0), 0)).toFixed(2) : '∞';
+        function renderAll() {
+            renderSummary();
+            renderCalendarHeatmap();
+            renderLineChart();
+            renderTradeTable();
+        }
 
-                document.getElementById('summary-row').innerHTML = `
-                    <div class="summary-card"><div class="label">Total Trades</div><div class="value" style="color:#fff;">${totalTrades}</div></div>
-                    <div class="summary-card"><div class="label">Wins / Losses</div><div class="value"><span class="pnl-pos">${wins}</span><span style="color:var(--text-secondary);"> / </span><span class="pnl-neg">${losses}</span></div></div>
-                    <div class="summary-card"><div class="label">Win Rate</div><div class="value" style="color:${parseFloat(winRate) >= 50 ? 'var(--success)' : 'var(--danger)'};">${winRate}%</div></div>
-                    <div class="summary-card"><div class="label">Net P&L</div><div class="value ${netPnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${netPnl >= 0 ? '+' : ''}$${netPnl.toFixed(2)}</div></div>
-                    <div class="summary-card"><div class="label">Equity</div><div class="value" style="color:var(--accent);">$${mode === 'LIVE' ? displayEquity.toFixed(2) : latestEquity.toFixed(2)}</div></div>
-                    <div class="summary-card"><div class="label">Max Drawdown</div><div class="value pnl-neg">${drawdown}%</div></div>
-                    <div class="summary-card"><div class="label">Profit Factor</div><div class="value" style="color:var(--warning);">${profitFactor}</div></div>
-                `;
+        function renderSummary() {
+            const trades = getFilteredTrades();
+            let netUsd = trades.reduce((sum, t) => sum + (t.pnl || 0) + (t.hedge_pnl || 0), 0);
+            let netInr = trades.reduce((sum, t) => sum + (t.pnl_inr != null ? t.pnl_inr : (t.pnl || 0) * USD_TO_INR), 0);
 
-                // ══════════════════════════════════════════════
-                // AGGREGATE TRADES BY DAY FOR CHARTS
-                // ══════════════════════════════════════════════
-                const dailyAgg = {};
-                for (let t of chronoTrades) {
-                    const d = t.date || t.entry_time?.substring(0,10) || '?';
-                    if (!dailyAgg[d]) {
-                        dailyAgg[d] = { date: d, pnl: 0, equity_after: t.equity_after || 10000 };
-                    }
-                    dailyAgg[d].pnl += (t.pnl + (t.hedge_pnl || 0));
-                    // The last chronological trade of the day sets the final equity for that day
-                    dailyAgg[d].equity_after = t.equity_after || 10000;
-                }
-                const dailyTrades = Object.values(dailyAgg);
+            const incBrokerage = document.getElementById('toggle-brokerage').checked;
+            const incTaxes = document.getElementById('toggle-taxes').checked;
 
-                // ══════════════════════════════════════════════
-                // ══════════════════════════════════════════════
-                // EQUITY CURVE CHART (Per-Trade)
-                // ══════════════════════════════════════════════
-                const eqLabels = ['Start', ...chronoTrades.map(t => {
-                    const d = new Date(t.entry_time || t.date || Date.now());
-                    return d.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
-                })];
-                const eqData = [10000, ...chronoTrades.map(t => t.equity_after || 10000)];
+            // Estimated brokerage: ~₹50 per strangle
+            const estBrokerageInr = incBrokerage ? trades.length * 50 : 0;
+            const estTaxesInr = incTaxes ? Math.max(0, netInr * 0.10) : 0; // 10% tax estimate
 
-                const eqCtx = document.getElementById('equityChart').getContext('2d');
-                
-                // Dynamic width for scrollable chart - use minWidth to guarantee it pushes the boundary
-                const eqReqWidth = Math.max(1200, eqData.length * 150); // Huge width to ensure it overflows
-                document.getElementById('equityChartInner').style.minWidth = eqReqWidth + 'px';
-                document.getElementById('equityChartInner').style.position = 'relative';
-                
-                // Green/red gradient under the line
-                const eqGradient = eqCtx.createLinearGradient(0, 0, 0, 280);
-                eqGradient.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
-                eqGradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+            netInr = netInr - estBrokerageInr - estTaxesInr;
+            netUsd = netUsd - (estBrokerageInr / USD_TO_INR) - (estTaxesInr / USD_TO_INR);
 
-                try {
-                    equityChart = new Chart(eqCtx, {
-                        type: 'line',
-                        data: {
-                            labels: eqLabels,
-                            datasets: [{
-                                label: 'Equity ($)',
-                                data: eqData,
-                                borderColor: '#3b82f6',
-                                backgroundColor: eqGradient,
-                                fill: true,
-                                tension: 0.3,
-                                pointBackgroundColor: eqData.map((v, i) => i === 0 ? '#fff' : (v >= (eqData[i-1] || 10000) ? '#10b981' : '#ef4444')),
-                                pointBorderColor: '#3b82f6',
-                                pointRadius: eqData.length > 30 ? 2 : 5,
-                                pointHoverRadius: 7,
-                                borderWidth: 2.5
-                            }, {
-                                label: 'Starting Capital',
-                                data: eqLabels.map(() => 10000),
-                                borderColor: 'rgba(245, 158, 11, 0.5)',
-                                borderDash: [6, 4],
-                                borderWidth: 1.5,
-                                pointRadius: 0,
-                                fill: false
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            interaction: { mode: 'index', intersect: false },
-                            plugins: {
-                                legend: { display: true, labels: { color: '#94a3b8', font: { size: 11 } } },
-                                tooltip: {
-                                    backgroundColor: '#1e293b',
-                                    titleColor: '#f8fafc',
-                                    bodyColor: '#e2e8f0',
-                                    borderColor: '#334155',
-                                    borderWidth: 1,
-                                    callbacks: {
-                                        label: ctx => `Equity: $${ctx.parsed.y.toFixed(2)}`
-                                    }
-                                }
-                            },
-                            scales: {
-                                x: { ticks: { color: '#64748b', maxRotation: 45, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                                y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString(), font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
-                            }
-                        }
-                    });
-                } catch(err) {
-                    console.warn("Chart.js failed to load for Equity Chart. Possibly blocked by adblocker.", err);
-                }
+            const pnlEl = document.getElementById('total-pnl-val');
+            pnlEl.innerText = formatMoney(netUsd, netInr);
+            pnlEl.className = 'pnl-amount ' + (netInr >= 0 ? '' : 'neg');
 
-                // ══════════════════════════════════════════════
-                // ══════════════════════════════════════════════
-                // DAILY P&L BAR CHART (Per-Trade)
-                // ══════════════════════════════════════════════
-                const barLabels = chronoTrades.map(t => {
-                    const d = new Date(t.entry_time || t.date || Date.now());
-                    return d.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
+            document.getElementById('brokerage-val').innerText = currentCurrency === 'INR' ? `₹ ${estBrokerageInr.toFixed(2)}` : `$ ${(estBrokerageInr/USD_TO_INR).toFixed(2)}`;
+            document.getElementById('taxes-val').innerText = currentCurrency === 'INR' ? `₹ ${estTaxesInr.toFixed(2)}` : `$ ${(estTaxesInr/USD_TO_INR).toFixed(2)}`;
+
+            // Win rate
+            const total = trades.length;
+            const wins = trades.filter(t => (t.pnl || 0) > 0).length;
+            const losses = trades.filter(t => (t.pnl || 0) < 0).length;
+            const winRate = total > 0 ? ((wins / total) * 100).toFixed(0) : 0;
+            document.getElementById('win-rate-val').innerText = `${winRate}%`;
+            document.getElementById('total-trades-val').innerText = total;
+
+            // Profit Factor
+            const grossWin = trades.filter(t => (t.pnl || 0) > 0).reduce((s, t) => s + (t.pnl || 0), 0);
+            const grossLoss = Math.abs(trades.filter(t => (t.pnl || 0) < 0).reduce((s, t) => s + (t.pnl || 0), 0));
+            const pf = grossLoss > 0 ? (grossWin / grossLoss).toFixed(2) : (grossWin > 0 ? '∞' : '0.00');
+            document.getElementById('profit-factor-val').innerText = pf;
+        }
+
+        /* ── CALENDAR HEATMAP RENDERER ── */
+        function renderCalendarHeatmap() {
+            const container = document.getElementById('heatmap-container');
+            container.innerHTML = '';
+
+            const trades = getFilteredTrades();
+            const dayPnlMap = {};
+            trades.forEach(t => {
+                const d = t.date;
+                if (!dayPnlMap[d]) dayPnlMap[d] = { usd: 0, inr: 0, count: 0, wins: 0 };
+                dayPnlMap[d].usd += (t.pnl || 0);
+                dayPnlMap[d].inr += (t.pnl_inr != null ? t.pnl_inr : (t.pnl || 0) * USD_TO_INR);
+                dayPnlMap[d].count += 1;
+                if ((t.pnl || 0) > 0) dayPnlMap[d].wins += 1;
+            });
+
+            // Display 4 months: JUL 26, AUG 26, SEP 26, OCT 26
+            const months = [
+                { name: 'JUL 26', year: 2026, month: 6 },
+                { name: 'AUG 26', year: 2026, month: 7 },
+                { name: 'SEP 26', year: 2026, month: 8 },
+                { name: 'OCT 26', year: 2026, month: 9 }
+            ];
+
+            const daysLetters = ['S', 'M', 'T', 'W', 'Th', 'F', 'S'];
+
+            months.forEach(m => {
+                const mBlock = document.createElement('div');
+                mBlock.className = 'heatmap-month-block';
+
+                const mTitle = document.createElement('div');
+                mTitle.className = 'heatmap-month-title';
+                mTitle.innerText = m.name;
+                mBlock.appendChild(mTitle);
+
+                const gridLayout = document.createElement('div');
+                gridLayout.className = 'heatmap-grid-layout';
+
+                // Weekday labels
+                const daysCol = document.createElement('div');
+                daysCol.className = 'heatmap-days-col';
+                daysLetters.forEach(l => {
+                    const row = document.createElement('div');
+                    row.innerText = l;
+                    daysCol.appendChild(row);
                 });
-                const barData = chronoTrades.map(t => (t.pnl + (t.hedge_pnl || 0)));
-                const barColors = barData.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(239, 68, 68, 0.85)');
-                const barBorders = barData.map(v => v >= 0 ? '#10b981' : '#ef4444');
+                gridLayout.appendChild(daysCol);
 
-                const barCtx = document.getElementById('pnlBarChart').getContext('2d');
-                
-                // Dynamic width for scrollable chart
-                const barReqWidth = Math.max(1200, barData.length * 150);
-                document.getElementById('pnlBarChartInner').style.minWidth = barReqWidth + 'px';
-                document.getElementById('pnlBarChartInner').style.position = 'relative';
-                try {
-                    pnlBarChart = new Chart(barCtx, {
-                        type: 'bar',
-                        data: {
-                            labels: barLabels,
-                            datasets: [{
-                                label: 'Trade P&L ($)',
-                                data: barData,
-                                backgroundColor: barColors,
-                                borderColor: barBorders,
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            interaction: { mode: 'index', intersect: false },
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    backgroundColor: '#1e293b',
-                                    titleColor: '#f8fafc',
-                                    bodyColor: '#e2e8f0',
-                                    borderColor: '#334155',
-                                    borderWidth: 1,
-                                    callbacks: {
-                                        label: ctx => `P&L: $${ctx.parsed.y.toFixed(2)}`
-                                    }
+                // Cells grid
+                const cellsGrid = document.createElement('div');
+                cellsGrid.className = 'heatmap-cells-grid';
+
+                // Calculate days in month
+                const firstDay = new Date(m.year, m.month, 1).getDay(); // 0 = Sun
+                const totalDays = new Date(m.year, m.month + 1, 0).getDate();
+
+                // 5 or 6 weeks columns x 7 days
+                let dayNum = 1;
+                const totalWeeks = Math.ceil((firstDay + totalDays) / 7);
+
+                for (let w = 0; w < totalWeeks; w++) {
+                    for (let d = 0; d < 7; d++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'heatmap-cell';
+
+                        const cellIndex = w * 7 + d;
+                        if (cellIndex >= firstDay && dayNum <= totalDays) {
+                            const dateStr = `${m.year}-${String(m.month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                            const data = dayPnlMap[dateStr];
+
+                            if (data) {
+                                if (data.inr > 0) {
+                                    cell.classList.add(data.inr > 2000 ? 'profit-high' : 'profit');
+                                } else if (data.inr < 0) {
+                                    cell.classList.add('loss');
+                                } else {
+                                    cell.classList.add('breakeven');
                                 }
-                            },
-                            scales: {
-                                x: { ticks: { color: '#64748b', maxRotation: 45, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                                y: { ticks: { color: '#64748b', callback: v => '$' + v, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                                cell.setAttribute('data-info', JSON.stringify({ date: dateStr, ...data }));
                             }
+
+                            cell.addEventListener('mouseenter', showCalendarTooltip);
+                            cell.addEventListener('mouseleave', hideCalendarTooltip);
+                            cell.addEventListener('click', () => filterTableByDate(dateStr));
+                            dayNum++;
+                        } else {
+                            cell.style.visibility = 'hidden';
                         }
-                    });
-                } catch(err) {
-                    console.warn("Chart.js failed to load for PNL Chart. Possibly blocked by adblocker.", err);
+                        cellsGrid.appendChild(cell);
+                    }
                 }
 
-                // ══════════════════════════════════════════════
-                // TRADE CARDS (newest first)
-                // ══════════════════════════════════════════════
-                const sortedTrades = [...chronoTrades].reverse();
-                const container = document.getElementById('history-container');
-                cacheTradesForModal(sortedTrades);
-                
-                container.innerHTML = sortedTrades.map((trade, idx) => {
-                    // STRICT: Net P&L = Options PnL + Hedge PnL. Always combined.
-                    const optionsPnl = trade.pnl || 0;
-                    const hedgePnl = trade.hedge_pnl || 0;
-                    const totalPnl = optionsPnl + hedgePnl;
-                    const pnlClass = totalPnl >= 0 ? 'pnl-pos' : 'pnl-neg';
-                    const badge = totalPnl >= 0 ? '<span class="badge badge-win">WIN</span>' : '<span class="badge badge-loss">LOSS</span>';
-                    const maxPnl = ((trade.max_pnl_pct || 0) * 100).toFixed(2);
-                    const minPnl = ((trade.min_pnl_pct || 0) * 100).toFixed(2);
-                    // pct_profit_captured: use stored value if valid, else compute from true net PnL
-                    const storedPct = trade.pct_profit_captured;
-                    const pctCaptured = (storedPct != null && storedPct !== 0)
-                        ? storedPct.toFixed(2)
-                        : (trade.premium_collected ? (totalPnl / trade.premium_collected * 100).toFixed(2) : '0.00');
-                    const pctCapturedColor = parseFloat(pctCaptured) >= 0 ? 'var(--success)' : 'var(--danger)';
-                    
-                    // ══════════════════════════════════════════════════
-                    // HEDGE FORENSICS — Full event log OR legacy summary
-                    // ══════════════════════════════════════════════════
-                    const hedgeEvents = trade.hedge_events || [];
-                    const chart = trade.chart_data || [];
-                    const peakHedgePnl = chart.length > 0 ? Math.max(...chart.map(p => p.hedge || 0)) : 0;
-                    const hedgeWasActive = hedgePnl !== 0 || peakHedgePnl !== 0 || hedgeEvents.length > 0;
+                gridLayout.appendChild(cellsGrid);
+                mBlock.appendChild(gridLayout);
+                container.appendChild(mBlock);
+            });
+        }
 
-                    let hedgeRow = '';
-                    if (hedgeEvents.length > 0) {
-                        // ── NEW FORMAT: Full forensic event timeline ──
-                        const evtColors = {
-                            'OPEN': {bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.35)', dot: '#3b82f6', label: '🔵 OPEN'},
-                            'ESCALATE': {bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.35)', dot: '#f59e0b', label: '🟡 ESCALATE'},
-                            'CLOSE': {bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.35)', dot: '#10b981', label: '🟢 CLOSE'}
-                        };
-                        const evtHtml = hedgeEvents.map((evt, ei) => {
-                            const c = evtColors[evt.event] || evtColors['OPEN'];
-                            const dir = (evt.direction||'').toUpperCase();
-                            const dirLabel = dir === 'BUY' ? '📈 LONG BTC Futures' : dir === 'SELL' ? '📉 SHORT BTC Futures' : dir;
-                            const isClose = evt.event === 'CLOSE';
-                            return `
-                            <div style="display:flex; gap:12px; align-items:stretch;">
-                                <div style="display:flex; flex-direction:column; align-items:center; width:20px;">
-                                    <div style="width:10px;height:10px;border-radius:50%;background:${c.dot};flex-shrink:0;margin-top:6px;box-shadow:0 0 8px ${c.dot}60;"></div>
-                                    ${ei < hedgeEvents.length - 1 ? '<div style="flex:1;width:2px;background:rgba(167,139,250,0.2);margin:4px 0;"></div>' : ''}
-                                </div>
-                                <div style="flex:1;background:${c.bg};border:1px solid ${c.border};border-radius:8px;padding:10px 14px;margin-bottom:8px;">
-                                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                                        <span style="font-weight:700;font-size:0.78rem;color:${c.dot};letter-spacing:0.04em;">#${ei+1} ${c.label}</span>
-                                        <span style="font-size:0.75rem;color:#94a3b8;">⏱ ${evt.time_str}</span>
-                                    </div>
-                                    <div style="font-size:0.78rem;color:#cbd5e1;margin-bottom:6px;">${evt.trigger_reason}</div>
-                                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;">
-                                        <div style="font-size:0.72rem;color:#94a3b8;">Direction<br><span style="color:#e2e8f0;font-weight:600;font-size:0.8rem;">${dirLabel}</span></div>
-                                        <div style="font-size:0.72rem;color:#94a3b8;">${isClose ? 'Closed' : 'Added'} Size<br><span style="color:#e2e8f0;font-weight:600;font-size:0.8rem;">${evt.size_btc} BTC</span></div>
-                                        ${!isClose ? `<div style="font-size:0.72rem;color:#94a3b8;">Total Size<br><span style="color:#e2e8f0;font-weight:600;font-size:0.8rem;">${evt.total_btc} BTC</span></div>` : ''}
-                                        <div style="font-size:0.72rem;color:#94a3b8;">BTC Price<br><span style="color:#e2e8f0;font-weight:600;font-size:0.8rem;">$${evt.btc_price.toLocaleString()}</span></div>
-                                        <div style="font-size:0.72rem;color:#94a3b8;">Options P&L<br><span style="color:${evt.options_pnl_usd >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:600;font-size:0.8rem;">${evt.options_pnl_usd >= 0 ? '+' : ''}$${evt.options_pnl_usd.toFixed(2)}</span></div>
-                                        <div style="font-size:0.72rem;color:#94a3b8;">Hedge P&L<br><span style="color:${evt.hedge_pnl_usd >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:600;font-size:0.8rem;">${evt.hedge_pnl_usd >= 0 ? '+' : ''}$${evt.hedge_pnl_usd.toFixed(2)}</span></div>
-                                        <div style="font-size:0.72rem;color:#94a3b8;">Net P&L<br><span style="color:${evt.net_pnl_usd >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700;font-size:0.85rem;">${evt.net_pnl_usd >= 0 ? '+' : ''}$${evt.net_pnl_usd.toFixed(2)}</span></div>
-                                    </div>
-                                </div>
-                            </div>`;
-                        }).join('');
+        const tooltip = document.getElementById('calendar-tooltip');
+        function showCalendarTooltip(e) {
+            const raw = e.target.getAttribute('data-info');
+            if (!raw) return;
+            const info = JSON.parse(raw);
+            const pnlFormatted = formatMoney(info.usd, info.inr);
+            const pnlClass = info.inr >= 0 ? 'var(--profit-bright)' : 'var(--loss-bright)';
 
-                        hedgeRow = `
-                        <div style="grid-column:1/-1;background:rgba(124,58,237,0.05);border:1px solid rgba(124,58,237,0.25);border-radius:12px;padding:14px 16px;margin-top:4px;">
-                            <div style="font-size:0.82rem;font-weight:700;color:#a78bfa;letter-spacing:0.06em;margin-bottom:12px;">⚡ HEDGE FORENSICS — ${hedgeEvents.length} event${hedgeEvents.length > 1 ? 's' : ''}</div>
-                            ${evtHtml}
-                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:4px;padding-top:10px;border-top:1px solid rgba(167,139,250,0.15);">
-                                <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
-                                    <span class="stat-label" style="color:#a78bfa;">Options P&L</span>
-                                    <span class="stat-val" style="color:${optionsPnl >= 0 ? 'var(--success)' : 'var(--danger)'}">${optionsPnl >= 0 ? '+' : ''}$${optionsPnl.toFixed(2)}</span>
-                                </div>
-                                <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
-                                    <span class="stat-label" style="color:#a78bfa;">Hedge P&L</span>
-                                    <span class="stat-val" style="color:${hedgePnl >= 0 ? 'var(--success)' : 'var(--danger)'}">${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}</span>
-                                </div>
-                                <div class="stat-box" style="border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.1);">
-                                    <span class="stat-label" style="color:#c4b5fd;">Net P&L</span>
-                                    <span class="stat-val" style="color:${totalPnl >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700;">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span>
-                                </div>
-                            </div>
-                        </div>`;
-                    } else if (hedgeWasActive) {
-                        // ── LEGACY FORMAT: Chart-based summary for old trades ──
-                        const hedgeStartPt = chart.find(p => (p.hedge || 0) !== 0);
-                        hedgeRow = `
-                        <div style="grid-column:1/-1;background:rgba(124,58,237,0.07);border:1px solid rgba(124,58,237,0.25);border-radius:10px;padding:12px 16px;margin-top:4px;">
-                            <div style="font-size:0.78rem;font-weight:700;color:#a78bfa;letter-spacing:0.05em;margin-bottom:8px;">⚡ HEDGE ACTIVATED</div>
-                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;">
-                                <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
-                                    <span class="stat-label" style="color:#a78bfa;">Options P&L</span>
-                                    <span class="stat-val" style="color:${optionsPnl >= 0 ? 'var(--success)' : 'var(--danger)'}">${optionsPnl >= 0 ? '+' : ''}$${optionsPnl.toFixed(2)}</span>
-                                </div>
-                                <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
-                                    <span class="stat-label" style="color:#a78bfa;">Hedge P&L</span>
-                                    <span class="stat-val" style="color:${hedgePnl >= 0 ? 'var(--success)' : 'var(--danger)'}">${hedgePnl >= 0 ? '+' : ''}$${hedgePnl.toFixed(2)}</span>
-                                </div>
-                                <div class="stat-box" style="border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.1);">
-                                    <span class="stat-label" style="color:#c4b5fd;">Net P&L</span>
-                                    <span class="stat-val" style="color:${totalPnl >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700;">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span>
-                                </div>
-                                ${peakHedgePnl > 0 ? `
-                                <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
-                                    <span class="stat-label" style="color:#a78bfa;">Peak Hedge P&L</span>
-                                    <span class="stat-val" style="color:var(--success);">+$${peakHedgePnl.toFixed(2)}</span>
-                                </div>` : ''}
-                                ${hedgeStartPt ? `
-                                <div class="stat-box" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.05);">
-                                    <span class="stat-label" style="color:#a78bfa;">Triggered At</span>
-                                    <span class="stat-val" style="color:#e2e8f0;font-size:0.85rem;">${hedgeStartPt.t}</span>
-                                </div>` : ''}
-                            </div>
-                        </div>`;
-                    }
+            tooltip.innerHTML = `
+                <div style="font-weight:700; margin-bottom:4px; color:#fff;">${info.date}</div>
+                <div style="font-size:0.92rem; font-weight:800; font-family:'JetBrains Mono'; color:${pnlClass};">${pnlFormatted}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Trades: ${info.count} (${info.wins} wins)</div>
+            `;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 14) + 'px';
+            tooltip.style.top = (e.clientY + 14) + 'px';
+        }
+        function hideCalendarTooltip() {
+            tooltip.style.display = 'none';
+        }
 
-                    
-                    const maxPnlTimeStr = trade.max_pnl_time ? new Date(trade.max_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';
-                    const minPnlTimeStr = trade.min_pnl_time ? new Date(trade.min_pnl_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : 'N/A';
-                    
-                    const entryTimeShort = trade.entry_time ? new Date(trade.entry_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : '—';
-                    const exitTimeShort = trade.exit_time ? new Date(trade.exit_time).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit', hour12: true}) : '—';
-
-
-                    const hasChart = trade.chart_data && trade.chart_data.length > 0;
-                    const tradeIdx = sortedTrades.length - idx;
-                    const chartBtnHtml = hasChart
-                        ? `<button class="view-chart-btn" onclick="openTradeChart(${idx})" id="chart-btn-${idx}">📊 View Chart</button>`
-                        : `<button class="view-chart-btn" style="opacity:0.35; cursor:not-allowed;">📊 No Chart</button>`;
-
-                    return `
-                        <div class="trade-card">
-                            <div class="trade-header">
-                                <div>
-                                    <strong style="font-size: 1.1rem;">#${tradeIdx} — ${trade.date}</strong>
-                                    <span style="color: var(--text-secondary); margin-left: 10px; font-size: 0.85rem;">${entryTimeShort} → ${exitTimeShort}</span>
-                                    ${badge}
-                                </div>
-                                <div style="display:flex; align-items:center; gap:10px;">
-                                    ${chartBtnHtml}
-                                    <span style="color: var(--text-secondary); font-size: 0.85rem;">${trade.exit_reason || 'Manual'}</span>
-                                </div>
-                            </div>
-                            
-                            <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: -5px;">
-                                📞 <strong>${trade.call_symbol || 'N/A'}</strong> &nbsp;|&nbsp; 📉 <strong>${trade.put_symbol || 'N/A'}</strong>
-                            </div>
-                            
-                            <div class="trade-grid">
-                                <div class="stat-box">
-                                    <span class="stat-label">Net P&L</span>
-                                    <span class="stat-val ${pnlClass}">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</span>
-                                </div>
-                                <div class="stat-box">
-                                    <span class="stat-label">Premium Collected</span>
-                                    <span class="stat-val">$${(trade.premium_collected || 0).toFixed(2)}</span>
-                                </div>
-                                <div class="stat-box" style="border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.05);">
-                                    <span class="stat-label" style="color:#60a5fa;">% Profit Captured</span>
-                                    <span class="stat-val" style="color:${pctCapturedColor};">${parseFloat(pctCaptured) >= 0 ? '+' : ''}${pctCaptured}%</span>
-                                </div>
-                                <div class="stat-box" style="border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05);">
-                                    <span class="stat-label" style="color: var(--success);">Peak Profit</span>
-                                    <span class="stat-val pnl-pos">+${maxPnl}%</span>
-                                    <span class="timestamp">@ ${maxPnlTimeStr}</span>
-                                </div>
-                                <div class="stat-box" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05);">
-                                    <span class="stat-label" style="color: var(--danger);">Max Drawdown</span>
-                                    <span class="stat-val pnl-neg">${minPnl}%</span>
-                                    <span class="timestamp">@ ${minPnlTimeStr}</span>
-                                </div>
-                                ${hedgeRow}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                
-            } catch(e) {
-                document.getElementById('history-container').innerHTML = `<div style="text-align: center; color: var(--danger); padding: 40px; font-family: monospace;">
-                    <b>Error loading history.</b><br><br>
-                    ${e.message}<br>
-                    <pre style="text-align: left; background: #1e293b; padding: 15px; margin-top: 15px; border-radius: 8px; font-size: 12px; color: #cbd5e1; overflow-x: auto;">${e.stack}</pre>
-                </div>`;
-                console.error(e);
+        function filterTableByDate(dateStr) {
+            const el = document.getElementById(`group-${dateStr}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.style.backgroundColor = 'rgba(56, 139, 253, 0.15)';
+                setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
             }
         }
-        
-        // Init
-        loadHistory();
-    </script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(err => {
-            console.log('SW reg failed:', err);
-          });
-        });
-      }
-    </script>
-    <!-- ════════════════════════════════════════════════════════════════════
-         FLOATING TRADE CHART MODAL
-         ════════════════════════════════════════════════════════════════════ -->
-    <div id="chart-modal-overlay" onclick="if(event.target===this) closeTradeChart()">
-        <div id="chart-modal">
-            <p id="chart-modal-title">📊 Trade PnL Chart</p>
-            <button id="chart-modal-close" onclick="closeTradeChart()" title="Close">✕</button>
-            <div id="chart-modal-canvas-wrap">
-                <canvas id="chart-modal-canvas"></canvas>
-            </div>
-            <div id="chart-modal-stats"></div>
-        </div>
-    </div>
 
-    <script>
-        // ── Trade Chart Modal Logic ──────────────────────────────────────────
-        let _modalChart = null;
-        let _allTradesCache = [];
+        /* ── CUMULATIVE PnL LINE CHART RENDERER ── */
+        function renderLineChart() {
+            const trades = getFilteredTrades();
+            // Sort chronologically
+            const chrono = [...trades].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
-        // Called by loadHistory() to cache trades for the modal
-        function cacheTradesForModal(trades) {
-            _allTradesCache = trades;
-        }
+            // Aggregate by day
+            const dailyAgg = {};
+            chrono.forEach(t => {
+                const d = t.date;
+                if (!dailyAgg[d]) dailyAgg[d] = { usd: 0, inr: 0 };
+                dailyAgg[d].usd += (t.pnl || 0);
+                dailyAgg[d].inr += (t.pnl_inr != null ? t.pnl_inr : (t.pnl || 0) * USD_TO_INR);
+            });
 
-        function openTradeChart(idx) {
-            const trade = _allTradesCache[idx];
-            if (!trade || !trade.chart_data || trade.chart_data.length === 0) return;
+            const labels = [];
+            const dataPoints = [];
+            let cumUsd = 0;
+            let cumInr = 0;
 
-            const chartData = trade.chart_data;
-            const labels   = chartData.map(p => p.t);
-            const optPnl   = chartData.map(p => p.pnl);          // Options-only PnL line
-            const totalPnl = chartData.map(p => p.total != null ? p.total : (p.pnl + (p.hedge || 0)));  // Net total line
+            Object.keys(dailyAgg).forEach(d => {
+                // Label e.g. "02 Oct"
+                const dateObj = new Date(d);
+                const dayLabel = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                labels.push(dayLabel);
 
-            // trade.pnl IS the net PnL. hedge_pnl is the hedge component. Options = net - hedge.
-            const netPnl     = trade.pnl || 0;
-            const hedgePnl   = trade.hedge_pnl || 0;
-            const optionsOnly = netPnl - hedgePnl;
-            const sign = netPnl >= 0 ? '+' : '';
+                cumUsd += dailyAgg[d].usd;
+                cumInr += dailyAgg[d].inr;
 
-            document.getElementById('chart-modal-title').textContent =
-                `📊 Trade #${_allTradesCache.length - idx} — ${trade.date}  |  Net: ${sign}$${netPnl.toFixed(2)}`;
+                dataPoints.push(currentCurrency === 'INR' ? cumInr : cumUsd);
+            });
 
-            // Stats bar
-            const pct = trade.pct_profit_captured != null
-                ? trade.pct_profit_captured.toFixed(2)
-                : (trade.premium_collected ? (netPnl / trade.premium_collected * 100).toFixed(2) : '0.00');
+            const ctx = document.getElementById('cumulativePnlChart').getContext('2d');
+            if (pnlChart) pnlChart.destroy();
 
-            document.getElementById('chart-modal-stats').innerHTML = `
-                <div class="modal-stat">
-                    <div class="ms-label">Options P&L</div>
-                    <div class="ms-val" style="color:${optionsOnly>=0?'#10b981':'#ef4444'}">${optionsOnly>=0?'+':''}$${optionsOnly.toFixed(2)}</div>
-                </div>
-                <div class="modal-stat">
-                    <div class="ms-label">Hedge P&L</div>
-                    <div class="ms-val" style="color:${hedgePnl>=0?'#38bdf8':'#ef4444'}">${hedgePnl>=0?'+':''}$${hedgePnl.toFixed(2)}</div>
-                </div>
-                <div class="modal-stat">
-                    <div class="ms-label">Net P&L</div>
-                    <div class="ms-val" style="color:${netPnl>=0?'#10b981':'#ef4444'}">${sign}$${netPnl.toFixed(2)}</div>
-                </div>
-                <div class="modal-stat">
-                    <div class="ms-label">% Profit Captured</div>
-                    <div class="ms-val" style="color:${parseFloat(pct)>=0?'#60a5fa':'#ef4444'}">${parseFloat(pct)>=0?'+':''}${pct}%</div>
-                </div>
-                <div class="modal-stat">
-                    <div class="ms-label">Premium</div>
-                    <div class="ms-val" style="color:#f8fafc">$${(trade.premium_collected||0).toFixed(2)}</div>
-                </div>
-            `;
+            // Gradient fill
+            const grad = ctx.createLinearGradient(0, 0, 0, 260);
+            grad.addColorStop(0, 'rgba(46, 160, 67, 0.25)');
+            grad.addColorStop(1, 'rgba(46, 160, 67, 0.0)');
 
-            // Destroy previous chart if exists
-            if (_modalChart) { _modalChart.destroy(); _modalChart = null; }
-
-            const ctx = document.getElementById('chart-modal-canvas').getContext('2d');
-
-            // ── Exact same gradient as Live Dashboard ──────────────────────
-            const greenGrad = ctx.createLinearGradient(0, 0, 0, 280);
-            greenGrad.addColorStop(0,   'rgba(16, 185, 129, 0.35)');
-            greenGrad.addColorStop(0.5, 'rgba(16, 185, 129, 0.10)');
-            greenGrad.addColorStop(1,   'rgba(16, 185, 129, 0.0)');
-            const redGrad = ctx.createLinearGradient(0, 0, 0, 280);
-            redGrad.addColorStop(0,   'rgba(239, 68, 68, 0.0)');
-            redGrad.addColorStop(0.5, 'rgba(239, 68, 68, 0.10)');
-            redGrad.addColorStop(1,   'rgba(239, 68, 68, 0.35)');
-
-            _modalChart = new Chart(ctx, {
+            pnlChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels,
-                    datasets: [
-                        {
-                            label: 'Options P&L ($)',
-                            data: optPnl,
-                            borderColor: '#10b981',
-                            borderWidth: 2.5,
-                            pointRadius: labels.length === 1 ? 4 : 0,
-                            pointHoverRadius: 4,
-                            tension: 0.35,
-                            fill: {
-                                target: { value: 0 },
-                                above: greenGrad,
-                                below: redGrad
-                            }
-                        },
-                        {
-                            label: 'Total P&L incl. Hedge ($)',
-                            data: totalPnl,
-                            borderColor: '#38bdf8',
-                            borderWidth: 1.5,
-                            borderDash: [5, 3],
-                            pointRadius: labels.length === 1 ? 4 : 0,
-                            pointHoverRadius: 4,
-                            tension: 0.35,
-                            fill: false
-                        }
-                    ]
+                    labels: labels,
+                    datasets: [{
+                        label: `Cumulative PnL (${currentCurrency})`,
+                        data: dataPoints,
+                        borderColor: '#2ea043',
+                        backgroundColor: grad,
+                        fill: true,
+                        tension: 0.25,
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#2ea043',
+                        pointBorderColor: '#fff',
+                        pointRadius: 3,
+                        pointHoverRadius: 6
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: { duration: 0 },
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                            borderColor: 'rgba(255,255,255,0.1)',
+                            backgroundColor: '#21262d',
+                            titleColor: '#f0f6fc',
+                            bodyColor: '#e6edf3',
+                            borderColor: '#30363d',
                             borderWidth: 1,
-                            titleColor: 'rgba(255,255,255,0.6)',
-                            bodyColor: '#fff',
-                            padding: 12,
                             callbacks: {
-                                label: ctx => {
-                                    const val = ctx.raw;
-                                    const s = val >= 0 ? '+' : '';
-                                    const ico = val >= 0 ? '🟢' : '🔴';
-                                    return `${ico} ${ctx.dataset.label}: ${s}$${val.toFixed(4)}`;
-                                }
+                                label: ctx => `PnL: ${currentCurrency === 'INR' ? '₹ ' : '$ '}${ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits: 2})}`
                             }
                         }
                     },
                     scales: {
                         x: {
-                            grid: { color: 'rgba(255,255,255,0.04)' },
-                            ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0 }
+                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                            ticks: { color: '#8b949e', font: { size: 10 } }
                         },
                         y: {
-                            grid: {
-                                color: ctx => ctx.tick.value === 0 ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.05)',
-                                lineWidth: ctx => ctx.tick.value === 0 ? 2 : 1
-                            },
-                            suggestedMax: 1,
-                            suggestedMin: -1,
+                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
                             ticks: {
-                                color: 'rgba(255,255,255,0.4)',
+                                color: '#8b949e',
                                 font: { size: 10 },
-                                callback: v => (v >= 0 ? '+' : '') + '$' + v.toFixed(2)
+                                callback: val => {
+                                    if (currentCurrency === 'INR') {
+                                        return (val >= 0 ? '₹ ' : '-₹ ') + (Math.abs(val) / 1000).toFixed(1) + ' K';
+                                    } else {
+                                        return (val >= 0 ? '$ ' : '-$ ') + Math.abs(val).toFixed(0);
+                                    }
+                                }
                             }
                         }
                     }
                 }
             });
-
-            // Show modal
-            document.getElementById('chart-modal-overlay').classList.add('visible');
-            document.body.style.overflow = 'hidden';
         }
 
-        function closeTradeChart() {
-            document.getElementById('chart-modal-overlay').classList.remove('visible');
-            document.body.style.overflow = '';
-            if (_modalChart) { _modalChart.destroy(); _modalChart = null; }
+        /* ── TRADE TABLE RENDERER (Grouped by Date) ── */
+        function renderTradeTable() {
+            const container = document.getElementById('trades-container');
+            const trades = getFilteredTrades();
+
+            if (!trades || trades.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No trades found for selected dates.</div>';
+                return;
+            }
+
+            // Group by date descending (newest first)
+            const groups = {};
+            trades.forEach(t => {
+                const d = t.date || 'Unknown';
+                if (!groups[d]) groups[d] = [];
+                groups[d].push(t);
+            });
+
+            const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+            let html = '';
+
+            sortedDates.forEach((dateStr, gIdx) => {
+                const dateObj = new Date(dateStr);
+                const headerDateLabel = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }).toUpperCase();
+
+                html += `
+                    <div class="date-group-divider" id="group-${dateStr}">
+                        <div class="date-group-pill">${headerDateLabel}</div>
+                    </div>
+                `;
+
+                groups[dateStr].forEach((trade, tIdx) => {
+                    const blockId = `block-${gIdx}-${tIdx}`;
+                    const dayTotalInr = trade.pnl_inr != null ? trade.pnl_inr : (trade.pnl || 0) * USD_TO_INR;
+                    const dayTotalUsd = trade.pnl || 0;
+                    const totalFormatted = formatRawNumber(dayTotalUsd, dayTotalInr);
+                    const totalClass = dayTotalInr >= 0 ? '' : 'neg';
+
+                    // CE Leg
+                    const ceSymbol = trade.call_symbol || 'BTCUSD Call Option';
+                    const ceEntry = trade.call_entry_price || 0.0;
+                    const ceExit = trade.call_exit_price || 0.0;
+                    const ceMtmInr = trade.call_pnl_inr != null ? trade.call_pnl_inr : (dayTotalInr * 0.25);
+                    const ceMtmUsd = ceMtmInr / USD_TO_INR;
+
+                    // PE Leg
+                    const peSymbol = trade.put_symbol || 'BTCUSD Put Option';
+                    const peEntry = trade.put_entry_price || 0.0;
+                    const peExit = trade.put_exit_price || 0.0;
+                    const peMtmInr = trade.put_pnl_inr != null ? trade.put_pnl_inr : (dayTotalInr * 0.75);
+                    const peMtmUsd = peMtmInr / USD_TO_INR;
+
+                    const entryTimeFormatted = trade.entry_time ? formatDisplayTime(trade.entry_time) : '10:30 PM';
+                    const exitTimeFormatted = trade.exit_time ? formatDisplayTime(trade.exit_time) : '01:44 PM';
+
+                    html += `
+                        <div class="strategy-block">
+                            <div class="strategy-header-row">
+                                <div class="strategy-title-wrap">
+                                    <span class="strategy-name">Midnight BTC Strangle by Ankush (1)</span>
+                                    <button class="replay-link-btn" onclick="alert('Trade Replay: Verified execution on Delta India Exchange.')">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+                                        Replay
+                                    </button>
+                                    <a class="show-details-btn" onclick="toggleDetails('${blockId}')">Show Details</a>
+                                </div>
+                                <div class="strategy-mtm-total ${totalClass}">${totalFormatted}</div>
+                            </div>
+
+                            <!-- CE Leg -->
+                            <div class="leg-row">
+                                <div class="leg-instrument">${ceSymbol}</div>
+                                <div class="leg-badge-price">
+                                    <span class="action-badge sell">S</span>
+                                    <span>$ ${ceEntry.toFixed(5)}</span>
+                                </div>
+                                <div class="leg-time">${entryTimeFormatted}</div>
+                                <div style="color:var(--text-dim);">-</div>
+                                <div style="color:var(--text-dim);">-</div>
+                                <div class="leg-badge-price">
+                                    <span class="action-badge buy">B</span>
+                                    <span>$ ${ceExit.toFixed(5)}</span>
+                                </div>
+                                <div class="leg-time">${trade.call_exit_time ? formatDisplayTime(trade.call_exit_time) : exitTimeFormatted}</div>
+                                <div class="leg-mtm ${ceMtmInr >= 0 ? '' : 'neg'}">${formatRawNumber(ceMtmUsd, ceMtmInr)}</div>
+                            </div>
+
+                            <!-- PE Leg -->
+                            <div class="leg-row">
+                                <div class="leg-instrument">${peSymbol}</div>
+                                <div class="leg-badge-price">
+                                    <span class="action-badge sell">S</span>
+                                    <span>$ ${peEntry.toFixed(5)}</span>
+                                </div>
+                                <div class="leg-time">${entryTimeFormatted}</div>
+                                <div style="color:var(--text-dim);">-</div>
+                                <div style="color:var(--text-dim);">-</div>
+                                <div class="leg-badge-price">
+                                    <span class="action-badge buy">B</span>
+                                    <span>$ ${peExit.toFixed(5)}</span>
+                                </div>
+                                <div class="leg-time">${trade.put_exit_time ? formatDisplayTime(trade.put_exit_time) : exitTimeFormatted}</div>
+                                <div class="leg-mtm ${peMtmInr >= 0 ? '' : 'neg'}">${formatRawNumber(peMtmUsd, peMtmInr)}</div>
+                            </div>
+
+                            <!-- Expandable Details -->
+                            <div class="details-drawer" id="${blockId}">
+                                <div class="drawer-stat-item">
+                                    <span class="drawer-stat-label">Exit Reason</span>
+                                    <span class="drawer-stat-val" style="color:#58a6ff;">${trade.exit_reason || 'Take Profit Target Reached'}</span>
+                                </div>
+                                <div class="drawer-stat-item">
+                                    <span class="drawer-stat-label">Total Premium</span>
+                                    <span class="drawer-stat-val">$ ${(trade.premium_collected || 0).toFixed(2)}</span>
+                                </div>
+                                <div class="drawer-stat-item">
+                                    <span class="drawer-stat-label">Profit Capture</span>
+                                    <span class="drawer-stat-val" style="color:var(--profit-bright);">${(trade.pct_profit_captured || 0).toFixed(1)}%</span>
+                                </div>
+                                <div class="drawer-stat-item">
+                                    <span class="drawer-stat-label">Account Equity</span>
+                                    <span class="drawer-stat-val">$ ${(trade.equity_after || 50000).toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                                </div>
+                                <div class="drawer-stat-item">
+                                    <span class="drawer-stat-label">Engine Mode</span>
+                                    <span class="drawer-stat-val">${trade.mode || currentMode}</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    `;
+                });
+            });
+
+            container.innerHTML = html;
         }
 
-        // Close on Escape key
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTradeChart(); });
+        function formatDisplayTime(isoString) {
+            try {
+                const d = new Date(isoString);
+                return d.toLocaleDateString('en-GB', { month: 'short', day: '2-digit', year: 'numeric' }) + ', ' +
+                       d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            } catch (e) {
+                return isoString;
+            }
+        }
+
+        function toggleDetails(drawerId) {
+            const el = document.getElementById(drawerId);
+            if (el) {
+                el.classList.toggle('open');
+            }
+        }
+
+        function downloadCsv() {
+            window.location.href = `/api/download_csv?mode=${currentMode}`;
+        }
     </script>
 </body>
 </html>

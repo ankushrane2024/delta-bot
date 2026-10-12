@@ -1745,40 +1745,48 @@ def history_page():
 @app.route('/api/history')
 def get_trade_history():
     mode = request.args.get('mode', 'PAPER').upper()
-    if bot_engine and getattr(bot_engine, 'performance_tracker', None):
-        pt = bot_engine.performance_tracker
-        if mode == 'LIVE':
-            return jsonify({"trades": pt.live_trades, "max_equity": pt.live_max_equity})
-        else:
-            return jsonify({"trades": pt.trades, "max_equity": pt.max_equity})
-
     import db_manager
-    if db_manager.is_connected():
-        data = db_manager.load_all_data()
-        if data:
-            if "bot_state" in data:
-                state = data["bot_state"]
-            else:
-                state = data
-                
-            if mode == 'LIVE':
-                return jsonify({"trades": state.get("live_trades", []), "max_equity": state.get("live_max_equity", 0.0)})
-            else:
-                return jsonify({"trades": state.get("trades", []), "max_equity": state.get("max_equity", 0.0)})
-            
-    # Fallback to local JSON if cloud fails
-    import os, json
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    filename = 'live_trade_history.json' if mode == 'LIVE' else 'trade_history.json'
-    history_file = os.path.join(base_dir, filename)
-    if os.path.exists(history_file):
-        try:
-            with open(history_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return jsonify(data)
-        except Exception as e:
-            app_logger.error(f"Failed to read {filename}: {e}")
-    return jsonify({"max_equity": 0.0, "trades": []})
+    data = db_manager.load_all_data() or {}
+    if mode == 'LIVE':
+        trades = data.get("live_trades", [])
+        max_eq = data.get("live_max_equity", 0.0)
+    else:
+        trades = data.get("trades", [])
+        max_eq = data.get("max_equity", 0.0)
+    return jsonify({"trades": trades, "max_equity": max_eq, "mode": mode})
+
+@app.route('/api/download_csv')
+def download_trade_csv():
+    mode = request.args.get('mode', 'PAPER').upper()
+    import db_manager, csv, io
+    from flask import Response
+    data = db_manager.load_all_data() or {}
+    trades = data.get("live_trades" if mode == 'LIVE' else "trades", [])
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Date", "Mode", "Strategy", "Call Symbol", "Call Entry", "Call Exit", "Put Symbol", "Put Entry", "Put Exit", "Entry Time", "Exit Time", "PnL (USD)", "PnL (INR)", "Exit Reason"])
+    for t in trades:
+        usd_pnl = t.get("pnl", 0.0)
+        inr_pnl = t.get("pnl_inr", round(usd_pnl * 85.0, 2))
+        writer.writerow([
+            t.get("date", ""),
+            t.get("mode", mode),
+            "Midnight BTC Strangle by Ankush (1)",
+            t.get("call_symbol", ""),
+            t.get("call_entry_price", 0.0),
+            t.get("call_exit_price", 0.0),
+            t.get("put_symbol", ""),
+            t.get("put_entry_price", 0.0),
+            t.get("put_exit_price", 0.0),
+            t.get("entry_time", ""),
+            t.get("exit_time", ""),
+            usd_pnl,
+            inr_pnl,
+            t.get("exit_reason", "")
+        ])
+    resp = Response(output.getvalue(), mimetype="text/csv")
+    resp.headers["Content-Disposition"] = f"attachment; filename=AlgoTest_Trade_History_{mode}.csv"
+    return resp
 
 @app.route('/api/last_backup_time')
 def last_backup_time():

@@ -72,7 +72,7 @@ class BTSTStrangleEngine:
                         json.dump(merged, f, indent=4)
                 except Exception:
                     pass
-                app_logger.info(f"[BTST] Config restored from Cloud DB (Capital=₹{merged.get('capital_inr', 100000):,}, Lev={merged.get('leverage', 25.0)}x).")
+                app_logger.info(f"[BTST] Config restored from Cloud DB (Capital=Rs.{merged.get('capital_inr', 100000):,}, Lev={merged.get('leverage', 25.0)}x).")
                 return merged
         except Exception as e:
             app_logger.warning(f"[BTST] Could not load config from Cloud DB: {e}")
