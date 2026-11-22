@@ -12,3 +12,4 @@ openpyxl
 matplotlib
 psutil
 flask-compress
+python-dateutil

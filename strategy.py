@@ -1,5 +1,166 @@
+import config
 from config import MIN_OTM_STRIKES, PUT_SKEW_CAP, NET_DELTA_ENTRY_LIMIT, MIN_ENTRY_PREMIUM
 from logger import app_logger
+
+
+def find_strikes_straddle_width(api_client, expiry_date=None):
+    """
+    Balance BTC Midnight Strangle — Straddle Width Strike Selection.
+    Call Strike = ATM + CALL_STRADDLE_MULT × ATM_Straddle_Price
+    Put  Strike = ATM - PUT_STRADDLE_MULT  × ATM_Straddle_Price
+    """
+    call_mult = getattr(config, 'CALL_STRADDLE_MULT', 1.6)
+    put_mult  = getattr(config, 'PUT_STRADDLE_MULT',  2.3)
+
+    res = api_client.get_tickers({
+        'contract_types': 'call_options,put_options',
+        'underlying_asset_symbol': 'BTC'
+    })
+    if not res or not res.get('success'):
+        app_logger.error("StraddleWidth: Failed to fetch option chain")
+        return None, None
+
+    tickers = res.get('result', [])
+
+    # Auto-detect expiry if not supplied
+    if not expiry_date:
+        from datetime import datetime
+        from utils import get_ist_now
+        available = set()
+        for t in tickers:
+            sym = t.get('symbol', '')
+            if '-BTC-' in sym:
+                try:
+                    exp_str = sym.split('-')[-1]
+                    if len(exp_str) == 6 and exp_str.isdigit():
+                        available.add(exp_str)
+                except Exception:
+                    pass
+        if available:
+            now_ist = get_ist_now()
+            valid = [(datetime.strptime(e, '%d%m%y'), e) for e in available
+                     if len(e) == 6]
+            valid.sort()
+            expiry_date = next(
+                (e for d, e in valid if d.date() >= now_ist.date()),
+                valid[0][1] if valid else None
+            )
+
+    expiry_tickers = [t for t in tickers
+                      if expiry_date and expiry_date in t.get('symbol', '')
+                      and '-BTC-' in t.get('symbol', '')]
+
+    if not expiry_tickers:
+        app_logger.warning(f"StraddleWidth: No tickers for expiry {expiry_date}")
+        return None, None
+
+    # BTC spot price
+    btc_price = 0.0
+    for t in expiry_tickers:
+        p = float(t.get('spot_price') or t.get('greeks', {}).get('spot') or 0)
+        if p > 0:
+            btc_price = p
+            break
+    if not btc_price:
+        try:
+            r2 = api_client.get_tickers({'symbol': 'BTCUSD'})
+            if r2.get('success') and r2.get('result'):
+                for t in r2['result']:
+                    if t.get('symbol') == 'BTCUSD':
+                        btc_price = float(t.get('mark_price') or t.get('close') or 0)
+                        break
+        except Exception:
+            pass
+
+    if not btc_price:
+        app_logger.error("StraddleWidth: Could not resolve BTC price")
+        return None, None
+
+    # ATM straddle price = ATM Call mark + ATM Put mark
+    all_strikes = sorted(set(
+        float(t.get('strike_price', 0)) for t in expiry_tickers if t.get('strike_price')
+    ))
+    if not all_strikes:
+        return None, None
+
+    atm_strike = min(all_strikes, key=lambda s: abs(s - btc_price))
+
+    atm_call_prem = 0.0
+    atm_put_prem  = 0.0
+    for t in expiry_tickers:
+        s = float(t.get('strike_price', 0))
+        ct = t.get('contract_type', '').lower()
+        mp = float(t.get('mark_price', 0))
+        if s == atm_strike:
+            if 'call' in ct:
+                atm_call_prem = mp
+            elif 'put' in ct:
+                atm_put_prem = mp
+
+    atm_straddle = atm_call_prem + atm_put_prem
+    if atm_straddle <= 0:
+        app_logger.warning("StraddleWidth: ATM straddle price is 0 — falling back to 1% of BTC price")
+        atm_straddle = btc_price * 0.01
+
+    call_target_strike = atm_strike + call_mult * atm_straddle
+    put_target_strike  = atm_strike - put_mult  * atm_straddle
+
+    app_logger.info(
+        f"StraddleWidth: BTC={btc_price:.0f}, ATM={atm_strike:.0f}, "
+        f"Straddle={atm_straddle:.2f}, "
+        f"Call target={call_target_strike:.0f} (+{call_mult}x), "
+        f"Put target={put_target_strike:.0f} (-{put_mult}x)"
+    )
+
+    # Find closest available strikes
+    best_call = None
+    best_put  = None
+    best_call_dist = float('inf')
+    best_put_dist  = float('inf')
+
+    for t in expiry_tickers:
+        s  = float(t.get('strike_price', 0))
+        ct = t.get('contract_type', '').lower()
+        mp = float(t.get('mark_price', 0))
+        if mp <= 0.0:
+            continue   # Skip zero or negative price options
+
+        greeks = t.get('greeks') or {}
+        delta  = float(greeks.get('delta', 0))
+
+        item = {
+            'symbol':     t.get('symbol'),
+            'strike':     s,
+            'mark_price': mp,
+            'premium_inr': mp,
+            'delta':      delta,
+            'product_id': t.get('product_id'),
+            'underlying_price': btc_price,
+        }
+
+        if 'call' in ct and s >= atm_strike:
+            dist = abs(s - call_target_strike)
+            if dist < best_call_dist:
+                best_call_dist = dist
+                best_call = item
+
+        elif 'put' in ct and s <= atm_strike:
+            dist = abs(s - put_target_strike)
+            if dist < best_put_dist:
+                best_put_dist = dist
+                best_put = item
+
+    if best_call and best_put:
+        app_logger.info(
+            f"StraddleWidth: Selected CE={best_call['symbol']} "
+            f"@${best_call['mark_price']:.2f} | "
+            f"PE={best_put['symbol']} @${best_put['mark_price']:.2f}"
+        )
+    else:
+        app_logger.warning("StraddleWidth: Could not find suitable Call or Put strikes")
+
+    return best_call, best_put
+
 
 class ShortStrangleStrategy:
     def __init__(self, api_client):
@@ -7,24 +168,23 @@ class ShortStrangleStrategy:
 
     def find_strikes(self, target_delta=0.15, expiry_date=None, check_premium=True, dvol_provider=None, force=False):
         """
-        Finds the best Call and Put strikes based on the advanced strike selection rules.
-        
-        Section 1 Rules Applied:
-        - Use Deribit DVOL for premium target range (if dvol_provider given)
-        - Minimum MIN_OTM_STRIKES (4) strikes OTM from ATM
-        - Put premium <= PUT_SKEW_CAP (1.35) × Call premium
-        - Net Delta at entry <= NET_DELTA_ENTRY_LIMIT (0.15)
-        - If |Net Delta| > 0.15 → Shift higher premium leg 1 strike further OTM (only once)
-        
-        Args:
-            target_delta: Target delta for delta-based fallback selection
-            expiry_date: Expiry date string to filter options (e.g., "210526")
-            check_premium: If True, apply premium-based pair selection
-            dvol_provider: DVOLProvider instance for IV-based premium ranges (optional)
-            
-        Returns:
-            (best_call, best_put) tuple or (None, None) if no valid strikes found
+        Finds the best Call and Put strikes.
+        Primary: Balance BTC Midnight Strangle (Straddle Width: CE = ATM + 1.6x, PE = ATM - 2.3x)
+        Fallback: Delta & DVOL-based selection.
         """
+        # ── PRIMARY STRATEGY: Balance BTC Midnight Strangle (Straddle Width) ──
+        try:
+            sw_call, sw_put = find_strikes_straddle_width(self.api_client, expiry_date=expiry_date)
+            if sw_call and sw_put:
+                app_logger.info(
+                    f"Strategy [Balance BTC]: Successfully selected Straddle Width strikes — "
+                    f"CE: {sw_call['symbol']} (Strike={sw_call['strike']:.0f}, Prem=${sw_call['mark_price']:.2f}) | "
+                    f"PE: {sw_put['symbol']} (Strike={sw_put['strike']:.0f}, Prem=${sw_put['mark_price']:.2f})"
+                )
+                return sw_call, sw_put
+        except Exception as sw_err:
+            app_logger.warning(f"Strategy: Straddle width strike selection notice: {sw_err}")
+
         res = self.api_client.get_tickers({
             'contract_types': 'call_options,put_options',
             'underlying_asset_symbol': 'BTC'

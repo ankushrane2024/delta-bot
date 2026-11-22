@@ -4,6 +4,7 @@ import config
 from config import LOT_TO_BTC
 import os
 import time
+import json
 import db_manager
 
 app = Flask(__name__, template_folder='templates')
@@ -40,6 +41,13 @@ except ImportError:
 bot_engine = None
 ares_runner = None
 
+# ─── FORWARD TRADER ──────────────────────────────────────────────────────────
+try:
+    from forward_trader import forward_trader as _ft
+except Exception as _ft_err:
+    _ft = None
+    app_logger.warning(f"ForwardTrader not loaded in web_server: {_ft_err}")
+
 def init_web_server(engine):
     global bot_engine
     bot_engine = engine
@@ -48,6 +56,13 @@ def init_web_server(engine):
         btst_engine.start()
     except Exception as e:
         app_logger.error(f"Failed to start BTST engine: {e}")
+
+    try:
+        if _ft:
+            _ft.start()
+            app_logger.info("ForwardTrader auto-started in background.")
+    except Exception as ft_e:
+        app_logger.warning(f"Could not auto-start forward trader: {ft_e}")
 
 @app.route('/')
 def index():
@@ -962,6 +977,260 @@ def save_lot_size():
     except Exception as e:
         app_logger.error(f"Web [save_lot_size]: Error – {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ─── BALANCE BTC STRATEGY CONFIG ENDPOINTS ────────────────────────────────────
+STRATEGY_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'strategy_config.json')
+
+def _get_strategy_config():
+    defaults = {
+        'call_straddle_mult': 1.6,
+        'put_straddle_mult': 2.3,
+        'leg_sl_pct': 100.0,
+        'sl_reentry_enabled': True,
+        'sl_reentry_max': 1,
+        'overall_sl_enabled': False,
+        'overall_sl_value': 10.0,
+        'overall_target_enabled': False,
+        'overall_target_value': 0.0,
+        'trailing_enabled': False,
+        'trail_if_profit': 1500.0,
+        'trail_lock_profit': 500.0,
+        'trail_increase_by': 500.0,
+        'trail_profit_by': 200.0,
+        'entry_time': '22:30',
+        'exit_time': '17:00',
+        'total_lots': 1000,
+        'leg1': {
+            'lots': 500,
+            'strike_multiplier': 1.6,
+            'stop_loss_value': 100.0,
+            'reentry_sl_on': True,
+            'reentry_sl_count': 1
+        },
+        'leg2': {
+            'lots': 500,
+            'strike_multiplier': 2.3,
+            'stop_loss_value': 100.0,
+            'reentry_sl_on': True,
+            'reentry_sl_count': 1
+        },
+        'overall': {
+            'trailing_on': False,
+            'trailing_mode': 'Lock and Trail',
+            'trail_if_profit': 1500.0,
+            'trail_lock_profit': 500.0,
+            'trail_increase_by': 500.0,
+            'trail_profit_by': 200.0
+        }
+    }
+    if os.path.exists(STRATEGY_CONFIG_PATH):
+        try:
+            with open(STRATEGY_CONFIG_PATH, 'r') as f:
+                saved = json.load(f)
+            defaults.update(saved)
+        except Exception as e:
+            app_logger.error(f"Failed to read strategy_config.json: {e}")
+    return defaults
+
+@app.route('/api/strategy_config', methods=['GET'])
+def get_strategy_config_api():
+    """Fetch current Balance BTC strategy configuration."""
+    cfg = _get_strategy_config()
+    return jsonify({'success': True, 'config': cfg})
+
+@app.route('/api/strategy_config', methods=['POST'])
+def save_strategy_config_api():
+    """Save updated Balance BTC strategy configuration and push parameters to live config."""
+    try:
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        current = _get_strategy_config()
+        # Deep merge updates
+        for k, v in data.items():
+            if isinstance(v, dict) and isinstance(current.get(k), dict):
+                current[k].update(v)
+            else:
+                current[k] = v
+
+        # Cross-sync leg1, leg2, overall and top-level fields so they never diverge
+        leg1 = current.get('leg1', {})
+        leg2 = current.get('leg2', {})
+        overall = current.get('overall', {})
+
+        if 'strike_multiplier' in leg1 and leg1['strike_multiplier']:
+            current['call_straddle_mult'] = float(leg1['strike_multiplier'])
+        elif 'call_straddle_mult' in current and current['call_straddle_mult']:
+            leg1['strike_multiplier'] = float(current['call_straddle_mult'])
+
+        if 'strike_multiplier' in leg2 and leg2['strike_multiplier']:
+            current['put_straddle_mult'] = float(leg2['strike_multiplier'])
+        elif 'put_straddle_mult' in current and current['put_straddle_mult']:
+            leg2['strike_multiplier'] = float(current['put_straddle_mult'])
+
+        if 'stop_loss_value' in leg1 and leg1['stop_loss_value'] is not None:
+            current['leg_sl_pct'] = float(leg1['stop_loss_value'])
+        elif 'leg_sl_pct' in current and current['leg_sl_pct'] is not None:
+            leg1['stop_loss_value'] = float(current['leg_sl_pct'])
+
+        if 'lots' in leg1 and leg1['lots']:
+            current['total_lots'] = int(leg1['lots']) * 2
+        elif 'total_lots' in current and current['total_lots']:
+            leg1['lots'] = int(current['total_lots']) // 2
+            leg2['lots'] = int(current['total_lots']) // 2
+
+        if 'trail_if_profit' in overall:
+            current['trail_if_profit'] = float(overall['trail_if_profit'])
+        if 'trail_lock_profit' in overall:
+            current['trail_lock_profit'] = float(overall['trail_lock_profit'])
+        if 'trail_increase_by' in overall:
+            current['trail_increase_by'] = float(overall['trail_increase_by'])
+        if 'trail_profit_by' in overall:
+            current['trail_profit_by'] = float(overall['trail_profit_by'])
+
+        with open(STRATEGY_CONFIG_PATH, 'w') as f:
+            json.dump(current, f, indent=2)
+
+        # Sync with config module
+        import config as _cfg
+        leg1 = current.get('leg1', {})
+        leg2 = current.get('leg2', {})
+        overall = current.get('overall', {})
+
+        call_mult = float(leg1.get('strike_multiplier', 1.6))
+        put_mult = float(leg2.get('strike_multiplier', 2.3))
+        _cfg.CALL_STRADDLE_MULT = call_mult
+        _cfg.PUT_STRADDLE_MULT = put_mult
+
+        # Sync lot sizes: leg1.lots + leg2.lots
+        l1_lots = int(leg1.get('lots', 500))
+        l2_lots = int(leg2.get('lots', 500))
+        total_lots = l1_lots + l2_lots
+        _cfg.MANUAL_TOTAL_LOTS = total_lots
+        try:
+            with open(LOT_SIZE_FILE, 'w') as lf:
+                json.dump({'total_lots': total_lots, 'per_leg': l1_lots}, lf)
+        except Exception:
+            pass
+
+        # Sync SL
+        sl_val = float(leg1.get('stop_loss_value', 100))
+        _cfg.LEG_SL_PCT = sl_val
+        _cfg.SL_PERCENT = sl_val / 100.0
+
+        # Sync Re-entry
+        _cfg.SL_REENTRY_ENABLED = bool(leg1.get('reentry_sl_on', True))
+        _cfg.SL_REENTRY_MAX_COUNT = int(leg1.get('reentry_sl_count', 1))
+
+        # Sync Trailing
+        _cfg.TRAILING_ENABLED = bool(overall.get('trailing_on', False))
+        _cfg.TRAIL_IF_PROFIT = float(overall.get('trail_if_profit', 11))
+        _cfg.TRAIL_LOCK_PROFIT = float(overall.get('trail_lock_profit', 1))
+        _cfg.TRAIL_INCREASE_BY = float(overall.get('trail_increase_by', 5))
+        _cfg.TRAIL_PROFIT_BY = float(overall.get('trail_profit_by', 5))
+
+        rules = {}
+        if _ft:
+            try:
+                _ft.reload_config()
+                rules = _ft.status().get('rules', {})
+            except Exception as _rerr:
+                app_logger.warning(f"ForwardTrader reload error: {_rerr}")
+
+        app_logger.info(
+            f"Web [strategy_config]: Updated strategy settings successfully — "
+            f"CE Mult: {call_mult}x, PE Mult: {put_mult}x, Lots: {total_lots} ({l1_lots}/{l2_lots}), "
+            f"SL: {sl_val}%, Re-entry: {_cfg.SL_REENTRY_MAX_COUNT}"
+        )
+        return jsonify({'success': True, 'config': current, 'rules': rules})
+
+    except Exception as e:
+        app_logger.error(f"Web [save_strategy_config]: Error – {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ─── FORWARD TRADER ENDPOINTS ────────────────────────────────────────────────
+@app.route('/api/forward_trader/status')
+def ft_status():
+    if not _ft:
+        return jsonify({'error': 'ForwardTrader not loaded'}), 503
+    return jsonify(_ft.status())
+
+@app.route('/api/forward_trader/start', methods=['POST'])
+def ft_start():
+    if not _ft:
+        return jsonify({'success': False, 'error': 'ForwardTrader not loaded'}), 503
+    _ft.start()
+    return jsonify({'success': True, 'message': 'Forward Trader started (Mon–Fri, 22:30 IST)'})
+
+@app.route('/api/forward_trader/stop', methods=['POST'])
+def ft_stop():
+    if not _ft:
+        return jsonify({'success': False, 'error': 'ForwardTrader not loaded'}), 503
+    _ft.stop()
+    return jsonify({'success': True, 'message': 'Forward Trader stopped'})
+
+@app.route('/api/forward_trader/force_entry', methods=['POST'])
+def ft_force_entry():
+    if not _ft:
+        return jsonify({'success': False, 'error': 'ForwardTrader not loaded'}), 503
+    ok = _ft.force_enter_now()
+    return jsonify({'success': ok, 'message': 'Force entry executed' if ok else 'Force entry failed (Trade already active or market closed)'})
+
+@app.route('/api/forward_trader/manual_off', methods=['POST'])
+def ft_manual_off():
+    if not _ft:
+        return jsonify({'success': False, 'error': 'ForwardTrader not loaded'}), 503
+    ok, msg = _ft.manual_squareoff()
+    return jsonify({'success': ok, 'message': msg})
+
+@app.route('/api/forward_trader/records')
+def ft_records():
+    if not _ft:
+        return jsonify({'error': 'ForwardTrader not loaded'}), 503
+    return jsonify({
+        'trades': _ft.recorder.get_all_trades(),
+        'summary': _ft.recorder.get_summary()
+    })
+
+@app.route('/api/run_backtest', methods=['GET', 'POST'])
+def run_backtest_endpoint():
+    """Runs AlgoTest Balance BTC backtest and returns full performance metrics."""
+    try:
+        data = request.get_json(silent=True) or request.args.to_dict() or {}
+        from algotest_backtester import AlgoTestBacktester
+
+        cfg = _get_strategy_config()
+        start_date = data.get('start_date') or cfg.get('backtest', {}).get('start_date', '2025-01-21')
+        end_date   = data.get('end_date')   or cfg.get('backtest', {}).get('end_date',   '2026-11-21')
+        call_mult  = float(data.get('call_mult') or cfg.get('call_straddle_mult', 1.6))
+        put_mult   = float(data.get('put_mult')  or cfg.get('put_straddle_mult', 2.3))
+        leg_sl     = float(data.get('leg_sl_pct') or cfg.get('leg_sl_pct', 100.0))
+        reentry_max = int(data.get('reentry_max') or cfg.get('sl_reentry_max', 1))
+        lots       = int(data.get('lots') or (cfg.get('total_lots', 1000) // 2))
+
+        bt = AlgoTestBacktester(
+            start_date=start_date,
+            end_date=end_date,
+            call_mult=call_mult,
+            put_mult=put_mult,
+            leg_sl_pct=leg_sl,
+            sl_reentry_max=reentry_max,
+            lots_per_leg=lots
+        )
+        summary = bt.run()
+        recent_trades = bt.trades[-50:] if bt.trades else []
+        return jsonify({
+            'success': True,
+            'summary': summary,
+            'recent_trades': recent_trades,
+            'equity_curve': bt.equity_curve[-100:] if bt.equity_curve else []
+        })
+    except Exception as e:
+        app_logger.error(f"Backtest API error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 
 # ─── Live Trading Mode Endpoints ──────────────────────────────────────────────

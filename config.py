@@ -67,55 +67,61 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # --- Strategy Parameters ---
 
-# --- DVOL-Based Strike Selection (Section 1) ---
-# Minimum number of strikes OTM from ATM for both call and put legs.
-MIN_OTM_STRIKES = 5
-# Put premium must not exceed this multiple of call premium.
-PUT_SKEW_CAP = 1.30
-# Maximum allowed absolute net delta at entry. Triggers 1-strike OTM shift if exceeded.
-NET_DELTA_ENTRY_LIMIT = 0.10
-# DVOL-based premium target ranges: {tier: {threshold, min_premium, max_premium}}
-DVOL_PREMIUM_RANGES = {
-    "low":  {"threshold": 40,  "min": 140, "max": 300},   # DVOL < 40%
-    "mid":  {"threshold": 55,  "min": 120, "max": 260},   # DVOL 40–55%
-    "high": {"threshold": 999, "min": 110, "max": 240},   # DVOL > 55%
-}
+# ─── BALANCE BTC MIDNIGHT STRANGLE (Straddle Width Strike Selection) ───────
+# Strategy: Sell OTM Call + Sell OTM Put using ATM Straddle Price as width multiplier
+# Leg 1 (Call): Strike = ATM + CALL_STRADDLE_MULT × ATM_Straddle_Price
+# Leg 2 (Put):  Strike = ATM - PUT_STRADDLE_MULT  × ATM_Straddle_Price
 
-# --- Stop Loss & Dynamic Profit Lock (Section 6) ---
-SL_PERCENT = 1.20              # 120% of collected premium → triggers full exit (combined strangle SL)
-MIN_ENTRY_PREMIUM = 80.0       # Minimum required premium for entry
-MIN_HOLD_SECONDS = 30          # Minimum seconds to hold before any exit is allowed
-
-# --- Per-Leg SL Re-Entry (AlgoTest: RE MOMENTUM, 2 re-entries) ---
-# When one leg (CE or PE) hits its individual stop loss, close only that leg
-# and re-enter a delta-matched replacement using RE MOMENTUM (surviving leg's delta).
-SL_REENTRY_ENABLED   = True   # Enable per-leg re-entry on SL hit
-SL_REENTRY_MAX_COUNT = 2      # Max re-entries per day (mirrors AlgoTest setting)
-SL_REENTRY_LEG_SL_PCT = 1.00  # 100% gain on leg premium triggers per-leg re-entry
-                               # (AlgoTest: Stop Loss Percent 100%)
-# Delta tolerance for RE MOMENTUM matching: accept strikes within ±this of surviving leg delta
+CALL_STRADDLE_MULT   = float(os.getenv("CALL_STRADDLE_MULT", 1.6))   # Call leg: 1.6x straddle width OTM
+PUT_STRADDLE_MULT    = float(os.getenv("PUT_STRADDLE_MULT",  2.3))   # Put leg:  2.3x straddle width OTM
+LEG_SL_PCT           = float(os.getenv("LEG_SL_PCT", 100.0))         # Per-leg SL: 100% of leg premium
+SL_REENTRY_ENABLED   = True                                           # Re-entry on SL hit
+SL_REENTRY_MAX_COUNT = int(os.getenv("SL_REENTRY_MAX_COUNT", 1))     # Max 1 re-entry per leg
+SL_REENTRY_LEG_SL_PCT = float(os.getenv("SL_REENTRY_LEG_SL_PCT", 100.0))  # 100% SL to trigger re-entry
 SL_REENTRY_DELTA_TOLERANCE = 0.05
 
-# --- Expiry Cutoff (Delta Exchange BTC options expire at 17:28 IST) ---
-EXPIRY_CUTOFF_HOUR   = 17     # 5 PM IST
-EXPIRY_CUTOFF_MINUTE = 28     # :28 — after this, switch to next day's expiry
+# --- Overall Strategy Settings ---
+OVERALL_SL_ENABLED   = False
+OVERALL_SL_TYPE      = "Total Premium %"
+OVERALL_SL_VALUE     = 10.0
+OVERALL_TARGET_ENABLED = False
+OVERALL_TARGET_TYPE  = "Max Profit"
+OVERALL_TARGET_VALUE = 0.0
 
-# --- ARES Dynamic Profit Lock ---
-# Trailing confirmation: lock SL at +5% as soon as 19% profit is confirmed
-TRAILING_CONFIRM_THRESHOLD = 0.15    # 15%: Begin tracking (confirmation window opens)
-TRAILING_CONFIRM_TARGET = 0.19       # 19%: Confirm and lock SL at +5% (was incorrectly 0.15)
-CAPITAL_PROTECTION_SL = 0.05         # Lock SL at +5% once 19% is confirmed
+# --- Trailing / Lock and Trail ---
+TRAILING_ENABLED     = False
+TRAILING_MODE        = "Lock and Trail"
+TRAIL_IF_PROFIT      = float(os.getenv("TRAIL_IF_PROFIT", 11.0))     # Lock when profit reaches 11%
+TRAIL_LOCK_PROFIT    = float(os.getenv("TRAIL_LOCK_PROFIT", 1.0))    # Lock 1%
+TRAIL_INCREASE_BY    = float(os.getenv("TRAIL_INCREASE_BY", 5.0))    # For every 5% more profit
+TRAIL_PROFIT_BY      = float(os.getenv("TRAIL_PROFIT_BY", 5.0))      # Trail by 5%
 
-# Progressive profit lock tiers: (profit_threshold, sl_level)
-PROFIT_LOCK_TIERS = [
-    (0.20, 0.12),  # 20% profit → SL = 12%
-    (0.25, 0.17),  # 25% profit → SL = 17%
-    (0.28, 0.23),  # 28% profit → SL = 23%
-]
+# --- ARES Dynamic Profit Lock (kept for compatibility) ---
+TRAILING_CONFIRM_THRESHOLD = TRAIL_IF_PROFIT / 100.0
+TRAILING_CONFIRM_TARGET    = TRAIL_IF_PROFIT / 100.0
+CAPITAL_PROTECTION_SL      = TRAIL_LOCK_PROFIT / 100.0
+PROFIT_LOCK_TIERS          = []     # Replaced by Lock-and-Trail above
+DYNAMIC_TRAIL_THRESHOLD    = (TRAIL_IF_PROFIT + TRAIL_INCREASE_BY) / 100.0
+DYNAMIC_TRAIL_GAP          = TRAIL_PROFIT_BY / 100.0
 
-# Dynamic trailing after 28%: SL = Peak Profit - 5%
-DYNAMIC_TRAIL_THRESHOLD = 0.28
-DYNAMIC_TRAIL_GAP = 0.05
+# --- Stop Loss ---
+SL_PERCENT           = LEG_SL_PCT / 100.0   # e.g. 1.00 = 100% of premium
+MIN_ENTRY_PREMIUM    = float(os.getenv("MIN_ENTRY_PREMIUM", 1.0))
+MIN_HOLD_SECONDS     = 30
+
+# --- Legacy strike params (kept for imports that reference them) ---
+MIN_OTM_STRIKES      = 5
+PUT_SKEW_CAP         = 1.35
+NET_DELTA_ENTRY_LIMIT = 0.15
+DVOL_PREMIUM_RANGES  = {
+    "low":  {"threshold": 40,  "min": 100, "max": 300},
+    "mid":  {"threshold": 55,  "min": 100, "max": 260},
+    "high": {"threshold": 999, "min": 100, "max": 240},
+}
+
+# --- Expiry Cutoff ---
+EXPIRY_CUTOFF_HOUR   = 17
+EXPIRY_CUTOFF_MINUTE = 28
 
 # --- Hedging Parameters ---
 HEDGE_SYMBOL = "BTCUSD"           # BTC Perpetual futures contract symbol

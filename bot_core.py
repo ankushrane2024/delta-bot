@@ -272,6 +272,7 @@ class DeltaOptionsBot:
                 'logs': [], 'balance': 10000.0,
                 'starting_balance': 10000.0,
                 'positions': {'call': None, 'put': None},
+                'reentry_watch': {'call': None, 'put': None},
                 'config': {}
             },
             'LIVE': {
@@ -279,12 +280,19 @@ class DeltaOptionsBot:
                 'logs': [], 'balance': 0.0,
                 'starting_balance': 0.0,
                 'positions': {'call': None, 'put': None},
+                'reentry_watch': {'call': None, 'put': None},
                 'config': {},
                 'client': None
             }
         }
 
         self.india_client = DeltaIndiaClient() # Public client for stats
+        try:
+            init_btc = self.india_client.get_btc_price()
+            if init_btc > 0:
+                self.current_btc_price = init_btc
+        except Exception:
+            pass
         
         # Add SYSTEM log mode
         self.state['SYSTEM'] = {'logs': []}
@@ -432,6 +440,7 @@ class DeltaOptionsBot:
                             self.state[mode]['running'] = data[mode].get('running', False)
                             self.state[mode]['config']  = data[mode].get('config', {})
                             self.state[mode]['positions'] = data[mode].get('positions', {'call': None, 'put': None})
+                            self.state[mode]['reentry_watch'] = data[mode].get('reentry_watch', {'call': None, 'put': None})
                             self.state[mode]['balance'] = data[mode].get('balance', 10000.0)
                     self.log('SYSTEM', "💾 Previous bot state restored.")
             except Exception as e:
@@ -630,36 +639,102 @@ class DeltaOptionsBot:
                         self.last_iv_pcr = {'pcr': round(put_oi/call_oi, 2) if call_oi > 0 else 0.0, 'avg_iv': round(sum(ivs)/len(ivs), 2) if ivs else 0.0}
                     self.last_chain_update = now_ts
 
-                # 3. Simulate Paper PnL & Enforce SL/TP
-                if self.state['PAPER']['running'] and self.current_btc_price > 0:
-                    s   = self.state['PAPER']
-                    cfg = s['config']
-                    pos = s['positions']
-                    for leg in ['call', 'put']:
-                        if pos[leg]:
-                            p = pos[leg]
-                            # Simple simulation: price decays based on distance from strike (implied)
-                            # In a real bot we'd fetch the actual option mark price.
-                            dist = abs(self.current_btc_price - p['strike'])
-                            sim  = max(0.5, p['entry_price'] - dist * 0.01)
-                            p['current_price'] = round(sim, 2)
-                            p['pnl'] = round((p['entry_price'] - p['current_price']) * p['size'], 2)
+                # 3. Update PnL & Enforce AlgoTest SL/TP/Trailing/Re-entry with Live Delta Option Data
+                now_ts = time.time()
+                for mode in ['PAPER', 'LIVE']:
+                    if self.state[mode]['running']:
+                        s   = self.state[mode]
+                        cfg = s['config']
+                        pos = s['positions']
+                        
+                        # Fetch live option prices for active symbols from Delta India
+                        active_syms = [pos[leg]['symbol'] for leg in ['call', 'put'] if pos.get(leg) and pos[leg].get('symbol')]
+                        if active_syms and (now_ts - getattr(self, 'last_pos_price_update', 0) > 8):
+                            try:
+                                for sym in active_syms:
+                                    r_tick = self.india_client.get(f'/v2/tickers/{sym}')
+                                    if r_tick.get('success') and r_tick.get('result'):
+                                        mp = float(r_tick['result'].get('mark_price') or r_tick['result'].get('close') or 0)
+                                        if mp > 0:
+                                            for leg in ['call', 'put']:
+                                                if pos.get(leg) and pos[leg].get('symbol') == sym:
+                                                    pos[leg]['current_price'] = round(mp, 2)
+                                self.last_pos_price_update = now_ts
+                            except Exception as _tick_err:
+                                pass
 
-                            # Enforce SL/TP
-                            is_call = (leg == 'call')
-                            sl_on = cfg.get('call_sl_on') if is_call else cfg.get('put_sl_on')
-                            tp_on = cfg.get('call_tp_on') if is_call else cfg.get('put_tp_on')
-                            
-                            # Close logic
-                            reason = None
-                            if sl_on and p['current_price'] >= p['sl']: reason = "STOP LOSS"
-                            if tp_on and p['current_price'] <= p['tp']: reason = "TAKE PROFIT"
-                            
-                            if reason:
-                                self.log('PAPER', f"📢 PAPER: {reason} HIT for {leg.upper()} ({p['symbol']})", "warn")
-                                s['balance'] += p['pnl']
-                                pos[leg] = None
-                                self.log('PAPER', f"✅ Position Closed. New Balance: ${s['balance']:.2f}", "success")
+                        # Check PnL and Leg SL/TP
+                        for leg in ['call', 'put']:
+                            if pos.get(leg):
+                                p = pos[leg]
+                                p['pnl'] = round((p['entry_price'] - p['current_price']) * p['size'] * 0.001, 2)
+
+                                # Enforce SL/TP
+                                is_call = (leg == 'call')
+                                sl_on = cfg.get('call_sl_on', True) if is_call else cfg.get('put_sl_on', True)
+                                tp_on = cfg.get('call_tp_on', False) if is_call else cfg.get('put_tp_on', False)
+
+                                reason = None
+                                if sl_on and p['current_price'] >= p['sl']:
+                                    reason = "STOP LOSS"
+                                elif tp_on and p['current_price'] <= p['tp']:
+                                    reason = "TAKE PROFIT"
+
+                                if reason:
+                                    self.log(mode, f"📢 {mode}: {reason} HIT for {leg.upper()} ({p['symbol']}) @ ${p['current_price']:.2f} (SL: ${p['sl']:.2f})", "warn")
+                                    s['balance'] += p['pnl']
+                                    curr_reentry = p.get('reentry_count', 0)
+                                    sl_leg_copy = dict(p)
+                                    pos[leg] = None
+                                    self.log(mode, f"✅ {leg.upper()} Closed. Current Balance: ${s['balance']:.2f}", "success")
+
+                                    # AlgoTest: Re-entry on SL (RE MOMENTUM 1x: Delta Match & Wait for BTC Move to Finish)
+                                    import config as _c
+                                    reentry_on = getattr(_c, 'SL_REENTRY_ENABLED', True)
+                                    max_reentry = getattr(_c, 'SL_REENTRY_MAX_COUNT', 1)
+                                    if reason == "STOP LOSS" and reentry_on and curr_reentry < max_reentry:
+                                        self.log(mode, f"🔄 RE MOMENTUM: Initiating momentum peak watch {curr_reentry+1}/{max_reentry} for {leg.upper()}", "info")
+                                        self.initiate_reentry_watch(mode, leg, curr_reentry + 1, sl_leg_copy)
+
+                        # Check Lock & Trail Trailing Strategy
+                        import config as _c
+                        if getattr(_c, 'TRAILING_ENABLED', False) and (pos.get('call') or pos.get('put')):
+                            total_profit = sum(pos[l]['pnl'] for l in ['call', 'put'] if pos.get(l))
+                            trail_state = getattr(self, f'{mode.lower()}_trail_state', {'peak': 0.0, 'locked_sl': None})
+                            if total_profit > trail_state['peak']:
+                                trail_state['peak'] = total_profit
+
+                            start_trig = getattr(_c, 'TRAIL_IF_PROFIT', 11.0)
+                            lock_amt   = getattr(_c, 'TRAIL_LOCK_PROFIT', 1.0)
+                            step_amt   = getattr(_c, 'TRAIL_INCREASE_BY', 5.0)
+                            step_trail = getattr(_c, 'TRAIL_PROFIT_BY', 5.0)
+
+                            if trail_state['peak'] >= start_trig:
+                                if trail_state['locked_sl'] is None:
+                                    trail_state['locked_sl'] = lock_amt
+                                    self.log(mode, f"🔒 LOCK & TRAIL ACTIVATED: Profit hit ${trail_state['peak']:.2f} -> Locked floor at ${lock_amt:.2f}", "success")
+                                else:
+                                    excess = trail_state['peak'] - start_trig
+                                    steps = int(excess // step_amt)
+                                    new_floor = lock_amt + steps * step_trail
+                                    if new_floor > trail_state['locked_sl']:
+                                        trail_state['locked_sl'] = new_floor
+                                        self.log(mode, f"📈 TRAILING STEP: Profit peaked ${trail_state['peak']:.2f} -> Trail floor moved to ${new_floor:.2f}", "info")
+
+                            setattr(self, f'{mode.lower()}_trail_state', trail_state)
+
+                            # If profit drops below locked trailing SL
+                            if trail_state['locked_sl'] is not None and total_profit < trail_state['locked_sl']:
+                                self.log(mode, f"🚨 TRAILING STOP LOSS TRIGGERED: Profit dropped to ${total_profit:.2f} (Floor: ${trail_state['locked_sl']:.2f}). Squaring off.", "warn")
+                                for l in ['call', 'put']:
+                                    if pos.get(l):
+                                        s['balance'] += pos[l]['pnl']
+                                        pos[l] = None
+                                setattr(self, f'{mode.lower()}_trail_state', {'peak': 0.0, 'locked_sl': None})
+                                self.log(mode, f"✅ All positions squared off by Lock & Trail. Balance: ${s['balance']:.2f}", "success")
+
+                        # Check active RE-ENTRY WATCH (Momentum exhaustion & Delta matching)
+                        self._check_reentry_watch(mode)
             except Exception as e:
                 print(f"[MARKET_LOOP ERROR] {e}")
             time.sleep(5)
@@ -674,7 +749,18 @@ class DeltaOptionsBot:
             if len(parts) >= 4:
                 # Format is usually [Side]-[Asset]-[Strike]-[Date]
                 expiries.add(parts[3])
-        return sorted(list(expiries))
+        
+        def _parse_exp(e):
+            try:
+                if len(e) == 6 and e.isdigit():
+                    return datetime.datetime.strptime(e, '%d%m%y')
+                elif len(e) == 7:
+                    return datetime.datetime.strptime(e, '%d%b%y')
+            except Exception:
+                pass
+            return datetime.datetime.max
+
+        return sorted(list(expiries), key=_parse_exp)
 
     def find_best_strike(self, options, option_type, target_premium, target_dates):
         """
@@ -708,10 +794,74 @@ class DeltaOptionsBot:
         best_opt, best_prem = valid[0]
         return best_opt.get('symbol'), best_prem, best_opt.get('id')
 
+    def find_straddle_width_strikes(self, options, btc_price, target_dates, call_mult=1.6, put_mult=2.3):
+        """
+        Balance BTC Midnight Strangle (Straddle Width Strike Selection):
+        Call Strike = ATM + call_mult * ATM_Straddle_Price
+        Put  Strike = ATM - put_mult  * ATM_Straddle_Price
+        """
+        expiry_opts = []
+        for o in options:
+            sym = o.get('symbol', '').upper()
+            if any(d.upper() in sym for d in target_dates):
+                expiry_opts.append(o)
+
+        if not expiry_opts:
+            return None, None
+
+        all_strikes = sorted(set(float(o.get('strike_price', 0)) for o in expiry_opts if o.get('strike_price')))
+        if not all_strikes:
+            return None, None
+
+        atm_strike = min(all_strikes, key=lambda s: abs(s - btc_price))
+        atm_ce = 0.0
+        atm_pe = 0.0
+        for o in expiry_opts:
+            if float(o.get('strike_price', 0)) == atm_strike:
+                prem = float(o.get('mark_price') or o.get('close') or 0)
+                if o.get('option_type') == 'call':
+                    atm_ce = prem
+                elif o.get('option_type') == 'put':
+                    atm_pe = prem
+
+        straddle_price = atm_ce + atm_pe
+        if straddle_price <= 0:
+            straddle_price = btc_price * 0.01
+
+        target_call_k = atm_strike + call_mult * straddle_price
+        target_put_k  = atm_strike - put_mult  * straddle_price
+
+        best_call, best_call_dist = None, float('inf')
+        best_put,  best_put_dist  = None, float('inf')
+
+        for o in expiry_opts:
+            k = float(o.get('strike_price', 0))
+            prem = float(o.get('mark_price') or o.get('close') or 0)
+            if prem <= 0: continue
+            if o.get('option_type') == 'call' and k >= atm_strike:
+                d = abs(k - target_call_k)
+                if d < best_call_dist:
+                    best_call_dist = d
+                    best_call = (o.get('symbol'), prem, o.get('product_id') or o.get('id'))
+            elif o.get('option_type') == 'put' and k <= atm_strike:
+                d = abs(k - target_put_k)
+                if d < best_put_dist:
+                    best_put_dist = d
+                    best_put = (o.get('symbol'), prem, o.get('product_id') or o.get('id'))
+
+        return best_call, best_put
+
     # ── Strategy execution ────────────────────────────────────────────────────
     def execute_strategy(self, mode='PAPER'):
         s = self.state[mode]
         if not s['running']: return
+
+        # GUARD: STRIKE LOCK ENFORCEMENT
+        # Once strikes are selected, they MUST NOT change or get updated/overwritten!
+        pos = s.get('positions', {})
+        if pos.get('call') or pos.get('put'):
+            self.log(mode, "🔒 STRIKE LOCKED: Position already open. Strikes are locked and will not be changed while trade is running.", "warn")
+            return
 
         self.log(mode, "=" * 45, "info")
         self.log(mode, f"🚀 EXECUTING {mode} STRATEGY", "success")
@@ -762,15 +912,25 @@ class DeltaOptionsBot:
 
             btc = self.current_btc_price
             cfg = s['config']
-            target_prem = 100.0 # Strict $100 rule as per user request
 
-            # Get Options and find strikes
+            # Get Options and find strikes using Balance BTC Straddle Width formula
             options = self.india_client.get_option_chain()
-            call_sym, call_prem, call_id = self.find_best_strike(options, 'call', target_prem, target_dates)
-            put_sym,  put_prem,  put_id  = self.find_best_strike(options, 'put',  target_prem, target_dates)
+            import config as _cfg
+            call_mult = getattr(_cfg, 'CALL_STRADDLE_MULT', 1.6)
+            put_mult  = getattr(_cfg, 'PUT_STRADDLE_MULT',  2.3)
+
+            sw_ce, sw_pe = self.find_straddle_width_strikes(options, btc, target_dates, call_mult, put_mult)
+            if sw_ce and sw_pe:
+                call_sym, call_prem, call_id = sw_ce
+                put_sym,  put_prem,  put_id  = sw_pe
+                self.log(mode, f"🎯 BALANCE BTC STRADDLE WIDTH: CE +{call_mult}x, PE -{put_mult}x", "info")
+            else:
+                target_prem = 100.0
+                call_sym, call_prem, call_id = self.find_best_strike(options, 'call', target_prem, target_dates)
+                put_sym,  put_prem,  put_id  = self.find_best_strike(options, 'put',  target_prem, target_dates)
 
             if not call_sym or not put_sym:
-                self.log(mode, f"❌ Could not find strikes for {target_dates} with premium >= ${target_prem}", "error")
+                self.log(mode, f"❌ Could not find strikes for {target_dates}", "error")
                 return
 
             self.log(mode, f"SELECTED CE: {call_sym} @ ${call_prem:.2f}", "success")
@@ -780,9 +940,18 @@ class DeltaOptionsBot:
             if mode == 'PAPER':
                 bal  = s['balance']
                 pos  = s['positions']
-                # 200X leverage size calculation
-                c_sz = max(1, int((bal * cfg['allocation_pct'] * 200) / (call_prem + 1)))
-                p_sz = max(1, int((bal * cfg['allocation_pct'] * 200) / (put_prem + 1)))
+                
+                # Check configured lot size (default 500 lots per leg as per AlgoTest config)
+                configured_lots = 500
+                try:
+                    import json
+                    with open('strategy_config.json', 'r') as _scf:
+                        _scfg = json.load(_scf)
+                        configured_lots = int(_scfg.get('total_lots', 1000) // 2)
+                except Exception:
+                    pass
+                c_sz = configured_lots if configured_lots > 0 else max(1, int((bal * cfg['allocation_pct'] * 200) / (call_prem + 1)))
+                p_sz = configured_lots if configured_lots > 0 else max(1, int((bal * cfg['allocation_pct'] * 200) / (put_prem + 1)))
 
                 pos['call'] = {
                     'symbol': call_sym, 'strike': 0, 'side': 'SELL CALL',
@@ -792,6 +961,7 @@ class DeltaOptionsBot:
                     'sl_on': cfg['call_sl_on'],
                     'tp': round(call_prem * cfg['call_tp_mult'], 2),
                     'tp_on': cfg['call_tp_on'],
+                    'reentry_count': 0
                 }
                 pos['put'] = {
                     'symbol': put_sym, 'strike': 0, 'side': 'SELL PUT',
@@ -801,6 +971,7 @@ class DeltaOptionsBot:
                     'sl_on': cfg['put_sl_on'],
                     'tp': round(put_prem * cfg['put_tp_mult'], 2),
                     'tp_on': cfg['put_tp_on'],
+                    'reentry_count': 0
                 }
                 self.log(mode, f"✅ PAPER EXECUTION COMPLETE. x{c_sz} CE, x{p_sz} PE", "success")
                 return
@@ -814,9 +985,16 @@ class DeltaOptionsBot:
                     return
                 s['balance'] = live_bal
                 
-                # 200X leverage size calculation
-                c_sz = max(1, int((live_bal * cfg['allocation_pct'] * 200) / (call_prem + 1)))
-                p_sz = max(1, int((live_bal * cfg['allocation_pct'] * 200) / (put_prem + 1)))
+                configured_lots = 500
+                try:
+                    import json
+                    with open('strategy_config.json', 'r') as _scf:
+                        _scfg = json.load(_scf)
+                        configured_lots = int(_scfg.get('total_lots', 1000) // 2)
+                except Exception:
+                    pass
+                c_sz = configured_lots if configured_lots > 0 else max(1, int((live_bal * cfg['allocation_pct'] * 200) / (call_prem + 1)))
+                p_sz = configured_lots if configured_lots > 0 else max(1, int((live_bal * cfg['allocation_pct'] * 200) / (put_prem + 1)))
                 pos  = s['positions']
 
                 for pid, sym, sz, prem, sl_m, tp_m, sl_on, tp_on, leg in [
@@ -841,6 +1019,7 @@ class DeltaOptionsBot:
                             'sl_on': sl_on,
                             'tp': round(prem * tp_m, 2),
                             'tp_on': tp_on,
+                            'reentry_count': 0
                         }
                         self.log(mode, f"✅ {leg} Filled: {sym}", "success")
                     else:
@@ -853,6 +1032,237 @@ class DeltaOptionsBot:
             self.log(mode, f"❌ Strategy error: {e}", "error")
             import traceback
             traceback.print_exc()
+
+    def initiate_reentry_watch(self, mode, leg, count, prev_leg_data):
+        """
+        AlgoTest RE MOMENTUM 1x:
+        When a leg hits Stop Loss, monitor candidate replacement leg until the BTC move finishes.
+        Matches delta of the surviving other leg.
+        Enters ONLY when the candidate leg's premium stops rising and begins falling!
+        """
+        try:
+            s = self.state[mode]
+            pos = s['positions']
+            btc = self.current_btc_price
+            if btc <= 0:
+                btc = self.india_client.get_btc_price()
+
+            options = self.india_client.get_option_chain()
+            if not options:
+                self.log(mode, "❌ Re-entry watch failed: could not fetch option chain", "error")
+                return
+
+            expiries = self.get_valid_expiries(options)
+            if not expiries:
+                return
+            target_expiry = expiries[0]
+
+            # 1. Identify surviving other leg and determine target Delta
+            other_leg = 'put' if leg == 'call' else 'call'
+            surviving_delta = 0.10  # default baseline
+            surviving_pos = pos.get(other_leg)
+            
+            if surviving_pos and surviving_pos.get('symbol'):
+                surv_sym = surviving_pos['symbol']
+                matching_ticker = next((o for o in options if o.get('symbol') == surv_sym), None)
+                if matching_ticker and matching_ticker.get('greeks') and matching_ticker['greeks'].get('delta'):
+                    try:
+                        surviving_delta = abs(float(matching_ticker['greeks']['delta']))
+                    except Exception:
+                        pass
+
+            # 2. Filter candidate options for the stopped leg's side
+            target_contract_type = 'call_options' if leg == 'call' else 'put_options'
+            candidates = []
+            for o in options:
+                sym = o.get('symbol', '')
+                if not sym.endswith(target_expiry):
+                    continue
+                if o.get('contract_type') != target_contract_type:
+                    continue
+                try:
+                    k = float(o.get('strike_price', 0))
+                    # OTM condition: Calls >= BTC, Puts <= BTC
+                    if leg == 'call' and k < btc:
+                        continue
+                    if leg == 'put' and k > btc:
+                        continue
+                    mp = float(o.get('mark_price', 0))
+                    if mp <= 0:
+                        continue
+                    candidates.append(o)
+                except Exception:
+                    continue
+
+            if not candidates:
+                self.log(mode, f"❌ No valid OTM replacement candidates found for {leg.upper()}", "warn")
+                return
+
+            # 3. Match Delta of other leg
+            def _delta_diff(cand):
+                try:
+                    g = cand.get('greeks') or {}
+                    if g.get('delta'):
+                        return abs(abs(float(g['delta'])) - surviving_delta)
+                except Exception:
+                    pass
+                return 999.0
+
+            cand_with_greeks = [c for c in candidates if c.get('greeks') and c['greeks'].get('delta')]
+            if cand_with_greeks:
+                best_cand = min(cand_with_greeks, key=_delta_diff)
+            else:
+                import config as _cfg
+                call_mult = getattr(_cfg, 'CALL_STRADDLE_MULT', 1.6)
+                put_mult  = getattr(_cfg, 'PUT_STRADDLE_MULT',  2.3)
+                sw_ce, sw_pe = self.find_straddle_width_strikes(options, btc, [target_expiry], call_mult, put_mult)
+                chosen = sw_ce if leg == 'call' else sw_pe
+                if chosen:
+                    best_cand = next((o for o in candidates if o.get('symbol') == chosen[0]), candidates[0])
+                else:
+                    best_cand = candidates[len(candidates)//2]
+
+            cand_sym  = best_cand['symbol']
+            cand_pid  = best_cand.get('product_id')
+            cand_prem = float(best_cand.get('mark_price', 0))
+            cand_k    = float(best_cand.get('strike_price', 0))
+            cand_d    = abs(float(best_cand.get('greeks', {}).get('delta', 0))) if best_cand.get('greeks') and best_cand['greeks'].get('delta') else 0.0
+
+            if 'reentry_watch' not in s:
+                s['reentry_watch'] = {'call': None, 'put': None}
+
+            s['reentry_watch'][leg] = {
+                'leg': leg,
+                'count': count,
+                'prev_leg': prev_leg_data,
+                'other_leg': other_leg,
+                'target_delta': surviving_delta,
+                'candidate_symbol': cand_sym,
+                'candidate_product_id': cand_pid,
+                'candidate_strike': cand_k,
+                'candidate_delta': cand_d,
+                'peak_premium': cand_prem,
+                'last_premium': cand_prem,
+                'falling_count': 0,
+                'status': 'MONITORING_MOMENTUM',
+                'activated_at': time.time(),
+                'last_log_ts': 0
+            }
+
+            self.log(mode, f"👁️ RE-ENTRY WATCH ACTIVATED [{leg.upper()}]: Matched {cand_sym} (Delta {cand_d:.4f} ~ {other_leg.upper()} Delta {surviving_delta:.4f}) @ ${cand_prem:.2f}. Monitoring BTC move: will enter ONLY when premium stops rising and begins falling!", "warn")
+
+        except Exception as e:
+            self.log(mode, f"❌ initiate_reentry_watch error: {e}", "error")
+            import traceback
+            traceback.print_exc()
+
+    def _check_reentry_watch(self, mode):
+        """
+        Periodically inspects active re-entry watches.
+        If premium keeps rising -> No entry (BTC move continuing).
+        If premium starts falling (exhaustion confirmed) -> Executes re-entry immediately!
+        """
+        try:
+            s = self.state[mode]
+            watches = s.get('reentry_watch', {})
+            for leg in ['call', 'put']:
+                w = watches.get(leg)
+                if not w:
+                    continue
+
+                sym = w['candidate_symbol']
+                chain = self.india_client.get_option_chain()
+                ticker = next((o for o in chain if o.get('symbol') == sym), None) if chain else None
+                if not ticker or float(ticker.get('mark_price', 0)) <= 0:
+                    continue
+
+                curr_prem = float(ticker['mark_price'])
+                peak = w['peak_premium']
+                now = time.time()
+
+                if curr_prem > peak:
+                    # BTC move still continuing! Premium making new highs!
+                    w['peak_premium'] = curr_prem
+                    w['falling_count'] = 0
+                    if now - w.get('last_log_ts', 0) > 12:
+                        self.log(mode, f"⏳ RE-ENTRY PAUSED [{leg.upper()}]: BTC move continuing. {sym} premium rising (${curr_prem:.2f} > peak ${peak:.2f}). Holding off entry...", "info")
+                        w['last_log_ts'] = now
+                elif curr_prem < peak:
+                    # Premium has started falling!
+                    drop_amt = peak - curr_prem
+                    drop_pct = drop_amt / peak if peak > 0 else 0
+                    w['falling_count'] += 1
+                    
+                    if now - w.get('last_log_ts', 0) > 12:
+                        self.log(mode, f"📉 RE-ENTRY WATCH [{leg.upper()}]: Premium retreating from peak ${peak:.2f} to ${curr_prem:.2f} (-{drop_pct*100:.1f}%, ticks={w['falling_count']}). Checking exhaustion...", "info")
+                        w['last_log_ts'] = now
+
+                    # Exhaustion confirmation: dropped >= 2.0% from peak OR 2 consecutive falling cycles
+                    if drop_pct >= 0.020 or w['falling_count'] >= 2:
+                        self.log(mode, f"🎯 RE-ENTRY TRIGGERED [{leg.upper()}]: BTC move finished! {sym} peaked at ${peak:.2f} and started falling to ${curr_prem:.2f} (-{drop_pct*100:.1f}%). Delta matched to {w['other_leg'].upper()} ({w['target_delta']:.4f}). Entering leg now!", "success")
+                        self._execute_reentry(
+                            mode=mode,
+                            leg=leg,
+                            count=w['count'],
+                            prev_leg_data=w['prev_leg'],
+                            symbol=sym,
+                            prem=curr_prem,
+                            product_id=w['candidate_product_id'],
+                            strike=w['candidate_strike']
+                        )
+                        s['reentry_watch'][leg] = None
+
+        except Exception as e:
+            print(f"[_check_reentry_watch ERROR] {e}")
+
+    def _execute_reentry(self, mode, leg, count, prev_leg_data, symbol, prem, product_id, strike=0):
+        try:
+            s = self.state[mode]
+            cfg = s['config']
+            pos = s['positions']
+            size = prev_leg_data.get('size', 500)
+            sl_mult = cfg.get(f'{leg}_sl_mult', 2.0)
+            sl_on = cfg.get(f'{leg}_sl_on', True)
+            tp_mult = cfg.get(f'{leg}_tp_mult', 0.05)
+            tp_on = cfg.get(f'{leg}_tp_on', False)
+
+            if mode == 'PAPER':
+                pos[leg] = {
+                    'symbol': symbol, 'strike': strike, 'side': f'SELL {leg.upper()}',
+                    'entry_price': prem, 'current_price': prem,
+                    'size': size, 'pnl': 0.0,
+                    'sl': round(prem * sl_mult, 2),
+                    'sl_on': sl_on,
+                    'tp': round(prem * tp_mult, 2),
+                    'tp_on': tp_on,
+                    'reentry_count': count
+                }
+                self.log(mode, f"🎯 RE-ENTERED {symbol} @ ${prem:.2f} (SL: ${prem*sl_mult:.2f}) x{size} lots", "success")
+            elif mode == 'LIVE':
+                client = s['client']
+                client.set_margin_mode(product_id, 'isolated')
+                client.set_leverage(product_id, 200)
+                res = client.place_order(product_id, 'sell', size, 'limit_order', prem)
+                if res.get('success'):
+                    pos[leg] = {
+                        'symbol': symbol, 'strike': strike, 'side': f'SELL {leg.upper()}',
+                        'entry_price': prem, 'current_price': prem,
+                        'size': size, 'pnl': 0.0,
+                        'sl': round(prem * sl_mult, 2),
+                        'sl_on': sl_on,
+                        'tp': round(prem * tp_mult, 2),
+                        'tp_on': tp_on,
+                        'reentry_count': count
+                    }
+                    self.log(mode, f"🎯 LIVE RE-ENTERED {symbol} @ ${prem:.2f}", "success")
+                else:
+                    self.log(mode, f"❌ Live Re-entry Failed: {res.get('error')}", "error")
+        except Exception as e:
+            self.log(mode, f"❌ _execute_reentry error: {e}", "error")
+
+    def _reenter_leg(self, mode, leg, count, prev_leg_data):
+        """Wrapper maintaining interface compatibility"""
+        self.initiate_reentry_watch(mode, leg, count, prev_leg_data)
 
 bot_instance = DeltaOptionsBot()
 

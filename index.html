@@ -1471,7 +1471,9 @@ td {
     <!-- Tab Navigation -->
     <nav class="tab-nav">
         <button class="tab-btn active" id="tab-btn-live"      onclick="switchTab('live')"><span class="tab-live-dot"></span>Live Trade</button>
-        <button class="tab-btn" id="tab-btn-history" onclick="switchTab('history')">📓 Trade History</button>
+        <button class="tab-btn"        id="tab-btn-strategy"  onclick="switchTab('strategy')">⚡ Balance BTC Strategy</button>
+        <button class="tab-btn"        id="tab-btn-history"   onclick="switchTab('history')">📓 Trade History</button>
+        <button class="tab-btn"        id="tab-btn-forwardtest" onclick="switchTab('forwardtest')">🚀 Forward Test</button>
         <button class="tab-btn"        id="tab-btn-config"    onclick="switchTab('config')">&#9881;&#65039; Config</button>
     </nav>
 
@@ -1479,9 +1481,29 @@ td {
     <!-- TAB 1: LIVE TRADE -->
     <style>
         #tab-live.active { display: flex !important; }
+        #tab-strategy.active { display: flex !important; }
     </style>
     <div class="tab-pane active" id="tab-live" style="max-width: 1800px; width: 100%; flex-direction: column; gap: 24px; animation: fadeIn 0.3s ease;">
         
+        <!-- ACTIVE STRATEGY BANNER -->
+        <div style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.45) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.4rem;">🎯</span>
+                <div>
+                    <div style="font-size: 0.95rem; font-weight: 800; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+                        <span>Balance BTC midnight - lock profit</span>
+                        <span style="background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); padding: 1px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">ACTIVE STRATEGY</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">
+                        CE: ATM + <span id="quick-ce-mult" style="color:#38bdf8; font-weight:700;">1.6</span>x Straddle | PE: ATM - <span id="quick-pe-mult" style="color:#f472b6; font-weight:700;">2.3</span>x Straddle | Leg SL: <span id="quick-leg-sl" style="color:#ef4444; font-weight:700;">100</span>% | Re-entry: RE MOMENTUM (1x)
+                    </div>
+                </div>
+            </div>
+            <button onclick="switchTab('strategy')" style="background: linear-gradient(135deg, #0284c7, #2563eb); border: 1px solid #38bdf8; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 10px rgba(2,132,199,0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                <span>⚙️</span> Edit Strategy Settings
+            </button>
+        </div>
+
         <!-- TOP SUMMARY BAR: PRO DUAL-ENGINE COCKPIT -->
         <div class="summary-bar-hero" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
             <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
@@ -2375,231 +2397,7 @@ td {
         
 
         
-        <!-- ARES IV DECISION CARD (EXACT REPLICA) -->
-        <div class="ares-iv-container">
-            
-            <div class="psce-block-alert" id="psce-block-alert">
-                <span style="font-size: 24px;">🚨</span>
-                <div style="width: 100%;">
-                    <div style="font-weight: 800; font-size: 14px; letter-spacing: 1px;">BLOCKED BY TRADE READINESS MASTER GATE</div>
-                    <div id="psce-block-reason" style="font-size: 12px; margin-top: 4px; font-weight: 600;">Reason: </div>
-                </div>
-            </div>
 
-            <!-- Header -->
-            <div class="ares-iv-header">
-                <div class="ares-logo-container">
-                    <div class="ares-logo-text">ARES</div>
-                    <div>
-                        <div class="ares-title-text">IV DECISION CARD</div>
-                        <div class="ares-subtitle-text">BTC OPTIONS INTRADAY FILTER</div>
-                    </div>
-                </div>
-                <div class="ares-header-right">
-                    <div class="ares-header-stat">
-                        <div class="ares-stat-icon">₿</div>
-                        <div>
-                            <div style="font-size: 10px; color: #94a3b8;">BTC</div>
-                            <div id="ares-btc-price" style="font-weight: 700; font-size: 13px;">$--</div>
-                        </div>
-                    </div>
-                    <div class="ares-header-stat">
-                        <div class="ares-stat-icon" style="color: #64748b;">🕒</div>
-                        <div>
-                            <div id="ares-time-main" style="font-size: 13px; font-weight: 700;">--:--</div>
-                            <div id="ares-date-main" style="font-size: 10px; color: #94a3b8;">-- --- ----</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Grid -->
-            <div class="ares-iv-grid">
-                
-                <!-- Left Column -->
-                <div class="ares-left-col">
-                    <div class="ares-metric-box">
-                        <div class="ares-metric-header">
-                            <span>ATM IV (1DTE)</span>
-                            <span class="ares-metric-live" id="ares-live-dot">LIVE</span>
-                        </div>
-                        <div class="ares-metric-value-row">
-                            <span class="ares-metric-val text-green" id="ares-atm-iv">--%</span>
-                            <!-- Mock sparkline via SVG -->
-                            <svg width="60" height="20" viewBox="0 0 60 20" style="stroke: #10b981; fill: none; stroke-width: 1.5px;"><path d="M0,15 L10,5 L20,12 L30,2 L40,10 L50,0 L60,8"/></svg>
-                        </div>
-                    </div>
-
-                    <div class="ares-metric-box">
-                        <div class="ares-metric-header"><span>IV Percentile (30D)</span></div>
-                        <div class="ares-metric-val" id="ares-iv-pct">--%</div>
-                        <div class="ares-progress-bg"><div class="ares-progress-fill" id="ares-bar-pct" style="width: 0%;"><div class="ares-progress-thumb"></div></div></div>
-                    </div>
-
-                    <div class="ares-metric-box">
-                        <div class="ares-metric-header"><span>IV Rank (30D)</span></div>
-                        <div class="ares-metric-val" id="ares-iv-rank">--</div>
-                        <div class="ares-progress-bg"><div class="ares-progress-fill" id="ares-bar-rank" style="width: 0%; background: linear-gradient(90deg, #ef4444, #f59e0b);"><div class="ares-progress-thumb"></div></div></div>
-                    </div>
-
-                    <div class="ares-metric-box">
-                        <div class="ares-metric-header"><span>5 Day IV Trend</span></div>
-                        <div class="ares-metric-value-row">
-                            <span class="ares-metric-val text-green" id="ares-iv-trend">--</span>
-                            <svg width="60" height="20" viewBox="0 0 60 20" style="stroke: #10b981; fill: none; stroke-width: 1.5px;"><path d="M0,10 L15,10 L30,8 L45,12 L60,10"/></svg>
-                        </div>
-                    </div>
-
-                    <div class="ares-metric-box">
-                        <div class="ares-metric-header"><span>IV Change (Past 1H)</span></div>
-                        <div class="ares-metric-value-row">
-                            <span class="ares-metric-val text-green" id="ares-iv-change">--</span>
-                            <!-- Mock bar chart -->
-                            <div style="display:flex; gap:2px; align-items:flex-end; height: 20px;">
-                                <div style="width:4px; height:8px; background:#10b981;"></div>
-                                <div style="width:4px; height:12px; background:#10b981;"></div>
-                                <div style="width:4px; height:6px; background:#ef4444;"></div>
-                                <div style="width:4px; height:16px; background:#10b981;"></div>
-                                <div style="width:4px; height:10px; background:#10b981;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="ares-metric-box">
-                        <div class="ares-metric-header"><span>IV vs Realized Vol (5D)</span></div>
-                        <div class="ares-metric-value-row">
-                            <span class="ares-metric-val text-green" id="ares-iv-vs-rv">+18%</span>
-                            <div style="font-size:24px;">🎛️</div>
-                        </div>
-                    </div>
-
-                    <div class="ares-metric-box">
-                        <div class="ares-metric-header"><span>IV Data Freshness</span></div>
-                        <div class="ares-metric-value-row">
-                            <span class="ares-metric-val text-green" id="ares-data-age">--s</span>
-                            <div style="font-size:18px;">⏱️</div>
-                        </div>
-                        <div style="font-size:10px; color:#64748b; margin-top:4px;" id="ares-iv-timestamp">--</div>
-                    </div>
-
-                    <div class="ares-metric-box" style="border: 1px solid rgba(16,185,129,0.2);">
-                        <div class="ares-metric-header"><span>FINAL DECISION</span></div>
-                        <div class="ares-metric-value-row">
-                            <span class="ares-metric-val" id="ares-final-decision" style="font-size:16px; font-weight:900;">--</span>
-                        </div>
-                        <div style="font-size:10px; color:#94a3b8; margin-top:4px; line-height:1.4;" id="ares-decision-reason">--</div>
-                    </div>
-                </div>
-
-                <!-- Center Shield -->
-                <div class="ares-center-card" id="ares-center-shield">
-                    <div class="ares-shield-icon"></div>
-                    <div class="ares-zone-label">IV ZONE</div>
-                    <div class="ares-zone-main" id="ares-zone-main">LOADING</div>
-                    <div class="ares-zone-sub" id="ares-zone-sub">ANALYZING EDGE...</div>
-
-                    <div class="ares-confidence-circle">
-                        <div class="ares-conf-val" id="ares-edge-score">--%</div>
-                        <div class="ares-conf-lbl">CONFIDENCE</div>
-                    </div>
-
-                    <div class="ares-action-box" id="ares-action-box">
-                        <div class="ares-action-label">ACTION</div>
-                        <div class="ares-action-val" id="ares-decision"><span style="font-size:20px;">🎯</span> WAITING</div>
-                    </div>
-
-                    <div class="ares-center-footer">
-                        <div class="ares-cf-item">
-                            <span class="ares-cf-lbl">RISK LEVEL</span>
-                            <span class="ares-cf-val" id="ares-cf-risk">LOW</span>
-                        </div>
-                        <div class="ares-cf-item">
-                            <span class="ares-cf-lbl">REWARD</span>
-                            <span class="ares-cf-val" id="ares-cf-reward">★★★★★</span>
-                        </div>
-                        <div class="ares-cf-item">
-                            <span class="ares-cf-lbl">MARKET CONDITION</span>
-                            <span class="ares-cf-val" id="ares-cf-market">RANGE</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Column -->
-                <div class="ares-right-col">
-                    <div class="ares-right-title">WHY THIS ZONE?</div>
-                    <div class="ares-reasons-list" id="ares-reasons-list">
-                        <div class="ares-reason-row"><div class="ares-reason-icon">⏳</div><div><div class="ares-reason-text-main">Loading...</div></div></div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- IV Zone Meter -->
-            <div class="ares-zone-meter">
-                <div class="ares-zm-header"><span>📉</span> IV ZONE METER</div>
-                <div class="ares-zm-grid">
-                    <div class="ares-zm-col">
-                        <div style="font-size:24px; color:#ef4444; margin-bottom:4px;">🚫</div>
-                        <div class="ares-zm-title" style="color:#ef4444;">BLOCKED</div>
-                        <div class="ares-zm-range">0 - 20%</div>
-                        <div class="ares-zm-sub" style="color:#ef4444;">Extremely Low<br>Trade Blocked</div>
-                    </div>
-                    <div class="ares-zm-col">
-                        <div style="font-size:24px; color:#f59e0b; margin-bottom:4px;">✅</div>
-                        <div class="ares-zm-title" style="color:#f59e0b;">MEDIUM IV</div>
-                        <div class="ares-zm-range">20 - 50%</div>
-                        <div class="ares-zm-sub" style="color:#f59e0b;">Trade Allowed<br>Normal Entry</div>
-                    </div>
-                    <div class="ares-zm-col">
-                        <div style="font-size:24px; color:#10b981; margin-bottom:4px;">🐂</div>
-                        <div class="ares-zm-title" style="color:#10b981;">HEALTHY IV</div>
-                        <div class="ares-zm-range">50%+</div>
-                        <div class="ares-zm-sub" style="color:#10b981;">Perfect Zone<br>Trade with Confidence</div>
-                    </div>
-                </div>
-                <div class="ares-zm-bar-container">
-                    <div class="ares-zm-thumb" id="ares-zm-thumb" style="left: 0%;"></div>
-                </div>
-            </div>
-
-            <!-- Bottom Strip -->
-            <div class="ares-bottom-strip">
-                <div class="ares-strip-box">
-                    <div class="ares-strip-icon">🔄</div>
-                    <div>
-                        <div class="ares-strip-title">NEXT IV UPDATE</div>
-                        <div class="ares-strip-val">15:00</div>
-                        <div class="ares-strip-sub">Minutes</div>
-                    </div>
-                </div>
-                <div class="ares-strip-box">
-                    <div class="ares-strip-icon">📅</div>
-                    <div>
-                        <div class="ares-strip-title">BEST ENTRY WINDOW</div>
-                        <div class="ares-strip-val">08:00 AM - 09:30 AM</div>
-                        <div class="ares-strip-sub">IST</div>
-                    </div>
-                </div>
-                <div class="ares-strip-box">
-                    <div class="ares-strip-icon text-green">🛡️</div>
-                    <div>
-                        <div class="ares-strip-title">NEWS FILTER</div>
-                        <div class="ares-strip-val text-green">CLEAR</div>
-                        <div class="ares-strip-sub">No High Impact News</div>
-                    </div>
-                </div>
-                <div class="ares-strip-box">
-                    <div class="ares-strip-icon" style="color:#f59e0b;">🥧</div>
-                    <div>
-                        <div class="ares-strip-title">POSITION SIZE ADVICE</div>
-                        <div class="ares-strip-val">100%</div>
-                        <div class="ares-strip-sub">Normal Size</div>
-                    </div>
-                </div>
-            </div>
-            
-        </div>
-        <!-- END ARES IV DECISION CARD -->
 
 
 
@@ -2687,166 +2485,7 @@ td {
         <div style="display: flex; flex-direction: column; width: 100%; gap: 24px;">
 
 
-        <!-- =========================================================================
-             HEDGE PROTECTION ENGINE (HPE) SANDBOX PANEL
-             Premium, high-end design matching user requests
-             ========================================================================= -->
-        <div class="glass-panel" style="border: 1px solid rgba(139, 92, 246, 0.4); background: linear-gradient(135deg, rgba(20, 25, 40, 0.8) 0%, rgba(15, 20, 30, 0.95) 100%); position: relative; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.6), inset 0 0 40px rgba(139, 92, 246, 0.05);">
-            <!-- Background Glows -->
-            <div style="position: absolute; top: -50%; left: -20%; width: 60%; height: 200%; background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%); pointer-events: none;"></div>
-            <div style="position: absolute; bottom: -50%; right: -20%; width: 60%; height: 200%; background: radial-gradient(circle, rgba(6,182,212,0.1) 0%, transparent 70%); pointer-events: none;"></div>
-
-            <!-- Header -->
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 16px; margin-bottom: 24px; position: relative; z-index: 1;">
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.4); display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);">
-                        🛡️
-                    </div>
-                    <div>
-                        <h2 style="margin: 0; color: #fff; font-size: 1.25rem; letter-spacing: 1px; background: linear-gradient(90deg, #a855f7, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">HEDGE PROTECTION ENGINE</h2>
-                        <div style="font-size: 0.75rem; color: #94a3b8; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;">LIVE ENGINE ACTIVE</div>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <button onclick="forceShadowHedge()" style="background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.8); color: #fecdd3; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; font-size: 0.75rem; transition: all 0.2s; text-shadow: 0 0 10px rgba(244, 63, 94, 0.5);">
-                        ⚠️ Force Manual Hedge
-                    </button>
-                    <div id="hpe-status-pulse" style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; animation: pulse-green 2s infinite;"></div>
-                    <span id="hpe-status-text" style="font-size: 0.85rem; font-weight: 700; color: #10b981; text-transform: uppercase; letter-spacing: 1px;">ONLINE</span>
-                </div>
-            </div>
-            <!-- X-RAY VISION TERMINAL -->
-            <div style="margin-bottom: 20px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 12px; padding: 16px; box-shadow: 0 0 20px rgba(56, 189, 248, 0.1) inset; position: relative; overflow: hidden;">
-                <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #38bdf8; box-shadow: 0 0 10px #38bdf8;"></div>
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                    <div style="width: 8px; height: 8px; background: #38bdf8; border-radius: 50%; box-shadow: 0 0 8px #38bdf8;"></div>
-                    <span style="font-family: monospace; font-size: 0.8rem; color: #38bdf8; font-weight: 700; letter-spacing: 2px;">X-RAY ENGINE LOG</span>
-                </div>
-                <div id="hpe-xray-log-val" style="font-family: monospace; font-size: 1.1rem; color: #f8fafc; font-weight: 500; text-shadow: 0 0 5px rgba(255,255,255,0.2);">
-                    Initializing Engine Sandbox...
-                </div>
-            </div>
-
-            <!-- Dashboard Grid -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; position: relative; z-index: 1;">
-                
-                <!-- Status Card -->
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Engine State</div>
-                    <div id="hpe-state-val" style="font-size: 1.8rem; font-weight: 800; color: #38bdf8; text-shadow: 0 0 15px rgba(56, 189, 248, 0.3);">DORMANT</div>
-                    <div id="hpe-standby-reason" style="font-size: 0.75rem; color: #fbbf24; margin-top: 4px; font-style: italic; min-height: 18px;">Initializing...</div>
-                    <div style="margin-top: 12px; font-size: 0.8rem; color: #64748b; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px;">
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>Swing High</span>
-                            <span id="hpe-swing-high-val" style="color: #cbd5e1; font-weight: 600;">WAITING</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>Swing Low</span>
-                            <span id="hpe-swing-low-val" style="color: #cbd5e1; font-weight: 600;">WAITING</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Combined Loss Card -->
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Combined Loss</div>
-                    <div id="hpe-loss-val" style="font-size: 2.2rem; font-weight: 800; color: #f43f5e; text-shadow: 0 0 15px rgba(244, 63, 94, 0.3);">0.00%</div>
-                    <div style="margin-top: 8px; width: 100%; background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; overflow: hidden;">
-                        <div id="hpe-loss-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #f59e0b, #ef4444); transition: width 0.3s;"></div>
-                    </div>
-                </div>
-
-                <!-- Active Hedge Details -->
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Active Shadow Hedge</div>
-                    <div style="display: flex; align-items: baseline; justify-content: space-between;">
-                        <div style="display: flex; align-items: baseline; gap: 8px;">
-                            <span id="hpe-side-val" style="font-size: 1.8rem; font-weight: 800; color: #64748b;">NONE</span>
-                            <span id="hpe-qty-val" style="font-size: 1rem; color: #94a3b8;">0 BTC</span>
-                        </div>
-                        <button id="hpe-close-btn" onclick="closeShadowHedge()" style="display: none; background: rgba(244, 63, 94, 0.2); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.4); padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">SQUARE OFF</button>
-                    </div>
-                    <div style="margin-top: 12px; font-size: 0.8rem; color: #64748b; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px;">
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>Entry Price</span>
-                            <span id="hpe-entry-price-val" style="color: #cbd5e1; font-weight: 600;">$0.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>Current BTC</span>
-                            <span id="hpe-current-price-val" style="color: #cbd5e1; font-weight: 600;">$0.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px; margin-top: 2px;">
-                            <span>Hedge PnL</span>
-                            <div>
-                                <span id="hpe-pnl-usd-val" style="color: #94a3b8; font-weight: 600; margin-right: 8px;">$0.00</span>
-                                <span id="hpe-pnl-val" style="color: #94a3b8; font-weight: 600;">0.00%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Linear Pipeline Checklist -->
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
-                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Hedge Pipeline Gates</div>
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 10px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div id="gate-1-icon" style="width: 16px; height: 16px; border-radius: 50%; background: #334155; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #fff; font-weight: bold;">1</div>
-                            <span style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">Combined Loss &ge; 15%</span>
-                        </div>
-                        <span id="hpe-gate-1-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">WAITING</span>
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 10px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div id="gate-2-icon" style="width: 16px; height: 16px; border-radius: 50%; background: #334155; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #fff; font-weight: bold;">2</div>
-                            <span style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">Trend Confirmed (ADX &ge; 20 & Supertrend)</span>
-                        </div>
-                        <span id="hpe-gate-2-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">WAITING</span>
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div id="gate-3-icon" style="width: 16px; height: 16px; border-radius: 50%; background: #334155; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #fff; font-weight: bold;">3</div>
-                            <span style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">Breakout / Momentum</span>
-                        </div>
-                        <span id="hpe-gate-3-val" style="font-size: 0.85rem; font-weight: 700; color: #64748b;">WAITING</span>
-                    </div>
-                </div>
-
-            </div>
-            
-            <div style="margin-top: 20px; text-align: center; font-size: 0.7rem; color: rgba(255,255,255,0.3); letter-spacing: 1px;">
-                SYNTHETIC PAPER TRADE MODE (NO REAL ORDERS PLACED)
-            </div>
-
-            <!-- HPE History Section -->
-            <div style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
-                <h3 style="font-size: 1rem; margin-bottom: 15px; color: #cbd5e1; display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 1.2rem;">📜</span> HPE Shadow History Log
-                </h3>
-                <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden;">
-                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                        <thead style="background: rgba(255,255,255,0.03); font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">
-                            <tr>
-                                <th style="padding: 12px 16px; font-weight: 600;">Time</th>
-                                <th style="padding: 12px 16px; font-weight: 600;">Side & Qty</th>
-                                <th style="padding: 12px 16px; font-weight: 600;">Entry Price</th>
-                                <th style="padding: 12px 16px; font-weight: 600;">Exit Reason</th>
-                                <th style="padding: 12px 16px; font-weight: 600; text-align: right;">Hedge PnL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="hpe-history-tbody" style="font-size: 0.85rem;">
-                            <!-- JS Injected -->
-                            <tr><td colspan="5" style="padding: 20px; text-align: center; color: #64748b;">No shadow hedges recorded yet.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Section 4: Controls Panel (Moved to top) -->
+        <!-- Controls Panel -->
         <div class="glass-panel" style="border: 1px solid rgba(0, 210, 255, 0.2); background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(0, 210, 255, 0.05) 100%);">
             <h2>⚙️ Core Systems & Modules</h2>
             
@@ -3066,6 +2705,699 @@ td {
 
     <!-- TAB 3b: CONFIG remainder -->
     
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- TAB: BALANCE BTC MIDNIGHT STRATEGY BUILDER                     -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane" id="tab-strategy" style="display:none; max-width: 1800px; width: 100%; flex-direction: column; gap: 20px;">
+        <style>
+            #tab-strategy .at-card {
+                position: relative;
+                overflow: hidden;
+                background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.78) 100%);
+                color: #f8fafc;
+                border: 1px solid rgba(56, 189, 248, 0.25);
+                border-radius: 16px;
+                padding: 24px;
+                backdrop-filter: blur(20px);
+                box-shadow: 0 14px 40px -8px rgba(0, 0, 0, 0.7), 0 0 24px rgba(56, 189, 248, 0.08);
+                font-family: inherit;
+            }
+            #tab-strategy .at-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                padding-bottom: 18px;
+                margin-bottom: 22px;
+                flex-wrap: wrap;
+                gap: 14px;
+                position: relative;
+                z-index: 1;
+            }
+            #tab-strategy .at-title-wrap {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+            #tab-strategy .at-title {
+                font-size: 1.35rem;
+                font-weight: 800;
+                color: #f8fafc;
+                margin: 0;
+                letter-spacing: -0.01em;
+            }
+            #tab-strategy .at-btn-ghost {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 8px;
+                padding: 6px 14px;
+                font-size: 0.82rem;
+                font-weight: 600;
+                color: #cbd5e1;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                transition: all 0.2s ease;
+            }
+            #tab-strategy .at-btn-ghost:hover {
+                background: rgba(56, 189, 248, 0.15);
+                border-color: #38bdf8;
+                color: #38bdf8;
+                transform: translateY(-1px);
+            }
+            #tab-strategy .at-leg-box {
+                background: rgba(15, 23, 42, 0.65);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 18px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+                transition: border-color 0.2s ease;
+            }
+            #tab-strategy .at-leg-box:hover {
+                border-color: rgba(56, 189, 248, 0.3);
+            }
+            #tab-strategy .at-leg-box.leg-ce {
+                border-left: 3px solid #38bdf8;
+            }
+            #tab-strategy .at-leg-box.leg-pe {
+                border-left: 3px solid #f472b6;
+            }
+            #tab-strategy .at-leg-badge {
+                font-weight: 800;
+                font-size: 0.82rem;
+                padding: 4px 14px;
+                border-radius: 14px;
+                display: inline-block;
+                margin-bottom: 16px;
+                letter-spacing: 0.05em;
+            }
+            #tab-strategy .leg-ce .at-leg-badge {
+                background: rgba(56, 189, 248, 0.15);
+                color: #38bdf8;
+                border: 1px solid rgba(56, 189, 248, 0.4);
+            }
+            #tab-strategy .leg-pe .at-leg-badge {
+                background: rgba(236, 72, 153, 0.15);
+                color: #f472b6;
+                border: 1px solid rgba(236, 72, 153, 0.4);
+            }
+            #tab-strategy .at-row-inputs {
+                display: flex;
+                align-items: flex-end;
+                gap: 16px;
+                flex-wrap: wrap;
+                margin-bottom: 18px;
+            }
+            #tab-strategy .at-field {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            #tab-strategy .at-field label {
+                font-size: 0.74rem;
+                color: #94a3b8;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+            #tab-strategy .at-ctrl {
+                padding: 8px 12px;
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                border-radius: 8px;
+                font-size: 0.88rem;
+                color: #f8fafc;
+                background: rgba(10, 15, 28, 0.85);
+                font-weight: 600;
+                outline: none;
+                transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            }
+            #tab-strategy .at-ctrl:focus {
+                border-color: #38bdf8;
+                box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+            }
+            #tab-strategy select.at-ctrl option {
+                background: #0f172a;
+                color: #f8fafc;
+            }
+            #tab-strategy .at-formula-pill {
+                border-radius: 8px;
+                padding: 6px 14px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.85rem;
+                font-weight: 600;
+            }
+            #tab-strategy .leg-ce .at-formula-pill {
+                background: rgba(14, 165, 233, 0.1);
+                border: 1.5px dashed rgba(56, 189, 248, 0.45);
+                color: #7dd3fc;
+            }
+            #tab-strategy .leg-pe .at-formula-pill {
+                background: rgba(217, 70, 239, 0.1);
+                border: 1.5px dashed rgba(244, 114, 182, 0.45);
+                color: #f472b6;
+            }
+            #tab-strategy .at-features-row {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                flex-wrap: wrap;
+                padding-top: 16px;
+                border-top: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            #tab-strategy .at-feat-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            #tab-strategy .at-switch {
+                position: relative;
+                display: inline-block;
+                width: 38px;
+                height: 20px;
+                flex-shrink: 0;
+            }
+            #tab-strategy .at-switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            #tab-strategy .at-slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background-color: rgba(255, 255, 255, 0.14);
+                transition: .25s ease;
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            #tab-strategy .at-slider:before {
+                position: absolute;
+                content: "";
+                height: 14px;
+                width: 14px;
+                left: 2px;
+                bottom: 2px;
+                background-color: #cbd5e1;
+                transition: .25s ease;
+                border-radius: 50%;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+            }
+            #tab-strategy .at-switch input:checked + .at-slider {
+                background-color: #0284c7;
+                border-color: #38bdf8;
+                box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+            }
+            #tab-strategy .at-switch input:checked + .at-slider:before {
+                transform: translateX(18px);
+                background-color: #ffffff;
+            }
+            #tab-strategy .at-feat-label {
+                font-size: 0.8rem;
+                font-weight: 600;
+                color: #cbd5e1;
+                white-space: nowrap;
+            }
+            #tab-strategy .at-overall-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+                gap: 16px;
+                margin-top: 14px;
+            }
+            #tab-strategy .at-card-sub {
+                background: rgba(15, 23, 42, 0.65);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 12px;
+                padding: 18px 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+            }
+        </style>
+
+        <div class="at-card">
+            <!-- Decorative Ambient Glows -->
+            <div style="position: absolute; top: -60px; right: -40px; width: 220px; height: 220px; background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%); pointer-events: none;"></div>
+            <div style="position: absolute; bottom: -60px; left: -40px; width: 220px; height: 220px; background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%); pointer-events: none;"></div>
+
+            <!-- Header Row -->
+            <div class="at-header">
+                <div class="at-title-wrap">
+                    <h2 class="at-title" id="at-strategy-display-name">Balance BTC midnight - lock profit</h2>
+                    <span style="cursor: pointer; font-size: 1.1rem; color: #38bdf8;" title="Edit Strategy Name" onclick="editStrategyName()">✏️</span>
+                    <button class="at-btn-ghost" onclick="exportAlgtstJson()">
+                        <span>📥</span> Export .algtst
+                    </button>
+                    <button class="at-btn-ghost" onclick="window.print()">
+                        <span>📄</span> PDF
+                    </button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); padding: 5px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; color: #38bdf8;">
+                        Manage Plan | 25 Backtests
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leg Builder Header Accordion -->
+            <div style="border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 10px; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; background: linear-gradient(90deg, rgba(2, 132, 199, 0.15), rgba(139, 92, 246, 0.1));">
+                <div style="font-weight: 700; font-size: 0.95rem; color: #38bdf8; display: flex; align-items: center; gap: 8px;">
+                    <span>⚡ Leg Builder</span> <span style="font-size: 0.8rem; opacity: 0.8;">ⓘ</span>
+                </div>
+                <span style="font-size: 0.82rem; font-weight: 700; color: #38bdf8; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;">Expand</span>
+            </div>
+
+            <div style="font-size: 1rem; font-weight: 700; color: #f1f5f9; margin-bottom: 14px; letter-spacing: 0.02em;">Legs</div>
+
+            <!-- ── LEG #1 (CALL) ── -->
+            <div class="at-leg-box leg-ce">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="at-leg-badge"># 1 • CALL LEG</span>
+                    <span style="color: #ef4444; font-weight: 800; cursor: pointer; font-size: 1.1rem; opacity: 0.8;" title="Delete Leg">✕</span>
+                </div>
+
+                <div class="at-row-inputs">
+                    <div class="at-field">
+                        <label>Lots</label>
+                        <input type="number" id="strat-leg1-lots" class="at-ctrl" value="500" style="width: 85px; font-weight: 800; text-align: center;" onchange="syncTotalLots()">
+                    </div>
+                    <div class="at-field">
+                        <label>Position</label>
+                        <select id="strat-leg1-pos" class="at-ctrl">
+                            <option value="Sell" selected>Sell</option>
+                            <option value="Buy">Buy</option>
+                        </select>
+                    </div>
+                    <div class="at-field">
+                        <label>Option Type</label>
+                        <select id="strat-leg1-type" class="at-ctrl">
+                            <option value="Call" selected>Call</option>
+                            <option value="Put">Put</option>
+                        </select>
+                    </div>
+                    <div class="at-field">
+                        <label>Expiry</label>
+                        <select id="strat-leg1-expiry" class="at-ctrl">
+                            <option value="Today" selected>Today</option>
+                            <option value="Tomorrow">Tomorrow</option>
+                            <option value="Weekly">Weekly</option>
+                        </select>
+                    </div>
+                    <div class="at-field">
+                        <label>Select Strike Criteria ⓘ</label>
+                        <select id="strat-leg1-criteria" class="at-ctrl">
+                            <option value="Straddle Width" selected>Straddle Width</option>
+                            <option value="Strike OTM">Strike OTM</option>
+                            <option value="Delta">Delta</option>
+                        </select>
+                    </div>
+                    <div class="at-formula-pill">
+                        <span>[ ATM Strike + (</span>
+                        <input type="number" step="0.1" id="strat-leg1-mult" class="at-ctrl" value="1.6" style="width: 70px; padding: 4px 8px; font-weight: 800; color: #38bdf8; text-align: center; border-color: rgba(56, 189, 248, 0.4);">
+                        <span>x ATM Straddle Price ) ]</span>
+                    </div>
+                </div>
+
+                <!-- Sub controls row -->
+                <div class="at-features-row">
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Target Profit</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg1-tp-on"><span class="at-slider"></span></label>
+                        <select id="strat-leg1-tp-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;">
+                            <option selected>Points (Pts)</option>
+                            <option>Percent (%)</option>
+                        </select>
+                        <input type="number" id="strat-leg1-tp-val" class="at-ctrl" value="0" style="width: 60px; padding: 5px 8px;">
+                    </div>
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Stop Loss</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg1-sl-on" checked><span class="at-slider"></span></label>
+                        <select id="strat-leg1-sl-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;">
+                            <option selected>Percent (%)</option>
+                            <option>Points (Pts)</option>
+                        </select>
+                        <input type="number" id="strat-leg1-sl-val" class="at-ctrl" value="100" style="width: 70px; padding: 5px 8px; font-weight: 800; color: #ef4444;">
+                    </div>
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Trail SL ⓘ</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg1-trail-on"><span class="at-slider"></span></label>
+                        <select id="strat-leg1-trail-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option>Points</option><option>Percent</option></select>
+                        <input type="number" id="strat-leg1-trail-v1" class="at-ctrl" value="0" style="width: 52px; padding: 5px 8px;">
+                        <input type="number" id="strat-leg1-trail-v2" class="at-ctrl" value="0" style="width: 52px; padding: 5px 8px;">
+                    </div>
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Re-entry on Tgt ⓘ</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg1-retgt-on"><span class="at-slider"></span></label>
+                        <select id="strat-leg1-retgt-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option>RE ASAP</option><option>RE MOMENTUM</option></select>
+                        <input type="number" id="strat-leg1-retgt-count" class="at-ctrl" value="1" style="width: 50px; padding: 5px 8px;">
+                    </div>
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Re-entry on SL ⓘ</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg1-resl-on" checked><span class="at-slider"></span></label>
+                        <select id="strat-leg1-resl-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;">
+                            <option selected>RE MOMENTUM</option>
+                            <option>RE ASAP</option>
+                        </select>
+                        <input type="number" id="strat-leg1-resl-count" class="at-ctrl" value="1" style="width: 50px; padding: 5px 8px; font-weight: 700;">
+                    </div>
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Simple Momentum ⓘ</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg1-mom-on"><span class="at-slider"></span></label>
+                        <select id="strat-leg1-mom-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option>Points (Pts) ↑</option><option>Points (Pts) ↓</option></select>
+                        <input type="number" id="strat-leg1-mom-val" class="at-ctrl" value="0" style="width: 52px; padding: 5px 8px;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── LEG #2 (PUT) ── -->
+            <div class="at-leg-box leg-pe">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="at-leg-badge"># 2 • PUT LEG</span>
+                    <span style="color: #ef4444; font-weight: 800; cursor: pointer; font-size: 1.1rem; opacity: 0.8;" title="Delete Leg">✕</span>
+                </div>
+
+                <div class="at-row-inputs">
+                    <div class="at-field">
+                        <label>Lots</label>
+                        <input type="number" id="strat-leg2-lots" class="at-ctrl" value="500" style="width: 85px; font-weight: 800; text-align: center;" onchange="syncTotalLots()">
+                    </div>
+                    <div class="at-field">
+                        <label>Position</label>
+                        <select id="strat-leg2-pos" class="at-ctrl">
+                            <option value="Sell" selected>Sell</option>
+                            <option value="Buy">Buy</option>
+                        </select>
+                    </div>
+                    <div class="at-field">
+                        <label>Option Type</label>
+                        <select id="strat-leg2-type" class="at-ctrl">
+                            <option value="Put" selected>Put</option>
+                            <option value="Call">Call</option>
+                        </select>
+                    </div>
+                    <div class="at-field">
+                        <label>Expiry</label>
+                        <select id="strat-leg2-expiry" class="at-ctrl">
+                            <option value="Today" selected>Today</option>
+                            <option value="Tomorrow">Tomorrow</option>
+                            <option value="Weekly">Weekly</option>
+                        </select>
+                    </div>
+                    <div class="at-field">
+                        <label>Select Strike Criteria ⓘ</label>
+                        <select id="strat-leg2-criteria" class="at-ctrl">
+                            <option value="Straddle Width" selected>Straddle Width</option>
+                            <option value="Strike OTM">Strike OTM</option>
+                            <option value="Delta">Delta</option>
+                        </select>
+                    </div>
+                    <div class="at-formula-pill">
+                        <span>[ ATM Strike - (</span>
+                        <input type="number" step="0.1" id="strat-leg2-mult" class="at-ctrl" value="2.3" style="width: 70px; padding: 4px 8px; font-weight: 800; color: #f472b6; text-align: center; border-color: rgba(244, 114, 182, 0.4);">
+                        <span>x ATM Straddle Price ) ]</span>
+                    </div>
+                </div>
+
+                <!-- Sub controls row -->
+                <div class="at-features-row">
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Target Profit</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg2-tp-on"><span class="at-slider"></span></label>
+                        <select id="strat-leg2-tp-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option selected>Points (Pts)</option><option>Percent (%)</option></select>
+                        <input type="number" id="strat-leg2-tp-val" class="at-ctrl" value="0" style="width: 60px; padding: 5px 8px;">
+                    </div>
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Stop Loss</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg2-sl-on" checked><span class="at-slider"></span></label>
+                        <select id="strat-leg2-sl-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;">
+                            <option selected>Percent (%)</option>
+                            <option>Points (Pts)</option>
+                        </select>
+                        <input type="number" id="strat-leg2-sl-val" class="at-ctrl" value="100" style="width: 70px; padding: 5px 8px; font-weight: 800; color: #ef4444;">
+                    </div>
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Trail SL ⓘ</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg2-trail-on"><span class="at-slider"></span></label>
+                        <select id="strat-leg2-trail-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option>Points</option><option>Percent</option></select>
+                        <input type="number" id="strat-leg2-trail-v1" class="at-ctrl" value="0" style="width: 52px; padding: 5px 8px;">
+                        <input type="number" id="strat-leg2-trail-v2" class="at-ctrl" value="0" style="width: 52px; padding: 5px 8px;">
+                    </div>
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Re-entry on Tgt ⓘ</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg2-retgt-on"><span class="at-slider"></span></label>
+                        <select id="strat-leg2-retgt-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option>RE ASAP</option><option>RE MOMENTUM</option></select>
+                        <input type="number" id="strat-leg2-retgt-count" class="at-ctrl" value="1" style="width: 50px; padding: 5px 8px;">
+                    </div>
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Re-entry on SL ⓘ</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg2-resl-on" checked><span class="at-slider"></span></label>
+                        <select id="strat-leg2-resl-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;">
+                            <option selected>RE MOMENTUM</option>
+                            <option>RE ASAP</option>
+                        </select>
+                        <input type="number" id="strat-leg2-resl-count" class="at-ctrl" value="1" style="width: 50px; padding: 5px 8px; font-weight: 700;">
+                    </div>
+                    <div class="at-feat-item">
+                        <span class="at-feat-label">Simple Momentum ⓘ</span>
+                        <label class="at-switch"><input type="checkbox" id="strat-leg2-mom-on"><span class="at-slider"></span></label>
+                        <select id="strat-leg2-mom-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option>Points (Pts) ↑</option><option>Points (Pts) ↓</option></select>
+                        <input type="number" id="strat-leg2-mom-val" class="at-ctrl" value="0" style="width: 52px; padding: 5px 8px;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── OVERALL STRATEGY SETTINGS ── -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 26px; margin-bottom: 14px; flex-wrap: wrap; gap: 12px;">
+                <div style="font-size: 1.05rem; font-weight: 700; color: #f1f5f9; display: flex; align-items: center; gap: 8px;">
+                    <span>🛡️ Overall strategy settings</span> <span style="font-size: 0.8rem; color: #94a3b8;">ⓘ</span>
+                </div>
+                <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24; padding: 6px 14px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;">
+                    For Delta Exchange strategies, Overall Strategy settings are calculated in USD ($), i.e. 1 USD = 85 INR.
+                </div>
+            </div>
+
+            <div class="at-overall-cards">
+                <!-- Card 1 -->
+                <div class="at-card-sub">
+                    <div class="at-feat-item" style="justify-content: space-between;">
+                        <span class="at-feat-label">Overall Stop Loss</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="at-switch"><input type="checkbox" id="strat-overall-sl-on"><span class="at-slider"></span></label>
+                            <select id="strat-overall-sl-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option selected>Total Premium %</option><option>Max Loss</option></select>
+                            <input type="number" id="strat-overall-sl-val" class="at-ctrl" value="10" style="width: 60px; padding: 5px 8px;">
+                        </div>
+                    </div>
+                    <div class="at-feat-item" style="justify-content: space-between;">
+                        <span class="at-feat-label">Overall Target</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="at-switch"><input type="checkbox" id="strat-overall-tgt-on"><span class="at-slider"></span></label>
+                            <select id="strat-overall-tgt-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option selected>Max Profit</option><option>Total Premium %</option></select>
+                            <input type="number" id="strat-overall-tgt-val" class="at-ctrl" value="0" style="width: 60px; padding: 5px 8px;">
+                        </div>
+                    </div>
+                    <div class="at-feat-item" style="justify-content: space-between;">
+                        <span class="at-feat-label">Overall Momentum ⓘ</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="at-switch"><input type="checkbox" id="strat-overall-mom-on"><span class="at-slider"></span></label>
+                            <select id="strat-overall-mom-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option>Points (Pts) ↑</option><option>Points (Pts) ↓</option></select>
+                            <input type="number" id="strat-overall-mom-val" class="at-ctrl" value="0" style="width: 60px; padding: 5px 8px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="at-card-sub">
+                    <div class="at-feat-item" style="justify-content: space-between;">
+                        <span class="at-feat-label">Overall Re-entry on SL ⓘ</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="at-switch"><input type="checkbox" id="strat-overall-resl-on"><span class="at-slider"></span></label>
+                            <select id="strat-overall-resl-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option selected>RE ASAP</option><option>RE MOMENTUM</option></select>
+                            <input type="number" id="strat-overall-resl-count" class="at-ctrl" value="1" style="width: 50px; padding: 5px 8px;">
+                        </div>
+                    </div>
+                    <div class="at-feat-item" style="justify-content: space-between;">
+                        <span class="at-feat-label">Overall Re-entry on Tgt ⓘ</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="at-switch"><input type="checkbox" id="strat-overall-retgt-on"><span class="at-slider"></span></label>
+                            <select id="strat-overall-retgt-type" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;"><option selected>RE ASAP</option><option>RE MOMENTUM</option></select>
+                            <input type="number" id="strat-overall-retgt-count" class="at-ctrl" value="1" style="width: 50px; padding: 5px 8px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Trailing / Lock and Trail -->
+                <div class="at-card-sub">
+                    <div class="at-feat-item" style="justify-content: space-between;">
+                        <span class="at-feat-label">Trailing Options</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="at-switch"><input type="checkbox" id="strat-trailing-on"><span class="at-slider"></span></label>
+                            <select id="strat-trailing-mode" class="at-ctrl" style="padding: 5px 8px; font-size: 0.78rem;">
+                                <option selected>Lock and Trail</option>
+                                <option>Dynamic Trailing</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.78rem;">
+                        <div>
+                            <span style="color: #94a3b8; font-weight: 600;">If profit reaches</span>
+                            <input type="number" id="strat-trail-if-profit" class="at-ctrl" value="11" style="width: 100%; margin-top: 4px; padding: 5px 8px;">
+                        </div>
+                        <div>
+                            <span style="color: #94a3b8; font-weight: 600;">Lock profit</span>
+                            <input type="number" id="strat-trail-lock-profit" class="at-ctrl" value="1" style="width: 100%; margin-top: 4px; padding: 5px 8px;">
+                        </div>
+                        <div>
+                            <span style="color: #94a3b8; font-weight: 600;">For every increase in profit by</span>
+                            <input type="number" id="strat-trail-increase-by" class="at-ctrl" value="5" style="width: 100%; margin-top: 4px; padding: 5px 8px;">
+                        </div>
+                        <div>
+                            <span style="color: #94a3b8; font-weight: 600;">Trail profit by</span>
+                            <input type="number" id="strat-trail-profit-by" class="at-ctrl" value="5" style="width: 100%; margin-top: 4px; padding: 5px 8px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── BACKTEST DURATION & RUNNER ROW ── -->
+            <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <div>
+                    <div style="font-size: 0.92rem; font-weight: 700; color: #f1f5f9; display: flex; align-items: center; gap: 8px;">
+                        <span>⏱️</span> Enter the duration of your backtest
+                    </div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
+                        Exact AlgoTest multi-leg historical simulator (Straddle Width strikes, 100% SL, RE MOMENTUM 1x, Lock & Trail 11/1/5/5).
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 600; color: #94a3b8;">Start Date</span>
+                        <input type="date" id="strat-bt-sdate" class="at-ctrl" value="2025-01-21" style="padding: 6px 10px; font-size: 0.82rem; background: rgba(15, 23, 42, 0.85); color: #f8fafc; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 600; color: #94a3b8;">End Date</span>
+                        <input type="date" id="strat-bt-edate" class="at-ctrl" value="2026-11-21" style="padding: 6px 10px; font-size: 0.82rem; background: rgba(15, 23, 42, 0.85); color: #f8fafc; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px;">
+                    </div>
+                    <button type="button" id="btn-run-algotest-bt" onclick="runAlgoTestBacktestUI()" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border: 1px solid #34d399; color: #ffffff; border-radius: 8px; padding: 8px 20px; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <span>▶</span> Run AlgoTest Backtest
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── INTERACTIVE ALGOTEST BACKTEST RESULTS PANEL ── -->
+            <div id="at-backtest-panel" style="display: none; margin-top: 24px; background: rgba(10, 15, 29, 0.95); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 14px; padding: 22px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 1.25rem;">📊</span>
+                            <span style="font-size: 1.05rem; font-weight: 800; color: #f8fafc; letter-spacing: -0.01em;">Backtest Performance: <span id="bt-disp-strat-name" style="color: #38bdf8;">Balance BTC midnight - lock profit</span></span>
+                        </div>
+                        <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 4px;" id="bt-disp-meta">
+                            Date Range: 2025-01-21 to 2026-11-21 • Capital: $50,000 (₹42.5L) • 500 Lots/Leg
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <span id="bt-status-badge" style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #10b981; padding: 4px 12px; border-radius: 20px; font-size: 0.76rem; font-weight: 700;">
+                            ✅ COMPLETED (670 DAYS)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 4 High-Impact Stat Metric Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 22px;">
+                    <!-- Net PnL Card -->
+                    <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 16px;">
+                        <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #94a3b8; letter-spacing: 0.04em;">Net Total Profit</div>
+                        <div id="bt-stat-net-pnl-usd" style="font-size: 1.45rem; font-weight: 800; color: #10b981; margin-top: 4px;">+$11,557.47</div>
+                        <div style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1; margin-top: 2px;">
+                            <span id="bt-stat-net-pnl-inr">₹9,82,385</span> (<span id="bt-stat-return-pct" style="color: #10b981;">+23.11%</span>)
+                        </div>
+                    </div>
+
+                    <!-- Win Rate Card -->
+                    <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 16px;">
+                        <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #94a3b8; letter-spacing: 0.04em;">Win Rate & Ratio</div>
+                        <div id="bt-stat-win-rate" style="font-size: 1.45rem; font-weight: 800; color: #38bdf8; margin-top: 4px;">74.93%</div>
+                        <div style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1; margin-top: 2px;">
+                            <span id="bt-stat-wins" style="color: #10b981;">502 Wins</span> / <span id="bt-stat-losses" style="color: #f43f5e;">168 Losses</span>
+                        </div>
+                    </div>
+
+                    <!-- Profit Factor & Drawdown Card -->
+                    <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 16px;">
+                        <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #94a3b8; letter-spacing: 0.04em;">Profit Factor & DD</div>
+                        <div id="bt-stat-profit-factor" style="font-size: 1.45rem; font-weight: 800; color: #f59e0b; margin-top: 4px;">2.64</div>
+                        <div style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1; margin-top: 2px;">
+                            Max DD: <span id="bt-stat-max-dd" style="color: #f43f5e;">0.80%</span> (<span id="bt-stat-max-dd-usd">-$407.92</span>)
+                        </div>
+                    </div>
+
+                    <!-- Execution Quality Card -->
+                    <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 16px;">
+                        <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #94a3b8; letter-spacing: 0.04em;">Sharpe & SL Stats</div>
+                        <div id="bt-stat-sharpe" style="font-size: 1.45rem; font-weight: 800; color: #a78bfa; margin-top: 4px;">7.39</div>
+                        <div style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1; margin-top: 2px;">
+                            SL Hits: CE <span id="bt-stat-ce-sl">298</span> | PE <span id="bt-stat-pe-sl">315</span> | Both <span id="bt-stat-both-sl">71</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Historical Trades Log -->
+                <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="font-size: 0.88rem; font-weight: 700; color: #e2e8f0; display: flex; align-items: center; gap: 8px;">
+                            <span>📜</span> Historical Trade Log (Sample of Recent Days)
+                        </div>
+                        <div style="font-size: 0.74rem; color: #94a3b8;">
+                            Showing 50 most recent trading sessions
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto; max-height: 380px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left;">
+                            <thead>
+                                <tr style="background: rgba(2, 6, 23, 0.85); color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                    <th style="padding: 10px 12px;">Date</th>
+                                    <th style="padding: 10px 12px;">BTC Spot</th>
+                                    <th style="padding: 10px 12px;">CE Strike (Straddle +1.6x)</th>
+                                    <th style="padding: 10px 12px;">PE Strike (Straddle -2.3x)</th>
+                                    <th style="padding: 10px 12px;">CE Exit</th>
+                                    <th style="padding: 10px 12px;">PE Exit</th>
+                                    <th style="padding: 10px 12px; text-align: right;">Day PnL (USD)</th>
+                                    <th style="padding: 10px 12px; text-align: right;">Day PnL (INR)</th>
+                                    <th style="padding: 10px 12px; text-align: center;">Outcome</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bt-trades-table-body">
+                                <tr>
+                                    <td colspan="9" style="text-align: center; padding: 24px; color: #64748b;">Click "Run AlgoTest Backtest" above to generate results...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── BOTTOM ACTION BAR ── -->
+            <div style="margin-top: 26px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 16px 22px;">
+                <div id="strat-save-status" style="font-size: 0.88rem; font-weight: 700; color: #10b981;">
+                    ✅ Strategy synced with Delta Trading Engine.
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button type="button" class="at-btn-ghost" onclick="resetStrategyDefaults()">
+                        🔄 Reset Defaults
+                    </button>
+                    <button type="button" id="btn-save-strategy" onclick="saveStrategyConfigUI()" style="background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%); border: 1px solid #38bdf8; color: #ffffff; border-radius: 8px; padding: 10px 24px; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <span>💾</span> Save & Apply to Live Engine
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div><!-- /tab-strategy -->
+
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- TAB 3: ALGOTEST STYLE TRADE HISTORY (100% REAL FORWARD-TEST DATA) -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -6063,11 +6395,21 @@ td {
 
         function switchTab(name) {
             // Hide all panes
-            document.querySelectorAll('.tab-pane').forEach(p => { p.classList.remove('active'); });
+            document.querySelectorAll('.tab-pane').forEach(p => { 
+                p.classList.remove('active'); 
+                p.style.display = 'none'; 
+            });
             // Update buttons
             document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); });
 
-            if (name === 'history') {
+            if (name === 'strategy') {
+                const p = document.getElementById('tab-strategy');
+                if (p) { p.classList.add('active'); p.style.display = 'flex'; }
+                document.getElementById('tab-btn-strategy')?.classList.add('active');
+                if (typeof loadStrategyConfigUI === 'function') {
+                    loadStrategyConfigUI();
+                }
+            } else if (name === 'history') {
                 const p = document.getElementById('tab-history');
                 if (p) { p.classList.add('active'); p.style.display = 'flex'; }
                 document.getElementById('tab-btn-history')?.classList.add('active');
@@ -6075,17 +6417,465 @@ td {
                     initHistoryTab();
                 }
             } else if (name === 'live') {
-                document.getElementById('tab-live').classList.add('active');
-                document.getElementById('tab-btn-live').classList.add('active');
+                const p = document.getElementById('tab-live');
+                if (p) { p.classList.add('active'); p.style.display = 'flex'; }
+                document.getElementById('tab-btn-live')?.classList.add('active');
             } else if (name === 'analytics') {
-                document.getElementById('tab-analytics').classList.add('active');
-                document.getElementById('tab-btn-analytics').classList.add('active');
+                const p = document.getElementById('tab-analytics');
+                if (p) { p.classList.add('active'); p.style.display = 'block'; }
+                document.getElementById('tab-btn-analytics')?.classList.add('active');
             } else if (name === 'config') {
-                document.getElementById('tab-config').classList.add('active');
-                document.getElementById('tab-config-b').classList.add('active');
-                document.getElementById('tab-btn-config').classList.add('active');
+                const pc = document.getElementById('tab-config');
+                const pcb = document.getElementById('tab-config-b');
+                if (pc) { pc.classList.add('active'); pc.style.display = 'block'; }
+                if (pcb) { pcb.classList.add('active'); pcb.style.display = 'block'; }
+                document.getElementById('tab-btn-config')?.classList.add('active');
+            } else if (name === 'forwardtest') {
+                const p = document.getElementById('tab-forwardtest');
+                if (p) { p.classList.add('active'); p.style.display = 'flex'; }
+                document.getElementById('tab-btn-forwardtest')?.classList.add('active');
             }
         }
+
+        // ── BALANCE BTC STRATEGY BUILDER LOGIC ─────────────────────────────
+        async function loadStrategyConfigUI() {
+            try {
+                const res = await fetch('/api/strategy_config');
+                const json = await res.json();
+                const cfg = json.config || json;
+                if (!cfg) return;
+
+                // Title
+                if (cfg.strategy_name) {
+                    const el = document.getElementById('at-strategy-display-name');
+                    if (el) el.textContent = cfg.strategy_name;
+                }
+
+                // Leg 1 (CE)
+                const l1 = cfg.leg1 || {};
+                if (document.getElementById('strat-leg1-lots') && l1.lots !== undefined) document.getElementById('strat-leg1-lots').value = l1.lots;
+                if (document.getElementById('strat-leg1-pos') && l1.position) document.getElementById('strat-leg1-pos').value = l1.position;
+                if (document.getElementById('strat-leg1-type') && l1.option_type) document.getElementById('strat-leg1-type').value = l1.option_type;
+                if (document.getElementById('strat-leg1-expiry') && l1.expiry) document.getElementById('strat-leg1-expiry').value = l1.expiry;
+                if (document.getElementById('strat-leg1-criteria') && l1.strike_criteria) document.getElementById('strat-leg1-criteria').value = l1.strike_criteria;
+                if (document.getElementById('strat-leg1-mult') && l1.strike_multiplier !== undefined) document.getElementById('strat-leg1-mult').value = l1.strike_multiplier;
+                if (document.getElementById('quick-ce-mult')) document.getElementById('quick-ce-mult').textContent = l1.strike_multiplier || 1.6;
+
+                if (document.getElementById('strat-leg1-tp-on')) document.getElementById('strat-leg1-tp-on').checked = !!l1.target_profit_on;
+                if (document.getElementById('strat-leg1-tp-type') && l1.target_profit_type) document.getElementById('strat-leg1-tp-type').value = l1.target_profit_type;
+                if (document.getElementById('strat-leg1-tp-val') && l1.target_profit_value !== undefined) document.getElementById('strat-leg1-tp-val').value = l1.target_profit_value;
+
+                if (document.getElementById('strat-leg1-sl-on')) document.getElementById('strat-leg1-sl-on').checked = l1.stop_loss_on !== false;
+                if (document.getElementById('strat-leg1-sl-type') && l1.stop_loss_type) document.getElementById('strat-leg1-sl-type').value = l1.stop_loss_type;
+                if (document.getElementById('strat-leg1-sl-val') && l1.stop_loss_value !== undefined) document.getElementById('strat-leg1-sl-val').value = l1.stop_loss_value;
+                if (document.getElementById('quick-leg-sl')) document.getElementById('quick-leg-sl').textContent = l1.stop_loss_value || 100;
+
+                if (document.getElementById('strat-leg1-trail-on')) document.getElementById('strat-leg1-trail-on').checked = !!l1.trail_sl_on;
+                if (document.getElementById('strat-leg1-trail-type') && l1.trail_sl_type) document.getElementById('strat-leg1-trail-type').value = l1.trail_sl_type;
+                if (document.getElementById('strat-leg1-trail-v1') && l1.trail_sl_val1 !== undefined) document.getElementById('strat-leg1-trail-v1').value = l1.trail_sl_val1;
+                if (document.getElementById('strat-leg1-trail-v2') && l1.trail_sl_val2 !== undefined) document.getElementById('strat-leg1-trail-v2').value = l1.trail_sl_val2;
+
+                if (document.getElementById('strat-leg1-retgt-on')) document.getElementById('strat-leg1-retgt-on').checked = !!l1.reentry_tgt_on;
+                if (document.getElementById('strat-leg1-retgt-type') && l1.reentry_tgt_type) document.getElementById('strat-leg1-retgt-type').value = l1.reentry_tgt_type;
+                if (document.getElementById('strat-leg1-retgt-count') && l1.reentry_tgt_count !== undefined) document.getElementById('strat-leg1-retgt-count').value = l1.reentry_tgt_count;
+
+                if (document.getElementById('strat-leg1-resl-on')) document.getElementById('strat-leg1-resl-on').checked = l1.reentry_sl_on !== false;
+                if (document.getElementById('strat-leg1-resl-type') && l1.reentry_sl_type) document.getElementById('strat-leg1-resl-type').value = l1.reentry_sl_type;
+                if (document.getElementById('strat-leg1-resl-count') && l1.reentry_sl_count !== undefined) document.getElementById('strat-leg1-resl-count').value = l1.reentry_sl_count;
+
+                if (document.getElementById('strat-leg1-mom-on')) document.getElementById('strat-leg1-mom-on').checked = !!l1.simple_momentum_on;
+                if (document.getElementById('strat-leg1-mom-type') && l1.simple_momentum_type) document.getElementById('strat-leg1-mom-type').value = l1.simple_momentum_type;
+                if (document.getElementById('strat-leg1-mom-val') && l1.simple_momentum_value !== undefined) document.getElementById('strat-leg1-mom-val').value = l1.simple_momentum_value;
+
+                // Leg 2 (PE)
+                const l2 = cfg.leg2 || {};
+                if (document.getElementById('strat-leg2-lots') && l2.lots !== undefined) document.getElementById('strat-leg2-lots').value = l2.lots;
+                if (document.getElementById('strat-leg2-pos') && l2.position) document.getElementById('strat-leg2-pos').value = l2.position;
+                if (document.getElementById('strat-leg2-type') && l2.option_type) document.getElementById('strat-leg2-type').value = l2.option_type;
+                if (document.getElementById('strat-leg2-expiry') && l2.expiry) document.getElementById('strat-leg2-expiry').value = l2.expiry;
+                if (document.getElementById('strat-leg2-criteria') && l2.strike_criteria) document.getElementById('strat-leg2-criteria').value = l2.strike_criteria;
+                if (document.getElementById('strat-leg2-mult') && l2.strike_multiplier !== undefined) document.getElementById('strat-leg2-mult').value = l2.strike_multiplier;
+                if (document.getElementById('quick-pe-mult')) document.getElementById('quick-pe-mult').textContent = l2.strike_multiplier || 2.3;
+
+                if (document.getElementById('strat-leg2-tp-on')) document.getElementById('strat-leg2-tp-on').checked = !!l2.target_profit_on;
+                if (document.getElementById('strat-leg2-tp-type') && l2.target_profit_type) document.getElementById('strat-leg2-tp-type').value = l2.target_profit_type;
+                if (document.getElementById('strat-leg2-tp-val') && l2.target_profit_value !== undefined) document.getElementById('strat-leg2-tp-val').value = l2.target_profit_value;
+
+                if (document.getElementById('strat-leg2-sl-on')) document.getElementById('strat-leg2-sl-on').checked = l2.stop_loss_on !== false;
+                if (document.getElementById('strat-leg2-sl-type') && l2.stop_loss_type) document.getElementById('strat-leg2-sl-type').value = l2.stop_loss_type;
+                if (document.getElementById('strat-leg2-sl-val') && l2.stop_loss_value !== undefined) document.getElementById('strat-leg2-sl-val').value = l2.stop_loss_value;
+
+                if (document.getElementById('strat-leg2-trail-on')) document.getElementById('strat-leg2-trail-on').checked = !!l2.trail_sl_on;
+                if (document.getElementById('strat-leg2-trail-type') && l2.trail_sl_type) document.getElementById('strat-leg2-trail-type').value = l2.trail_sl_type;
+                if (document.getElementById('strat-leg2-trail-v1') && l2.trail_sl_val1 !== undefined) document.getElementById('strat-leg2-trail-v1').value = l2.trail_sl_val1;
+                if (document.getElementById('strat-leg2-trail-v2') && l2.trail_sl_val2 !== undefined) document.getElementById('strat-leg2-trail-v2').value = l2.trail_sl_val2;
+
+                if (document.getElementById('strat-leg2-retgt-on')) document.getElementById('strat-leg2-retgt-on').checked = !!l2.reentry_tgt_on;
+                if (document.getElementById('strat-leg2-retgt-type') && l2.reentry_tgt_type) document.getElementById('strat-leg2-retgt-type').value = l2.reentry_tgt_type;
+                if (document.getElementById('strat-leg2-retgt-count') && l2.reentry_tgt_count !== undefined) document.getElementById('strat-leg2-retgt-count').value = l2.reentry_tgt_count;
+
+                if (document.getElementById('strat-leg2-resl-on')) document.getElementById('strat-leg2-resl-on').checked = l2.reentry_sl_on !== false;
+                if (document.getElementById('strat-leg2-resl-type') && l2.reentry_sl_type) document.getElementById('strat-leg2-resl-type').value = l2.reentry_sl_type;
+                if (document.getElementById('strat-leg2-resl-count') && l2.reentry_sl_count !== undefined) document.getElementById('strat-leg2-resl-count').value = l2.reentry_sl_count;
+
+                if (document.getElementById('strat-leg2-mom-on')) document.getElementById('strat-leg2-mom-on').checked = !!l2.simple_momentum_on;
+                if (document.getElementById('strat-leg2-mom-type') && l2.simple_momentum_type) document.getElementById('strat-leg2-mom-type').value = l2.simple_momentum_type;
+                if (document.getElementById('strat-leg2-mom-val') && l2.simple_momentum_value !== undefined) document.getElementById('strat-leg2-mom-val').value = l2.simple_momentum_value;
+
+                // Overall
+                const ov = cfg.overall || {};
+                if (document.getElementById('strat-overall-sl-on')) document.getElementById('strat-overall-sl-on').checked = !!ov.overall_sl_on;
+                if (document.getElementById('strat-overall-sl-type') && ov.overall_sl_type) document.getElementById('strat-overall-sl-type').value = ov.overall_sl_type;
+                if (document.getElementById('strat-overall-sl-val') && ov.overall_sl_value !== undefined) document.getElementById('strat-overall-sl-val').value = ov.overall_sl_value;
+
+                if (document.getElementById('strat-overall-tgt-on')) document.getElementById('strat-overall-tgt-on').checked = !!ov.overall_target_on;
+                if (document.getElementById('strat-overall-tgt-type') && ov.overall_target_type) document.getElementById('strat-overall-tgt-type').value = ov.overall_target_type;
+                if (document.getElementById('strat-overall-tgt-val') && ov.overall_target_value !== undefined) document.getElementById('strat-overall-tgt-val').value = ov.overall_target_value;
+
+                if (document.getElementById('strat-overall-mom-on')) document.getElementById('strat-overall-mom-on').checked = !!ov.overall_momentum_on;
+                if (document.getElementById('strat-overall-mom-type') && ov.overall_momentum_type) document.getElementById('strat-overall-mom-type').value = ov.overall_momentum_type;
+                if (document.getElementById('strat-overall-mom-val') && ov.overall_momentum_value !== undefined) document.getElementById('strat-overall-mom-val').value = ov.overall_momentum_value;
+
+                if (document.getElementById('strat-overall-resl-on')) document.getElementById('strat-overall-resl-on').checked = !!ov.overall_reentry_sl_on;
+                if (document.getElementById('strat-overall-resl-type') && ov.overall_reentry_sl_type) document.getElementById('strat-overall-resl-type').value = ov.overall_reentry_sl_type;
+                if (document.getElementById('strat-overall-resl-count') && ov.overall_reentry_sl_count !== undefined) document.getElementById('strat-overall-resl-count').value = ov.overall_reentry_sl_count;
+
+                if (document.getElementById('strat-overall-retgt-on')) document.getElementById('strat-overall-retgt-on').checked = !!ov.overall_reentry_tgt_on;
+                if (document.getElementById('strat-overall-retgt-type') && ov.overall_reentry_tgt_type) document.getElementById('strat-overall-retgt-type').value = ov.overall_reentry_tgt_type;
+                if (document.getElementById('strat-overall-retgt-count') && ov.overall_reentry_tgt_count !== undefined) document.getElementById('strat-overall-retgt-count').value = ov.overall_reentry_tgt_count;
+
+                if (document.getElementById('strat-trailing-on')) document.getElementById('strat-trailing-on').checked = !!ov.trailing_on;
+                if (document.getElementById('strat-trailing-mode') && ov.trailing_mode) document.getElementById('strat-trailing-mode').value = ov.trailing_mode;
+                if (document.getElementById('strat-trail-if-profit') && ov.trail_if_profit !== undefined) document.getElementById('strat-trail-if-profit').value = ov.trail_if_profit;
+                if (document.getElementById('strat-trail-lock-profit') && ov.trail_lock_profit !== undefined) document.getElementById('strat-trail-lock-profit').value = ov.trail_lock_profit;
+                if (document.getElementById('strat-trail-increase-by') && ov.trail_increase_by !== undefined) document.getElementById('strat-trail-increase-by').value = ov.trail_increase_by;
+                if (document.getElementById('strat-trail-profit-by') && ov.trail_profit_by !== undefined) document.getElementById('strat-trail-profit-by').value = ov.trail_profit_by;
+
+                // Backtest
+                const bt = cfg.backtest || {};
+                if (document.getElementById('strat-bt-sdate') && bt.start_date) document.getElementById('strat-bt-sdate').value = bt.start_date;
+                if (document.getElementById('strat-bt-edate') && bt.end_date) document.getElementById('strat-bt-edate').value = bt.end_date;
+
+            } catch (err) {
+                console.error("Failed to load strategy config:", err);
+            }
+        }
+
+        async function saveStrategyConfigUI() {
+            const btn = document.getElementById('btn-save-strategy');
+            const status = document.getElementById('strat-save-status');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span>⏳</span> Saving...';
+            }
+            if (status) {
+                status.style.color = '#0284c7';
+                status.textContent = 'Saving strategy settings...';
+            }
+
+            const payload = {
+                strategy_name: document.getElementById('at-strategy-display-name')?.textContent || "Balance BTC midnight - lock profit",
+                leg1: {
+                    lots: parseInt(document.getElementById('strat-leg1-lots')?.value || 500, 10),
+                    position: document.getElementById('strat-leg1-pos')?.value || 'Sell',
+                    option_type: document.getElementById('strat-leg1-type')?.value || 'Call',
+                    expiry: document.getElementById('strat-leg1-expiry')?.value || 'Today',
+                    strike_criteria: document.getElementById('strat-leg1-criteria')?.value || 'Straddle Width',
+                    strike_multiplier: parseFloat(document.getElementById('strat-leg1-mult')?.value || 1.6),
+                    target_profit_on: document.getElementById('strat-leg1-tp-on')?.checked || false,
+                    target_profit_type: document.getElementById('strat-leg1-tp-type')?.value || 'Points (Pts)',
+                    target_profit_value: parseFloat(document.getElementById('strat-leg1-tp-val')?.value || 0),
+                    stop_loss_on: document.getElementById('strat-leg1-sl-on')?.checked || true,
+                    stop_loss_type: document.getElementById('strat-leg1-sl-type')?.value || 'Percent (%)',
+                    stop_loss_value: parseFloat(document.getElementById('strat-leg1-sl-val')?.value || 100),
+                    trail_sl_on: document.getElementById('strat-leg1-trail-on')?.checked || false,
+                    trail_sl_type: document.getElementById('strat-leg1-trail-type')?.value || 'Points',
+                    trail_sl_val1: parseFloat(document.getElementById('strat-leg1-trail-v1')?.value || 0),
+                    trail_sl_val2: parseFloat(document.getElementById('strat-leg1-trail-v2')?.value || 0),
+                    reentry_tgt_on: document.getElementById('strat-leg1-retgt-on')?.checked || false,
+                    reentry_tgt_type: document.getElementById('strat-leg1-retgt-type')?.value || 'RE ASAP',
+                    reentry_tgt_count: parseInt(document.getElementById('strat-leg1-retgt-count')?.value || 1, 10),
+                    reentry_sl_on: document.getElementById('strat-leg1-resl-on')?.checked || true,
+                    reentry_sl_type: document.getElementById('strat-leg1-resl-type')?.value || 'RE MOMENTUM',
+                    reentry_sl_count: parseInt(document.getElementById('strat-leg1-resl-count')?.value || 1, 10),
+                    simple_momentum_on: document.getElementById('strat-leg1-mom-on')?.checked || false,
+                    simple_momentum_type: document.getElementById('strat-leg1-mom-type')?.value || 'Points (Pts) ↑',
+                    simple_momentum_value: parseFloat(document.getElementById('strat-leg1-mom-val')?.value || 0)
+                },
+                leg2: {
+                    lots: parseInt(document.getElementById('strat-leg2-lots')?.value || 500, 10),
+                    position: document.getElementById('strat-leg2-pos')?.value || 'Sell',
+                    option_type: document.getElementById('strat-leg2-type')?.value || 'Put',
+                    expiry: document.getElementById('strat-leg2-expiry')?.value || 'Today',
+                    strike_criteria: document.getElementById('strat-leg2-criteria')?.value || 'Straddle Width',
+                    strike_multiplier: parseFloat(document.getElementById('strat-leg2-mult')?.value || 2.3),
+                    target_profit_on: document.getElementById('strat-leg2-tp-on')?.checked || false,
+                    target_profit_type: document.getElementById('strat-leg2-tp-type')?.value || 'Points (Pts)',
+                    target_profit_value: parseFloat(document.getElementById('strat-leg2-tp-val')?.value || 0),
+                    stop_loss_on: document.getElementById('strat-leg2-sl-on')?.checked || true,
+                    stop_loss_type: document.getElementById('strat-leg2-sl-type')?.value || 'Percent (%)',
+                    stop_loss_value: parseFloat(document.getElementById('strat-leg2-sl-val')?.value || 100),
+                    trail_sl_on: document.getElementById('strat-leg2-trail-on')?.checked || false,
+                    trail_sl_type: document.getElementById('strat-leg2-trail-type')?.value || 'Points',
+                    trail_sl_val1: parseFloat(document.getElementById('strat-leg2-trail-v1')?.value || 0),
+                    trail_sl_val2: parseFloat(document.getElementById('strat-leg2-trail-v2')?.value || 0),
+                    reentry_tgt_on: document.getElementById('strat-leg2-retgt-on')?.checked || false,
+                    reentry_tgt_type: document.getElementById('strat-leg2-retgt-type')?.value || 'RE ASAP',
+                    reentry_tgt_count: parseInt(document.getElementById('strat-leg2-retgt-count')?.value || 1, 10),
+                    reentry_sl_on: document.getElementById('strat-leg2-resl-on')?.checked || true,
+                    reentry_sl_type: document.getElementById('strat-leg2-resl-type')?.value || 'RE MOMENTUM',
+                    reentry_sl_count: parseInt(document.getElementById('strat-leg2-resl-count')?.value || 1, 10),
+                    simple_momentum_on: document.getElementById('strat-leg2-mom-on')?.checked || false,
+                    simple_momentum_type: document.getElementById('strat-leg2-mom-type')?.value || 'Points (Pts) ↑',
+                    simple_momentum_value: parseFloat(document.getElementById('strat-leg2-mom-val')?.value || 0)
+                },
+                overall: {
+                    overall_sl_on: document.getElementById('strat-overall-sl-on')?.checked || false,
+                    overall_sl_type: document.getElementById('strat-overall-sl-type')?.value || 'Total Premium %',
+                    overall_sl_value: parseFloat(document.getElementById('strat-overall-sl-val')?.value || 10),
+                    overall_target_on: document.getElementById('strat-overall-tgt-on')?.checked || false,
+                    overall_target_type: document.getElementById('strat-overall-tgt-type')?.value || 'Max Profit',
+                    overall_target_value: parseFloat(document.getElementById('strat-overall-tgt-val')?.value || 0),
+                    overall_momentum_on: document.getElementById('strat-overall-mom-on')?.checked || false,
+                    overall_momentum_type: document.getElementById('strat-overall-mom-type')?.value || 'Points (Pts) ↑',
+                    overall_momentum_value: parseFloat(document.getElementById('strat-overall-mom-val')?.value || 0),
+                    overall_reentry_sl_on: document.getElementById('strat-overall-resl-on')?.checked || false,
+                    overall_reentry_sl_type: document.getElementById('strat-overall-resl-type')?.value || 'RE ASAP',
+                    overall_reentry_sl_count: parseInt(document.getElementById('strat-overall-resl-count')?.value || 1, 10),
+                    overall_reentry_tgt_on: document.getElementById('strat-overall-retgt-on')?.checked || false,
+                    overall_reentry_tgt_type: document.getElementById('strat-overall-retgt-type')?.value || 'RE ASAP',
+                    overall_reentry_tgt_count: parseInt(document.getElementById('strat-overall-retgt-count')?.value || 1, 10),
+                    trailing_on: document.getElementById('strat-trailing-on')?.checked || false,
+                    trailing_mode: document.getElementById('strat-trailing-mode')?.value || 'Lock and Trail',
+                    trail_if_profit: parseFloat(document.getElementById('strat-trail-if-profit')?.value || 11),
+                    trail_lock_profit: parseFloat(document.getElementById('strat-trail-lock-profit')?.value || 1),
+                    trail_increase_by: parseFloat(document.getElementById('strat-trail-increase-by')?.value || 5),
+                    trail_profit_by: parseFloat(document.getElementById('strat-trail-profit-by')?.value || 5)
+                },
+                backtest: {
+                    start_date: document.getElementById('strat-bt-sdate')?.value || '2025-01-21',
+                    end_date: document.getElementById('strat-bt-edate')?.value || '2026-11-21'
+                }
+            };
+
+            // Cross-sync top level fields for Forward Trader & live engine
+            payload.call_straddle_mult = payload.leg1.strike_multiplier;
+            payload.put_straddle_mult  = payload.leg2.strike_multiplier;
+            payload.leg_sl_pct         = payload.leg1.stop_loss_value;
+            payload.total_lots         = payload.leg1.lots * 2;
+            payload.trail_if_profit    = payload.overall.trail_if_profit;
+            payload.trail_lock_profit  = payload.overall.trail_lock_profit;
+            payload.trail_increase_by  = payload.overall.trail_increase_by;
+            payload.trail_profit_by    = payload.overall.trail_profit_by;
+
+            try {
+                const res = await fetch('/api/strategy_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    if (status) {
+                        status.style.color = '#10b981';
+                        status.textContent = '✅ Strategy Saved & Synced with Delta Engine & Forward Trader!';
+                    }
+                    if (document.getElementById('quick-ce-mult')) document.getElementById('quick-ce-mult').textContent = payload.leg1.strike_multiplier;
+                    if (document.getElementById('quick-pe-mult')) document.getElementById('quick-pe-mult').textContent = payload.leg2.strike_multiplier;
+                    if (document.getElementById('quick-leg-sl')) document.getElementById('quick-leg-sl').textContent = payload.leg1.stop_loss_value;
+                    if (typeof ftRefresh === 'function') ftRefresh();
+                } else {
+                    if (status) {
+                        status.style.color = '#ef4444';
+                        status.textContent = '❌ Failed: ' + (result.error || 'Server error');
+                    }
+                }
+            } catch (err) {
+                if (status) {
+                    status.style.color = '#ef4444';
+                    status.textContent = '❌ Network error while saving';
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>💾</span> Save & Apply to Live Engine';
+                }
+            }
+        }
+
+        function syncTotalLots() {
+            const l1 = parseInt(document.getElementById('strat-leg1-lots')?.value || 500, 10);
+            const l2 = parseInt(document.getElementById('strat-leg2-lots')?.value || 500, 10);
+            const total = l1 + l2;
+            const status = document.getElementById('strat-save-status');
+            if (status) {
+                status.style.color = '#0284c7';
+                status.textContent = `Total Strategy Exposure: ${total} lots (${l1} CE + ${l2} PE). Click 'Save' to apply.`;
+            }
+        }
+
+        function resetStrategyDefaults() {
+            if (confirm("Reset strategy settings to AlgoTest screenshot defaults?")) {
+                if (document.getElementById('strat-leg1-lots')) document.getElementById('strat-leg1-lots').value = 500;
+                if (document.getElementById('strat-leg1-mult')) document.getElementById('strat-leg1-mult').value = 1.6;
+                if (document.getElementById('strat-leg1-sl-val')) document.getElementById('strat-leg1-sl-val').value = 100;
+                if (document.getElementById('strat-leg2-lots')) document.getElementById('strat-leg2-lots').value = 500;
+                if (document.getElementById('strat-leg2-mult')) document.getElementById('strat-leg2-mult').value = 2.3;
+                if (document.getElementById('strat-leg2-sl-val')) document.getElementById('strat-leg2-sl-val').value = 100;
+                if (document.getElementById('strat-trail-if-profit')) document.getElementById('strat-trail-if-profit').value = 11;
+                if (document.getElementById('strat-trail-lock-profit')) document.getElementById('strat-trail-lock-profit').value = 1;
+                if (document.getElementById('strat-trail-increase-by')) document.getElementById('strat-trail-increase-by').value = 5;
+                if (document.getElementById('strat-trail-profit-by')) document.getElementById('strat-trail-profit-by').value = 5;
+                saveStrategyConfigUI();
+            }
+        }
+
+        function editStrategyName() {
+            const current = document.getElementById('at-strategy-display-name')?.textContent || "";
+            const newName = prompt("Enter Strategy Name:", current);
+            if (newName && newName.trim()) {
+                document.getElementById('at-strategy-display-name').textContent = newName.trim();
+                saveStrategyConfigUI();
+            }
+        }
+
+        function exportAlgtstJson() {
+            fetch('/api/strategy_config')
+                .then(r => r.json())
+                .then(data => {
+                    const blob = new Blob([JSON.stringify(data.config || data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'Balance_BTC_midnight_lock_profit.algtst';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+        }
+
+        async function runAlgoTestBacktestUI() {
+            const btn = document.getElementById('btn-run-algotest-bt');
+            const panel = document.getElementById('at-backtest-panel');
+            const sDate = document.getElementById('strat-bt-sdate')?.value || '2025-01-21';
+            const eDate = document.getElementById('strat-bt-edate')?.value || '2026-11-21';
+            const callMult = parseFloat(document.getElementById('strat-leg1-mult')?.value || 1.6);
+            const putMult = parseFloat(document.getElementById('strat-leg2-mult')?.value || 2.3);
+            const legSL = parseFloat(document.getElementById('strat-leg1-sl-val')?.value || 100);
+            const lots = parseInt(document.getElementById('strat-leg1-lots')?.value || 500, 10);
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span>⏳</span> Simulating 670 Days...';
+            }
+            if (panel) {
+                panel.style.display = 'block';
+                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            try {
+                const res = await fetch('/api/run_backtest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        start_date: sDate,
+                        end_date: eDate,
+                        call_mult: callMult,
+                        put_mult: putMult,
+                        leg_sl_pct: legSL,
+                        lots: lots
+                    })
+                });
+                const data = await res.json();
+                if (data.success && data.summary) {
+                    const s = data.summary;
+                    const nameEl = document.getElementById('bt-disp-strat-name');
+                    if (nameEl) nameEl.textContent = s.strategy_name || "Balance BTC midnight - lock profit";
+                    const metaEl = document.getElementById('bt-disp-meta');
+                    if (metaEl) metaEl.textContent = `Date Range: ${s.date_range} • Total Days: ${s.total_trading_days} • Lots/Leg: ${s.lots_per_leg} (0.50 BTC) • Multipliers: ${s.straddle_multipliers}`;
+                    
+                    const pnlUsd = s.net_profit_usd >= 0 ? `+$${s.net_profit_usd.toLocaleString()}` : `-$${Math.abs(s.net_profit_usd).toLocaleString()}`;
+                    const pnlEl = document.getElementById('bt-stat-net-pnl-usd');
+                    if (pnlEl) {
+                        pnlEl.textContent = pnlUsd;
+                        pnlEl.style.color = s.net_profit_usd >= 0 ? '#10b981' : '#f43f5e';
+                    }
+
+                    const inrEl = document.getElementById('bt-stat-net-pnl-inr');
+                    if (inrEl) inrEl.textContent = `₹${Math.round(s.net_profit_inr).toLocaleString('en-IN')}`;
+                    const retEl = document.getElementById('bt-stat-return-pct');
+                    if (retEl) {
+                        retEl.textContent = `${s.total_return_pct >= 0 ? '+' : ''}${s.total_return_pct}%`;
+                        retEl.style.color = s.total_return_pct >= 0 ? '#10b981' : '#f43f5e';
+                    }
+
+                    const wrEl = document.getElementById('bt-stat-win-rate');
+                    if (wrEl) wrEl.textContent = `${s.win_rate_pct}%`;
+                    const wEl = document.getElementById('bt-stat-wins');
+                    if (wEl) wEl.textContent = `${s.total_wins} Wins`;
+                    const lEl = document.getElementById('bt-stat-losses');
+                    if (lEl) lEl.textContent = `${s.total_losses} Losses`;
+
+                    const pfEl = document.getElementById('bt-stat-profit-factor');
+                    if (pfEl) pfEl.textContent = `${s.profit_factor}`;
+                    const ddEl = document.getElementById('bt-stat-max-dd');
+                    if (ddEl) ddEl.textContent = `${s.max_drawdown_pct}%`;
+                    const ddUsdEl = document.getElementById('bt-stat-max-dd-usd');
+                    if (ddUsdEl) ddUsdEl.textContent = `-$${s.max_drawdown_usd}`;
+
+                    const shEl = document.getElementById('bt-stat-sharpe');
+                    if (shEl) shEl.textContent = `${s.sharpe_ratio}`;
+                    const ceSlEl = document.getElementById('bt-stat-ce-sl');
+                    if (ceSlEl) ceSlEl.textContent = s.call_sl_hits;
+                    const peSlEl = document.getElementById('bt-stat-pe-sl');
+                    if (peSlEl) peSlEl.textContent = s.put_sl_hits;
+                    const bothSlEl = document.getElementById('bt-stat-both-sl');
+                    if (bothSlEl) bothSlEl.textContent = s.both_sl_hits;
+
+                    // Populate trades table
+                    const tbody = document.getElementById('bt-trades-table-body');
+                    if (tbody && data.recent_trades && data.recent_trades.length) {
+                        tbody.innerHTML = '';
+                        const rev = [...data.recent_trades].reverse();
+                        rev.forEach(t => {
+                            const isWin = t.total_pnl_usd >= 0;
+                            const tr = document.createElement('tr');
+                            tr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+                            tr.style.background = isWin ? 'rgba(16, 185, 129, 0.03)' : 'rgba(244, 63, 94, 0.03)';
+                            
+                            const ceTag = t.call_sl_hit ? '<span style="color:#f43f5e;font-weight:700;">SL 100%</span>' : '<span style="color:#10b981;">OTM Expired</span>';
+                            const peTag = t.put_sl_hit ? '<span style="color:#f43f5e;font-weight:700;">SL 100%</span>' : '<span style="color:#10b981;">OTM Expired</span>';
+                            const outcomeBadge = isWin 
+                                ? `<span style="background:rgba(16,185,129,0.15);color:#10b981;padding:2px 8px;border-radius:12px;font-weight:700;font-size:0.72rem;">WIN</span>`
+                                : `<span style="background:rgba(244,63,94,0.15);color:#f43f5e;padding:2px 8px;border-radius:12px;font-weight:700;font-size:0.72rem;">LOSS</span>`;
+
+                            tr.innerHTML = `
+                                <td style="padding: 9px 12px; font-weight:600; color:#f1f5f9;">${t.date}</td>
+                                <td style="padding: 9px 12px; color:#cbd5e1;">$${t.btc_price ? t.btc_price.toLocaleString() : '-'}</td>
+                                <td style="padding: 9px 12px; color:#93c5fd;">$${t.call_strike ? t.call_strike.toLocaleString() : '-'} <span style="font-size:0.7rem;color:#64748b;">($${t.call_entry})</span></td>
+                                <td style="padding: 9px 12px; color:#fca5a5;">$${t.put_strike ? t.put_strike.toLocaleString() : '-'} <span style="font-size:0.7rem;color:#64748b;">($${t.put_entry})</span></td>
+                                <td style="padding: 9px 12px;">${ceTag}</td>
+                                <td style="padding: 9px 12px;">${peTag}</td>
+                                <td style="padding: 9px 12px; text-align:right; font-weight:700; color:${isWin ? '#10b981' : '#f43f5e'};">${isWin ? '+' : ''}$${t.total_pnl_usd.toFixed(2)}</td>
+                                <td style="padding: 9px 12px; text-align:right; font-weight:600; color:${isWin ? '#cbd5e1' : '#fca5a5'};">${isWin ? '+' : ''}₹${Math.round(t.total_pnl_inr).toLocaleString('en-IN')}</td>
+                                <td style="padding: 9px 12px; text-align:center;">${outcomeBadge}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Backtest error:", err);
+                alert("Backtest error: " + err.message);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>▶</span> Run AlgoTest Backtest';
+                }
+            }
+        }
+
+        // Auto load strategy settings on startup
+        loadStrategyConfigUI();
     </script>
     </div><!-- /tab-config-b -->
     <script>
@@ -6125,6 +6915,7 @@ setInterval(() => {
 }, 1000);
 
 function updateAresPremium() {
+    if (!document.getElementById('ares-center-shield') && !document.getElementById('ares-btc-price')) return;
     // Update local clock
     const now = new Date();
     if(document.getElementById('ares-time-main')) document.getElementById('ares-time-main').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -6988,6 +7779,553 @@ setInterval(fetchApiCredentials, 30000);
         function downloadHistoryCsv() {
             window.location.href = `/api/download_csv?mode=${histCurrentMode}`;
         }
+    </script>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- TAB: 🚀 FORWARD TEST AUTO TRADER                                -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div class="tab-pane" id="tab-forwardtest" style="display:none; max-width: 1800px; width: 100%; flex-direction: column; gap: 20px;">
+    <style>
+        #tab-forwardtest.active { display: flex !important; }
+
+        /* ── Forward Test Panel Styles ── */
+        .ft-panel {
+            background: rgba(10, 15, 30, 0.72);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 24px 28px;
+            backdrop-filter: blur(16px);
+        }
+        .ft-panel-title {
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: #f8fafc;
+            letter-spacing: 0.5px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ft-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .ft-stat-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .ft-stat-label {
+            font-size: 0.72rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+        }
+        .ft-stat-value {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #f8fafc;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .ft-stat-value.green { color: #10b981; }
+        .ft-stat-value.red   { color: #f43f5e; }
+        .ft-stat-value.blue  { color: #06b6d4; }
+        .ft-stat-value.gold  { color: #f59e0b; }
+
+        .ft-btn-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        .ft-btn {
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255,255,255,0.12);
+            cursor: pointer;
+            transition: all 0.18s ease;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.03em;
+        }
+        .ft-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+        .ft-btn-start  { background: linear-gradient(135deg, #10b981, #059669); color: #fff; border-color: #059669; }
+        .ft-btn-stop   { background: linear-gradient(135deg, #f43f5e, #be123c); color: #fff; border-color: #be123c; }
+        .ft-btn-force  { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; border-color: #6d28d9; }
+        .ft-btn-refresh{ background: rgba(255,255,255,0.06); color: #94a3b8; }
+
+        .ft-status-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+        .ft-status-pill {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+        .ft-status-pill.active { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+        .ft-status-pill.idle   { background: rgba(100,116,139,0.15); color: #64748b; border: 1px solid rgba(100,116,139,0.3); }
+        .ft-status-pill.trade  { background: rgba(245,158,11,0.15);  color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+        .ft-status-pill.lock   { background: rgba(139,92,246,0.15);  color: #8b5cf6; border: 1px solid rgba(139,92,246,0.3); }
+
+        .ft-rule-chip {
+            font-size: 0.72rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: rgba(6,182,212,0.1);
+            color: #06b6d4;
+            border: 1px solid rgba(6,182,212,0.25);
+            font-weight: 600;
+        }
+
+        /* ── Forward Test Trade Table ── */
+        .ft-table-wrap { overflow-x: auto; border-radius: 12px; }
+        .ft-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .ft-table th {
+            background: rgba(255,255,255,0.04);
+            color: #64748b;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            white-space: nowrap;
+        }
+        .ft-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: #cbd5e1;
+            white-space: nowrap;
+        }
+        .ft-table tr:hover td { background: rgba(255,255,255,0.025); }
+        .ft-table .pnl-pos { color: #10b981; font-weight: 700; }
+        .ft-table .pnl-neg { color: #f43f5e; font-weight: 700; }
+        .ft-lock-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .ft-lock-badge.yes { background: rgba(139,92,246,0.15); color: #a78bfa; }
+        .ft-lock-badge.no  { background: rgba(100,116,139,0.1); color: #475569; }
+
+        /* ── Position Monitor Cards ── */
+        .ft-leg-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px;
+            padding: 14px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .ft-leg-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+        }
+        .ft-leg-sym { font-size: 0.95rem; font-weight: 700; color: #f8fafc; font-family: 'JetBrains Mono', monospace; }
+        .ft-leg-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: #94a3b8; }
+        .ft-leg-row span:last-child { color: #f8fafc; font-weight: 600; }
+    </style>
+
+    <!-- ── HEADER + CONTROLS ── -->
+    <div class="ft-panel">
+        <div class="ft-panel-title">
+            <span>🚀</span> Forward Test Auto Trader
+            <span id="ft-sub-title" style="font-size:0.72rem;color:#64748b;font-weight:500;margin-left:8px;">Mon–Fri | Entry 10:30 PM IST | Squaroff 5:00 PM IST</span>
+        </div>
+
+        <!-- Rule Chips -->
+        <div id="ft-rule-chips-container" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+            <span class="ft-rule-chip">📈 CE Strike: ATM +1.6× Straddle</span>
+            <span class="ft-rule-chip">📉 PE Strike: ATM −2.3× Straddle</span>
+            <span class="ft-rule-chip">🛑 Leg SL: 100%</span>
+            <span class="ft-rule-chip">📦 Lots: 500 (0.50 BTC)</span>
+            <span class="ft-rule-chip">🔄 RE-MOMENTUM: 1× Delta-match</span>
+            <span class="ft-rule-chip">🔒 Lock ₹500 @ ₹1500 Profit</span>
+            <span class="ft-rule-chip">📈 Trail ₹200 per ₹500</span>
+            <span class="ft-rule-chip" style="border-color:rgba(245,158,11,0.3);color:#f59e0b;background:rgba(245,158,11,0.1);">⚡ 5% Default Slippage</span>
+            <span class="ft-rule-chip" style="border-color:rgba(139,92,246,0.3);color:#a78bfa;background:rgba(139,92,246,0.1);">🔒 Strikes 100% Locked</span>
+        </div>
+
+        <!-- Status Row -->
+        <div class="ft-status-row" id="ft-status-row">
+            <span id="ft-pill-engine" class="ft-status-pill idle">● ENGINE OFF</span>
+            <span id="ft-pill-trade"  class="ft-status-pill idle">● NO TRADE</span>
+            <span id="ft-pill-lock"   class="ft-status-pill idle" style="display:none;">🔒 LOCK ACTIVE</span>
+            <span style="font-size:0.8rem;color:#64748b;margin-left:auto;" id="ft-next-entry">—</span>
+            <span style="font-size:0.8rem;color:#94a3b8;font-family:JetBrains Mono;" id="ft-ist-time">—</span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="ft-btn-row">
+            <button class="ft-btn ft-btn-start" onclick="ftStart()">▶ START Forward Trader</button>
+            <button class="ft-btn ft-btn-stop"  onclick="ftStop()">⏹ STOP</button>
+            <button class="ft-btn ft-btn-force" onclick="ftForceEntry()" title="Force enter now for immediate testing">⚡ FORCE ENTRY NOW</button>
+            <button class="ft-btn" id="ft-btn-manual-off" onclick="ftManualOff()" style="background: linear-gradient(135deg, #e11d48, #9f1239); color: #fff; border-color: #be123c;" title="Manually turn off/exit the active forward test trade immediately">🛑 MANUAL OFF (SQUARE OFF)</button>
+            <button class="ft-btn ft-btn-refresh" onclick="ftRefresh()">🔄 Refresh</button>
+        </div>
+
+        <!-- Live PnL Stats -->
+        <div class="ft-stat-grid" id="ft-live-stats">
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Live PnL (INR)</div>
+                <div class="ft-stat-value" id="ft-pnl-inr">₹ —</div>
+            </div>
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Live PnL (USD)</div>
+                <div class="ft-stat-value" id="ft-pnl-usd">$ —</div>
+            </div>
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Peak PnL (INR)</div>
+                <div class="ft-stat-value gold" id="ft-peak-inr">₹ —</div>
+            </div>
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Lock Floor</div>
+                <div class="ft-stat-value blue" id="ft-lock-floor">—</div>
+            </div>
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Today</div>
+                <div class="ft-stat-value" id="ft-today-day" style="font-size:1rem;">—</div>
+            </div>
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Trade Date</div>
+                <div class="ft-stat-value" id="ft-trade-date" style="font-size:0.95rem;">—</div>
+            </div>
+        </div>
+
+        <!-- Live Leg Positions -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px;" id="ft-leg-cards-wrap">
+            <div class="ft-leg-card">
+                <div class="ft-leg-title">📞 CALL Leg (CE)</div>
+                <div class="ft-leg-sym" id="ft-call-sym">—</div>
+                <div class="ft-leg-row"><span>Entry Price</span><span id="ft-call-entry">—</span></div>
+                <div class="ft-leg-row"><span>Current Price</span><span id="ft-call-cur">—</span></div>
+                <div class="ft-leg-row"><span>SL Level</span><span id="ft-call-sl" style="color:#f43f5e;">—</span></div>
+                <div class="ft-leg-row"><span>SL Hits</span><span id="ft-call-sl-hits">—</span></div>
+            </div>
+            <div class="ft-leg-card">
+                <div class="ft-leg-title">📉 PUT Leg (PE)</div>
+                <div class="ft-leg-sym" id="ft-put-sym">—</div>
+                <div class="ft-leg-row"><span>Entry Price</span><span id="ft-put-entry">—</span></div>
+                <div class="ft-leg-row"><span>Current Price</span><span id="ft-put-cur">—</span></div>
+                <div class="ft-leg-row"><span>SL Level</span><span id="ft-put-sl" style="color:#f43f5e;">—</span></div>
+                <div class="ft-leg-row"><span>SL Hits</span><span id="ft-put-sl-hits">—</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── CUMULATIVE SUMMARY ── -->
+    <div class="ft-panel">
+        <div class="ft-panel-title"><span>📊</span> Cumulative Forward Test Summary</div>
+        <div class="ft-stat-grid">
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Total Trades</div>
+                <div class="ft-stat-value blue" id="ft-total-trades">—</div>
+            </div>
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Wins</div>
+                <div class="ft-stat-value green" id="ft-wins">—</div>
+            </div>
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Losses</div>
+                <div class="ft-stat-value red" id="ft-losses">—</div>
+            </div>
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Win Rate</div>
+                <div class="ft-stat-value gold" id="ft-win-rate">—</div>
+            </div>
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Net PnL (INR)</div>
+                <div class="ft-stat-value" id="ft-net-inr">₹ —</div>
+            </div>
+            <div class="ft-stat-card">
+                <div class="ft-stat-label">Net PnL (USD)</div>
+                <div class="ft-stat-value" id="ft-net-usd">$ —</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TRADE LOG TABLE ── -->
+    <div class="ft-panel">
+        <div class="ft-panel-title"><span>📋</span> Trade Log <span style="font-size:0.72rem;color:#64748b;font-weight:400;" id="ft-log-count"></span></div>
+        <div class="ft-table-wrap">
+            <table class="ft-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Date</th>
+                        <th>Entry Time</th>
+                        <th>CE Symbol</th>
+                        <th>PE Symbol</th>
+                        <th>CE Entry $</th>
+                        <th>PE Entry $</th>
+                        <th style="color:#f8fafc;letter-spacing:0.05em;">CE EXIT</th>
+                        <th style="color:#f8fafc;letter-spacing:0.05em;">PE EXIT</th>
+                        <th>PnL INR</th>
+                        <th>PnL USD</th>
+                        <th>Peak ₹</th>
+                        <th>Lock</th>
+                        <th>Floor ₹</th>
+                        <th>Exit Reason</th>
+                    </tr>
+                </thead>
+                <tbody id="ft-trade-tbody">
+                    <tr><td colspan="15" style="text-align:center;color:#64748b;padding:30px;">No trades recorded yet. Start the Forward Trader to begin!</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </div><!-- /tab-forwardtest -->
+
+    <!-- ── FORWARD TEST JAVASCRIPT ── -->
+    <script>
+    (function() {
+        let ftRefreshTimer = null;
+        let ftAutoRefresh = false;
+
+        // Wire tab click to load data
+        document.getElementById('tab-btn-forwardtest').addEventListener('click', function() {
+            ftLoadAll();
+            if (!ftAutoRefresh) {
+                ftAutoRefresh = true;
+                ftRefreshTimer = setInterval(ftLoadAll, 5000);
+            }
+        });
+
+        async function ftLoadAll() {
+            try {
+                const [sRes, rRes] = await Promise.all([
+                    fetch('/api/forward_trader/status'),
+                    fetch('/api/forward_trader/records')
+                ]);
+                const st = await sRes.json();
+                const rc = await rRes.json();
+                ftRenderStatus(st);
+                ftRenderRecords(rc);
+            } catch(e) {
+                console.error('[FT] Load error:', e);
+            }
+        }
+
+        function ftRenderStatus(st) {
+            // Dynamic Rule Chips from live strategy config
+            if (st.rules) {
+                const r = st.rules;
+                const container = document.getElementById('ft-rule-chips-container');
+                if (container) {
+                    const btcLots = (r.lots * 0.001).toFixed(2);
+                    container.innerHTML = `
+                        <span class="ft-rule-chip">📈 CE Strike: ATM +${r.call_mult}× Straddle</span>
+                        <span class="ft-rule-chip">📉 PE Strike: ATM −${r.put_mult}× Straddle</span>
+                        <span class="ft-rule-chip">🛑 Leg SL: ${r.leg_sl_pct}%</span>
+                        <span class="ft-rule-chip">📦 Lots: ${r.lots} (${btcLots} BTC)</span>
+                        <span class="ft-rule-chip">🔄 RE-MOMENTUM: ${r.reentry_max}× Delta-match</span>
+                        <span class="ft-rule-chip">🔒 Lock ₹${Math.round(r.lock_amount_inr)} @ ₹${Math.round(r.lock_trigger_inr)}</span>
+                        <span class="ft-rule-chip">📈 Trail ₹${Math.round(r.trail_by_inr)} per ₹${Math.round(r.trail_step_inr)}</span>
+                        <span class="ft-rule-chip" style="border-color:rgba(245,158,11,0.3);color:#f59e0b;background:rgba(245,158,11,0.1);">⚡ ${r.slippage_pct}% Default Slippage</span>
+                        <span class="ft-rule-chip" style="border-color:rgba(139,92,246,0.3);color:#a78bfa;background:rgba(139,92,246,0.1);">🔒 Strikes 100% Locked</span>
+                    `;
+                }
+                const subTitle = document.getElementById('ft-sub-title');
+                if (subTitle && r.entry_time && r.squareoff_time) {
+                    subTitle.textContent = `Mon–Fri | Entry ${r.entry_time} IST | Squaroff ${r.squareoff_time} IST`;
+                }
+            }
+
+            // Engine pill
+            const engPill = document.getElementById('ft-pill-engine');
+            if (st.running) {
+                engPill.textContent = '● ENGINE ON';
+                engPill.className = 'ft-status-pill active';
+            } else {
+                engPill.textContent = '● ENGINE OFF';
+                engPill.className = 'ft-status-pill idle';
+            }
+
+            // Trade pill
+            const tradePill = document.getElementById('ft-pill-trade');
+            if (st.trade_active) {
+                tradePill.textContent = '● TRADE ACTIVE';
+                tradePill.className = 'ft-status-pill trade';
+            } else {
+                tradePill.textContent = '● NO TRADE';
+                tradePill.className = 'ft-status-pill idle';
+            }
+
+            // Lock pill
+            const lockPill = document.getElementById('ft-pill-lock');
+            if (st.lock_active) {
+                lockPill.style.display = '';
+                lockPill.textContent = '🔒 LOCK ACTIVE ₹' + (st.lock_floor_inr || 0).toFixed(0);
+                lockPill.className = 'ft-status-pill lock';
+            } else {
+                lockPill.style.display = 'none';
+            }
+
+            // Times
+            document.getElementById('ft-ist-time').textContent = st.ist_time || '—';
+            document.getElementById('ft-next-entry').textContent = 'Next: ' + (st.next_entry || '—');
+
+            // PnL Stats
+            const pnlInr = st.pnl_inr || 0;
+            const pnlUsd = st.pnl_usd || 0;
+            const pnlInrEl = document.getElementById('ft-pnl-inr');
+            const pnlUsdEl = document.getElementById('ft-pnl-usd');
+            pnlInrEl.textContent = '₹ ' + pnlInr.toFixed(0);
+            pnlInrEl.className = 'ft-stat-value ' + (pnlInr >= 0 ? 'green' : 'red');
+            pnlUsdEl.textContent = '$ ' + pnlUsd.toFixed(2);
+            pnlUsdEl.className = 'ft-stat-value ' + (pnlUsd >= 0 ? 'green' : 'red');
+
+            document.getElementById('ft-peak-inr').textContent   = '₹ ' + (st.peak_pnl_inr || 0).toFixed(0);
+            document.getElementById('ft-lock-floor').textContent = st.lock_active ? '₹ ' + (st.lock_floor_inr || 0).toFixed(0) : '—';
+            document.getElementById('ft-today-day').textContent  = st.today_weekday || '—';
+            document.getElementById('ft-trade-date').textContent = st.trade_date || '—';
+
+            // Leg cards
+            const cp = st.call_pos;
+            const pp = st.put_pos;
+            document.getElementById('ft-call-sym').textContent     = st.call_symbol || '—';
+            document.getElementById('ft-call-entry').textContent   = cp ? '$ ' + cp.entry_price.toFixed(2) : '—';
+            document.getElementById('ft-call-cur').textContent     = cp ? '$ ' + (cp.current_price || cp.entry_price).toFixed(2) : '—';
+            document.getElementById('ft-call-sl').textContent      = cp ? '$ ' + cp.sl.toFixed(2) : '—';
+            document.getElementById('ft-call-sl-hits').textContent = st.call_sl_hits !== undefined ? st.call_sl_hits : '—';
+
+            document.getElementById('ft-put-sym').textContent     = st.put_symbol || '—';
+            document.getElementById('ft-put-entry').textContent   = pp ? '$ ' + pp.entry_price.toFixed(2) : '—';
+            document.getElementById('ft-put-cur').textContent     = pp ? '$ ' + (pp.current_price || pp.entry_price).toFixed(2) : '—';
+            document.getElementById('ft-put-sl').textContent      = pp ? '$ ' + pp.sl.toFixed(2) : '—';
+            document.getElementById('ft-put-sl-hits').textContent = st.put_sl_hits !== undefined ? st.put_sl_hits : '—';
+
+            // Summary from status
+            const sum = st.summary || {};
+            document.getElementById('ft-total-trades').textContent = sum.total_trades ?? '0';
+            document.getElementById('ft-wins').textContent         = sum.wins ?? '0';
+            document.getElementById('ft-losses').textContent       = sum.losses ?? '0';
+            const wr = sum.win_rate_pct ?? 0;
+            const wrEl = document.getElementById('ft-win-rate');
+            wrEl.textContent = wr.toFixed(1) + '%';
+            wrEl.className = 'ft-stat-value ' + (wr >= 50 ? 'gold' : 'red');
+            const netInr = sum.total_pnl_inr ?? 0;
+            const netInrEl = document.getElementById('ft-net-inr');
+            netInrEl.textContent = '₹ ' + netInr.toFixed(0);
+            netInrEl.className = 'ft-stat-value ' + (netInr >= 0 ? 'green' : 'red');
+            const netUsd = sum.total_pnl_usd ?? 0;
+            const netUsdEl = document.getElementById('ft-net-usd');
+            netUsdEl.textContent = '$ ' + netUsd.toFixed(2);
+            netUsdEl.className = 'ft-stat-value ' + (netUsd >= 0 ? 'green' : 'red');
+        }
+
+        function ftRenderRecords(rc) {
+            const trades = rc.trades || [];
+            document.getElementById('ft-log-count').textContent = `(${trades.length} trade${trades.length !== 1 ? 's' : ''})`;
+            const tbody = document.getElementById('ft-trade-tbody');
+            if (!trades.length) {
+                tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;color:#64748b;padding:30px;">No trades recorded yet. Start the Forward Trader to begin!</td></tr>';
+                return;
+            }
+            const rows = [...trades].reverse().map((t, i) => {
+                const pnlInr = t.pnl_inr ?? 0;
+                const pnlUsd = t.pnl_usd ?? 0;
+                const pnlInrCls = pnlInr >= 0 ? 'pnl-pos' : 'pnl-neg';
+                const pnlUsdCls = pnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg';
+                const lockBadge = t.lock_activated
+                    ? '<span class="ft-lock-badge yes">🔒 YES</span>'
+                    : '<span class="ft-lock-badge no">—</span>';
+                const entryTime = t.entry_time ? new Date(t.entry_time).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true}) : '—';
+                const exitReason = (t.exit_reason || '').replace('_', ' ');
+
+                // AlgoTest style CE / PE Exit tags
+                const isCeSl = (t.ce_exit_status && t.ce_exit_status.includes('SL')) || (t.call_sl_hits && t.call_sl_hits > 0);
+                const isPeSl = (t.pe_exit_status && t.pe_exit_status.includes('SL')) || (t.put_sl_hits && t.put_sl_hits > 0);
+                const ceTag = isCeSl
+                    ? '<span style="color:#f43f5e;font-weight:700;letter-spacing:0.02em;">SL 100%</span>'
+                    : '<span style="color:#10b981;font-weight:700;letter-spacing:0.02em;">OTM Expired</span>';
+                const peTag = isPeSl
+                    ? '<span style="color:#f43f5e;font-weight:700;letter-spacing:0.02em;">SL 100%</span>'
+                    : '<span style="color:#10b981;font-weight:700;letter-spacing:0.02em;">OTM Expired</span>';
+
+                return `<tr>
+                    <td style="color:#64748b;">${trades.length - i}</td>
+                    <td>${t.trade_date || '—'}</td>
+                    <td>${entryTime}</td>
+                    <td style="font-size:0.72rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;" title="${t.call_symbol||''}">${(t.call_symbol||'—').slice(-18)}</td>
+                    <td style="font-size:0.72rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;" title="${t.put_symbol||''}">${(t.put_symbol||'—').slice(-18)}</td>
+                    <td>$ ${(t.call_entry||0).toFixed(2)}</td>
+                    <td>$ ${(t.put_entry||0).toFixed(2)}</td>
+                    <td>${ceTag}</td>
+                    <td>${peTag}</td>
+                    <td class="${pnlInrCls}">₹ ${pnlInr.toFixed(0)}</td>
+                    <td class="${pnlUsdCls}">$ ${pnlUsd.toFixed(2)}</td>
+                    <td style="color:#f59e0b;">₹ ${(t.peak_pnl_inr||0).toFixed(0)}</td>
+                    <td>${lockBadge}</td>
+                    <td style="color:#8b5cf6;">₹ ${(t.lock_floor_inr||0).toFixed(0)}</td>
+                    <td style="font-size:0.72rem;color:#94a3b8;">${exitReason}</td>
+                </tr>`;
+            }).join('');
+            tbody.innerHTML = rows;
+        }
+
+        window.ftRefresh     = ftLoadAll;
+        window.ftStart       = async function() {
+            const r = await fetch('/api/forward_trader/start', {method:'POST'});
+            const d = await r.json();
+            showToast(d.message || (d.success ? '✅ Forward Trader started!' : '❌ Start failed'), d.success ? 'success' : 'error', 4000);
+            setTimeout(ftLoadAll, 800);
+        };
+        window.ftStop        = async function() {
+            const r = await fetch('/api/forward_trader/stop', {method:'POST'});
+            const d = await r.json();
+            showToast(d.message || '🛑 Forward Trader stopped', 'success', 3000);
+            setTimeout(ftLoadAll, 800);
+        };
+        window.ftForceEntry  = async function() {
+            if (!confirm('⚡ Force enter a trade RIGHT NOW for testing?\n\nThis will place paper positions immediately.')) return;
+            const r = await fetch('/api/forward_trader/force_entry', {method:'POST'});
+            const d = await r.json();
+            showToast(d.success ? '✅ Force entry placed! Check status.' : '❌ Force entry failed: ' + (d.message||''), d.success ? 'success' : 'error', 5000);
+            setTimeout(ftLoadAll, 1000);
+        };
+        window.ftManualOff   = async function() {
+            if (!confirm('🛑 Are you sure you want to MANUALLY TURN OFF and square off the active trade right now?')) return;
+            const r = await fetch('/api/forward_trader/manual_off', {method:'POST'});
+            const d = await r.json();
+            showToast(d.message || (d.success ? '🛑 Trade turned off manually.' : '❌ Manual off failed: ' + (d.message||'')), d.success ? 'success' : 'error', 5000);
+            setTimeout(ftLoadAll, 1000);
+        };
+    })();
     </script>
 
 </body>
